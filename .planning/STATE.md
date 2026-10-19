@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-10-19T06:06:08.512Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-10-19T06:21:37.901Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 1 (Chain Spike) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [████░░░░░░] 40%
 | Phase 01 P02 | 9 min | 2 tasks | 10 files |
 | Phase 01 P03 | 18 min | 3 tasks | 14 files |
 | Phase 01 P04 | 6 min | 2 tasks | 8 files |
+| Phase 01 P05 | 15 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,10 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-03: devnet launch with per-coin table: burn 780 B / 304k CU, sell to SOL 881 B / 421k CU; shared-only sell 1,191 B (41 B headroom)
 - [Phase 01]: Live mainnet pump config on the fork matches PROJECT.md fee assumptions with no drift (max creator fee 300 bps)
 - [Phase 01]: fork.sh honours a hand-set SURFPOOL_DATASOURCE_RPC_URL, so the public RPC fallback is an env override
+- [Phase 01]: 01-05: finalizeIxs creates the SharingConfig PDA creator-vault quote ATA before update_fee_shares_v2 (InvalidAccountData without it on a Q-quoted coin)
+- [Phase 01]: 01-05: second update_fee_shares_v2 rejected with pump-fees 6009 SharingConfigAdminRevoked (A1 resolved)
+- [Phase 01]: 01-05: pump's devnet crank migrates a completed curve within about 10 slots; 6107 is proven in one tx [completing buy, child create] that reverts
+- [Phase 01]: 01-05: run.ts skips a devnet stage only when its rows are ok and pass their rules
 
 ### Pending Todos
 
@@ -99,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T06:06:08.503Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-10-19T06:21:32.798Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None

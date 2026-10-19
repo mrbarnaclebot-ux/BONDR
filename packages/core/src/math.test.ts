@@ -18,3 +18,17 @@ test("applyBps rejects bps outside 0..10000 and negative amounts", () => {
   expect(() => applyBps(1n, 1.5)).toThrow();
   expect(() => applyBps(-1n, 100)).toThrow();
 });
+
+test("exact-out margins: qMin never exceeds qOut and amount never exceeds childOut", () => {
+  // A large token amount, the smallest amount, and values where flooring bites.
+  for (const [qOut, childOut] of [
+    [8_887_102_448_093n, 34_517_239_812_117n],
+    [1n, 1n],
+    [101n, 99n],
+  ]) {
+    const qMin = applyBps(qOut, 9900);
+    const amount = applyBps(childOut, 9800);
+    expect(qMin <= qOut && qMin >= (qOut * 99n) / 100n).toBe(true);
+    expect(amount <= childOut && amount >= (childOut * 98n) / 100n).toBe(true);
+  }
+});

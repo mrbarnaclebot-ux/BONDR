@@ -1,9 +1,11 @@
 {
   "net": "devnet",
-  "updatedAt": "2026-10-19T05:52:19.398Z",
+  "updatedAt": "2026-10-19T06:00:27.653Z",
   "state": {
     "Q": "5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6",
-    "C0": "HGC7QFRXC9V5ris4SXLFopCurvkM2w8G5irmRkgKKh9u"
+    "C0": "HGC7QFRXC9V5ris4SXLFopCurvkM2w8G5irmRkgKKh9u",
+    "C.burn": "7PnyHLoSAiA851NQR7fSUuGVSkuCjv5S4ycxBC7RHH3e",
+    "C.sell": "9sZRkKbp87LyyfNB85XCiakhUsqefivzFodR73DRr63o"
   },
   "rows": [
     {
@@ -98,6 +100,84 @@
       "facts": {
         "mint": "2PwFpVzAvwGVAhaA2EgxxL48EMehbhSuLAyE9ha9gnnW"
       },
+      "env": "devnet"
+    },
+    {
+      "id": "launch.table.burn",
+      "step": "Per-coin lookup table (burn)",
+      "ok": true,
+      "bytes": 1072,
+      "cu": 29712,
+      "sig": "cZJfKqGeGXX1Rt8ZjxCc7Pof2KX2mK7QezHsTHZ91kpfy7phWoJU1RYbxGsiRPWN9CFsgF19dUDsKMhPqAjBZ46",
+      "facts": {
+        "table": "FY8vR9GQMfttUrSFrnuA2jRsvWzvstaybQSBLjiEfp1S",
+        "keys": 26,
+        "txs": 2
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "launch.burn",
+      "step": "Launch: create + exact-out dev buy + insta burn (one v0 tx, per-coin table)",
+      "ok": true,
+      "sig": "dRakxMErwWqtXNQZTaEmAFTgwq4cZZnbWze5ow7aWARbFjypFtkqHrQ7DkB8mpHSiqkxesR4xBUy1t6sZzZp5GU",
+      "bytes": 780,
+      "cu": 304419,
+      "cuLimit": 600000,
+      "facts": {
+        "mint": "7PnyHLoSAiA851NQR7fSUuGVSkuCjv5S4ycxBC7RHH3e",
+        "W": "8awCet53veKZuKBs2gyhCcHCGA9cdnSLcVk4XFfsUorZ",
+        "amount": "31310301754067",
+        "qMin": "8671585558147",
+        "solIn": "2500000",
+        "noTableBytes": 1552,
+        "sharedOnlyBytes": 1059,
+        "tableKeys": 26,
+        "supplyBefore": "1000000000000000",
+        "devChildAfter": "0",
+        "supplyAfter": "968689698245933",
+        "devQLeft": "240997308542"
+      },
+      "notes": "devnet scaled; curves are 100x cheaper",
+      "env": "devnet"
+    },
+    {
+      "id": "launch.table.sell",
+      "step": "Per-coin lookup table (sell)",
+      "ok": true,
+      "bytes": 1072,
+      "cu": 31155,
+      "sig": "5WJbkQ5JjnWUiKwAXd4UiHb4AZqJUHsU1kTngitRBhPBS1nrSkXxeiKtxD2jJnRxw3p4Qg5aRMq5qpVZbi68ZLM7",
+      "facts": {
+        "table": "6tz33NL1HyyY57q5Sk4Gx2HzZFthgE9vhxKQB5RWqaxk",
+        "keys": 31,
+        "txs": 2
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "launch.sell",
+      "step": "Launch: create + exact-out dev buy + insta sell (one v0 tx, per-coin table)",
+      "ok": true,
+      "sig": "2wZoyaYg246Sy8YbDB1cVXEnE1Eo1LymR1W6ZRDbpMTCcGXk3ExMFMRfsWDPpR8NvkWVPgvnzhyvu37QerWYSQPK",
+      "bytes": 881,
+      "cu": 420959,
+      "cuLimit": 600000,
+      "facts": {
+        "mint": "9sZRkKbp87LyyfNB85XCiakhUsqefivzFodR73DRr63o",
+        "W": "BqfeiCt6ee1qHTvm1kD3saMqS5gT2ew3i9xmgtPcVPyn",
+        "amount": "31128589351080",
+        "qMin": "8531155095670",
+        "solIn": "2500000",
+        "noTableBytes": 1808,
+        "sharedOnlyBytes": 1191,
+        "tableKeys": 31,
+        "supplyBefore": "1000000000000000",
+        "devChildAfter": "0",
+        "supplyAfter": "1000000000000000",
+        "devQLeft": "478061084830"
+      },
+      "notes": "devnet scaled; curves are 100x cheaper",
       "env": "devnet"
     }
   ]

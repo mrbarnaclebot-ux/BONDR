@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { applyBps } from "./math.ts";
+import { applyBps, split90_10 } from "./math.ts";
 
 test("applyBps floors x * bps / 10000", () => {
   expect(applyBps(1000n, 9900)).toBe(990n);
@@ -30,5 +30,14 @@ test("exact-out margins: qMin never exceeds qOut and amount never exceeds childO
     const amount = applyBps(childOut, 9800);
     expect(qMin <= qOut && qMin >= (qOut * 99n) / 100n).toBe(true);
     expect(amount <= childOut && amount >= (childOut * 98n) / 100n).toBe(true);
+  }
+});
+
+test("split90_10 floors the treasury tenth and gives the remainder to burn", () => {
+  expect(split90_10(100n)).toEqual({ treasury: 10n, burn: 90n });
+  expect(split90_10(99n)).toEqual({ treasury: 9n, burn: 90n });
+  for (const x of [0n, 1n, 9n, 10n, 123_456_789n]) {
+    const { treasury, burn } = split90_10(x);
+    expect(treasury + burn).toBe(x);
   }
 });

@@ -82,3 +82,16 @@ test("at 390px the wallet button and menu items are at least 44px tall", async (
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   }
 });
+
+test("on /launch the header connects and disconnects", async ({ page }) => {
+  const account = newTestAccount();
+  await injectPhantom(page, account);
+  await preConsent(page, account.address);
+  await page.goto("/launch");
+  await header(page).getByRole("button", { name: "Connect Phantom" }).click();
+  const button = header(page).getByRole("button", { name: short(account.address) });
+  await button.click();
+  await page.getByRole("button", { name: "Disconnect" }).click();
+  await expect(header(page).getByRole("button", { name: "Connect Phantom" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Launch a coin" })).toBeVisible();
+});

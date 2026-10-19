@@ -1,6 +1,7 @@
 "use client";
 import type { Exit } from "@bondr/core/api";
 import { type ComponentType, type Dispatch, type ReactNode, useEffect, useReducer, useRef } from "react";
+import { LaunchCoin } from "./launch-coin";
 import { LaunchStepper, STEP_NAMES } from "./launch-stepper";
 
 export type Step = 1 | 2 | 3 | 4 | 5;
@@ -54,7 +55,7 @@ function reduce(state: Launch, action: Action): Launch {
 }
 
 // Step bodies arrive per plan: 2 and 3 in 02-08, 4 and 5 in 02-13.
-const BODIES: Partial<Record<Step, ComponentType<StepProps>>> = {};
+const BODIES: Partial<Record<Step, ComponentType<StepProps>>> = { 1: LaunchCoin };
 
 /** `children` is the server-rendered title and lede, so they stay out of the client bundle. */
 export function LaunchFlow({ children }: { children: ReactNode }) {

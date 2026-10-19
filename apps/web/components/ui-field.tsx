@@ -1,4 +1,5 @@
 "use client";
+import { CircleAlert } from "lucide-react";
 import { Label as LabelPrimitive } from "radix-ui";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/cn";
@@ -9,7 +10,9 @@ const FIELD =
   "shadow-[inset_0_1px_3px_color-mix(in_oklch,var(--ink)_70%,transparent)] transition-[border-color,background-color,box-shadow] duration-(--dur) " +
   "placeholder:text-[color-mix(in_oklch,var(--foreground)_52%,var(--background))] hover:border-[color-mix(in_oklch,var(--foreground)_38%,transparent)] " +
   "focus:border-leaf focus:shadow-[0_0_0_3px_color-mix(in_oklch,var(--leaf)_25%,transparent)] focus:outline-none " +
-  "aria-invalid:border-destructive aria-invalid:shadow-[0_0_0_3px_var(--danger-wash)]";
+  "aria-invalid:border-destructive aria-invalid:shadow-[0_0_0_3px_var(--danger-wash)] " +
+  // an invalid field stays red while focused, as in the mockup
+  "aria-invalid:focus:border-destructive aria-invalid:focus:shadow-[0_0_0_3px_var(--danger-wash)]";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input data-slot="input" className={cn(FIELD, className)} {...props} />;
@@ -32,5 +35,16 @@ export function Label({ className, optional, children, ...props }: LabelProps) {
       {optional && " "}
       {optional && <span className="font-normal text-muted-foreground">optional</span>}
     </LabelPrimitive.Root>
+  );
+}
+
+/** Icon plus text, never color alone; the control points at `id` with aria-describedby. */
+export function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="flex items-center gap-1.5 text-xs text-destructive">
+      <CircleAlert className="size-3.5 flex-none" strokeWidth={1.5} aria-hidden="true" />
+      {message}
+    </p>
   );
 }

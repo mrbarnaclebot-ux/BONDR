@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 planned (10 plans, verified)
-last_updated: "2026-10-19T05:29:05.891Z"
-last_activity: 2026-10-19 -- Phase 1 execution started
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-10-19T05:35:02.017Z"
+last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 1 (Chain Spike) — EXECUTING
-Plan: 1 of 10
-Status: Executing Phase 1
-Last activity: 2026-10-19 -- Phase 1 execution started
+Plan: 2 of 10
+Status: Ready to execute
+Last activity: 2026-10-19
 
-Progress: [----------] 0%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [----------] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P01 | 6 min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,9 @@ Recent decisions affecting current work:
 - [Roadmap]: FEE-10 (W key derivation, worker only) is in Phase 2, because launch needs W as creator.
 - [Roadmap]: PLAT-04 (responsive) is in Phase 2; every later UI phase keeps it via mobile, tablet and desktop screenshots.
 - [Roadmap]: TOKEN-03 (burn budget, 24h window) is in Phase 5 with the fee engine that produces those values.
+- [Phase 01]: 01-01: vitest pinned 4.1.11 (4.1.12 is 4 days old, fails the 14-day rule); @types/node 24.19.1; pnpm 10.34.6
+- [Phase 01]: 01-01: fork connect requires local host plus mainnet genesis; devnet requires devnet genesis
+- [Phase 01]: 01-01: TDD RED verified but not committed separately (AGENTS.md forbids red commits)
 
 ### Pending Todos
 
@@ -86,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T05:24:44.965Z
-Stopped at: Phase 1 planned (10 plans, verified)
-Resume file: .planning/phases/01-chain-spike/01-01-PLAN.md
+Last session: 2026-10-19T05:35:02.012Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-10-19T06:21:37.901Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-10-19T06:27:57.128Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 1 (Chain Spike) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01 P03 | 18 min | 3 tasks | 14 files |
 | Phase 01 P04 | 6 min | 2 tasks | 8 files |
 | Phase 01 P05 | 15 min | 3 tasks | 13 files |
+| Phase 01 P06 | 20 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-05: second update_fee_shares_v2 rejected with pump-fees 6009 SharingConfigAdminRevoked (A1 resolved)
 - [Phase 01]: 01-05: pump's devnet crank migrates a completed curve within about 10 slots; 6107 is proven in one tx [completing buy, child create] that reverts
 - [Phase 01]: 01-05: run.ts skips a devnet stage only when its rows are ok and pass their rules
+- [Phase 01]: 01-06: effective creator fee measured at 150.00 bps of gross Q volume on the fork (PROJECT.md 1.5% holds)
+- [Phase 01]: 01-06: the 90/10 split is sized from the collect tx's own meta delta, never W's balance
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T06:21:32.798Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-10-19T06:27:57.122Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None

@@ -1,9 +1,10 @@
 "use client";
 import { Check, CircleAlert } from "lucide-react";
 import { type RefObject, useEffect, useRef, useState } from "react";
+import { short } from "@/lib/format";
 import { Button } from "./ui-button";
 import { useWallet } from "./wallet";
-import { focusButton, short } from "./wallet-button";
+import { focusButton } from "./wallet-button";
 
 const STORES = [
   "Your wallet address and the time you accepted these terms",

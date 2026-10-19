@@ -1,13 +1,12 @@
 "use client";
 import { Wallet } from "lucide-react";
 import { useRef, useState } from "react";
+import { short } from "@/lib/format";
 import { buttonVariants } from "./ui-button";
 import { useWallet } from "./wallet";
 
 // The consent dialog returns focus here by id, whichever state the control is in.
 export const WALLET_BUTTON_ID = "wallet-button";
-/** 4 characters, ellipsis, 4 characters (UI-SPEC {walletShort}). */
-export const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const ANCHOR = "[anchor-name:--wallet]";
 const POPOVER =
   "inset-auto m-0 mt-2 [position-anchor:--wallet] [position-area:bottom_span-left] rounded-md border border-line-strong bg-surface-2 text-foreground shadow-elev-2";

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-10-19T06:55:10.256Z"
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-10-19T07:04:14.629Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 1 (Chain Spike) — EXECUTING
-Plan: 9 of 10
+Plan: 10 of 10
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [████████░░] 80%
 | Phase 01 P06 | 20 min | 2 tasks | 13 files |
 | Phase 01 P07 | 10 min | 3 tasks | 15 files |
 | Phase 01 P08 | 12 min | 2 tasks | 9 files |
+| Phase 01 P09 | 15 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-08: after finalize on a complete curve the sweeps are the pool sweep only, so the bonded second update fits at 1,214 B
 - [Phase 01]: 01-08: the bonded second update is rejected with pump-fees 6009 SharingConfigAdminRevoked, same as devnet
 - [Phase 01]: 01-08: distribution after bond paid exactly 80:20 (deployer 138,264,336,404 Q, treasury 34,566,084,101 Q)
+- [Phase 01]: 01-09: the fork 6107 proof uses the devnet one-tx pattern [completing buy, child create], so both nets' evidence is comparable
+- [Phase 01]: 01-09: a child create on a migrated Q has 8 remaining accounts and is 1,163 B, 99 more than on an unmigrated Q
+- [Phase 01]: 01-09: resolveMultiHopRoute picks the pool venue for a migrated Q by itself (buy pool,curve 1,132 B / 162k CU; sell curve,pool 1,100 B / 150k CU)
 
 ### Pending Todos
 
@@ -118,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T06:55:10.247Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-10-19T07:04:05.494Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None

@@ -22,7 +22,11 @@ The deliverable is a bare results page listing every step with its signature or 
 ## Implementation Decisions
 
 ### Where the proof runs
-- **D-01:** Surfpool mainnet fork only. No devnet runs, no real-mainnet transaction in Phase 1. Real mainnet waits for Phase 7.
+- **D-01 (revised 2026-10-19 by owner):** Hybrid. Run every step devnet supports on devnet, matching the agencybook habit. Use the Surfpool mainnet fork only for the gaps. No real-mainnet transaction in Phase 1; real mainnet waits for Phase 7.
+  - **Verified 2026-10-19:** devnet pump Global has `creator_fee_configurable = false` and `max_configurable_creator_fee_bps = 0` (mainnet: true / 300). `max_curve_depth` is 2 on both, and all three pump programs were redeployed on devnet within the last ~10 days.
+  - **Devnet steps:** create_v2 with creator = W and a pump-coin quote (default creator fee), create + dev buy + insta sell/burn in one tx with size and CU measured, single update_fee_shares_v2 and the rejected second update (on an unbonded coin), multi_hop_swap, and the 6107 migration-window error if a stand-in can be completed cheaply. Otherwise that test moves to the fork.
+  - **Fork-only steps:** anything needing creator_fee_bps 150, or around 85+ SOL of volume. That covers the 150 bps create, collect and 90/10 split on 1.5% fees, forced-bond buy_exact_quote_in_v3 + burn, migrate, post-migration PumpSwap buy + burn, and finalize + distribution after bond.
+  - The results page labels each row with its environment (devnet or fork).
 - **D-02:** The fork runs against current mainnet pump programs and Global/FeeConfig state. The spike reads live values (fee tiers, `max_curve_depth`, `creator_fee_configurable`, `max_configurable_creator_fee_bps`) and records them in the results. Nothing is hardcoded.
 - **D-03:** Nobody runs pump's keeper on the fork. The spike calls `migrate` itself, which anyone may do. The results note that mainnet migration timing depends on pump's keeper.
 

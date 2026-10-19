@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { applyBps, split90_10, trigger105 } from "./math.ts";
+import { applyBps, estimateSolBack, minLamports, split90_10, trigger105 } from "./math.ts";
 
 test("applyBps floors x * bps / 10000", () => {
   expect(applyBps(1000n, 9900)).toBe(990n);
@@ -46,4 +46,22 @@ test("trigger105 fires at 105% of the cost to complete and not below", () => {
   expect(trigger105(105n, 100n)).toBe(true);
   expect(trigger105(104n, 100n)).toBe(false);
   expect(trigger105(0n, 0n)).toBe(true);
+});
+
+test("minLamports is 0.25 SOL on mainnet reserves and 0.0025 SOL on devnet reserves (D-17)", () => {
+  expect(minLamports(30_000_000_000n)).toBe(250_000_000n);
+  expect(minLamports(300_000_000n)).toBe(2_500_000n);
+});
+
+test("estimateSolBack applies each leg's fee with a floor, leg by leg", () => {
+  let x = 1_000_000_000n;
+  for (let i = 0; i < 4; i++) x = (x * 9755n) / 10_000n;
+  expect(estimateSolBack(1_000_000_000n, [245, 245, 245, 245])).toBe(x);
+  expect(estimateSolBack(1_000_000_000n, [])).toBe(1_000_000_000n);
+});
+
+test("estimateSolBack rejects a negative amount and out-of-range bps", () => {
+  expect(() => estimateSolBack(-1n, [100])).toThrow();
+  expect(() => estimateSolBack(1n, [10_001])).toThrow();
+  expect(() => estimateSolBack(1n, [-1])).toThrow();
 });

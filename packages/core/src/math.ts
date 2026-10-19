@@ -21,3 +21,12 @@ export function split90_10(x: bigint): { treasury: bigint; burn: bigint } {
 const TRIGGER_PCT = 105n;
 
 export const trigger105 = (budget: bigint, cost: bigint): boolean => budget * 100n >= cost * TRIGGER_PCT;
+
+// D-17: the dev-buy minimum is 0.25 SOL scaled by live initial virtual reserves over mainnet's 30 SOL,
+// i.e. reserves / 120. Exactly 0.25 SOL on mainnet, 0.0025 SOL on devnet. The only place the minimum lives.
+export const minLamports = (initialVirtualSolReserves: bigint): bigint => initialVirtualSolReserves / 120n;
+
+// Fee-only insta-sell estimate (RESEARCH Open Question 3): each leg keeps (10000 - bps) / 10000, floored.
+// It ignores price impact, so the UI labels it "about" until prepare simulates the real value.
+export const estimateSolBack = (solIn: bigint, legBps: number[]): bigint =>
+  legBps.reduce((x, bps) => applyBps(x, 10_000 - bps), applyBps(solIn, 10_000));

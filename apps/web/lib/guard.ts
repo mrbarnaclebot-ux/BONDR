@@ -1,4 +1,4 @@
-// Request guards for POST route handlers. No server-only import here, so a unit test can load this file.
+// Request guards for POST route handlers. No Next-only imports, so a unit test can load this file.
 
 /**
  * CSRF guard: the browser sets Origin on every POST and a page cannot forge it, so a cross-site form or
@@ -40,4 +40,48 @@ export async function json(req: Request, maxBytes: number): Promise<unknown> {
   } catch {
     return null;
   }
+}
+
+// A Solana public key in base58: 32 bytes encode to 32-44 characters of this alphabet.
+export const BASE58_KEY = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+// ponytail: per-instance memory while web runs one replica; move to a Postgres counter if web scales out.
+// Each entry keeps its own end time, so a sweep never cuts short a scope with a longer window.
+const hits = new Map<string, { end: number; n: number }>();
+
+/** Fixed window. Seconds to wait when key is over limit, else null. */
+export function take(key: string, now: number, limit: number, windowMs: number): number | null {
+  let h = hits.get(key);
+  if (!h || now >= h.end) {
+    if (hits.size >= 10_000) for (const [k, v] of hits) if (now >= v.end) hits.delete(k);
+    h = { end: now + windowMs, n: 0 };
+    hits.set(key, h);
+  }
+  h.n++;
+  return h.n > limit ? Math.max(1, Math.ceil((h.end - now) / 1000)) : null;
+}
+
+/** Railway's proxy sets X-Real-IP; otherwise the rightmost X-Forwarded-For entry, the one our proxy added. */
+export function clientIp(req: Request): string | null {
+  const h = req.headers;
+  return h.get("x-real-ip")?.trim() || h.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null;
+}
+
+/** Counts the request against the IP and, when given, the wallet; a 429 when either is over, else null. */
+export function rateLimited(
+  req: Request,
+  scope: string,
+  limit: number,
+  windowMs: number,
+  wallet?: string,
+): Response | null {
+  const ip = clientIp(req);
+  const keys = [ip && `${scope}:ip:${ip}`, wallet && `${scope}:wallet:${wallet}`].filter(Boolean) as string[];
+  const now = Date.now();
+  const waits = keys.map((k) => take(k, now, limit, windowMs)).filter((w) => w !== null);
+  if (!waits.length) return null;
+  return Response.json(
+    { error: "rate_limited" },
+    { status: 429, headers: { "retry-after": String(Math.max(...waits)), "cache-control": "no-store" } },
+  );
 }

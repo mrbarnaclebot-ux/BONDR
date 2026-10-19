@@ -30,7 +30,8 @@ export type LaunchErrorCode =
   | "expired"
   | "cosign_refused"
   | "not_found"
-  | "worker_unavailable";
+  | "worker_unavailable"
+  | "pin_failed";
 
 export type ApiError = { error: LaunchErrorCode; paused?: PauseReason };
 

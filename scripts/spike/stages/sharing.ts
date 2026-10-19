@@ -107,7 +107,7 @@ async function secondUpdate(ctx: Ctx, k: Keys): Promise<void> {
 const sigOk: Rule = (row) => (row.sig ? null : "no signature");
 const expectedShares = `${FINAL_SHARES.deployer},${FINAL_SHARES.treasury}`;
 
-const updateRule: Rule = (row) => {
+export const updateRule: Rule = (row) => {
   const f = row.facts ?? {};
   if (!row.sig) return "no signature";
   if (f.shares !== expectedShares) return `shares ${f.shares}, expected ${expectedShares}`;
@@ -117,7 +117,7 @@ const updateRule: Rule = (row) => {
 
 // The IDL name (camelCase in the Anchor TS IDL) must be the one the program logged, so a pump (not
 // pump-fees) 6xxx error cannot pass.
-const rejectedRule: Rule = (row) => {
+export const rejectedRule: Rule = (row) => {
   if (!row.expectFail || !row.sig) return "not a landed expected failure";
   if (row.code === undefined || row.code < 6000 || row.code > 6999) return `code ${row.code} not 6000..6999`;
   const name = row.facts?.idlName;

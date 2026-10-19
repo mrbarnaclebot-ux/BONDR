@@ -10,8 +10,9 @@ One spike step per file. Each exports a `Stage` with `run(ctx)` and `rules(net)`
 | `prebond.ts` | `prebond.buyq`, `prebond.trade.1` to `4`, `prebond.collect`, `prebond.split` (v3 trades on the 150 bps C0, sweep + collect, 90/10 split) | fork |
 | `bond.ts` | `bond.whale`, `bond.create`, `bond.topup` (TOP-UP), `bond.forced` (buy_exact_quote_in_v3 completes C2 + BurnChecked(simOut), one tx), `bond.exact.create`, `bond.exact.topup` (TOP-UP), `bond.exact` (buy_v3 + BurnChecked(amount)) | fork |
 | `pool.ts` | `bond.migrate` (migrate_v2 called by the spike), `bond.pool.topup` (TOP-UP), `bond.pool.burn` (PumpSwap buy_v2 + BurnChecked(baseOut), one tx) | fork |
+| `finalize.ts` | `finalize.trade.1` to `6` (sim PumpSwap v2 trades on C2's pool), `finalize.config`, `finalize.update` (sweeps, create_fee_sharing_config, the one 80/20 update on bonded C2), `finalize.distribute` (80:20 payout), `finalize.update2.rejected` | fork |
 | `multihop.ts` | `multihop.buy`, `multihop.sell` | devnet |
-| `sharing.ts` | `sharing.config`, `sharing.update`, `sharing.update2.rejected` | devnet (fork repeats it after bond in 01-08) |
+| `sharing.ts` | `sharing.config`, `sharing.update`, `sharing.update2.rejected` | devnet (`finalize.ts` repeats it on the fork after bond) |
 | `complete.ts` | `quote.complete`, `child.create.6107` | devnet (last: it ends Q there); fork in 01-09 |
 
 Rows with the `aux.` prefix are helpers (funding, prefunds, tables) and have no rule of their own.

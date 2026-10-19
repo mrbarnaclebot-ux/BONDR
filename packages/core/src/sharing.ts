@@ -70,7 +70,16 @@ export async function finalizeIxs(o: {
   ];
 }
 
-// Any later update. After finalize the curve's creator is the sharing config PDA, so the sweeps use it.
+// After create_fee_sharing_config the curve and pool creator is the sharing config PDA, so later sweeps
+// name it, and a finalize split into two txs repeats them before the update (pump-fees 6033 otherwise). A
+// complete curve takes no v3 trades, so after the finalize's curve sweep only the pool sweep is left; that
+// keeps a bonded update with two shareholders under the packet limit (fork: 1,270 bytes with both).
+export async function configSweeps(o: Omit<Sweep, "creator">): Promise<TransactionInstruction[]> {
+  const all = await sweeps({ ...o, creator: feeSharingConfigPda(o.mint) });
+  return o.bondingCurveComplete ? all.slice(1) : all;
+}
+
+// Any later update, after the same sweeps.
 export async function updateIxs(o: {
   authority: PublicKey;
   mint: PublicKey;
@@ -80,9 +89,8 @@ export async function updateIxs(o: {
   bondingCurveComplete: boolean;
   pool?: PublicKey;
 }): Promise<TransactionInstruction[]> {
-  const creator = feeSharingConfigPda(o.mint);
   return [
-    ...(await sweeps({ ...o, payer: o.authority, creator })),
+    ...(await configSweeps({ ...o, payer: o.authority })),
     await PUMP_SDK.updateFeeSharesV2({
       authority: o.authority,
       mint: o.mint,

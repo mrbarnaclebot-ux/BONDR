@@ -25,20 +25,21 @@ key-files:
     - scripts/spike/results/fork.json
     - .planning/PROJECT.md
 decisions:
-  - "Phase 5 forced-bond default is the full-budget buy_exact_quote_in_v3 with the simulated burn: it spends and burns the whole budget and leaves nothing in W"
+  - "Owner, 2026-10-19: the forced-bond burn mode is spend the full budget (buy_exact_quote_in_v3, past completion at the pool price, burn everything bought); the exact buy_v3 variant is evidence only"
+  - "Owner, 2026-10-19: the treasury tops up ops by hand when the admin low-ops alert fires; ops pays table rent (about 0.0075 SOL per launch, reclaimable) and W floats (about 0.03 SOL per bonded coin)"
   - "The per-coin launch lookup table stays mandatory: insta sell with a shared table only is 1,191 bytes, plus 99 for a migrated-BONDR create is about 1,290"
   - "Launch table rent is about 0.007-0.008 SOL at mainnet rent (0.0052-0.0060 SOL measured on devnet), not 0.003"
   - "W's finalize float is 0.018 SOL (8,017,920 lamports of rent plus a 0.01 SOL buffer), not 0.006"
 metrics:
   duration: "about 20 min"
   completed: 2026-10-19
-  tasks: "2 of 3 (Task 3 is the owner checkpoint)"
+  tasks: 3
   files: 8
 ---
 
 # Phase 1 Plan 10: Phase gate, evidence page and PROJECT.md from the spike Summary
 
-`pnpm spike:all` now runs the whole spike in one command. From a stopped fork it ran in about 46 s and printed `spike:all run=0 check=0`. The page shows PASS 67, FAIL 0, EXPECTED FAIL 5, NOT RUN 0, and the check shows 74 passed, 0 failed. The devnet launch and multihop rows were refreshed against the current code. PROJECT.md now carries 24 cited evidence references and 7 decisions marked Validated (Phase 1). **Owner sign-off (Task 3) is pending.**
+`pnpm spike:all` now runs the whole spike in one command. From a stopped fork it ran in about 46 s and printed `spike:all run=0 check=0`. The page shows PASS 67, FAIL 0, EXPECTED FAIL 5, NOT RUN 0, and the check shows 74 passed, 0 failed. The devnet launch and multihop rows were refreshed against the current code. PROJECT.md now carries 24 cited evidence references and 7 decisions marked Validated (Phase 1). **The owner approved the sign-off (Task 3) on 2026-10-19.**
 
 ## Tasks
 
@@ -46,7 +47,7 @@ metrics:
 |------|------|--------|
 | 1 | spike:all, devnet refresh, committed evidence page | fb990d6 |
 | 2 | Fold the spike evidence into PROJECT.md | 92f1f6e |
-| 3 | Owner reviews the page and the PROJECT.md changes | checkpoint, awaiting owner |
+| 3 | Owner reviews the page and the PROJECT.md changes | approved 2026-10-19; decisions recorded in bd38925 |
 
 ## spike:all
 
@@ -110,9 +111,14 @@ Not changed: item 7 (the rolling sweep was not exercised in the spike), Defaults
 
 None.
 
-## Awaiting
+## Owner sign-off
 
-Task 3: the owner opens scripts/spike/results/index.html, reads `git diff planning/v1-spec -- .planning/PROJECT.md`, and replies "approved" or lists the edits to revise. In particular, they decide on the forced-bond default, the W float and the per-coin table. Phase 2 does not start before that.
+The owner approved on 2026-10-19; the approval reached this executor through the coordinator. They made two decisions, both now recorded in PROJECT.md (commit bd38925):
+
+1. **Forced-bond burn mode: spend the full budget.** `buy_exact_quote_in_v3` takes the whole burn budget, may continue past completion at the pool price, and everything bought is burned. Nothing remains in W. The exact `buy_v3` variant stays as evidence only. This is Fee Mechanic item 5, plus a new Key Decisions row.
+2. **The treasury tops up ops.** Ops pays the lookup table rent (about 0.0075 SOL per launch, reclaimable) and the W floats (about 0.03 SOL per bonded coin). The owner moves SOL from the treasury to ops by hand when the admin dashboard's low-ops alert fires. This is Fee Mechanic item 9, plus a new Key Decisions row.
+
+Phase 2 may start.
 
 ## Self-Check: PASSED
 

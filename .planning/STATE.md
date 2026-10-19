@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: 01-10 Task 3, awaiting owner sign-off
+status: phase-complete
+stopped_at: Completed 01-10-PLAN.md, Phase 1 signed off
 last_updated: "2026-10-19T07:11:51.061Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 10
   completed_plans: 10
-  percent: 0
+  percent: 14
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 
 ## Current Position
 
-Phase: 1 (Chain Spike) — EXECUTING
+Phase: 1 (Chain Spike) — COMPLETE
 Plan: 10 of 10
-Status: Awaiting owner sign-off (01-10 Task 3: evidence page and PROJECT.md changes)
+Status: Phase 1 complete; owner signed off 2026-10-19. Next: Phase 2 (Launch Flow)
 Last activity: 2026-10-19
 
-Progress: [██████████] 100% of plans executed; owner sign-off pending
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -101,7 +101,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-09: a child create on a migrated Q has 8 remaining accounts and is 1,163 B, 99 more than on an unmigrated Q
 - [Phase 01]: 01-09: resolveMultiHopRoute picks the pool venue for a migrated Q by itself (buy pool,curve 1,132 B / 162k CU; sell curve,pool 1,100 B / 150k CU)
 - [Phase 01]: 01-10: pnpm spike:all is the phase gate; final run exit 0 (run=0 check=0), page PASS 67, FAIL 0, EXPECTED FAIL 5, NOT RUN 0
-- [Phase 01]: 01-10: Phase 5 forced-bond default proposed as the full-budget buy_exact_quote_in_v3 with simulated burn (row bond.forced); owner to confirm
+- [Phase 01]: 01-10 (owner, 2026-10-19): forced-bond burn mode is spend the full budget with buy_exact_quote_in_v3 and burn everything bought; the exact buy_v3 variant is evidence only
+- [Phase 01]: 01-10 (owner, 2026-10-19): the treasury tops up ops by hand on the admin low-ops alert; ops pays table rent (about 0.0075 SOL per launch) and W floats (about 0.03 SOL per bonded coin)
 - [Phase 01]: 01-10: launch table rent about 0.007-0.008 SOL at mainnet rent and W finalize float 0.018 SOL, both corrected in PROJECT.md
 - [Phase 01]: 01-10: devnet refreshed on new Q 4Jw2pr67...; devnet ops holds 2.917 SOL
 
@@ -128,5 +129,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-10-19T07:11:51.056Z
-Stopped at: 01-10 Task 3, awaiting owner sign-off
+Stopped at: Completed 01-10-PLAN.md, Phase 1 signed off
 Resume file: .planning/phases/01-chain-spike/01-10-SUMMARY.md

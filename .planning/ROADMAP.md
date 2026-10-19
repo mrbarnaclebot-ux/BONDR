@@ -12,7 +12,7 @@ BONDR goes from proof to production in seven vertical slices. First, a mainnet-f
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Chain Spike** - Prove every pump assumption on a Surfpool mainnet fork, each step with a signature (awaiting owner sign-off)
+- [x] **Phase 1: Chain Spike** - Prove every pump assumption on a Surfpool mainnet fork, each step with a signature (completed 2026-10-19)
 - [ ] **Phase 2: Launch Flow** - Phantom connect, consent, launch form, one-tx launch with server co-sign, bare token page
 - [ ] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards
 - [ ] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond
@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Owner sees a forced-bond buy_exact_quote_in_v3 + burn complete a curve in one transaction, and a post-migration PumpSwap buy + burn, each with a signature
   4. Owner sees create_fee_sharing_config + one update_fee_shares_v2 set deployer 8000 / treasury 2000, a second update rejected, and distribution paying both
   5. Owner opens a bare page that lists every spike step with its signature, including a multi_hop_swap buy and sell SOL to stand-in to coin; any failed step forces a PROJECT.md change before Phase 2
-**Plans:** 10/10 plans executed, owner sign-off pending (01-10 Task 3)
+**Plans:** 10/10 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md - Walking skeleton part 1: phase branch, workspace, packages/core pump loader, network guard, key derivation, idempotent key generation
@@ -45,7 +45,7 @@ Plans:
 - [x] 01-07-PLAN.md - Fork forced bond + burn, buy_v3 exact variant, migrate_v2, PumpSwap buy + burn
 - [x] 01-08-PLAN.md - Fork finalize: sharing config, single 8000/2000 update, rejected update, distribution 80:20
 - [x] 01-09-PLAN.md - Fork 6107 on a complete stand-in, stand-in migration, multi_hop_swap through the pool
-- [ ] 01-10-PLAN.md - One-command full run that always writes the page, devnet refresh, committed evidence, PROJECT.md changes, owner sign-off
+- [x] 01-10-PLAN.md - One-command full run that always writes the page, devnet refresh, committed evidence, PROJECT.md changes, owner sign-off
 
 ### Phase 2: Launch Flow
 **Goal:** As a dev, I want to launch a coin in one Phantom signature, so that buyers see I hold zero launch supply.
@@ -135,7 +135,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Chain Spike | 10/10 | Awaiting owner sign-off |  |
+| 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
 | 2. Launch Flow | 0/TBD | Not started | - |
 | 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
 | 4. Trading | 0/TBD | Not started | - |

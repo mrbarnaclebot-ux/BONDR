@@ -1,0 +1,132 @@
+# Roadmap: BONDR
+
+## Overview
+
+BONDR goes from proof to production in seven vertical slices. First, a mainnet-fork spike proves every pump assumption with real transaction signatures. Next comes the one-transaction launch where the dev never holds supply. Then the indexer, lists and live token page, then trading through multi_hop_swap. After that, the worker fee engine with the public ledger that carries the core trust claim, then the owner's admin dashboard for recovery and safety. The last phase is go-live: ops hardening and the BONDR token launch that unlocks child launches.
+
+## Phases
+
+**Phase Numbering:**
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+- [ ] **Phase 1: Chain Spike** - Prove every pump assumption on a Surfpool mainnet fork, each step with a signature
+- [ ] **Phase 2: Launch Flow** - Phantom connect, consent, launch form, one-tx launch with server co-sign, bare token page
+- [ ] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards
+- [ ] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond
+- [ ] **Phase 5: Fee Engine and Public Ledger** - Worker runs split, forced bond, fallback burn, sweeps, finalize; ledger on the token page
+- [ ] **Phase 6: Admin Dashboard** - Owner-only recovery actions, kill switches, health, moderation, inspector, audit log, EVACUATE
+- [ ] **Phase 7: Go-Live** - Contract check, CI, scripts, mainnet config, BONDR token launch gating child launches
+
+## Phase Details
+
+### Phase 1: Chain Spike
+**Goal:** As the owner, I want every pump step proven on a mainnet fork, so that I build on facts, not docs.
+**Mode:** mvp
+**Depends on:** Nothing (first phase)
+**Requirements:** SPIKE-01, SPIKE-02, SPIKE-03, SPIKE-04, SPIKE-05
+**Success Criteria** (what must be TRUE):
+  1. Owner runs one script on a Surfpool fork and gets a signature for a create_v2 with creator = W, a stand-in pump-coin quote and creator_fee_bps 150
+  2. Owner sees create + dev buy + insta sell, and separately create + dev buy + insta burn, land as single transactions with measured byte size and compute units under the limits
+  3. Owner sees a forced-bond buy_exact_quote_in_v3 + burn complete a curve in one transaction, and a post-migration PumpSwap buy + burn, each with a signature
+  4. Owner sees create_fee_sharing_config + one update_fee_shares_v2 set deployer 8000 / treasury 2000, a second update rejected, and distribution paying both
+  5. Owner opens a bare page that lists every spike step with its signature, including a multi_hop_swap buy and sell SOL to stand-in to coin; any failed step forces a PROJECT.md change before Phase 2
+**Plans**: TBD
+
+### Phase 2: Launch Flow
+**Goal:** As a dev, I want to launch a coin in one Phantom signature, so that buyers see I hold zero launch supply.
+**Mode:** mvp
+**Depends on:** Phase 1
+**Requirements:** PLAT-01, PLAT-02, PLAT-03, PLAT-04, LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05, LAUNCH-06, LAUNCH-07, FEE-10, OPS-01
+**Success Criteria** (what must be TRUE):
+  1. User connects and disconnects Phantom (the only wallet offered) from any page, and must accept a consent prompt linking to a short terms page before BONDR stores anything about their wallet
+  2. Dev fills name, symbol, image, description and optional links, and the launch button stays disabled until the dev buy is at least 0.25 SOL and insta sell or insta burn is chosen
+  3. Dev signs one Phantom transaction that creates a `bndr` mint with creator = that coin's W, with metadata and image already pinned on Pinata, and buys then sells or burns the dev buy; a tampered message or one missing the exit gets no mint co-signature
+  4. Dev sees the success screen within 5 seconds of confirmation, showing "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy button, and a button to the coin's token page
+  5. Dev sees a clear paused state instead of the form when launches are paused (launch flag off, or BONDR awaiting migration), and the launch pages work at mobile, tablet and desktop widths
+  6. Errors thrown in web and worker show up in Sentry (moved from Phase 7 on owner approval, 2026-10-19)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 3: Indexer, Lists and Token Page
+**Goal:** As a trader, I want live lists and charts of every BONDR coin, so that I can find and judge coins.
+**Mode:** mvp
+**Depends on:** Phase 2
+**Requirements:** LIST-01, LIST-02, LIST-03, LIST-04, LIST-05, TOKEN-01, TOKEN-02, TOKEN-06
+**Success Criteria** (what must be TRUE):
+  1. User sees Trending (1h quote volume), Top (market cap), Latest and Oldest lists of BONDR-launched coins only, each row with image, name, symbol, market cap, 1h change, bond progress and age
+  2. List rows and the token page update live over SSE when a trade lands, without a reload
+  3. User finds a coin by name, symbol or mint through search
+  4. User sees a lightweight-charts price chart with 1m, 5m, 1h and 1d candles, a live trade feed and the holder count on the token page
+  5. A token link shared on X or Telegram renders a preview card with the coin's OG image
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 4: Trading
+**Goal:** As a trader, I want to buy and sell BONDR coins with SOL in one signature, so that I never leave the page.
+**Mode:** mvp
+**Depends on:** Phase 3
+**Requirements:** TRADE-01, TRADE-02, TRADE-03, TRADE-04
+**Success Criteria** (what must be TRUE):
+  1. User buys a coin with SOL, routed SOL to BONDR to coin through multi_hop_swap, in one Phantom signature, and the trade shows in the feed
+  2. User sells a coin back to SOL the same way
+  3. User sees tokens out, price impact and fees in a quote preview, and sets slippage before signing
+  4. Buy and sell work on a curve coin and on a migrated PumpSwap coin, and the fees charged match pump's live FeeConfig with no platform fee added
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 5: Fee Engine and Public Ledger
+**Goal:** As a holder, I want every fee movement shown with a transaction link, so that I can verify none went to the dev.
+**Mode:** mvp
+**Depends on:** Phase 4
+**Requirements:** FEE-01, FEE-02, FEE-03, FEE-04, FEE-05, FEE-06, FEE-07, FEE-08, FEE-09, TOKEN-03, TOKEN-04, TOKEN-05
+**Success Criteria** (what must be TRUE):
+  1. Without manual help, the worker collects each unbonded coin's creator fees, splits 90% to W and 10% to treasury, and every ledger row (collection, split, sweep, forced-bond buy, burn, finalize) shows amount, time and a transaction link
+  2. When W's burn budget reaches 105% of the cost to complete the curve, one buy + burn transaction lands through Helius Sender and the coin bonds; a coin bonded by traders instead gets a PumpSwap buy + burn right after migration
+  3. A coin unbonded for a full 24h window has its budget swept 90% to buyback and 10% to treasury; buyback BONDR is burned and post-bond fees are distributed on schedule; the ops wallet pays every fee and raises an alert below threshold
+  4. After bond, the worker sweeps pending fees, passes the deployer pre-flight check, and runs the single 8000 / 2000 fee-share update; the token page then shows the deployer share
+  5. User sees bond progress, burn budget vs cost to complete, time left in the 24h window, and totals (burned supply %, fees to burn, buyback, treasury); a nightly reconciliation records any ledger vs chain mismatch
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 6: Admin Dashboard
+**Goal:** As the owner, I want one dashboard to see and fix every coin and job, so that nothing needs a manual script.
+**Mode:** mvp
+**Depends on:** Phase 5
+**Requirements:** ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05, ADMIN-06, ADMIN-07, ADMIN-08, ADMIN-09, ADMIN-10, ADMIN-11
+**Success Criteria** (what must be TRUE):
+  1. Only the allowlisted wallet can sign in, sessions expire after 30 minutes, and every money-moving action asks for a fresh signature
+  2. Owner sees treasury, buyback and ops balances, every W with its state, platform totals, health (heartbeat, leader lock, last run per job, RPC latency and errors, Sentry issue count, vanity pool size), and a per-coin timeline with next expected step and retry
+  3. Owner runs each of the 11 recovery actions, each simulating first with balance changes shown, limited to burn, treasury, buyback or that coin's deployer, and each written to the audit log with actor, time, simulation and signature
+  4. Owner flips per-job kill switches (launches, forced bond, sweeps, finalize, buyback burn), hides a coin from lists, blocks a deployer from launching, and inspects any pasted signature's decoded instructions, error and explorer link
+  5. Owner runs EVACUATE by typing the phrase and signing; all jobs pause and every W balance moves to the treasury
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 7: Go-Live
+**Goal:** As the owner, I want BONDR live on mainnet with guardrails, so that strangers can launch without asking me.
+**Mode:** mvp
+**Depends on:** Phase 6
+**Requirements:** OPS-02, OPS-03, OPS-04, OPS-05
+**Success Criteria** (what must be TRUE):
+  1. The weekly contract check verifies pump program IDs, IDL account layouts and Global flags, and pauses jobs on a forced mismatch
+  2. Every push runs lint, tests and a Playwright smoke test in CI, and `scripts/` sets up, runs, tests and deploys BONDR with one command each
+  3. The BONDR token is launched on mainnet through BONDR (SOL pair, treasury as creator, insta burn), and child launches stay disabled until it exists
+**Plans**: TBD
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Chain Spike | 0/TBD | Not started | - |
+| 2. Launch Flow | 0/TBD | Not started | - |
+| 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
+| 4. Trading | 0/TBD | Not started | - |
+| 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |
+| 6. Admin Dashboard | 0/TBD | Not started | - |
+| 7. Go-Live | 0/TBD | Not started | - |

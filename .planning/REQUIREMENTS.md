@@ -164,7 +164,7 @@
 | ADMIN-09 | Phase 6 | Pending |
 | ADMIN-10 | Phase 6 | Pending |
 | ADMIN-11 | Phase 6 | Pending |
-| OPS-01 | Phase 7 | Pending |
+| OPS-01 | Phase 2 | Pending |
 | OPS-02 | Phase 7 | Pending |
 | OPS-03 | Phase 7 | Pending |
 | OPS-04 | Phase 7 | Pending |

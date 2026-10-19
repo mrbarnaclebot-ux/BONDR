@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 planned (18 plans, verified)
-last_updated: "2026-10-19T11:03:40.296Z"
-last_activity: 2026-10-19 -- Phase 2 execution started
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-10-19T11:11:15.117Z"
+last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 10
+  completed_plans: 11
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 1 of 18
-Status: Executing Phase 2
-Last activity: 2026-10-19 -- Phase 2 execution started
+Plan: 2 of 18
+Status: Ready to execute
+Last activity: 2026-10-19
 
-Progress: [██████████] 100%
+Progress: [████░░░░░░] 39%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [██████████] 100%
 | Phase 01 P08 | 12 min | 2 tasks | 9 files |
 | Phase 01 P09 | 15 min | 2 tasks | 8 files |
 | Phase 01 P10 | 20 min | 2 tasks | 8 files |
+| Phase 02 P01 | 10 min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,7 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-10 (owner, 2026-10-19): the treasury tops up ops by hand on the admin low-ops alert; ops pays table rent (about 0.0075 SOL per launch) and W floats (about 0.03 SOL per bonded coin)
 - [Phase 01]: 01-10: launch table rent about 0.007-0.008 SOL at mainnet rent and W finalize float 0.018 SOL, both corrected in PROJECT.md
 - [Phase 01]: 01-10: devnet refreshed on new Q 4Jw2pr67...; devnet ops holds 2.917 SOL
+- [Phase 02]: 02-01: minimumReleaseAge stays 1440 (20160 fails on locked pump SDK transitives); new pins checked by hand against the 14-day cutoff
 
 ### Pending Todos
 
@@ -135,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T10:26:33.257Z
-Stopped at: Phase 2 planned (18 plans, verified)
-Resume file: .planning/phases/02-launch-flow/02-01-PLAN.md
+Last session: 2026-10-19T11:11:15.112Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None

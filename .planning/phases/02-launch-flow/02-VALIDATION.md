@@ -18,6 +18,7 @@ created: 2026-10-19
 | **Framework** | Vitest 4.1.11 (units); @playwright/test 1.63.0 + @axe-core/playwright 4.13.0 (e2e with a fake Phantom fixture) |
 | **Config file** | `playwright.config.ts` at the root (Wave 0); Vitest uses its defaults |
 | **Quick run command** | `pnpm test && pnpm lint && pnpm typecheck` |
+| **Measured quick run** | 2026-10-19, warm cache, web typecheck included: 2.2 s, 2.1 s, 2.1 s; median 2.1 s (test 1.1 s, lint 0.3 s, typecheck 0.7 s) |
 | **Full suite command** | quick + `pnpm --filter @bondr/web build && sh scripts/check-client-bundle.sh && pnpm exec playwright test` |
 | **Devnet integration** | `node --env-file=.env scripts/devnet-launch.ts` plus `--fund`, `--size-only`, `--prepare-only`, `--tamper`; per-run ops budgets and a floor of 2.40 SOL derived from the phase budget (about 0.28 SOL planned plus 0.22 SOL margin from 2.917 SOL) |
 | **Fork proof (D-18)** | Pool-route launch on the Surfpool fork with the BONDR stand-in migrated |
@@ -81,7 +82,7 @@ Task IDs are `{phase}-{plan}-T{task}`. Status words are plain text.
 - [x] Sampling continuity: no 3 consecutive tasks without an automated verify
 - [x] Wave 0 covers all MISSING references (test-first tasks create each test file before its code; 02-02 creates the Playwright harness)
 - [x] No watch-mode flags
-- [ ] Feedback latency under 15 s for the quick run (measured by 02-01-T3, which records the "Measured quick run" row)
+- [x] Feedback latency under 15 s for the quick run (median 2.1 s on 2026-10-19) (measured by 02-01-T3, which records the "Measured quick run" row)
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending

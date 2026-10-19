@@ -1,7 +1,12 @@
 "use client";
-import type { Exit } from "@bondr/core/api";
+import type { Exit, PauseReason, Status } from "@bondr/core/api";
 import { type ComponentType, type Dispatch, type ReactNode, useEffect, useReducer, useRef } from "react";
+import { useStatus } from "@/lib/use-status";
+import { Callout } from "./callout";
+import { type Buy, checkBuy, LaunchBuy, minOf, type QuoteState, useQuote } from "./launch-buy";
 import { LaunchCoin } from "./launch-coin";
+import { LaunchReceipt } from "./launch-receipt";
+import { LaunchReview } from "./launch-review";
 import { LaunchStepper, STEP_NAMES } from "./launch-stepper";
 
 export type Step = 1 | 2 | 3 | 4 | 5;
@@ -24,7 +29,9 @@ export type Action =
   | { type: "devBuy"; value: string }
   | { type: "exit"; exit: Exit }
   | { type: "prepared"; launchId: string; cid: string };
-export type StepProps = { state: Launch; dispatch: Dispatch<Action> };
+/** Live worker values every step and the receipt read: status (polled), the dev buy check and its quote. */
+export type Live = { status: Status | null; statusError: boolean; buy: Buy; quote: QuoteState };
+export type StepProps = { state: Launch; dispatch: Dispatch<Action>; live: Live };
 
 const EMPTY = { name: "", symbol: "", description: "", x: "", telegram: "", website: "" };
 const INITIAL: Launch = {
@@ -54,12 +61,32 @@ function reduce(state: Launch, action: Action): Launch {
   }
 }
 
-// Step bodies arrive per plan: 2 and 3 in 02-08, 4 and 5 in 02-13.
-const BODIES: Partial<Record<Step, ComponentType<StepProps>>> = { 1: LaunchCoin };
+// Step bodies arrive per plan: 4 and 5 in 02-13.
+const BODIES: Partial<Record<Step, ComponentType<StepProps>>> = {
+  1: LaunchCoin,
+  2: LaunchBuy,
+  3: LaunchReview,
+};
+
+const PAUSED: Record<PauseReason, string> = {
+  kill_switch:
+    "The BONDR owner has paused new launches. You can fill this in now; the Launch button unlocks automatically when launches resume.",
+  awaiting_migration:
+    "BONDR's own curve is complete and migrating to PumpSwap. You can fill this in now; the Launch button unlocks automatically when the pool is live.",
+};
+
+function useLive(devBuy: string): Live {
+  const { status, error } = useStatus();
+  const buy = checkBuy(devBuy, minOf(status));
+  const quote = useQuote(buy.ok ? buy.lamports : null);
+  return { status, statusError: error, buy, quote };
+}
 
 /** `children` is the server-rendered title and lede, so they stay out of the client bundle. */
 export function LaunchFlow({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reduce, INITIAL);
+  const live = useLive(state.devBuy);
+  const paused = live.status?.paused;
   const heading = useRef<HTMLHeadingElement>(null);
   const shown = useRef(state.step);
   useEffect(() => {
@@ -73,6 +100,14 @@ export function LaunchFlow({ children }: { children: ReactNode }) {
       <div className="min-w-0">
         {children}
         <LaunchStepper step={state.step} />
+        {/* Always mounted, so the pause is announced when it starts, not only when the page loads. */}
+        <div aria-live="polite">
+          {paused && (
+            <Callout variant="warn" title="Launches are paused." className="mb-6">
+              {PAUSED[paused]}
+            </Callout>
+          )}
+        </div>
         <section
           key={state.step}
           aria-labelledby="step-heading"
@@ -81,10 +116,10 @@ export function LaunchFlow({ children }: { children: ReactNode }) {
           <h2 id="step-heading" ref={heading} tabIndex={-1} className="sr-only">
             Step {state.step} of 5: {STEP_NAMES[state.step - 1]}
           </h2>
-          {Body && <Body state={state} dispatch={dispatch} />}
+          {Body && <Body state={state} dispatch={dispatch} live={live} />}
         </section>
       </div>
-      {/* 02-08: the receipt aside fills the 400px column */}
+      <LaunchReceipt state={state} live={live} />
     </div>
   );
 }

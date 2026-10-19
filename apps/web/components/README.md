@@ -10,3 +10,7 @@
 - `launch-stepper.tsx`: the five-node bond-chain stepper.
 - `launch-coin.tsx`: step 1 Coin, every field checked with `@bondr/core/rules` and the UI-SPEC copy.
 - `launch-drop.tsx`: the step 1 image drop zone.
+- `launch-buy.tsx`: step 2 Dev buy and exit, the live-minimum check, presets and the debounced quote hook.
+- `launch-review.tsx`: step 3 Review, the fee callout and the connect / paused / sign button.
+- `launch-receipt.tsx`: the receipt aside, every fee and cost from the live worker status.
+- `callout.tsx`: info, warn and error callouts (status or alert role).

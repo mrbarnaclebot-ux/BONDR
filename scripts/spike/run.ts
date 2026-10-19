@@ -41,10 +41,14 @@ async function loadNet(net: Net, file: ResultsFile): Promise<{ ctx: Ctx; stages:
   return { ctx, stages };
 }
 
-// Devnet SOL is scarce (Pitfall 9), so a stage whose rows are all ok is not paid for twice.
+// Devnet SOL is scarce (Pitfall 9), so a stage whose rows all pass is not paid for twice. The rule counts
+// too: an expected failure with the wrong code is ok as a row but must still be retried.
 function done(stage: Stage, ctx: Ctx): boolean {
   if (ctx.net !== "devnet" || process.env.SPIKE_FRESH === "1") return false;
-  return Object.keys(stage.rules(ctx.net)).every((id) => ctx.file.rows.some((r) => r.id === id && r.ok));
+  return Object.entries(stage.rules(ctx.net)).every(([id, rule]) => {
+    const row = ctx.file.rows.find((r) => r.id === id);
+    return row?.ok === true && rule(row, ctx.file) === null;
+  });
 }
 
 async function runStage(stage: Stage, ctx: Ctx): Promise<boolean> {

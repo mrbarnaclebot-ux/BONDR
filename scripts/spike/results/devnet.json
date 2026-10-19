@@ -1,11 +1,13 @@
 {
   "net": "devnet",
-  "updatedAt": "2026-10-19T06:13:01.019Z",
+  "updatedAt": "2026-10-19T06:19:26.138Z",
   "state": {
     "Q": "5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6",
     "C0": "HGC7QFRXC9V5ris4SXLFopCurvkM2w8G5irmRkgKKh9u",
     "C.burn": "7PnyHLoSAiA851NQR7fSUuGVSkuCjv5S4ycxBC7RHH3e",
-    "C.sell": "9sZRkKbp87LyyfNB85XCiakhUsqefivzFodR73DRr63o"
+    "C.sell": "9sZRkKbp87LyyfNB85XCiakhUsqefivzFodR73DRr63o",
+    "Q.complete": "true",
+    "Q2": "HZaBE3kb7N4d8EJCvAUm6HJxG1KunxejgBhzEcbtktVL"
   },
   "rows": [
     {
@@ -266,6 +268,95 @@
       "expectFail": true,
       "cuLimit": 400000,
       "notes": "pump-fees 6009 sharingConfigAdminRevoked",
+      "env": "devnet"
+    },
+    {
+      "id": "aux.fund.4LpEeqRC",
+      "step": "Fund 4LpEeqRC from ops",
+      "ok": true,
+      "sig": "52MUfPwbsUiaFwAN6FSDSifFaVPTUHB5mPGhtiaV72q9QUHdtDtKNwrvobqmA2dYa7cYkMnYwGNC595PFThL92JU",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "to": "4LpEeqRCYdi3yDtfCJGcm51tzprR4zabbrerA3ySWUfw",
+        "lamports": 918177697
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "quote.complete",
+      "step": "Whale buy_exact_quote_in_v3 completes stand-in Q",
+      "ok": true,
+      "sig": "5vvjbPLsvxBi9pLSD9FaGPUmSrPSkxEoLYVRKBo7yp48w3NheJ3WReMJPv2SiBf7X6mCjEJZxjAiYgTSiYWP8Ju3",
+      "bytes": 787,
+      "cu": 84709,
+      "cuLimit": 400000,
+      "facts": {
+        "cost": "858065148",
+        "spend": "909549056",
+        "opsLamports": "4858939120",
+        "complete": true
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "aux.child.create.migratedQ",
+      "step": "Child create_v2 on Q after pump's devnet crank migrated it (landed)",
+      "ok": true,
+      "sig": "4xGS5AMsa78pHMsNXvwkjPQgYtmFXBtcqZAR1GpoWCLhGneSdbRTXjhgvNZMNsoN4XebEAEbwT4rCCBT7N6j8B7p",
+      "bytes": 1163,
+      "cu": 178797,
+      "cuLimit": 300000,
+      "facts": {
+        "mint": "BMjZZzrQydg8tUQSm5sUzPx9sLZUhmg1dUvKLSh9cGYw",
+        "W": "FGsCPpvHX6LVUMtr5jK7RNPNPBSwMPmycN9xzzSQwzuq",
+        "pumpQuote": "fresh fetchPumpQuote (Q migrated, pool group included)"
+      },
+      "env": "devnet",
+      "notes": "landed during a 6107 attempt: the crank ran MigrateV2 on Q at slot 512704061, 10 slots after the whale completed it"
+    },
+    {
+      "id": "aux.standin2.create",
+      "step": "Fresh stand-in Q2 for the 6107 test",
+      "ok": true,
+      "sig": "397Rb9rak14hkJJV6byw14LUXAfVhUUjLFSUinhrZR8Pj6FgR32DhteHF3v2Nnqc6qjcDuMGUk98WEZEMiaJHkoS",
+      "bytes": 928,
+      "cu": 105129,
+      "facts": {
+        "Q2": "HZaBE3kb7N4d8EJCvAUm6HJxG1KunxejgBhzEcbtktVL"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "aux.6107.table",
+      "step": "Lookup table for the 6107 tx",
+      "ok": true,
+      "bytes": 1072,
+      "cu": 23630,
+      "sig": "2VbntjTuVJgvcqcjx4cwZvfMXE4TWGhXMfTX6eQw7CHwn9ARviqKXSzNypgktS4RregGWs7Vuo4hUv3QuZEY2ef2",
+      "facts": {
+        "txs": 1
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "child.create.6107",
+      "step": "One tx: buy completes the stand-in, then child create_v2 on it (must fail 6107)",
+      "ok": true,
+      "sig": "5PXPtHkY6rLQTeCwkrhKUjP9teqw5YzshY1YKrtku51PAPVYZ7EG7EstdSKQe1Fji6asxX8BmGhxecPvjh2boEdb",
+      "bytes": 666,
+      "cu": 170819,
+      "err": "QuoteCurveAwaitingMigration {\"InstructionError\":[4,{\"Custom\":6107}]}",
+      "code": 6107,
+      "expectFail": true,
+      "cuLimit": 600000,
+      "facts": {
+        "quote": "HZaBE3kb7N4d8EJCvAUm6HJxG1KunxejgBhzEcbtktVL",
+        "cost": "860679262",
+        "spend": "912320017",
+        "mint": "Em1GpRMFJUEbVVvBryhkq5m9gD5XVkmvgdQYrNX15csr",
+        "W": "9DRJAJ8Htp3c1nAXbsVfiK6nHeQogbA5nduHKTBaCvsv"
+      },
       "env": "devnet"
     }
   ]

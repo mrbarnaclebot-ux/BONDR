@@ -54,12 +54,32 @@ Plans:
 **Requirements:** PLAT-01, PLAT-02, PLAT-03, PLAT-04, LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05, LAUNCH-06, LAUNCH-07, FEE-10, OPS-01
 **Success Criteria** (what must be TRUE):
   1. User connects and disconnects Phantom (the only wallet offered) from any page, and must accept a consent prompt linking to a short terms page before BONDR stores anything about their wallet
-  2. Dev fills name, symbol, image, description and optional links, and the launch button stays disabled until the dev buy is at least 0.25 SOL and insta sell or insta burn is chosen
+  2. Dev fills name, symbol, image, description and optional links, and the launch button stays disabled until the dev buy is at least the live minimum (0.25 SOL mainnet, about 0.0025 SOL devnet) and insta sell or insta burn is chosen
   3. Dev signs one Phantom transaction that creates a `bndr` mint with creator = that coin's W, with metadata and image already pinned on Pinata, and buys then sells or burns the dev buy; a tampered message or one missing the exit gets no mint co-signature
   4. Dev sees the success screen within 5 seconds of confirmation, showing "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy button, and a button to the coin's token page
   5. Dev sees a clear paused banner with the Launch button disabled (the form stays fillable, owner decision 2026-10-19) when launches are paused (launch flag off, or BONDR awaiting migration), and the launch pages work at mobile, tablet and desktop widths
   6. Errors thrown in web and worker show up in Sentry (moved from Phase 7 on owner approval, 2026-10-19)
-**Plans**: TBD
+**Plans:** 18 plans
+
+Plans:
+- [ ] 02-01-PLAN.md - Web scaffold: Next.js 16, BONDR tokens and visual system, header and footer, Biome web import rule, web env allowlist, quick-run latency measured
+- [ ] 02-02-PLAN.md - Playwright harness (no root secrets in the web server) and the terms page with its e2e
+- [ ] 02-03-PLAN.md - BONDR-pool route in the launch builder (D-18), proven on the Surfpool fork with the stand-in migrated; pool-sell fixture captured
+- [ ] 02-04-PLAN.md - Owner checkpoint: Neon and Sentry projects; shared schema, client and first migration
+- [ ] 02-05-PLAN.md - Phantom connect and disconnect, consent dialog and consent API
+- [ ] 02-06-PLAN.md - Worker: env and mainnet guard, private bearer HTTP server, live /status and /quote; contract types, shared rules module, minimum math
+- [ ] 02-07-PLAN.md - Launch page and step 1 (Coin): UI primitives, stepper, state machine
+- [ ] 02-08-PLAN.md - Steps 2 and 3, receipt with live fees, paused state, web status and quote routes
+- [ ] 02-09-PLAN.md - Seed-derived bndr vanity pool: reservation, grinder, local pre-fill
+- [ ] 02-10-PLAN.md - Pinata pin route and rate limits (pin, quote, consent)
+- [ ] 02-11-PLAN.md - Worker prepare: table, build, simulate, insta-sell floor; web prepare route; devnet driver with budgets, size and prepare proof
+- [ ] 02-12-PLAN.md - Co-sign (sign order A), submit and settle; devnet launches for both exits and a refused tamper
+- [ ] 02-13-PLAN.md - Step 4 sign and step 5 success screen with copy CA and the error-code mapping; launch e2e on devnet
+- [ ] 02-14-PLAN.md - Sentry on web and worker with address scrub, web boot guard, client bundle gate
+- [ ] 02-15-PLAN.md - Bare token page /coin/[mint] with the proof and contract address
+- [ ] 02-16-PLAN.md - Owner checkpoint: Railway staging deploy (web public, worker private), seed copy, staging smoke
+- [ ] 02-17-PLAN.md - Responsive and axe matrix (36 screenshots per target), staging launch, Designer critique and audit with blockers fixed
+- [ ] 02-18-PLAN.md - Owner-approved staging redeploy, staging rerun, owner sign-off with a real Phantom launch
 **UI hint**: yes
 
 ### Phase 3: Indexer, Lists and Token Page
@@ -136,7 +156,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
-| 2. Launch Flow | 0/TBD | Not started | - |
+| 2. Launch Flow | 0/18 | Planned | - |
 | 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
 | 4. Trading | 0/TBD | Not started | - |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |

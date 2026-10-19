@@ -653,15 +653,22 @@ The register protocol is from the Wallet Standard spec [ASSUMED: event names `wa
 | A7 | Phantom in-app mobile browser registers via Wallet Standard like the extension | Pattern 2 | Mobile connect fails; test on a phone at sign-off |
 | A8 | pump create_v2 limits name and symbol by bytes as the UI rules assume | Pattern 7 | A valid-looking name fails on-chain; prepare simulation catches it |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Devnet dev-buy minimum (Contradiction 1).** What we know: 0.25 SOL on devnet takes 85% of the child curve. Recommendation: confirm `initialVirtualSolReserves / 120` with the owner before planning the step 2 UI; UI-SPEC copy "Minimum 0.25 SOL" becomes "Minimum {min} SOL".
+   RESOLVED: D-17 (minimum = 0.25 SOL x live initial virtual quote reserves / 30 SOL).
 2. **Migrated-BONDR launches (Contradiction 2).** Pause (default) or build the pool path now? This must exist by Phase 7 go-live, because BONDR mainnet will bond after about 85 SOL of buys.
+   RESOLVED: D-18 (build the BONDR-pool route in Phase 2, proven on the fork in 02-03).
 3. **Step 2 "You get back about {solBack}" before prepare.** Exact only after the prepare simulation. Default: a fee-only estimate `solIn x product of (1 - leg fee bps / 10000)` over 4 legs, labelled "about", replaced by the simulated value in step 4.
+   RESOLVED: the fee-only estimate (estimateSolBack) in 02-06, replaced by the simulated value after prepare.
 4. **Owner's Helius plan for staging.** Free means 10 RPS and 1 send/s; single-flight prepare covers a few friends.
+   RESOLVED: single-flight prepare plus rate limits. The owner has not stated the plan; treat it as the free tier (10 rps, 1 send/s) until told otherwise.
 5. **Pinata dedicated gateway domain.** Not in `.env`; the owner supplies it (or read it with the Pinata API using the JWT).
+   RESOLVED: the public ipfs.io gateway is the fallback; the owner may supply a dedicated gateway later through the PINATA_GATEWAY env var.
 6. **Staging seed.** Reusing the devnet spike seed (`~/.bondr-spike/devnet/master.seed`) keeps the funded ops wallet (2.917 SOL on 2026-10-19). That means piping the seed into Railway, which needs owner approval.
+   RESOLVED: D-20 (staging reuses the devnet seed, copied into the worker through stdin after owner approval in 02-16).
 7. **Sentry projects and DSNs** (D-05): the owner provides them or approves creation.
+   RESOLVED: D-19 (Claude creates both Sentry projects with the owner-provided sentry_auth_token, 02-04).
 
 ## Environment Availability
 

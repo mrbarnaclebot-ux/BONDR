@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-10-19T05:35:02.017Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-10-19T05:39:54.636Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 1 (Chain Spike) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [█░░░░░░░░░] 10%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 6 min | 3 tasks | 16 files |
+| Phase 01 P02 | 9 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-01: vitest pinned 4.1.11 (4.1.12 is 4 days old, fails the 14-day rule); @types/node 24.19.1; pnpm 10.34.6
 - [Phase 01]: 01-01: fork connect requires local host plus mainnet genesis; devnet requires devnet genesis
 - [Phase 01]: 01-01: TDD RED verified but not committed separately (AGENTS.md forbids red commits)
+- [Phase 01]: Config drift compares the effective schedule a BONDR-quoted coin pays (exotic, flat when exotic is all zero)
+- [Phase 01]: A successful rerun drops stale stage/net error rows so old crashes do not fail spike:check forever
 
 ### Pending Todos
 
@@ -90,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T05:35:02.012Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-10-19T05:39:54.628Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None

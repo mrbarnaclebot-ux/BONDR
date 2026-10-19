@@ -505,13 +505,16 @@ export const derive = (master: Buffer, role: "w" | "treasury" | "ops", net: stri
 | A6 | Devnet migrate_v2 is permissionless like mainnet (same pump bytecode, so likely) | Steps | 6107 / migration devnet test moves to the fork |
 | A7 | `simulateTransaction` with the `accounts` option works on Surfpool | Pattern 4 | Use the confirmed balance delta of a dry-run tx on the fork instead |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Shared versus per-mint lookup table for Phase 2.**
    - Known: with a shared table only, multi_hop-to-SOL sell does not fit. A full table works.
    - Recommendation: Phase 1 records both. Phase 2 decides, which may mean defining insta sell as "sell to BONDR" (fits a shared table, 1,080-1,107 B).
+   - RESOLVED: Phase 1 measures all three sizes on rows `launch.burn` and `launch.sell`: facts `noTableBytes` and `sharedOnlyBytes`, plus the landed full-table bytes. Devnet does this in 01-03 Task 3, the fork in 01-04 Task 2. 01-10 Task 2 writes the numbers into PROJECT.md item 2, and the table choice goes to Phase 2 with that evidence.
 2. **Should the 0.25 SOL dev-buy minimum be measured before the BONDR hop?** It is in PROJECT.md as a default. The exact-out pattern spends exactly `solIn`, so this is consistent.
+   - RESOLVED: yes. `solIn` is the SOL input before the BONDR hop: 250,000,000 lamports on the fork, scaled on devnet. It is recorded as fact `solIn` on rows `launch.burn` and `launch.sell` (01-03 Task 3, 01-04 Task 2).
 3. **Exact second-update error code.** Record what the program returns (A1).
+   - RESOLVED: rows `sharing.update2.rejected` (devnet, 01-05 Task 2) and `finalize.update2.rejected` (fork, 01-08 Task 2) record the landed failure's code and IDL name. Their rule accepts any pump-fees code from 6000 to 6999, and 01-10 Task 2 records the actual code in PROJECT.md item 8.
 
 ## Environment Availability
 

@@ -2,7 +2,7 @@ import { randomBytes, randomInt } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { eq } from "drizzle-orm";
-import { afterAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { close, db, launches, settings, vanityMints, wallets } from "./db.ts";
 
 // Vitest does not read .env; load it so a local run hits the Neon dev branch. CI has no .env and skips.
@@ -41,21 +41,22 @@ async function pgCode(insert: Promise<unknown>): Promise<string | undefined> {
 
 const insert = (row: typeof launches.$inferInsert) => db().insert(launches).values(row).execute();
 
-describe.skipIf(!process.env.DATABASE_URL)("database constraints", () => {
+// 30 s: the first query may wake a suspended Neon compute.
+describe.skipIf(!process.env.DATABASE_URL)("database constraints", { timeout: 30_000 }, () => {
   afterAll(async () => {
     await db().delete(launches).where(eq(launches.wallet, wallet));
     await db().delete(vanityMints).where(eq(vanityMints.pubkey, mint));
     await db().delete(wallets).where(eq(wallets.address, wallet));
     await close();
-  });
+  }, 30_000);
 
-  test("seed rows for the foreign keys", async () => {
+  beforeAll(async () => {
     await db().insert(wallets).values({ address: wallet, consentedAt: new Date(), termsVersion: "test" });
     // Negative idx never collides with a grinder index.
     await db()
       .insert(vanityMints)
       .values({ idx: -BigInt(randomInt(1, 2 ** 47)), pubkey: mint });
-  });
+  }, 30_000);
 
   test("an unknown state or exit is refused", async () => {
     expect(await pgCode(insert(launch({ state: "pending" })))).toBe("23514");

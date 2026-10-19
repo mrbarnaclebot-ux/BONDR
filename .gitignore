@@ -5,3 +5,7 @@ node_modules/
 .DS_Store
 .cache/
 .surfpool/
+.next/
+next-env.d.ts
+test-results/
+playwright-report/

@@ -1,0 +1,73 @@
+// Launch rows (RESEARCH Pattern 8). Every state change is one guarded UPDATE, so a double submit or a resumed
+// worker racing a live one changes nothing and gets null back.
+import { randomBytes } from "node:crypto";
+import type { LaunchState } from "@bondr/core/api";
+import type { Db } from "@bondr/core/db";
+import { launches, vanityMints, wallets } from "@bondr/core/schema";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+
+// A transaction exposes the same builders as the db, so tests can run inside one and roll back.
+export type Exec = Pick<Db, "select" | "update" | "insert" | "$count">;
+export type LaunchRow = typeof launches.$inferSelect;
+export type NewLaunch = Omit<typeof launches.$inferInsert, "state" | "id" | "createdAt" | "updatedAt">;
+
+export const newId = (): string => randomBytes(16).toString("hex");
+
+export async function insertPrepared(exec: Exec, id: string, row: NewLaunch): Promise<void> {
+  await exec.insert(launches).values({ ...row, id, state: "prepared" });
+}
+
+// A prepare that failed after paying for a table still records it, so a retry reuses it and the cap counts it.
+export async function insertFailed(exec: Exec, row: NewLaunch, error: string): Promise<void> {
+  await exec.insert(launches).values({ ...row, id: newId(), state: "failed", error });
+}
+
+export async function advance(
+  exec: Exec,
+  id: string,
+  from: LaunchState,
+  to: LaunchState,
+  set: Partial<NewLaunch> = {},
+): Promise<LaunchRow | null> {
+  const [row] = await exec
+    .update(launches)
+    .set({ ...set, state: to, updatedAt: sql`now()` })
+    .where(and(eq(launches.id, id), eq(launches.state, from)))
+    .returning();
+  return row ?? null;
+}
+
+export const consented = async (exec: Exec, wallet: string): Promise<boolean> =>
+  (await exec.$count(wallets, eq(wallets.address, wallet))) > 0;
+
+export async function getLaunch(exec: Exec, id: string): Promise<LaunchRow | null> {
+  const [row] = await exec.select().from(launches).where(eq(launches.id, id)).limit(1);
+  return row ?? null;
+}
+
+// The table of the wallet's latest launch whose mint the wallet still holds, i.e. the mint reserve() will hand
+// back. Keyed by the live reservation, so it is known before reserving and an expired one never counts.
+export async function tableFor(exec: Exec, wallet: string): Promise<{ mint: string; table: string } | null> {
+  const [row] = await exec
+    .select({ mint: launches.mint, table: launches.lookupTable })
+    .from(launches)
+    .innerJoin(vanityMints, eq(vanityMints.pubkey, launches.mint))
+    .where(
+      and(
+        eq(launches.wallet, wallet),
+        isNotNull(launches.lookupTable),
+        eq(vanityMints.reservedBy, wallet),
+        sql`${vanityMints.reservedUntil} > now()`,
+        isNull(vanityMints.usedAt),
+      ),
+    )
+    .orderBy(desc(launches.createdAt))
+    .limit(1);
+  return row?.table ? { mint: row.mint, table: row.table } : null;
+}
+
+export const newTablesLastHour = (exec: Exec): Promise<number> =>
+  exec.$count(
+    launches,
+    and(eq(launches.newTable, true), sql`${launches.createdAt} > now() - interval '1 hour'`),
+  );

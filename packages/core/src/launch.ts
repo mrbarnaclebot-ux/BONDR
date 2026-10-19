@@ -81,6 +81,8 @@ export type LaunchOpts = Coin & {
   exit: Exit;
   creatorFeeBps?: BN;
   cuLimit: number;
+  // micro-lamports per CU; the worker passes PRIORITY_FEE_MICROLAMPORTS, the spike keeps budget()'s default.
+  priorityFee?: number;
   // The worker sets minSolOut from its own prepare simulation (02-11), because the child does not exist
   // before the tx, so no quote can price the sell. The default 1 is the spike's.
   minSolOut?: BN;
@@ -218,7 +220,7 @@ export async function buildLaunch(o: LaunchOpts) {
     maxQuote: p.qMin,
   };
   const ixs: TransactionInstruction[] = [
-    ...budget(o.cuLimit),
+    ...budget(o.cuLimit, o.priorityFee),
     create,
     ...(await qBuyIxs(o, p)),
     ...(await buyExactOut(childBuy)),

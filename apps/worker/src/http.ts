@@ -2,7 +2,7 @@
 // Only the web server calls it, over Railway private networking; the worker never gets a public domain.
 import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import type { ApiError } from "@bondr/core/api";
+import type { ApiError, LaunchErrorCode } from "@bondr/core/api";
 import { redact } from "@bondr/core/net";
 
 export const MAX_BODY = 16_384;
@@ -17,6 +17,18 @@ export class Fail extends Error {
     this.body = body;
   }
 }
+
+// HTTP status per contract error; web passes these through to the browser unchanged.
+const STATUS: Partial<Record<LaunchErrorCode, number>> = {
+  paused: 409,
+  consent_required: 403,
+  invalid_input: 400,
+  pool_empty: 503,
+  rate_limited: 429,
+  insufficient_balance: 402,
+  build_failed: 500,
+};
+export const fail = (body: ApiError): Fail => new Fail(STATUS[body.error] ?? 500, body);
 
 export type Handler = (body: unknown) => Promise<unknown>;
 export type Routes = Record<string, Handler>; // keyed "METHOD /path"

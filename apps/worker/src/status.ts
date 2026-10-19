@@ -26,7 +26,7 @@ type Where = Venue | "awaiting" | null; // null: the chain read failed
 
 const CACHE_MS = 5_000;
 export const LAUNCH_CU_LIMIT = 600_000;
-const MAX_SOL_IN = 100n * BigInt(LAMPORTS_PER_SOL);
+export const MAX_SOL_IN = 100n * BigInt(LAMPORTS_PER_SOL);
 
 // Accounts a launch creates, read from the devnet launch.burn signature 2cYEyQd2JaHC...j134r (2026-10-19).
 // The mint grows with name, symbol and URI; its 434 bytes held a 96-character URI, so this overestimates a little.

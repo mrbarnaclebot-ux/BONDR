@@ -19,7 +19,7 @@ import {
   type PumpQuoteAccounts,
 } from "./pump.ts";
 import { budget } from "./send.ts";
-import { buyExactIn, buyExactOut, sellExactIn } from "./trade.ts";
+import { buybackRecipient, buyExactIn, buyExactOut, sellExactIn } from "./trade.ts";
 
 export type Coin = { name: string; symbol: string; uri: string };
 
@@ -105,8 +105,6 @@ async function exitIxs(o: LaunchOpts, amount: BN, g: Global): Promise<Transactio
   }
   if (o.exit === "sellq")
     return sellExactIn({ global: g, mint: o.mint, user: o.dev, quoteMint: o.Q, amount, minQuote: new BN(1) });
-  const buybackFeeRecipient = g.buybackFeeRecipients[0];
-  if (!buybackFeeRecipient) throw new Error("Global has no buybackFeeRecipients for the multi_hop sell");
   // ponytail: minAmountOut 1, because the child does not exist before this tx, so simulateMultiHopSwap
   // cannot price it. Phase 2 sets a real floor from the curve math.
   return PUMP_SDK.multiHopSwapInstructions({
@@ -114,7 +112,7 @@ async function exitIxs(o: LaunchOpts, amount: BN, g: Global): Promise<Transactio
     side: "sell",
     amountIn: amount,
     minAmountOut: new BN(1),
-    buybackFeeRecipient,
+    buybackFeeRecipient: buybackRecipient(g),
     hops: [
       { venue: "curve", baseMint: o.mint, quoteMint: o.Q, baseTokenProgram: T22, quoteTokenProgram: T22 },
       {

@@ -34,8 +34,14 @@ const isSol = (q: PublicKey): boolean => q.equals(NATIVE_MINT);
 
 // Pitfall 5: the program never creates the buyback wallet's quote ATA, and the SDK default picks a random
 // listed wallet on SOL curves, so the first listed one is passed everywhere.
+export function buybackRecipient(g: Global): PublicKey {
+  const buyback = g.buybackFeeRecipients[0];
+  if (!buyback) throw new Error("pump Global has no buybackFeeRecipients");
+  return buyback;
+}
+
 function accounts(o: Side) {
-  const buyback = o.global.buybackFeeRecipients[0];
+  const buyback = buybackRecipient(o.global);
   const quoteTokenProgram = isSol(o.quoteMint) ? TOKEN_PROGRAM_ID : T22;
   const base = { user: o.user, mint: o.mint, quoteMint: o.quoteMint, tokenProgram: T22, quoteTokenProgram };
   const buybackAta = isSol(o.quoteMint) ? [] : [ataIx(o.user, o.quoteMint, buyback)];

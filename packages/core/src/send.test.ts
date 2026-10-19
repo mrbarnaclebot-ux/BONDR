@@ -9,7 +9,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { describe, expect, test } from "vitest";
-import { checkMessage, PACKET_LIMIT, statusOf, wireSize } from "./send.ts";
+import { checkMessage, PACKET_LIMIT, pace, statusOf, wireSize } from "./send.ts";
 
 const payer = Keypair.generate();
 const to = Keypair.generate().publicKey;
@@ -81,4 +81,10 @@ test("statusOf maps send outcomes", () => {
   expect(statusOf({ sent: true, meta: fail, code: 6077, expectFail: true })).toBe("landed");
   expect(statusOf({ sent: true, meta: fail, expectFail: true })).toBe("failed");
   expect(statusOf({ sent: true, meta: { err: null }, expectFail: true })).toBe("failed");
+});
+
+test("pace spaces concurrent callers", async () => {
+  const done: number[] = [];
+  await Promise.all([0, 1, 2].map(() => pace(40).then(() => done.push(Date.now()))));
+  expect(done[2] - done[0]).toBeGreaterThanOrEqual(75);
 });

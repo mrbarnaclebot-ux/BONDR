@@ -103,12 +103,15 @@ export const wireSize = (
   tables: AddressLookupTableAccount[] = [],
 ) => messageSize(compile(payer, ixs, tables, PublicKey.default.toBase58()));
 
-// Helius free tier allows about one send per second (Pitfall 8), so sends are spaced process-wide.
+// Helius free tier allows about one send per second (Pitfall 8), so sends are spaced process-wide. The slot
+// is reserved before the await, so concurrent callers queue instead of all reading the same lastSend.
+// ponytail: one process-wide limiter; per-RPC token bucket if multiple endpoints.
 let lastSend = 0;
-async function pace(ms: number): Promise<void> {
-  const wait = lastSend + ms - Date.now();
-  if (wait > 0) await delay(wait);
-  lastSend = Date.now();
+export async function pace(ms: number): Promise<void> {
+  const now = Date.now();
+  const at = Math.max(now, lastSend + ms);
+  lastSend = at;
+  if (at > now) await delay(at - now);
 }
 
 // Anchor logs carry the readable name and the program logs carry the hex code; both make the row evidence.

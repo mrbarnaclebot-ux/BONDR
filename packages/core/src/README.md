@@ -12,7 +12,7 @@ The shared chain library. Phase 1 spike scripts call it, and Phase 2 apps import
 - `launch.ts`: `buildCreate` and `buildLaunch` (create + exact-out dev buy + burn or sell, one tx).
 - `trade.ts`: v3 curve trades `buyExactIn`, `buyExactOut`, `sellExactIn`, each with the idempotent ATAs it needs; PumpSwap v2 `poolBuy` / `poolSell` and `poolState`, the one pool state fetch (pinned buyback wallet).
 - `collect.ts`: `collectIxs` (W's quote ATA, sweep, collect_creator_fee_v2) and `splitIxs` (10% to the treasury).
-- `route.ts`: `routeBuy` / `routeSell`: multi_hop_swap through the SDK route resolver, simulated min out.
+- `route.ts`: `routeBuy` / `routeSell`: multi_hop_swap through the SDK route resolver, simulated min out, and the venue of each hop (curve or pool).
 - `sharing.ts`: `finalizeIxs` (sweep, config, the one 80/20 update), `updateIxs`, `readSharing`, `distributeIxs` (the SDK's sweeps, consolidation and distribute_creator_fees_v2, order untouched).
 - `curve.ts`: `readCurve` and `costToComplete` (SDK v3 quote for the rest of a curve).
 - `bond.ts`: `forcedBondIxs` (simulated buy then BurnChecked), `exactBondIxs`, `migrateIxs`, `poolBuyBurnIxs`, `poolBaseOut`.

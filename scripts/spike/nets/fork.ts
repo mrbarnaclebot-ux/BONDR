@@ -7,6 +7,7 @@ import { createStage } from "../stages/create.ts";
 import { finalizeStage } from "../stages/finalize.ts";
 import { launchStage } from "../stages/launch.ts";
 import { migratedStage } from "../stages/migrated.ts";
+import { multihopStage } from "../stages/multihop.ts";
 import { poolStage } from "../stages/pool.ts";
 import { prebondStage } from "../stages/prebond.ts";
 
@@ -20,5 +21,6 @@ const stages: Stage[] = [
   finalizeStage,
   completeStage,
   migratedStage,
+  multihopStage("C3", "migrated."),
 ];
 export default stages;

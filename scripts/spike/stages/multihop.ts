@@ -1,6 +1,8 @@
-// SPIKE-05: multi_hop_swap buy SOL -> Q -> C0 and sell C0 -> Q -> SOL, one signature each. Out amounts come
-// from the landed tx meta, so the row proves what the trader got, not what the simulation promised.
-import { costToComplete } from "@bondr/core/curve";
+// SPIKE-05: multi_hop_swap buy SOL -> Q -> C and sell C -> Q -> SOL, one signature each. Out amounts come
+// from the landed tx meta, so the row proves what the trader got, not what the simulation promised. One
+// factory serves both routes: devnet C0 with Q on its curve, and fork C3 with Q on its PumpSwap pool. The
+// SDK picks each hop's venue from chain.
+import { costToComplete, readCurve } from "@bondr/core/curve";
 import { BN, OnlinePumpSdk } from "@bondr/core/pump";
 import { type Route, routeBuy, routeSell } from "@bondr/core/route";
 import { budget, fetchMeta, sendTx } from "@bondr/core/send";
@@ -15,6 +17,7 @@ const SLIPPAGE_BPS = 500;
 const TRADER_FLOAT = 0.02 * LAMPORTS_PER_SOL;
 type Online = InstanceType<typeof OnlinePumpSdk>;
 type Leg = { id: string; step: string; route: Route; amountIn: BN };
+type Hop = { ctx: Ctx; online: Online; Q: PublicKey; C: PublicKey; prefix: string; label: string };
 
 export function tokenDelta(meta: ConfirmedTransactionMeta, mint: PublicKey, owner: PublicKey): bigint {
   const pick = (list: ConfirmedTransactionMeta["preTokenBalances"]) =>
@@ -30,7 +33,9 @@ const lamportDelta = (meta: ConfirmedTransactionMeta): bigint =>
   BigInt(meta.postBalances[0] - meta.preBalances[0] + meta.fee);
 
 // Pitfall 1: a route that completed Q would block every child create (6107) before the plan wants it.
+// A migrated Q trades on its pool, so the guard only applies while Q is on its curve.
 async function guardQ(online: Online, Q: PublicKey, amountIn: BN): Promise<void> {
+  if ((await readCurve(online, Q)).complete) return;
   const cost = await costToComplete(online, Q);
   if (amountIn.gte(cost))
     throw new Error(
@@ -47,41 +52,44 @@ async function send(ctx: Ctx, leg: Leg, out: (m: ConfirmedTransactionMeta) => bi
     amountIn: leg.amountIn.toString(),
     expectedOut: leg.route.expectedOut.toString(),
     minAmountOut: leg.route.minAmountOut.toString(),
+    venues: leg.route.venues,
     ...(meta && { outAmount: out(meta).toString() }),
   };
   ctx.record({ id: leg.id, step: leg.step, ...r, cuLimit: CU, facts });
   return r.ok;
 }
 
-async function c0Balance(ctx: Ctx, C0: PublicKey, owner: PublicKey): Promise<BN> {
-  const ata = getAssociatedTokenAddressSync(C0, owner, true, T22);
+async function coinBalance(ctx: Ctx, C: PublicKey, owner: PublicKey): Promise<BN> {
+  const ata = getAssociatedTokenAddressSync(C, owner, true, T22);
   if (!(await ctx.conn.getAccountInfo(ata))) return new BN(0);
   return new BN((await ctx.conn.getTokenAccountBalance(ata)).value.amount);
 }
 
-async function buy(ctx: Ctx, online: Online, Q: PublicKey, C0: PublicKey, amountIn: BN): Promise<void> {
-  const user = ctx.key("sim", "trader").publicKey;
-  await guardQ(online, Q, amountIn);
-  await fundSol(ctx, user, amountIn.toNumber() + TRADER_FLOAT);
-  const opts = { online, user, amountIn, slippageBps: SLIPPAGE_BPS };
-  const route = await routeBuy({ ...opts, path: [NATIVE_MINT, Q, C0] });
-  const leg = { id: "multihop.buy", step: "multi_hop_swap buy SOL -> Q -> C0", route, amountIn };
-  if (!(await send(ctx, leg, (m) => tokenDelta(m, C0, user)))) throw new Error("multihop buy failed");
+async function buy(h: Hop, amountIn: BN): Promise<void> {
+  const user = h.ctx.key("sim", "trader").publicKey;
+  await guardQ(h.online, h.Q, amountIn);
+  await fundSol(h.ctx, user, amountIn.toNumber() + TRADER_FLOAT);
+  const opts = { online: h.online, user, amountIn, slippageBps: SLIPPAGE_BPS };
+  const route = await routeBuy({ ...opts, path: [NATIVE_MINT, h.Q, h.C] });
+  const step = `multi_hop_swap buy SOL -> Q -> ${h.label}`;
+  const leg = { id: `${h.prefix}multihop.buy`, step, route, amountIn };
+  if (!(await send(h.ctx, leg, (m) => tokenDelta(m, h.C, user)))) throw new Error("multihop buy failed");
 }
 
-async function sell(ctx: Ctx, online: Online, Q: PublicKey, C0: PublicKey): Promise<void> {
-  const user = ctx.key("sim", "trader").publicKey;
-  const amountIn = await c0Balance(ctx, C0, user);
-  if (amountIn.isZero()) throw new Error("trader holds no C0 to sell: rerun with SPIKE_FRESH=1");
+async function sell(h: Hop): Promise<void> {
+  const user = h.ctx.key("sim", "trader").publicKey;
+  const amountIn = await coinBalance(h.ctx, h.C, user);
+  if (amountIn.isZero()) throw new Error(`trader holds no ${h.label} to sell: rerun with SPIKE_FRESH=1`);
   const route = await routeSell({
-    online,
+    online: h.online,
     user,
     amountIn,
     slippageBps: SLIPPAGE_BPS,
-    path: [C0, Q, NATIVE_MINT],
+    path: [h.C, h.Q, NATIVE_MINT],
   });
-  const leg = { id: "multihop.sell", step: "multi_hop_swap sell C0 -> Q -> SOL", route, amountIn };
-  if (!(await send(ctx, leg, lamportDelta))) throw new Error("multihop sell failed");
+  const step = `multi_hop_swap sell ${h.label} -> Q -> SOL`;
+  const leg = { id: `${h.prefix}multihop.sell`, step, route, amountIn };
+  if (!(await send(h.ctx, leg, lamportDelta))) throw new Error("multihop sell failed");
 }
 
 const legRule: Rule = (row) => {
@@ -93,20 +101,20 @@ const legRule: Rule = (row) => {
   return out >= min ? null : `outAmount ${out} < minAmountOut ${min}`;
 };
 
-export const multihopStage: Stage = {
-  name: "multihop",
-  rules: () => ({ "multihop.buy": legRule, "multihop.sell": legRule }),
+// coinKey names the routed coin in file.state; idPrefix keeps devnet's ids ("") so passed rows still skip.
+export const multihopStage = (coinKey: string, idPrefix: string): Stage => ({
+  name: `${idPrefix}multihop`,
+  rules: () => ({ [`${idPrefix}multihop.buy`]: legRule, [`${idPrefix}multihop.sell`]: legRule }),
   async run(ctx) {
-    const { Q, C0 } = ctx.file.state;
-    if (!Q || !C0) throw new Error("no Q or C0 in state: run the create stage first");
+    const { Q, [coinKey]: C } = ctx.file.state;
+    if (!Q || !C) throw new Error(`no Q or ${coinKey} in state: run the stage that creates it first`);
     const online = new OnlinePumpSdk(ctx.conn);
     const g = await online.fetchGlobal();
     // Pitfall 1 budget: devnet curves are 100x cheaper, so the devnet amount scales off the live Global.
     const amountIn = ctx.net === "fork" ? new BN(LAMPORTS_PER_SOL) : g.initialVirtualSolReserves.divn(200);
-    const [q, c0] = [new PublicKey(Q), new PublicKey(C0)];
-    const bought = ctx.file.rows.some((r) => r.id === "multihop.buy" && r.ok);
-    if (!bought || process.env.SPIKE_FRESH === "1" || ctx.net === "fork")
-      await buy(ctx, online, q, c0, amountIn);
-    await sell(ctx, online, q, c0);
+    const h = { ctx, online, Q: new PublicKey(Q), C: new PublicKey(C), prefix: idPrefix, label: coinKey };
+    const bought = ctx.file.rows.some((r) => r.id === `${idPrefix}multihop.buy` && r.ok);
+    if (!bought || process.env.SPIKE_FRESH === "1" || ctx.net === "fork") await buy(h, amountIn);
+    await sell(h);
   },
-};
+});

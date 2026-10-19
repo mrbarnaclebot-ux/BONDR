@@ -7,5 +7,12 @@ import { launchStage } from "../stages/launch.ts";
 import { multihopStage } from "../stages/multihop.ts";
 import { sharingStage } from "../stages/sharing.ts";
 
-const stages: Stage[] = [configStage, createStage, launchStage, multihopStage, sharingStage, completeStage];
+const stages: Stage[] = [
+  configStage,
+  createStage,
+  launchStage,
+  multihopStage("C0", ""),
+  sharingStage,
+  completeStage,
+];
 export default stages;

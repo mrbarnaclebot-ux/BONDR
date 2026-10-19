@@ -11,7 +11,8 @@ export type RouteOpts = {
   amountIn: BN;
   slippageBps: number;
 };
-export type Route = { ixs: TransactionInstruction[]; expectedOut: BN; minAmountOut: BN };
+// venues lists each hop's venue in trade order ("pool,curve" once Q has migrated), so a row can show it.
+export type Route = { ixs: TransactionInstruction[]; expectedOut: BN; minAmountOut: BN; venues: string };
 
 async function route(side: "buy" | "sell", o: RouteOpts): Promise<Route> {
   const hops = await o.online.resolveMultiHopRoute(o.path, side);
@@ -21,7 +22,7 @@ async function route(side: "buy" | "sell", o: RouteOpts): Promise<Route> {
   // The program refuses 0, and a zero floor would also mean no slippage protection at all (T-01-19).
   if (minAmountOut.isZero()) throw new Error(`route ${side} quotes ${expectedOut} out: no floor above 0`);
   const ixs = await PUMP_SDK.multiHopSwapInstructions({ ...base, minAmountOut });
-  return { ixs, expectedOut, minAmountOut };
+  return { ixs, expectedOut, minAmountOut, venues: hops.map((h) => h.venue).join(",") };
 }
 
 export const routeBuy = (o: RouteOpts): Promise<Route> => route("buy", o);

@@ -6,14 +6,16 @@ import { useWallet } from "./wallet";
 
 // The consent dialog returns focus here by id, whichever state the control is in.
 export const WALLET_BUTTON_ID = "wallet-button";
-const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
+/** 4 characters, ellipsis, 4 characters (UI-SPEC {walletShort}). */
+export const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const ANCHOR = "[anchor-name:--wallet]";
 const POPOVER =
   "inset-auto m-0 mt-2 [position-anchor:--wallet] [position-area:bottom_span-left] rounded-md border border-line-strong bg-surface-2 text-foreground shadow-elev-2";
 const ITEM =
   "flex min-h-11 w-full cursor-pointer items-center rounded-sm px-3 text-left text-sm font-semibold hover:bg-accent";
 
-const focusButton = () => requestAnimationFrame(() => document.getElementById(WALLET_BUTTON_ID)?.focus());
+export const focusButton = () =>
+  requestAnimationFrame(() => document.getElementById(WALLET_BUTTON_ID)?.focus());
 const icon = <Wallet strokeWidth={1.5} aria-hidden="true" />;
 
 export function WalletButton() {

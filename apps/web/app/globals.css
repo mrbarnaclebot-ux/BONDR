@@ -56,6 +56,16 @@
   --text-lg--line-height: 1.3;
 
   --animate-rise: rise 420ms var(--ease-out) both;
+  /* consent bottom sheet below 768px; ease-out, because a spring overshoot would lift it off the edge */
+  --animate-sheet: sheet 620ms var(--ease-out) both;
+  @keyframes sheet {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
   @keyframes rise {
     from {
       opacity: 0;

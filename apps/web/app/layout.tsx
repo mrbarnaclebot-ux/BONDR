@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Big_Shoulders, Martian_Mono, Schibsted_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 import { Footer, Header } from "@/components/chrome";
+import { ConsentDialog } from "@/components/consent-dialog";
 import { WalletProvider } from "@/components/wallet";
 import "./globals.css";
 
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             {children}
           </main>
           <Footer />
+          <ConsentDialog />
         </WalletProvider>
       </body>
     </html>

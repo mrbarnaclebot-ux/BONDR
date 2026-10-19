@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { TERMS_VERSION } from "@/lib/terms";
 
 export const metadata: Metadata = { title: "Terms - BONDR" };
 
 // D-07 draft, verbatim from 02-UI-SPEC "Terms page". The owner reviews it at Phase 2 sign-off; a change
-// to the wording means a new UPDATED date.
-const UPDATED = "2026-10-19";
+// to the wording means a new TERMS_VERSION, which consent rows also record.
 
 type Section = { n: string; title: string; nav: string; body: ReactNode };
 
@@ -165,7 +165,7 @@ export default function TermsPage() {
         <header>
           <h1 className="display text-[clamp(2.5rem,6vw,4.5rem)]">Terms</h1>
           <p className="mt-3 text-muted-foreground">
-            Short on purpose. Last updated <span className="num">{UPDATED}</span>.
+            Short on purpose. Last updated <span className="num">{TERMS_VERSION}</span>.
           </p>
         </header>
         {SECTIONS.map((s) => (

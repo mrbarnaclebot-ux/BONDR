@@ -18,6 +18,7 @@ export const {
   creatorVaultPda,
   canonicalPumpPoolPdaWithQuote,
   newBondingCurve,
+  computeFeesBps,
   getBuyV3TokenAmountFromQuoteAmount,
   getBuyV3QuoteAmountFromTokenAmount,
   getSellSolAmountFromTokenAmount,
@@ -29,5 +30,6 @@ export const {
   pumpIdl,
 } = pump;
 export const { PUMP_AMM_SDK, OnlinePumpAmmSdk, buyQuoteInput } = amm;
+export const computeAmmFeesBps = amm.computeFeesBps; // pool fees (lp, protocol, creator); same name as pump's
 export type { BondingCurve, Global, PumpQuoteAccounts } from "@pump-fun/pump-sdk"; // types only, erased at runtime
 export { BN }; // SDK amount arguments (bn.js 5.2.5, never anchor's BN)

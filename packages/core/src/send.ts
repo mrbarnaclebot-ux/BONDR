@@ -4,6 +4,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
   type AddressLookupTableAccount,
   ComputeBudgetProgram,
+  type ConfirmedTransactionMeta,
   type Connection,
   type Keypair,
   PublicKey,
@@ -117,13 +118,14 @@ function customCode(err: unknown): number | undefined {
   return typeof custom === "number" ? custom : undefined;
 }
 
-type TxMeta = { err: unknown; computeUnitsConsumed?: number; logMessages?: string[] | null };
-
 // getTransaction can return null for a moment after confirmation on a load-balanced RPC.
-async function fetchMeta(conn: Connection, sig: string): Promise<TxMeta | undefined> {
+export async function fetchMeta(
+  conn: Connection,
+  sig: string,
+): Promise<ConfirmedTransactionMeta | undefined> {
   for (let i = 0; i < 20; i++) {
     const tx = await conn.getTransaction(sig, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
-    if (tx?.meta) return tx.meta as TxMeta;
+    if (tx?.meta) return tx.meta;
     await delay(500);
   }
   return undefined;

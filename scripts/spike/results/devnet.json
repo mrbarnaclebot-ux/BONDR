@@ -1,6 +1,6 @@
 {
   "net": "devnet",
-  "updatedAt": "2026-10-19T06:00:27.653Z",
+  "updatedAt": "2026-10-19T06:09:47.028Z",
   "state": {
     "Q": "5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6",
     "C0": "HGC7QFRXC9V5ris4SXLFopCurvkM2w8G5irmRkgKKh9u",
@@ -178,6 +178,51 @@
         "devQLeft": "478061084830"
       },
       "notes": "devnet scaled; curves are 100x cheaper",
+      "env": "devnet"
+    },
+    {
+      "id": "aux.fund.37MRDH4h",
+      "step": "Fund 37MRDH4h from ops",
+      "ok": true,
+      "sig": "UhVT6TKHgmAebCZmhPXHYxXxKkS83Aucni8gcvyZKwuKhXz8c3n4TjxPafUv7eMX4FkGyGsnbxjV2APcpFFJHQ3",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "to": "37MRDH4hHVAEDUfWHVSZjGn5PLPgeRKEXhSo1fpqVaVi",
+        "lamports": 21500000
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "multihop.buy",
+      "step": "multi_hop_swap buy SOL -> Q -> C0",
+      "ok": true,
+      "sig": "vcDU66LfvBQRYxRbVvGZaTYvLUHyqQEdJf6q3x9kSSQvHFT6QACXsDTqFPWoutDFpAetNv6tL7gvrZEqWFR4tkh",
+      "bytes": 1110,
+      "cu": 183841,
+      "cuLimit": 600000,
+      "facts": {
+        "amountIn": "1500000",
+        "expectedOut": "19509427302151",
+        "minAmountOut": "18533955937043",
+        "outAmount": "19509427302151"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "multihop.sell",
+      "step": "multi_hop_swap sell C0 -> Q -> SOL",
+      "ok": true,
+      "sig": "4AR18KJLgVmF4vM9YT5X7XfQFZT39HLGUCBuH2eGgPq9EzzdULZGwxBuGFQ29JoE9rTRbsYY5PhPCCaRwUvCiRCn",
+      "bytes": 1100,
+      "cu": 153289,
+      "cuLimit": 600000,
+      "facts": {
+        "amountIn": "19509427302151",
+        "expectedOut": "1463005",
+        "minAmountOut": "1389854",
+        "outAmount": "1463005"
+      },
       "env": "devnet"
     }
   ]

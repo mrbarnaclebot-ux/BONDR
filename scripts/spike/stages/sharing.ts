@@ -41,7 +41,8 @@ async function topUpW(ctx: Ctx): Promise<TransactionInstruction> {
 // One tx when it fits; a size refusal splits it into config then update, in the same order (A2).
 async function finalize(ctx: Ctx, k: Keys): Promise<{ config: SendResult; update: SendResult }> {
   const W = ctx.key("w", k.mint.toBase58()).publicKey;
-  const opts = { ...k, creator: W, payer: ctx.key("ops", "main").publicKey, quoteMint: k.Q };
+  const payer = ctx.key("ops", "main").publicKey;
+  const opts = { ...k, creator: W, payer, quoteMint: k.Q, bondingCurveComplete: false }; // C0 is unbonded
   const ixs = [await topUpW(ctx), ...(await finalizeIxs(opts))];
   const one = await send(ctx, ixs);
   if (!one.err?.startsWith("too large")) return { config: one, update: one };
@@ -88,6 +89,7 @@ async function secondUpdate(ctx: Ctx, k: Keys): Promise<void> {
     mint: k.mint,
     quoteMint: k.Q,
     current: [k.deployer, k.treasury],
+    bondingCurveComplete: false,
     next: [
       { address: k.deployer, shareBps: 5000 },
       { address: k.treasury, shareBps: 5000 },

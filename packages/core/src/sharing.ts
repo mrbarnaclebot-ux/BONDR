@@ -19,14 +19,16 @@ type Sweep = {
   mint: PublicKey;
   creator: PublicKey;
   quoteMint: PublicKey;
+  bondingCurveComplete: boolean; // passed by the caller, who read the curve; pool is required when true
   pool?: PublicKey;
 };
 
 // Pool fees only exist once the coin bonded; on a live curve the pool sweep is skipped.
 async function sweeps(o: Sweep): Promise<TransactionInstruction[]> {
   const q = { payer: o.payer, mint: o.mint, quoteMint: o.quoteMint, quoteTokenProgram: T22 };
+  if (o.bondingCurveComplete && !o.pool) throw new Error(`bonded ${o.mint.toBase58()} needs its pool`);
   const curve = await PUMP_SDK.sweepCreatorFeeInstruction({ ...q, creator: o.creator });
-  if (!o.pool) return [curve];
+  if (!o.bondingCurveComplete) return [curve];
   return [curve, await PUMP_SDK.sweepPoolCreatorFeeInstruction({ ...q, coinCreator: o.creator })];
 }
 
@@ -46,6 +48,7 @@ export async function finalizeIxs(o: {
   quoteMint: PublicKey;
   deployer: PublicKey;
   treasury: PublicKey;
+  bondingCurveComplete: boolean;
   pool?: PublicKey;
 }): Promise<TransactionInstruction[]> {
   return [
@@ -62,7 +65,7 @@ export async function finalizeIxs(o: {
       ],
       quoteMint: o.quoteMint,
       quoteTokenProgram: T22,
-      bondingCurveComplete: o.pool !== undefined,
+      bondingCurveComplete: o.bondingCurveComplete,
     }),
   ];
 }
@@ -74,6 +77,7 @@ export async function updateIxs(o: {
   quoteMint: PublicKey;
   current: PublicKey[];
   next: Shareholder[];
+  bondingCurveComplete: boolean;
   pool?: PublicKey;
 }): Promise<TransactionInstruction[]> {
   const creator = feeSharingConfigPda(o.mint);
@@ -86,7 +90,7 @@ export async function updateIxs(o: {
       newShareholders: o.next,
       quoteMint: o.quoteMint,
       quoteTokenProgram: T22,
-      bondingCurveComplete: o.pool !== undefined,
+      bondingCurveComplete: o.bondingCurveComplete,
     }),
   ];
 }

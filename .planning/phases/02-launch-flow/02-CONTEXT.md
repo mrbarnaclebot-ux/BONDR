@@ -77,6 +77,16 @@ Not in this phase:
 - **D-15:** apps/web imports only pure `@bondr/core` modules. A Biome `noRestrictedImports` rule enforces it. Next.js needs `transpilePackages` for the raw-.ts core. Record the type-stripping constraint in the core README (STATE.md concern from the Phase 1 review).
 - **D-16:** The worker uses the Phase 1 send semantics (`landed | failed | unknown`, never retry unknown before expiry) and the configurable priority fee.
 
+### Decisions after research (owner, 2026-10-19)
+- **D-17 (amends D-10):** The dev buy minimum scales from live chain config: 0.25 SOL x (live initial virtual quote reserves / mainnet 30 SOL). It is exactly 0.25 SOL on mainnet and about 0.0025 SOL on devnet. UI copy and presets read the live value.
+- **D-18:** Build the BONDR-pool route in Phase 2. When the BONDR stand-in has migrated, the launch builder routes the SOL to BONDR hop (and the insta-sell BONDR to SOL hop) through BONDR's PumpSwap pool. Prove it on the fork. Launches are paused only during the seconds-long complete-but-unmigrated window (6107), never after migration.
+- **D-19:** Claude creates the two Sentry projects (Next.js web, Node worker) with the Sentry CLI, using an owner-provided auth token `sentry_auth_token` in .env. Use Sentry v11 `dataCollection` with an explicit restrictive config, plus a beforeSend filter that strips base58 wallet-shaped strings (32-44 chars). `sendDefaultPii` no longer exists in v11.
+- **D-20:** Staging reuses the Phase 1 devnet master seed (ops already holds about 2.9 devnet SOL), copied into a Railway worker variable. Mainnet always gets a brand-new seed in Phase 7, never this one.
+- **D-21 (from research):**
+  - Pin shadcn 4.21.2, lucide-react 1.52.0 and radix-ui 1.6.7 (14-day rule). Never run `shadcn@latest`.
+  - The display font is `Big_Shoulders` with the opsz axis; `Big_Shoulders_Display` does not exist in next 16.3.8.
+  - Vanity mints are derived from the master seed plus an index and ground in Node. Only the index and pubkey are stored, never a mint secret.
+
 ### Claude's Discretion
 - **Co-sign and W supply architecture** (STATE.md concern).
   - Default: the worker exposes a small private HTTP signer on Railway private networking, authenticated with a shared secret. Web calls `prepare` and gets the built unsigned tx: W pubkey derived in the worker, a mint from the vanity pool, the per-coin lookup table created by ops.

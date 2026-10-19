@@ -123,7 +123,7 @@ Verified against pump-fun/pump-public-docs @ 639b87f and live mainnet accounts o
 
 Review these at spec approval:
 
-1. **Dev buy minimum:** 0.25 SOL, measured on the SOL input before the BONDR hop.
+1. **Dev buy minimum:** 0.25 SOL on mainnet, measured on the SOL input before the BONDR hop. It scales with live curve reserves on other networks: about 0.0025 SOL on devnet (owner decision 2026-10-19, Phase 2 D-17).
 2. **Forced-bond trigger:** burn budget at least 105% of the quote needed to complete the curve.
 3. **Trending:** ranked by quote volume in the last 1h. Top = market cap. Latest and oldest = launch time.
 4. **BONDR's own launch:** goes through the same flow with insta burn.

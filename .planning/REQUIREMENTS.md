@@ -23,7 +23,7 @@
 ### Launch
 
 - [ ] **LAUNCH-01**: Dev can fill the launch form: name (32 chars or fewer), symbol (13 or fewer), image, description, optional X, Telegram and website links
-- [ ] **LAUNCH-02**: Dev must enter a dev buy of at least 0.25 SOL and choose insta sell or insta burn before the launch button enables
+- [ ] **LAUNCH-02**: Dev must enter a dev buy of at least the live minimum (0.25 SOL on mainnet, scaled by curve reserves on devnet) and choose insta sell or insta burn before the launch button enables
 - [ ] **LAUNCH-03**: Dev signs one transaction in Phantom that creates the coin (mint ending in `bndr`), buys, and sells or burns the dev buy
 - [ ] **LAUNCH-04**: Server co-signs with the mint key only when the signed message matches the one it built and contains the chosen exit
 - [ ] **LAUNCH-05**: Dev sees a success screen within 5 seconds of confirmation with "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy-to-clipboard button, and a button to open the coin page

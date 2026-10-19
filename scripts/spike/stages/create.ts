@@ -114,11 +114,13 @@ function childRule(net: Ctx["net"]): Rule {
   };
 }
 
+// Code and name together, so another program's 6077 cannot pass. The SDK's client-side refusal has no
+// code because nothing was sent.
 const refusedRule: Rule = (row) => {
   if (!row.expectFail) return "not recorded as an expected failure";
-  return row.code === 6077 || row.err?.includes("CreatorFeeNotConfigurable")
-    ? null
-    : `code ${row.code}, expected 6077`;
+  if (!row.err?.startsWith("CreatorFeeNotConfigurable")) return `logged error ${row.err}, expected 6077 name`;
+  const clientSide = !row.sig && row.code === undefined;
+  return row.code === 6077 || clientSide ? null : `code ${row.code}, expected 6077`;
 };
 
 export const createStage: Stage = {

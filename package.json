@@ -17,7 +17,9 @@
     "spike:fork-up": "sh scripts/spike/fork.sh up",
     "spike:fork-down": "sh scripts/spike/fork.sh down",
     "spike:all": "sh scripts/spike/all.sh",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "db:generate": "pnpm --filter @bondr/core exec drizzle-kit generate --name init",
+    "db:migrate": "node --env-file=.env packages/core/src/migrate.ts"
   },
   "dependencies": {
     "@bondr/core": "workspace:*",

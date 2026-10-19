@@ -1,0 +1,28 @@
+{
+  "name": "bondr",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint": "biome ci .",
+    "typecheck": "tsc -p tsconfig.json",
+    "spike:keys": "node scripts/spike/keygen.ts"
+  },
+  "dependencies": {
+    "@bondr/core": "workspace:*",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "1.99.0",
+    "bn.js": "5.2.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/bn.js": "5.2.0",
+    "@types/node": "24.19.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
+}

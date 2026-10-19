@@ -1,0 +1,27 @@
+// The only load point of the pump.fun SDKs (D-08). The pump-sdk ESM build crashes under plain Node 24
+// ("Named export 'BN' not found": @coral-xyz/anchor is CommonJS), so both SDKs load through createRequire.
+// Use bn.js for amounts, never anchor's BN. Web code must never import this file (D-08): it is chain-side only.
+// pump-swap-sdk resolves to 2.1.0 here, never the transitive 1.20.0 copy nested under pump-sdk.
+import { createRequire } from "node:module";
+import BN from "bn.js";
+
+const require = createRequire(import.meta.url);
+const pump = require("@pump-fun/pump-sdk") as typeof import("@pump-fun/pump-sdk");
+const amm = require("@pump-fun/pump-swap-sdk") as typeof import("@pump-fun/pump-swap-sdk");
+
+export const {
+  PUMP_SDK,
+  OnlinePumpSdk,
+  GLOBAL_PDA,
+  bondingCurvePda,
+  feeSharingConfigPda,
+  canonicalPumpPoolPdaWithQuote,
+  newBondingCurve,
+  getBuyV3TokenAmountFromQuoteAmount,
+  getBuyV3QuoteAmountFromTokenAmount,
+  PUMP_PROGRAM_ID,
+  PUMP_AMM_PROGRAM_ID,
+  PUMP_FEE_PROGRAM_ID,
+} = pump;
+export const { PUMP_AMM_SDK, OnlinePumpAmmSdk } = amm;
+export { BN }; // SDK amount arguments (bn.js 5.2.5, never anchor's BN)

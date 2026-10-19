@@ -17,7 +17,7 @@ created: 2026-10-19
 
 | Property | Value |
 |----------|-------|
-| **Framework** | Vitest 5.0.5 for pure math, keys, send and events; `scripts/spike/check.ts` asserts the chain evidence in the results JSON; Biome enforces format, lint and the 40-line function limit |
+| **Framework** | Vitest 4.1.11 for pure math, keys, send and events; `scripts/spike/check.ts` asserts the chain evidence in the results JSON; Biome enforces format, lint and the 40-line function limit |
 | **Config file** | none for Vitest (defaults); `biome.json` (01-01) |
 | **Quick run command** | `pnpm vitest run packages/core` |
 | **Full suite command** | `pnpm vitest run && pnpm spike:check` |

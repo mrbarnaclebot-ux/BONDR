@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 import type { NextConfig } from "next";
 
@@ -17,7 +17,7 @@ export const WEB_ENV = [
 ] as const;
 
 // Local only: Railway has no file and sets each web variable on the service.
-const rootEnv = join(process.cwd(), "../../.env");
+const rootEnv = fileURLToPath(new URL("../../.env", import.meta.url));
 if (existsSync(rootEnv)) {
   const all = parseEnv(readFileSync(rootEnv, "utf8"));
   for (const name of WEB_ENV) {
@@ -36,6 +36,7 @@ const SECURITY_HEADERS = [
 const config: NextConfig = {
   transpilePackages: ["@bondr/core"], // raw .ts exports (D-15)
   poweredByHeader: false,
+  agentRules: false, // next dev would otherwise write a second AGENTS.md here, shadowing the root one
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

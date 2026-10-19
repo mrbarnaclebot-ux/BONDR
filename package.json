@@ -16,7 +16,8 @@
     "spike:page": "node scripts/spike/page.ts",
     "spike:fork-up": "sh scripts/spike/fork.sh up",
     "spike:fork-down": "sh scripts/spike/fork.sh down",
-    "spike:all": "sh scripts/spike/all.sh"
+    "spike:all": "sh scripts/spike/all.sh",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@bondr/core": "workspace:*",
@@ -25,7 +26,9 @@
     "bn.js": "5.2.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@biomejs/biome": "2.5.15",
+    "@playwright/test": "1.63.0",
     "@types/bn.js": "5.2.0",
     "@types/node": "24.19.1",
     "typescript": "7.0.2",

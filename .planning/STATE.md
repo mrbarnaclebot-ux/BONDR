@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-10-19T11:18:17.307Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-10-19T11:27:59.594Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 12
+  completed_plans: 13
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 3 of 18
+Plan: 4 of 18
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [████░░░░░░] 43%
+Progress: [█████░░░░░] 46%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [████░░░░░░] 43%
 | Phase 01 P10 | 20 min | 2 tasks | 8 files |
 | Phase 02 P01 | 10 min | 3 tasks | 14 files |
 | Phase 02 P03 | 25 min | 2 tasks | 12 files |
+| Phase 02 P02 | 20 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-01: minimumReleaseAge stays 1440 (20160 fails on locked pump SDK transitives); new pins checked by hand against the 14-day cutoff
 - [Phase 2]: 02-03: pool-venue launches pay the sell's buyback slice to PumpSwap GlobalConfig.buybackFeeRecipients[0], whose WSOL ATA the pool buy creates in the same tx
 - [Phase 2]: 02-03: quoteVenue throws AwaitingMigration in the complete-but-unmigrated window; the worker maps it to paused
+- [Phase 02]: 02-02: playwright.config.ts imports WEB_ENV from next.config.ts, whose loader resolves the root .env from its file path, so runner and server see only web names
+- [Phase 02]: 02-02: next.config.ts sets agentRules: false so next dev stops writing apps/web/AGENTS.md and CLAUDE.md
 
 ### Pending Todos
 
@@ -140,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T11:18:17.302Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-10-19T11:27:44.906Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None

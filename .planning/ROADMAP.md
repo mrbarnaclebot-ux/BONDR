@@ -59,11 +59,11 @@ Plans:
   4. Dev sees the success screen within 5 seconds of confirmation, showing "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy button, and a button to the coin's token page
   5. Dev sees a clear paused banner with the Launch button disabled (the form stays fillable, owner decision 2026-10-19) when launches are paused (launch flag off, or BONDR awaiting migration), and the launch pages work at mobile, tablet and desktop widths
   6. Errors thrown in web and worker show up in Sentry (moved from Phase 7 on owner approval, 2026-10-19)
-**Plans:** 2/18 plans executed
+**Plans:** 3/18 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md - Web scaffold: Next.js 16, BONDR tokens and visual system, header and footer, Biome web import rule, web env allowlist, quick-run latency measured
-- [ ] 02-02-PLAN.md - Playwright harness (no root secrets in the web server) and the terms page with its e2e
+- [x] 02-02-PLAN.md - Playwright harness (no root secrets in the web server) and the terms page with its e2e
 - [x] 02-03-PLAN.md - BONDR-pool route in the launch builder (D-18), proven on the Surfpool fork with the stand-in migrated; pool-sell fixture captured
 - [ ] 02-04-PLAN.md - Owner checkpoint: Neon and Sentry projects; shared schema, client and first migration
 - [ ] 02-05-PLAN.md - Phantom connect and disconnect, consent dialog and consent API
@@ -156,7 +156,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
-| 2. Launch Flow | 2/18 | In Progress|  |
+| 2. Launch Flow | 3/18 | In Progress|  |
 | 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
 | 4. Trading | 0/TBD | Not started | - |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |

@@ -14,6 +14,7 @@ One spike step per file. Each exports a `Stage` with `run(ctx)` and `rules(net)`
 | `multihop.ts` | factory `multihopStage(coinKey, idPrefix)`: `<idPrefix>multihop.buy`, `<idPrefix>multihop.sell` on `state[coinKey]`. Devnet `("C0", "")` routes SOL -> Q curve -> C0; fork `("C3", "migrated.")` routes SOL -> Q pool -> C3 | devnet, fork |
 | `sharing.ts` | `sharing.config`, `sharing.update`, `sharing.update2.rejected` | devnet (`finalize.ts` repeats it on the fork after bond) |
 | `complete.ts` | `child.create.6107` (one tx: completing buy + child create on a fresh Q), `quote.complete` | devnet (last: it ends Q there), fork (after finalize) |
+| `pool-launch.ts` | `awaitingStage`: `migrated.launch.awaiting` (the builder refuses complete, unmigrated Q). `poolLaunchStage`: `migrated.launch.table.burn`, `migrated.launch.burn`, `migrated.launch.table.sell`, `migrated.launch.sell` (D-18 pool-route launches, `maxFieldBytes`), and writes `packages/core/src/fixtures/pool-sell-launch.json` | fork (awaiting after complete, launches after migrated) |
 | `migrated.ts` | `quote.migrate` (migrate_v2 of Q), `migrated.child.create` (C3 on the migrated Q, 150 bps), `migrated.trade` | fork (after complete, then `migrated.multihop`) |
 
 Rows with the `aux.` prefix are helpers (funding, prefunds, tables) and have no rule of their own.

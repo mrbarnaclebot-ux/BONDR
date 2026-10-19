@@ -72,7 +72,7 @@ function section(file: ResultsFile, list: View[]): string {
   const head = ["Env", "Step", "Result", "Signature", "Bytes", "CU", "Error", "Notes"];
   const th = head.map((h) => `<th>${h}</th>`).join("");
   const rows = list.map(rowHtml).join("\n");
-  const facts = list.map((v) => factsHtml(v.row)).join("");
+  const facts = list.map((v) => factsHtml(v.row)).join("\n");
   return `<h2>${TITLES[file.net]}</h2><p>Updated ${esc(file.updatedAt)}</p><table><tr>${th}</tr>\n${rows}</table>${facts}`;
 }
 

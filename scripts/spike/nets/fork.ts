@@ -9,6 +9,7 @@ import { launchStage } from "../stages/launch.ts";
 import { migratedStage } from "../stages/migrated.ts";
 import { multihopStage } from "../stages/multihop.ts";
 import { poolStage } from "../stages/pool.ts";
+import { awaitingStage, poolLaunchStage } from "../stages/pool-launch.ts";
 import { prebondStage } from "../stages/prebond.ts";
 
 const stages: Stage[] = [
@@ -20,7 +21,10 @@ const stages: Stage[] = [
   poolStage,
   finalizeStage,
   completeStage,
+  // Q is complete and unmigrated only between these two stages; the pool launches need it migrated.
+  awaitingStage,
   migratedStage,
+  poolLaunchStage,
   multihopStage("C3", "migrated."),
 ];
 export default stages;

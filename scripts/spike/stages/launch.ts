@@ -5,7 +5,12 @@ import { buildLaunch, type Exit, type LaunchOpts } from "@bondr/core/launch";
 import { BN, OnlinePumpSdk } from "@bondr/core/pump";
 import { PACKET_LIMIT, sendTx, wireSize } from "@bondr/core/send";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
-import { Keypair, PublicKey, type TransactionInstruction } from "@solana/web3.js";
+import {
+  type AddressLookupTableAccount,
+  Keypair,
+  PublicKey,
+  type TransactionInstruction,
+} from "@solana/web3.js";
 import { fundSol, paceMs, prefundMint } from "../fund.ts";
 import type { Ctx, Rule, Stage } from "../results.ts";
 import { CHILD, PER_CREATE } from "./create.ts";
@@ -13,10 +18,19 @@ import { CHILD, PER_CREATE } from "./create.ts";
 const CU_LIMIT = 600_000;
 const DEVNET_NOTE = "devnet scaled; curves are 100x cheaper";
 type Facts = Record<string, string | number>;
-type Run = { ctx: Ctx; online: InstanceType<typeof OnlinePumpSdk>; Q: PublicKey; supply: string; solIn: BN };
+export type Run = {
+  ctx: Ctx;
+  online: InstanceType<typeof OnlinePumpSdk>;
+  Q: PublicKey;
+  supply: string;
+  solIn: BN;
+};
 
-const rowId = (exit: Exit, table = false): string =>
-  exit === "sellq" ? `aux.launch.${table ? "table." : ""}sellq` : `launch.${table ? "table." : ""}${exit}`;
+// prefix "migrated." gives the pool-route rows (pool-launch.ts); the curve rows keep their ids.
+const rowId = (exit: Exit, table = false, prefix = ""): string =>
+  exit === "sellq"
+    ? `aux.${prefix}launch.${table ? "table." : ""}sellq`
+    : `${prefix}launch.${table ? "table." : ""}${exit}`;
 
 // Shared-only: keys every launch has in common, found by building a second launch offline (never sent).
 async function sizes(base: LaunchOpts, ixs: TransactionInstruction[]) {
@@ -26,6 +40,17 @@ async function sizes(base: LaunchOpts, ixs: TransactionInstruction[]) {
     noTableBytes: wireSize(base.dev, ixs),
     sharedOnlyBytes: wireSize(base.dev, ixs, [memoryTable(sharedKeys(ixs, other.ixs))]),
   };
+}
+
+// The longest coin fields the launch form allows (32-byte name, 13-char symbol, an 80-char ipfs.io URI),
+// rebuilt offline (never sent) with the same keys, so the same per-coin table covers it.
+const MAX_FIELDS = {
+  name: "N".repeat(32),
+  symbol: "S".repeat(13),
+  uri: `https://ipfs.io/ipfs/${"b".repeat(59)}`,
+};
+async function maxFieldBytes(base: LaunchOpts, table: AddressLookupTableAccount): Promise<number> {
+  return wireSize(base.dev, (await buildLaunch({ ...base, ...MAX_FIELDS })).ixs, [table]);
 }
 
 export async function tokenAmount(ctx: Ctx, mint: PublicKey, owner: PublicKey): Promise<string> {
@@ -63,14 +88,19 @@ async function prepare(run: Run, exit: Exit, mint: Keypair, dev: Keypair) {
   return { base, built, sized: await sizes(base, built.ixs) };
 }
 
-async function launchOne(run: Run, exit: Exit): Promise<boolean> {
+export async function launchOne(run: Run, exit: Exit, prefix = ""): Promise<boolean> {
   const { ctx } = run;
   const [mint, dev] = [Keypair.generate(), ctx.key("sim", "dev")];
   const { base, built, sized } = await prepare(run, exit, mint, dev);
   const keys = tableKeys(built.ixs);
   const { address, table, txs, ...t } = await createTable(ctx.conn, dev, keys, paceMs(ctx));
   const tableFacts = { table: address.toBase58(), keys: keys.length, txs };
-  ctx.record({ id: rowId(exit, true), step: `Per-coin lookup table (${exit})`, ...t, facts: tableFacts });
+  ctx.record({
+    id: rowId(exit, true, prefix),
+    step: `Per-coin lookup table (${exit})`,
+    ...t,
+    facts: tableFacts,
+  });
   if (!table) throw new Error(`lookup table for ${exit} failed: ${t.err}`);
   const r = await sendTx({
     conn: ctx.conn,
@@ -81,21 +111,22 @@ async function launchOne(run: Run, exit: Exit): Promise<boolean> {
     paceMs: paceMs(ctx),
   });
   const facts: Facts = {
+    venue: built.venue,
     mint: mint.publicKey.toBase58(),
     W: base.W.toBase58(),
     amount: built.amount.toString(),
     qMin: built.qMin.toString(),
     solIn: run.solIn.toString(),
     ...sized,
+    maxFieldBytes: await maxFieldBytes(base, table),
     tableKeys: keys.length,
     supplyBefore: run.supply,
     ...(r.ok ? await after(run, mint.publicKey, dev.publicKey) : {}),
   };
-  if (r.ok) ctx.file.state[`C.${exit}`] = mint.publicKey.toBase58();
-  const step = `Launch: create + exact-out dev buy + insta ${exit} (one v0 tx, per-coin table)`;
+  if (r.ok) ctx.file.state[`${prefix}C.${exit}`] = mint.publicKey.toBase58();
   ctx.record({
-    id: rowId(exit),
-    step,
+    id: rowId(exit, false, prefix),
+    step: `Launch via Q's ${built.venue}: create + exact-out dev buy + insta ${exit} (one v0 tx, per-coin table)`,
     ...r,
     cuLimit: CU_LIMIT,
     facts,
@@ -104,9 +135,9 @@ async function launchOne(run: Run, exit: Exit): Promise<boolean> {
   return r.ok;
 }
 
-const tableRule: Rule = (row) => (row.sig ? null : "no signature");
+export const tableRule: Rule = (row) => (row.sig ? null : "no signature");
 
-function launchRule(exit: Exit): Rule {
+export function launchRule(exit: Exit): Rule {
   return (row) => {
     const f = row.facts ?? {};
     if (!row.sig) return "no signature";

@@ -1,7 +1,6 @@
 // Launch instruction builders (RESEARCH Pattern 2). BONDR owns amounts, order and signing; the SDK owns
 // every account list, because pump changes them on short notice.
 import {
-  createAssociatedTokenAccountIdempotentInstruction,
   createBurnCheckedInstruction,
   getAssociatedTokenAddressSync,
   NATIVE_MINT,
@@ -20,6 +19,7 @@ import {
   type PumpQuoteAccounts,
 } from "./pump.ts";
 import { budget } from "./send.ts";
+import { buyExactIn, buyExactOut, sellExactIn } from "./trade.ts";
 
 export type Coin = { name: string; symbol: string; uri: string };
 
@@ -71,14 +71,6 @@ export type LaunchOpts = Coin & {
 };
 
 const big = (x: BN): bigint => BigInt(x.toString());
-const ataIx = (payer: PublicKey, mint: PublicKey, owner: PublicKey) =>
-  createAssociatedTokenAccountIdempotentInstruction(
-    payer,
-    getAssociatedTokenAddressSync(mint, owner, true, T22),
-    owner,
-    mint,
-    T22,
-  );
 
 // Exact-out (D-16): SOL buys at least qMin of Q, then exactly `amount` of the child costs at most qMin.
 // 1% and 2% margins absorb Q's price moving and rounding between quote and landing.
@@ -104,21 +96,13 @@ function amounts(g: Global, fc: FeeConfig, q: Curve, pq: PumpQuote, o: LaunchOpt
   return { qMin, amount: new BN(applyBps(big(childOut), 9800).toString()) };
 }
 
-async function exitIxs(o: LaunchOpts, amount: BN, buyback: PublicKey): Promise<TransactionInstruction[]> {
+async function exitIxs(o: LaunchOpts, amount: BN, g: Global): Promise<TransactionInstruction[]> {
   if (o.exit === "burn") {
     const devAta = getAssociatedTokenAddressSync(o.mint, o.dev, true, T22);
     return [createBurnCheckedInstruction(devAta, o.mint, o.dev, big(amount), 6, [], T22)];
   }
-  const sellToQ = { user: o.dev, mint: o.mint, amount, quoteAmount: new BN(1), tokenProgram: T22 };
   if (o.exit === "sellq")
-    return [
-      await PUMP_SDK.getSellV3InstructionRaw({
-        ...sellToQ,
-        quoteMint: o.Q,
-        quoteTokenProgram: T22,
-        buybackFeeRecipient: buyback,
-      }),
-    ];
+    return sellExactIn({ global: g, mint: o.mint, user: o.dev, quoteMint: o.Q, amount, minQuote: new BN(1) });
   // ponytail: minAmountOut 1, because the child does not exist before this tx, so simulateMultiHopSwap
   // cannot price it. Phase 2 sets a real floor from the curve math.
   return PUMP_SDK.multiHopSwapInstructions({
@@ -126,7 +110,7 @@ async function exitIxs(o: LaunchOpts, amount: BN, buyback: PublicKey): Promise<T
     side: "sell",
     amountIn: amount,
     minAmountOut: new BN(1),
-    buybackFeeRecipient: buyback,
+    buybackFeeRecipient: g.buybackFeeRecipients[0],
     hops: [
       { venue: "curve", baseMint: o.mint, quoteMint: o.Q, baseTokenProgram: T22, quoteTokenProgram: T22 },
       {
@@ -153,31 +137,19 @@ export async function buildLaunch(
   ]);
   if (!pq) throw new Error(`fetchPumpQuote returned null for ${o.Q.toBase58()}`);
   const { qMin, amount } = amounts(g, fc, q, pq, o);
-  const buyback = g.buybackFeeRecipients[0];
-  const quoted = { user: o.dev, tokenProgram: T22, buybackFeeRecipient: buyback };
   const ixs = [
     ...budget(o.cuLimit),
     await buildCreate({ ...o, creator: o.W, user: o.dev, quoteMint: o.Q, pumpQuote: pq.accounts }),
-    ataIx(o.dev, o.Q, o.dev),
-    await PUMP_SDK.getBuyExactQuoteInV3InstructionRaw({
-      ...quoted,
+    ...(await buyExactIn({
+      global: g,
       mint: o.Q,
-      spendableQuoteIn: o.solIn,
-      minTokensOut: qMin,
+      user: o.dev,
       quoteMint: NATIVE_MINT,
-      quoteTokenProgram: TOKEN_PROGRAM_ID,
-    }),
-    ataIx(o.dev, o.mint, o.dev),
-    ataIx(o.dev, o.Q, buyback),
-    await PUMP_SDK.getBuyV3InstructionRaw({
-      ...quoted,
-      mint: o.mint,
-      amount,
-      quoteAmount: qMin,
-      quoteMint: o.Q,
-      quoteTokenProgram: T22,
-    }),
-    ...(await exitIxs(o, amount, buyback)),
+      spend: o.solIn,
+      minOut: qMin,
+    })),
+    ...(await buyExactOut({ global: g, mint: o.mint, user: o.dev, quoteMint: o.Q, amount, maxQuote: qMin })),
+    ...(await exitIxs(o, amount, g)),
   ];
   return { ixs, amount, qMin };
 }

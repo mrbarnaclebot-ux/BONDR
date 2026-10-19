@@ -6,3 +6,12 @@ export function applyBps(x: bigint, bps: number): bigint {
   if (x < 0n) throw new Error("negative amount");
   return (x * BigInt(bps)) / 10_000n;
 }
+
+// PROJECT.md item 4: the treasury takes 10% of each collect off-chain; the other 90% stays in W as the
+// burn budget. Treasury floors, so rounding dust always lands in the burn budget.
+const TREASURY_BPS = 1000;
+
+export function split90_10(x: bigint): { treasury: bigint; burn: bigint } {
+  const treasury = applyBps(x, TREASURY_BPS);
+  return { treasury, burn: x - treasury };
+}

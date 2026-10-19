@@ -12,7 +12,6 @@ import {
 import {
   ComputeBudgetProgram,
   type Connection,
-  type Keypair,
   type PublicKey,
   SystemProgram,
   type TransactionInstruction,
@@ -70,30 +69,26 @@ async function simulatedBalance(
   return AccountLayout.decode(Buffer.from(acct.data[0], "base64")).amount;
 }
 
-// buy_exact_quote_in_v3 with the whole budget, then BurnChecked of the simulated out. Past the remaining
-// supply the buy completes the curve and buys the rest from the pool-to-be, so simOut covers both legs.
-// ponytail: a front-run between simulate and land either reverts the whole tx (burn above the balance) or
-// leaves dust in W; Phase 5 picks this or exactBondIxs, which always burns exactly.
-export async function forcedBondIxs(o: {
-  conn: Connection;
-  global: Global;
-  ops: Keypair;
-  w: Keypair;
-  mint: PublicKey;
-  quoteMint: PublicKey;
-  budget: BN;
-  wFloatLamports: number;
-}): Promise<{ ixs: TransactionInstruction[]; burnAmount: BN }> {
-  const side = { global: o.global, mint: o.mint, user: o.w.publicKey, quoteMint: o.quoteMint };
-  const buy = await buyExactIn({ ...side, spend: o.budget, minOut: new BN(1) });
-  const w = { ops: o.ops.publicKey, w: o.w.publicKey, wFloatLamports: o.wFloatLamports };
-  const ixs = [...float(w), ...buy];
-  const ata = getAssociatedTokenAddressSync(o.mint, o.w.publicKey, true, T22);
-  const simOut = await simulatedBalance(o.conn, o.ops.publicKey, ixs, ata);
-  return { ixs: [...ixs, burnIx(o.w.publicKey, o.mint, simOut)], burnAmount: new BN(simOut.toString()) };
+// buy_exact_quote_in_v3 with the whole budget, then BurnChecked of the simulated out: the production bond,
+// since the owner chose to burn the full budget (PROJECT.md item 5). Past the remaining supply the buy
+// completes the curve and buys the rest from the pool-to-be, so simOut covers both legs. The real buy floors
+// at simOut, so a front-run buy between simulate and land reverts the tx as slippage instead of burning
+// more than W holds; the caller re-simulates. A front-run sell gives W more than simOut, and the remainder
+// stays in W for the worker to burn (Phase 5).
+export async function forcedBondIxs(
+  o: W & { conn: Connection; global: Global; mint: PublicKey; quoteMint: PublicKey; budget: BN },
+): Promise<{ ixs: TransactionInstruction[]; burnAmount: BN }> {
+  const side = { global: o.global, mint: o.mint, user: o.w, quoteMint: o.quoteMint };
+  const buy = (minOut: BN) => buyExactIn({ ...side, spend: o.budget, minOut });
+  const ata = getAssociatedTokenAddressSync(o.mint, o.w, true, T22);
+  const simOut = await simulatedBalance(o.conn, o.ops, [...float(o), ...(await buy(new BN(1)))], ata);
+  const burnAmount = new BN(simOut.toString());
+  const ixs = [...float(o), ...(await buy(burnAmount)), burnIx(o.w, o.mint, simOut)];
+  return { ixs, burnAmount };
 }
 
 // buy_v3 of exactly `amount` for at most maxQuote, then BurnChecked(amount) (D-16).
+// ponytail: evidence-only since the full-budget decision; delete in Phase 2 or 5 if nothing calls it.
 export async function exactBondIxs(
   o: W & { global: Global; mint: PublicKey; quoteMint: PublicKey; amount: BN; maxQuote: BN },
 ): Promise<TransactionInstruction[]> {

@@ -138,7 +138,14 @@ export async function topUp(run: Run, id: string, W: PublicKey, amount: BN, fact
 async function forced(run: Run, mint: PublicKey, W: Keypair, spend: BN): Promise<void> {
   const before = await supply(run, mint);
   const wFloatLamports = await wFloat(run, W.publicKey);
-  const o = { conn: run.ctx.conn, global: run.g, ops: run.ops, w: W, mint, quoteMint: run.Q };
+  const o = {
+    conn: run.ctx.conn,
+    global: run.g,
+    ops: run.ops.publicKey,
+    w: W.publicKey,
+    mint,
+    quoteMint: run.Q,
+  };
   const { ixs, burnAmount } = await forcedBondIxs({ ...o, budget: spend, wFloatLamports });
   const step =
     "Forced bond: W buy_exact_quote_in_v3 with its whole budget completes C2, BurnChecked(simOut), one tx";

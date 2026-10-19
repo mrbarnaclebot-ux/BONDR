@@ -1,0 +1,40 @@
+{
+  "net": "devnet",
+  "updatedAt": "2026-10-19T05:37:59.645Z",
+  "state": {},
+  "rows": [
+    {
+      "id": "config",
+      "step": "Live pump config",
+      "ok": true,
+      "facts": {
+        "creatorFeeConfigurable": false,
+        "maxConfigurableCreatorFeeBps": "0",
+        "maxCurveDepth": 2,
+        "initialVirtualSolReserves": "300000000",
+        "initialVirtualTokenReserves": "1073000000000000",
+        "initialRealTokenReserves": "793100000000000",
+        "tokenTotalSupply": "1000000000000000",
+        "withdrawAuthority": "5PXxuZkvftsg5CAGjv5LL5tEtvBRskdx1AAjxw8hK2Qx",
+        "buybackFeeRecipient0": "5YxQFdt3Tr9zJLvkFccqXVUwhdTWJQc1fFg2YPbxvxeD",
+        "createV2Enabled": true,
+        "globalBytes": 1088,
+        "curveFlat.protocol": "95",
+        "curveFlat.creator": "30",
+        "curveExotic.protocol": "0",
+        "curveExotic.creator": "0",
+        "ammFlat.protocol": "5",
+        "ammFlat.creator": "0",
+        "ammFlat.lp": "25",
+        "ammExotic.protocol": "0",
+        "ammExotic.creator": "0",
+        "ammExotic.lp": "0",
+        "ammTier0.protocol": "93",
+        "ammTier0.creator": "30",
+        "ammTier0.lp": "2",
+        "drift": "creator fee not configurable, assumed 150 bps per coin; AMM LP 25 bps, assumed 20"
+      },
+      "env": "devnet"
+    }
+  ]
+}

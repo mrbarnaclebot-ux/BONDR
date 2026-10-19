@@ -10,7 +10,10 @@
     "test": "vitest run",
     "lint": "biome ci .",
     "typecheck": "tsc -p tsconfig.json",
-    "spike:keys": "node scripts/spike/keygen.ts"
+    "spike:keys": "node scripts/spike/keygen.ts",
+    "spike": "node --env-file=.env scripts/spike/run.ts",
+    "spike:check": "node --env-file=.env scripts/spike/check.ts",
+    "spike:page": "node scripts/spike/page.ts"
   },
   "dependencies": {
     "@bondr/core": "workspace:*",

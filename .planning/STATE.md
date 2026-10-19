@@ -112,6 +112,13 @@ None yet.
 
 ### Blockers/Concerns
 
+- Phase 5 (from Phase 1 second code review, 2026-10-19):
+  - finalizeIxs/splitIxs take deployer and treasury from the caller. The worker must derive the deployer from the coin's on-chain CreateEvent `user` and the treasury from config, and assert deployer != treasury != W, because the 8000 bps lock is permanent.
+  - Add a resumable 2-tx finalize in core: finalizeConfigIxs, finalizeUpdateIxs and finalizeState (none/configured/revoked) read from chain. Send tx 2 immediately after tx 1, because anyone can run distribute in between and pay W 100%.
+  - Detect "complete and pool exists" from chain instead of a caller boolean.
+  - After a forced bond lands, the worker reads W's child balance and burns any remainder.
+- Phases 3/4: route.ts must retry, not surface errors, during the roughly 10-slot window between curve completion and pump's keeper migrating it.
+
 - Phase 2 (from Phase 1 code review, 2026-10-19): apps/web must only import pure @bondr/core modules (math and similar). Add a Biome noRestrictedImports rule in apps/web blocking pump.ts, send.ts, alt.ts and any module importing them. Core exports raw .ts (Node type stripping): Next.js needs transpilePackages, and a pnpm deploy/injected install for the Railway worker would break it, so record this as a ponytail note in the core README.
 
 - Phase 1 is a hard gate: any spike step without a signature changes PROJECT.md before Phase 2.

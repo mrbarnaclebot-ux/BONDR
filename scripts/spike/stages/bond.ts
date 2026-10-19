@@ -9,7 +9,7 @@ import { completeEvents } from "@bondr/core/events";
 import { buildCreate, COIN_DECIMALS } from "@bondr/core/launch";
 import { applyBps, trigger105 } from "@bondr/core/math";
 import { BN, type Global, OnlinePumpSdk } from "@bondr/core/pump";
-import { budget, PACKET_LIMIT, type SendResult, sendTx } from "@bondr/core/send";
+import { budget, fetchTx, PACKET_LIMIT, type SendResult, sendTx } from "@bondr/core/send";
 import { ataIx, buyExactIn } from "@bondr/core/trade";
 import {
   createTransferCheckedInstruction,
@@ -18,6 +18,7 @@ import {
   TOKEN_2022_PROGRAM_ID as T22,
 } from "@solana/spl-token";
 import {
+  type ConfirmedTransactionMeta,
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
@@ -33,33 +34,41 @@ export const CU = 600_000;
 type Online = InstanceType<typeof OnlinePumpSdk>;
 type Facts = NonNullable<Row["facts"]>;
 export type Run = { ctx: Ctx; online: Online; g: Global; Q: PublicKey; whale: Keypair; ops: Keypair };
-type Tx = { id: string; step: string; payer: Keypair; ixs: TransactionInstruction[]; signers?: Keypair[] };
-type Landed = { r: SendResult; tx: VersionedTransactionResponse };
+type Tx = {
+  id: string;
+  step: string;
+  payer: Keypair;
+  ixs: TransactionInstruction[];
+  signers?: Keypair[];
+  cu?: number;
+};
+type Landed = { r: SendResult; tx: VersionedTransactionResponse; meta: ConfirmedTransactionMeta };
 
 const markup106 = (x: BN): BN => x.muln(106).divn(100); // applyBps stops at 100% (it is the floor helper)
 export const supply = async (run: Run, mint: PublicKey) =>
   (await run.ctx.conn.getTokenSupply(mint)).value.amount;
 
-// One landed tx per row. Facts are read after landing; a failed send still records its row, then throws.
-export async function land(run: Run, tx: Tx, facts: (l: Landed) => Promise<Facts>, extra: Partial<Row> = {}) {
-  const ixs = [...budget(CU), ...tx.ixs];
+// One landed tx per row, for every fork stage. Facts are read after landing, from the landed tx and its
+// meta, so the row proves what moved; a failed send still records its row, then throws.
+export async function land(
+  run: { ctx: Ctx },
+  tx: Tx,
+  facts: (l: Landed) => Facts | Promise<Facts>,
+  extra: Partial<Row> = {},
+) {
+  const cuLimit = tx.cu ?? CU;
+  const ixs = [...budget(cuLimit), ...tx.ixs];
   const r = await sendTx({ conn: run.ctx.conn, payer: tx.payer, signers: tx.signers, ixs });
-  const got =
-    r.ok && r.sig
-      ? await run.ctx.conn.getTransaction(r.sig, {
-          maxSupportedTransactionVersion: 0,
-          commitment: "confirmed",
-        })
-      : null;
-  const f = got ? await facts({ r, tx: got }) : {};
-  run.ctx.record({ id: tx.id, step: tx.step, ...r, cuLimit: CU, facts: f, ...extra });
+  const got = r.ok && r.sig ? await fetchTx(run.ctx.conn, r.sig) : undefined;
+  const f = got ? await facts({ r, tx: got, meta: got.meta }) : {};
+  run.ctx.record({ id: tx.id, step: tx.step, ...r, cuLimit, facts: f, ...extra });
   if (!r.ok || !got) throw new Error(`${tx.id} failed: ${r.err ?? "no transaction"}`);
   return f;
 }
 
 // Pitfall 3: W must stay rent-exempt and pays rent for its child ATA, a buyback Q ATA and the volume
 // accumulator (137 bytes). Any excess stays in W as its gas float (PROJECT.md item 9).
-export async function wFloat(run: Run, W: PublicKey, bytes = [0, 170, 170, 137]): Promise<number> {
+export async function wFloat(run: { ctx: Ctx }, W: PublicKey, bytes = [0, 170, 170, 137]): Promise<number> {
   const rents = await Promise.all(bytes.map((b) => run.ctx.conn.getMinimumBalanceForRentExemption(b)));
   const need = rents.reduce((a, b) => a + b, 0) - (await run.ctx.conn.getBalance(W));
   return Math.max(0, need);
@@ -194,16 +203,14 @@ async function forcedPath(run: Run): Promise<void> {
   const { mint, W } = await createChild(run, "bond.create", "C2");
   const cost2 = await costToComplete(run.online, mint);
   const spend = markup106(cost2);
-  const trigger = trigger105(BigInt(spend.toString()), BigInt(cost2.toString()));
+  // The top-up is sized at 106% of the cost, so this only shows the budget clears the production threshold;
+  // it does not prove the worker's trigger decision, which reads W's real balance (Phase 5).
+  const sized105 = trigger105(BigInt(spend.toString()), BigInt(cost2.toString()));
   await topUp(run, "bond.topup", W.publicKey, spend, {
     cost2: cost2.toString(),
     budget: spend.toString(),
-    trigger,
+    sized105,
   });
-  if (!trigger) {
-    run.ctx.record({ id: "bond.forced", step: "Forced bond (not sent)", ok: false, err: "trigger105 false" });
-    throw new Error("trigger105 false: the budget is below 105% of the cost to complete");
-  }
   await forced(run, mint, W, spend);
 }
 
@@ -243,7 +250,7 @@ function bondRule(amountKey: "burnAmount" | "amount"): Rule {
       return `supply dropped ${burned(f)}, ${amountKey} ${f[amountKey]}`;
     if (amountKey === "amount") return null;
     const topup = file.rows.find((r) => r.id === "bond.topup")?.facts;
-    return topup?.trigger === true ? null : "trigger105 not true on bond.topup";
+    return topup?.sized105 === true ? null : "top-up budget below 105% of the cost on bond.topup";
   };
 }
 

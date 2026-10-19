@@ -19,7 +19,7 @@ The phase 1 chain spike: run pump steps on devnet and on a local Surfpool mainne
 
 | Command | Does |
 |---------|------|
-| `pnpm spike:all` | The phase gate in one command (`all.sh`): starts the fork if needed, runs devnet then the fork, writes the page, runs the check, then prints `spike:all run=<n> check=<n>` and exits 1 if either is non-zero |
+| `pnpm spike:all` | The phase gate in one command (`all.sh`): starts the fork if needed, runs devnet then the fork, writes the page, runs the check, then prints `spike:all run=<n> page=<n> check=<n>` and exits 1 if any is non-zero. A fork it started is stopped on exit |
 | `pnpm spike:keys` | Creates the seeds if missing (idempotent) and prints the public keys and the devnet payer to fund |
 | `pnpm spike` | Runs the stages and writes `results/<net>.json`. Exits 1 if any row failed, but only after saving |
 | `pnpm spike:check` | Checks every rule against the results. Prints one PASS or FAIL line per id and exits 1 on any failure |

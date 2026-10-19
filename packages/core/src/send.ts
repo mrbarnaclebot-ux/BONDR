@@ -13,6 +13,7 @@ import {
   TransactionMessage,
   type VersionedMessage,
   VersionedTransaction,
+  type VersionedTransactionResponse,
 } from "@solana/web3.js";
 import bs58 from "bs58";
 import { redact } from "./net.ts";
@@ -51,6 +52,8 @@ export type SendResult = {
   code?: number;
 };
 
+// 1000 micro-lamports is enough on devnet and the fork. A contended mainnet completion (the forced bond
+// racing other buyers) needs a higher price; Phase 2 makes it a setting.
 export const budget = (cuLimit: number, microLamports = 1000): TransactionInstruction[] => [
   ComputeBudgetProgram.setComputeUnitPrice({ microLamports }),
   ComputeBudgetProgram.setComputeUnitLimit({ units: cuLimit }),
@@ -151,17 +154,22 @@ const result = (status: SendStatus, r: Omit<SendResult, "ok" | "status">): SendR
 });
 
 // getTransaction can return null for a moment after confirmation on a load-balanced RPC.
-export async function fetchMeta(
+export async function fetchTx(
   conn: Connection,
   sig: string,
-): Promise<ConfirmedTransactionMeta | undefined> {
+): Promise<(VersionedTransactionResponse & { meta: ConfirmedTransactionMeta }) | undefined> {
   for (let i = 0; i < 20; i++) {
     const tx = await conn.getTransaction(sig, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
-    if (tx?.meta) return tx.meta;
+    if (tx?.meta) return { ...tx, meta: tx.meta };
     await delay(500);
   }
   return undefined;
 }
+
+export const fetchMeta = async (
+  conn: Connection,
+  sig: string,
+): Promise<ConfirmedTransactionMeta | undefined> => (await fetchTx(conn, sig))?.meta;
 
 // Polls instead of confirmTransaction: its websocket subscription keeps the Node process alive after the
 // run, and the free tier rations websockets anyway.

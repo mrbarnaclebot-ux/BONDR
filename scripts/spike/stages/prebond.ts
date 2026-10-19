@@ -11,11 +11,9 @@ import {
   getSellSolAmountFromTokenAmount,
   OnlinePumpSdk,
 } from "@bondr/core/pump";
-import { budget, fetchMeta, sendTx } from "@bondr/core/send";
 import { buyExactIn, sellExactIn } from "@bondr/core/trade";
 import { NATIVE_MINT, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
 import {
-  type ConfirmedTransactionMeta,
   type Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
@@ -24,6 +22,7 @@ import {
 } from "@solana/web3.js";
 import { fundSol } from "../fund.ts";
 import type { Ctx, Rule, Stage } from "../results.ts";
+import { land, sigOk, wFloat } from "./bond.ts";
 import { tokenAmount } from "./launch.ts";
 import { tokenDelta } from "./multihop.ts";
 
@@ -31,7 +30,6 @@ const CU = 300_000;
 const TRADER_SOL = 20 * LAMPORTS_PER_SOL;
 const BUYQ_SOL = new BN(2 * LAMPORTS_PER_SOL);
 type Online = InstanceType<typeof OnlinePumpSdk>;
-type Facts = Record<string, string | number>;
 type Run = {
   ctx: Ctx;
   online: Online;
@@ -41,24 +39,10 @@ type Run = {
   trader: Keypair;
   volumeQ: bigint;
 };
-type Tx = { id: string; step: string; payer: Keypair; ixs: TransactionInstruction[]; signers?: Keypair[] };
 
 const abs = (x: bigint): bigint => (x < 0n ? -x : x);
 const bal = async (run: Run, mint: PublicKey, owner: PublicKey) =>
   BigInt(await tokenAmount(run.ctx, mint, owner));
-
-// One landed tx per row; the facts come from the landed meta, so the row proves what moved.
-async function land(
-  run: Run,
-  tx: Tx,
-  facts: (m: ConfirmedTransactionMeta) => Facts | Promise<Facts>,
-): Promise<void> {
-  const ixs = [...budget(CU), ...tx.ixs];
-  const r = await sendTx({ conn: run.ctx.conn, payer: tx.payer, signers: tx.signers, ixs });
-  const meta = r.ok && r.sig ? await fetchMeta(run.ctx.conn, r.sig) : undefined;
-  run.ctx.record({ id: tx.id, step: tx.step, ...r, cuLimit: CU, facts: meta ? await facts(meta) : {} });
-  if (!r.ok || !meta) throw new Error(`${tx.id} failed: ${r.err ?? "no meta"}`);
-}
 
 // Pitfall 1: Q must stay below half of its completion raise; plan 01-07's whale needs the rest.
 async function guardQ(run: Run, spend: BN): Promise<void> {
@@ -108,8 +92,9 @@ async function buyQ(run: Run): Promise<void> {
     step: "Trader buy_exact_quote_in_v3 on Q with 2 SOL",
     payer: run.trader,
     ixs,
+    cu: CU,
   };
-  await land(run, tx, (m) => ({
+  await land(run, tx, ({ meta: m }) => ({
     spend: BUYQ_SOL.toString(),
     minOut: minOut.toString(),
     qOut: tokenDelta(m, run.Q, user).toString(),
@@ -150,7 +135,7 @@ async function trade(run: Run, n: number): Promise<void> {
   const { ixs, amountIn, min } = await tradeIxs(run, buy);
   const user = run.trader.publicKey;
   const step = buy ? `Trader buy_exact_quote_in_v3 C0 with Q (${n})` : `Trader sell_v3 all C0 to Q (${n})`;
-  await land(run, { id: `prebond.trade.${n}`, step, payer: run.trader, ixs }, (m) => {
+  await land(run, { id: `prebond.trade.${n}`, step, payer: run.trader, ixs, cu: CU }, ({ meta: m }) => {
     const qDelta = tokenDelta(m, run.Q, user);
     run.volumeQ += abs(qDelta);
     const side = buy ? "buy" : "sell";
@@ -178,7 +163,7 @@ async function collect(run: Run, W: PublicKey): Promise<{ collected: bigint; wBe
   });
   const step = "Sweep + collect_creator_fee_v2 of W0's C0 fees (ops pays, W0 not a signer)";
   let collected = 0n;
-  await land(run, { id: "prebond.collect", step, payer: ops, ixs }, (m) => {
+  await land(run, { id: "prebond.collect", step, payer: ops, ixs, cu: CU }, ({ meta: m }) => {
     collected = tokenDelta(m, run.Q, W);
     // Two decimals of bps; gross Q deltas, so buys read a little under 150 and sells a little over.
     const effectiveCreatorBps = Number((collected * 1_000_000n) / run.volumeQ) / 100;
@@ -194,20 +179,6 @@ async function collect(run: Run, W: PublicKey): Promise<{ collected: bigint; wBe
   return { collected, wBefore: before };
 }
 
-// Pitfall 3: W0 gets a rent-exempt floor from ops in the same tx when it holds less.
-async function wFloat(
-  run: Run,
-  ops: Keypair,
-  W: PublicKey,
-): Promise<{ ixs: TransactionInstruction[]; lamports: number }> {
-  const need = (await run.ctx.conn.getMinimumBalanceForRentExemption(0)) - (await run.ctx.conn.getBalance(W));
-  if (need <= 0) return { ixs: [], lamports: 0 };
-  return {
-    ixs: [SystemProgram.transfer({ fromPubkey: ops.publicKey, toPubkey: W, lamports: need })],
-    lamports: need,
-  };
-}
-
 async function split(run: Run, Wk: Keypair, c: { collected: bigint; wBefore: bigint }): Promise<void> {
   const { collected } = c;
   const [ops, treasury, W] = [
@@ -218,13 +189,15 @@ async function split(run: Run, Wk: Keypair, c: { collected: bigint; wBefore: big
   const { treasury: treasuryAmount, burn } = split90_10(collected);
   const decimals = (await run.ctx.conn.getTokenSupply(run.Q)).value.decimals;
   const treasuryBefore = await bal(run, run.Q, treasury);
-  const float = await wFloat(run, ops, W);
+  // Pitfall 3: W0 gets a rent-exempt floor from ops in the same tx when it holds less.
+  const lamports = await wFloat(run, W, [0]);
   const ixs = [
-    ...float.ixs,
+    ...(lamports > 0 ? [SystemProgram.transfer({ fromPubkey: ops.publicKey, toPubkey: W, lamports })] : []),
     ...splitIxs({ payer: ops.publicKey, creator: W, treasury, quoteMint: run.Q, treasuryAmount, decimals }),
   ];
   const step = "90/10 split: W0 sends 10% of the collect to the treasury Q ATA (ops pays)";
-  await land(run, { id: "prebond.split", step, payer: ops, signers: [Wk], ixs }, async (m) => ({
+  const tx = { id: "prebond.split", step, payer: ops, signers: [Wk], ixs, cu: CU };
+  await land(run, tx, async ({ meta: m }) => ({
     collected: collected.toString(),
     wBeforeCollect: c.wBefore.toString(),
     treasuryDelta: tokenDelta(m, run.Q, treasury).toString(),
@@ -234,11 +207,9 @@ async function split(run: Run, Wk: Keypair, c: { collected: bigint; wBefore: big
     treasuryBefore: treasuryBefore.toString(),
     treasuryAfter: (await bal(run, run.Q, treasury)).toString(),
     wAfter: (await bal(run, run.Q, W)).toString(),
-    wFloatLamports: float.lamports,
+    wFloatLamports: lamports,
   }));
 }
-
-const sigOk: Rule = (row) => (row.sig ? null : "no signature");
 
 const collectRule: Rule = (row) => {
   const f = row.facts ?? {};

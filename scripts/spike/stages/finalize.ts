@@ -65,8 +65,8 @@ async function poolTrades(k: K, from: number, to: number): Promise<void> {
     const buy = i % 2 === 1;
     const { base, ixs } = await tradeIxs(k, buy, spent);
     const step = `Sim trader PumpSwap ${buy ? "buy_v2" : "sell_v2"} on C2's pool (creator fees accrue)`;
-    await land(k, { id: `finalize.trade.${i}`, step, payer: k.trader, ixs }, async ({ tx }) => {
-      const qDelta = tx.meta ? tokenDelta(tx.meta, k.Q, k.trader.publicKey) : 0n;
+    await land(k, { id: `finalize.trade.${i}`, step, payer: k.trader, ixs }, async ({ meta }) => {
+      const qDelta = tokenDelta(meta, k.Q, k.trader.publicKey);
       if (buy) spent = -qDelta;
       return { side: buy ? "buy" : "sell", base: base.toString(), qDelta: qDelta.toString() };
     });

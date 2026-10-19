@@ -6,16 +6,19 @@ import { OnlinePumpSdk } from "@bondr/core/pump";
 import { loadEnv } from "./env.ts";
 import { startRefill } from "./grind.ts";
 import { start } from "./http.ts";
+import { type PrepareCtx, prepare } from "./prepare.ts";
 import { type Ctx, liveStatus, quote } from "./status.ts";
 
 async function main() {
   const env = loadEnv();
   const conn = await connect(env.net);
   const ctx: Ctx = { conn, online: new OnlinePumpSdk(conn), Q: env.quoteMint, priorityFee: env.priorityFee };
+  const pctx: PrepareCtx = { ...ctx, env };
   const server = start(
     {
       "GET /status": () => liveStatus(ctx),
       "POST /quote": (body) => quote(ctx, body),
+      "POST /prepare": (body) => prepare(pctx, body),
     },
     env.token,
   );

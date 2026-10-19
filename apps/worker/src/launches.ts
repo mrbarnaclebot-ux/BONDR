@@ -45,22 +45,25 @@ export async function getLaunch(exec: Exec, id: string): Promise<LaunchRow | nul
   return row ?? null;
 }
 
-// The table of the wallet's latest launch whose mint the wallet still holds, i.e. the mint reserve() will hand
-// back. Keyed by the live reservation, so it is known before reserving and an expired one never counts.
-export async function tableFor(exec: Exec, wallet: string): Promise<{ mint: string; table: string } | null> {
+// The table of the wallet's latest launch of `mint`. Without a mint: of the mint the wallet still holds, i.e.
+// the one reserve() will hand back, so the guard knows before reserving and an expired hold never counts.
+export async function tableFor(
+  exec: Exec,
+  wallet: string,
+  mint?: string,
+): Promise<{ mint: string; table: string } | null> {
+  const held = mint
+    ? eq(launches.mint, mint)
+    : and(
+        eq(vanityMints.reservedBy, wallet),
+        sql`${vanityMints.reservedUntil} > now()`,
+        isNull(vanityMints.usedAt),
+      );
   const [row] = await exec
     .select({ mint: launches.mint, table: launches.lookupTable })
     .from(launches)
     .innerJoin(vanityMints, eq(vanityMints.pubkey, launches.mint))
-    .where(
-      and(
-        eq(launches.wallet, wallet),
-        isNotNull(launches.lookupTable),
-        eq(vanityMints.reservedBy, wallet),
-        sql`${vanityMints.reservedUntil} > now()`,
-        isNull(vanityMints.usedAt),
-      ),
-    )
+    .where(and(eq(launches.wallet, wallet), isNotNull(launches.lookupTable), held))
     .orderBy(desc(launches.createdAt))
     .limit(1);
   return row?.table ? { mint: row.mint, table: row.table } : null;

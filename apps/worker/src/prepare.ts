@@ -122,11 +122,11 @@ export function sellFloor(solBack: bigint): bigint {
 }
 
 async function admit(ctx: PrepareCtx, body: unknown) {
-  const status = await liveStatus(ctx);
   const wallet = walletOf((body as { wallet?: unknown } | null)?.wallet);
-  const [ok, tablesLastHour, prior] = wallet
-    ? await Promise.all([consented(db(), wallet), newTablesLastHour(db()), tableFor(db(), wallet)])
-    : [false, 0, null];
+  const rows = wallet
+    ? Promise.all([consented(db(), wallet), newTablesLastHour(db()), tableFor(db(), wallet)])
+    : Promise.resolve([false, 0, null] as const);
+  const [status, [ok, tablesLastHour, prior]] = await Promise.all([liveStatus(ctx), rows]);
   const min = status.minLamports === null ? null : BigInt(status.minLamports);
   const refused = prepareGuard({
     paused: status.paused,
@@ -233,7 +233,9 @@ async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult
   const need = req.solIn + createCost + networkFee(ctx.priorityFee);
   if (BigInt(await ctx.conn.getBalance(o.dev)) < need) throw fail({ error: "insufficient_balance" });
   const union = await unionTableKeys(o);
-  const reuse = prior?.mint === mint.pubkey ? prior.table : null;
+  // Same mint after an expired hold: its table still fits this wallet, so look it up by mint.
+  const held = prior?.mint === mint.pubkey ? prior : await tableFor(db(), req.wallet, mint.pubkey);
+  const reuse = held?.table ?? null;
   const { table, created } = await ensureTable(ctx.conn, ops(ctx.env.seed, ctx.env.net), union.keys, reuse);
   // A new table took about 5 s; price again so the probes do not run on stale amounts.
   const builds = created ? (await unionTableKeys(o)).builds : union.builds;

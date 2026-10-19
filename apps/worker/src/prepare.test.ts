@@ -117,6 +117,8 @@ describe.skipIf(!process.env.DATABASE_URL)("launch rows", { timeout: 30_000 }, (
       const expired = { reservedUntil: sql`now() - interval '1 minute'` };
       await tx.update(vanityMints).set(expired).where(eq(vanityMints.pubkey, mint));
       expect(await tableFor(tx, wallet)).toBe(null);
+      expect(await tableFor(tx, wallet, mint)).toEqual({ mint, table: "TABLE1" });
+      expect(await tableFor(tx, "test-other-wallet", mint)).toBe(null);
     });
   });
 });

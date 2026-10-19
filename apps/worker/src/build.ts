@@ -44,7 +44,9 @@ function build(o: LaunchOpts): Promise<Built> {
 // Both exits go into one table, so a retry with the other exit never needs a new one (Pattern 4). Keys depend
 // on the mint, W, the dev and BONDR's venue, never on amounts or text.
 export async function unionTableKeys(o: LaunchOpts): Promise<{ keys: PublicKey[]; builds: Builds }> {
-  const builds = { burn: await build({ ...o, exit: "burn" }), sell: await build({ ...o, exit: "sell" }) };
+  // Two builds of five RPC reads each in parallel: well under Helius free's 10 RPS, and about 1 s faster.
+  const [burn, sell] = await Promise.all([build({ ...o, exit: "burn" }), build({ ...o, exit: "sell" })]);
+  const builds = { burn, sell };
   const all = [...tableKeys(builds.burn.ixs), ...tableKeys(builds.sell.ixs)];
   const keys = [...new Map(all.map((k) => [k.toBase58(), k])).values()];
   return { keys, builds };

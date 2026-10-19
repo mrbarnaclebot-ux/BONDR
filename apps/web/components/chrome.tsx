@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { WalletButton } from "./wallet-button";
 
 // Server component only: no chain id ships in a client bundle (D-15), so the pump id lives here.
 const PUMP_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
@@ -34,8 +34,7 @@ function DevnetBadge() {
   );
 }
 
-/** Site header. `children` is the right-side slot (the wallet control from 02-05). */
-export function Header({ children }: { children?: ReactNode }) {
+export function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-background/82 backdrop-blur-[14px] backdrop-saturate-120">
       <a
@@ -58,7 +57,9 @@ export function Header({ children }: { children?: ReactNode }) {
           </Link>
           {isDevnet() && <DevnetBadge />}
         </div>
-        <div className="ml-auto flex items-center gap-3">{children}</div>
+        <div className="ml-auto flex items-center gap-3">
+          <WalletButton />
+        </div>
       </div>
     </header>
   );

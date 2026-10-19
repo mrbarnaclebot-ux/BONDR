@@ -10,14 +10,20 @@
   },
   "dependencies": {
     "@bondr/core": "workspace:*",
+    "@wallet-standard/app": "1.1.1",
+    "drizzle-orm": "0.45.3",
+    "lucide-react": "1.52.0",
     "next": "16.3.8",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "bs58": "6.0.0",
+    "postgres": "3.4.9",
     "tailwindcss": "4.3.3"
   }
 }

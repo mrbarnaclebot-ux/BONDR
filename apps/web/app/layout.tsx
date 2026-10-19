@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Big_Shoulders, Martian_Mono, Schibsted_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 import { Footer, Header } from "@/components/chrome";
+import { WalletProvider } from "@/components/wallet";
 import "./globals.css";
 
 // D-21: Google merged Big Shoulders Display into Big Shoulders with an opsz axis; weight 800 is set in CSS.
@@ -30,11 +31,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${ui.variable} ${mono.variable}`}>
       <body>
-        <Header />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <Footer />
+        <WalletProvider net={process.env.SOLANA_NET}>
+          <Header />
+          <main id="main" className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </WalletProvider>
       </body>
     </html>
   );

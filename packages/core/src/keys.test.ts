@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { derive } from "./keys.ts";
+import { derive, type Net } from "./keys.ts";
 
 const master = Buffer.from(Array.from({ length: 32 }, (_, i) => i));
-const pk = (m: Buffer, role: Parameters<typeof derive>[1], net: string, id: string) =>
+const pk = (m: Buffer, role: Parameters<typeof derive>[1], net: Net, id: string) =>
   derive(m, role, net, id).publicKey.toBase58();
 
 describe("derive", () => {

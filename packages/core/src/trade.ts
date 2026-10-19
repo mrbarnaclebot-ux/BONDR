@@ -10,6 +10,7 @@ import {
 import type { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import {
   type BN,
+  buyQuoteInput,
   canonicalPumpPoolPdaWithQuote,
   type Global,
   type OnlinePumpAmmSdk,
@@ -90,9 +91,34 @@ export async function poolState(o: Pool) {
   return { state: { ...s, globalConfig: { ...s.globalConfig, buybackFeeRecipients: [buyback] } }, buyback };
 }
 
-// PumpSwap buy_v2 of exactly baseOut; the SDK creates the user's base ATA when missing.
-export async function poolBuy(o: Pool & { baseOut: BN; maxQuoteIn: BN }): Promise<TransactionInstruction[]> {
-  const { state, buyback } = await poolState(o);
+export type PoolState = Awaited<ReturnType<typeof poolState>>;
+
+// The base a quote buys on the pool, after fees (pump-swap-sdk's own calculator, no slippage applied).
+export function poolBaseFor(s: PoolState["state"], quote: BN): BN {
+  return buyQuoteInput({
+    quote,
+    slippage: 0,
+    baseReserve: s.poolBaseAmount,
+    quoteReserve: s.poolQuoteAmount,
+    virtualQuoteReserves: s.pool.virtualQuoteReserves,
+    globalConfig: s.globalConfig,
+    baseMintAccount: s.baseMintAccount,
+    baseMint: s.pool.baseMint,
+    coinCreator: s.pool.coinCreator,
+    creator: s.pool.creator,
+    feeConfig: s.feeConfig,
+    quoteMint: s.pool.quoteMint,
+    isMayhemMode: s.pool.isMayhemMode,
+    creatorFeeBps: s.pool.creatorFeeBps,
+  }).base;
+}
+
+// PumpSwap buy_v2 of exactly baseOut; the SDK creates the user's base ATA when missing. `fetched` reuses a
+// state the caller already priced from, so the buy and its quote see the same pool.
+export async function poolBuy(
+  o: Pool & { baseOut: BN; maxQuoteIn: BN; fetched?: PoolState },
+): Promise<TransactionInstruction[]> {
+  const { state, buyback } = o.fetched ?? (await poolState(o));
   const buy = await PUMP_AMM_SDK.buyV2Instructions(state, o.baseOut, o.maxQuoteIn);
   return [buybackAtaIx(o.user, o.quoteMint, buyback), ...buy];
 }

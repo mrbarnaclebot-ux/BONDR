@@ -19,8 +19,8 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { COIN_DECIMALS } from "./launch.ts";
-import { BN, buyQuoteInput, type Global, type OnlinePumpAmmSdk, PUMP_AMM_SDK, PUMP_SDK } from "./pump.ts";
-import { buybackAtaIx, buyExactIn, buyExactOut, poolState } from "./trade.ts";
+import { BN, type Global, type OnlinePumpAmmSdk, PUMP_AMM_SDK, PUMP_SDK } from "./pump.ts";
+import { buybackAtaIx, buyExactIn, buyExactOut, poolBaseFor, poolState } from "./trade.ts";
 
 type Amm = InstanceType<typeof OnlinePumpAmmSdk>;
 type W = { ops: PublicKey; w: PublicKey; wFloatLamports: number };
@@ -117,23 +117,8 @@ export async function poolBaseOut(o: {
   quoteMint: PublicKey;
   quote: BN;
 }) {
-  const { state: s } = await poolState({ amm: o.amm, mint: o.mint, quoteMint: o.quoteMint, user: o.w });
-  return buyQuoteInput({
-    quote: o.quote,
-    slippage: 0,
-    baseReserve: s.poolBaseAmount,
-    quoteReserve: s.poolQuoteAmount,
-    virtualQuoteReserves: s.pool.virtualQuoteReserves,
-    globalConfig: s.globalConfig,
-    baseMintAccount: s.baseMintAccount,
-    baseMint: s.pool.baseMint,
-    coinCreator: s.pool.coinCreator,
-    creator: s.pool.creator,
-    feeConfig: s.feeConfig,
-    quoteMint: s.pool.quoteMint,
-    isMayhemMode: s.pool.isMayhemMode,
-    creatorFeeBps: s.pool.creatorFeeBps,
-  }).base;
+  const { state } = await poolState({ amm: o.amm, mint: o.mint, quoteMint: o.quoteMint, user: o.w });
+  return poolBaseFor(state, o.quote);
 }
 
 // PumpSwap buy_v2 of exactly baseOut, then BurnChecked(baseOut): the fallback after migration.

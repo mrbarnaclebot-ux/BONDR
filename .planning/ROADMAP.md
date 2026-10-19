@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Owner sees a forced-bond buy_exact_quote_in_v3 + burn complete a curve in one transaction, and a post-migration PumpSwap buy + burn, each with a signature
   4. Owner sees create_fee_sharing_config + one update_fee_shares_v2 set deployer 8000 / treasury 2000, a second update rejected, and distribution paying both
   5. Owner opens a bare page that lists every spike step with its signature, including a multi_hop_swap buy and sell SOL to stand-in to coin; any failed step forces a PROJECT.md change before Phase 2
-**Plans:** 6/10 plans executed
+**Plans:** 7/10 plans executed
 
 Plans:
 - [x] 01-01-PLAN.md - Walking skeleton part 1: phase branch, workspace, packages/core pump loader, network guard, key derivation, idempotent key generation
@@ -42,7 +42,7 @@ Plans:
 - [x] 01-04-PLAN.md - Surfpool fork up/down, fork config, 150 bps child create, fork launches
 - [x] 01-05-PLAN.md - Devnet multi_hop_swap, fee sharing on an unbonded coin with rejected second update, 6107
 - [x] 01-06-PLAN.md - Fork sim trades, creator fee collect, 90/10 split
-- [ ] 01-07-PLAN.md - Fork forced bond + burn, buy_v3 exact variant, migrate_v2, PumpSwap buy + burn
+- [x] 01-07-PLAN.md - Fork forced bond + burn, buy_v3 exact variant, migrate_v2, PumpSwap buy + burn
 - [ ] 01-08-PLAN.md - Fork finalize: sharing config, single 8000/2000 update, rejected update, distribution 80:20
 - [ ] 01-09-PLAN.md - Fork 6107 on a complete stand-in, stand-in migration, multi_hop_swap through the pool
 - [ ] 01-10-PLAN.md - One-command full run that always writes the page, devnet refresh, committed evidence, PROJECT.md changes, owner sign-off
@@ -135,7 +135,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Chain Spike | 6/10 | In Progress|  |
+| 1. Chain Spike | 7/10 | In Progress|  |
 | 2. Launch Flow | 0/TBD | Not started | - |
 | 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
 | 4. Trading | 0/TBD | Not started | - |

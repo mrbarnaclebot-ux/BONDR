@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-10-19T06:27:57.128Z"
+last_updated: "2026-10-19T06:44:59.001Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 1 (Chain Spike) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [██████░░░░] 60%
 | Phase 01 P04 | 6 min | 2 tasks | 8 files |
 | Phase 01 P05 | 15 min | 3 tasks | 13 files |
 | Phase 01 P06 | 20 min | 2 tasks | 13 files |
+| Phase 01 P07 | 10 min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-05: run.ts skips a devnet stage only when its rows are ok and pass their rules
 - [Phase 01]: 01-06: effective creator fee measured at 150.00 bps of gross Q volume on the fork (PROJECT.md 1.5% holds)
 - [Phase 01]: 01-06: the 90/10 split is sized from the collect tx's own meta delta, never W's balance
+- [Phase 01]: 01-07: the forced-bond burn is in the same tx as the completing buy, so pump's keeper cannot migrate between completion and burn
+- [Phase 01]: 01-07: simulateTransaction with the accounts option works on Surfpool 1.6.1 (A7 holds); forced bond 926 B / 110k CU, exact variant 926 B / 108k CU
+- [Phase 01]: 01-07: a buy_exact_quote_in_v3 budget above cost also buys from the pool-to-be, so the forced bond burns more than the curve's remaining supply
 
 ### Pending Todos
 
@@ -109,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T06:27:57.122Z
+Last session: 2026-10-19T06:44:43.501Z
 Stopped at: Completed 01-06-PLAN.md
 Resume file: None

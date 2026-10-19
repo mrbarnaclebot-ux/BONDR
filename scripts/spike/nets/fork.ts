@@ -4,7 +4,8 @@ import { bondStage } from "../stages/bond.ts";
 import { configStage } from "../stages/config.ts";
 import { createStage } from "../stages/create.ts";
 import { launchStage } from "../stages/launch.ts";
+import { poolStage } from "../stages/pool.ts";
 import { prebondStage } from "../stages/prebond.ts";
 
-const stages: Stage[] = [configStage, createStage, launchStage, prebondStage, bondStage];
+const stages: Stage[] = [configStage, createStage, launchStage, prebondStage, bondStage, poolStage];
 export default stages;

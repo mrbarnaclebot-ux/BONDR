@@ -19,8 +19,18 @@ function rpcUrl(net: Net): string {
   return `https://devnet.helius-rpc.com/?api-key=${process.env.helius_api_key}`;
 }
 
+// A local tunnel to a real mainnet RPC passes the host and genesis checks; only Surfpool answers its own
+// cheatcode namespace. surfnet_getLocalSignatures is read-only (surfpool v1.6.1, surfnet_cheatcodes.rs).
+async function isSurfpool(url: string): Promise<boolean> {
+  const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "surfnet_getLocalSignatures", params: [1] });
+  const headers = { "content-type": "application/json" };
+  const res = await fetch(url, { method: "POST", headers, body }).catch(() => undefined);
+  const json = (await res?.json().catch(() => undefined)) as { result?: unknown } | undefined;
+  return json?.result !== undefined;
+}
+
 // Devnet must report the devnet genesis. A fork may report mainnet genesis only because its host is local;
-// anything else could be a real mainnet endpoint, so it throws before any send.
+// anything else could be a real mainnet endpoint, so it throws before any send. The fork must also be Surfpool.
 export async function connect(net: Net): Promise<Connection> {
   const url = rpcUrl(net);
   const local = LOCAL_HOSTS.has(new URL(url).hostname);
@@ -31,5 +41,6 @@ export async function connect(net: Net): Promise<Connection> {
   });
   const ok = net === "devnet" ? genesis === DEVNET_GENESIS : local && genesis === MAINNET_GENESIS;
   if (!ok) throw new Error(`${net} RPC reported unexpected genesis ${genesis}`);
+  if (net === "fork" && !(await isSurfpool(url))) throw new Error("fork RPC does not answer as Surfpool");
   return conn;
 }

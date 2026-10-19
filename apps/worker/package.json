@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/main.ts",
-    "dev": "node --env-file=../../.env src/main.ts"
+    "dev": "node --env-file=../../.env src/main.ts",
+    "grind": "node --env-file=../../.env src/grind.ts"
   },
   "dependencies": {
     "@bondr/core": "workspace:*",

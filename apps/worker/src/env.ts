@@ -28,11 +28,10 @@ function seedFrom(env: Env): Buffer {
   throw new Error("MASTER_SEED or MASTER_SEED_FILE is required");
 }
 
-function priorityFee(raw: string | undefined): number {
-  const fee = raw?.trim() ? Number(raw) : 1000;
-  if (!Number.isSafeInteger(fee) || fee < 0)
-    throw new Error("PRIORITY_FEE_MICROLAMPORTS must be an integer >= 0");
-  return fee;
+function count(name: string, raw: string | undefined, fallback: number): number {
+  const n = raw?.trim() ? Number(raw) : fallback;
+  if (!Number.isSafeInteger(n) || n < 0) throw new Error(`${name} must be an integer >= 0`);
+  return n;
 }
 
 export function loadEnv(env: Env = process.env) {
@@ -52,8 +51,9 @@ export function loadEnv(env: Env = process.env) {
     seed: seedFrom(env),
     quoteMint,
     token,
-    priorityFee: priorityFee(env.PRIORITY_FEE_MICROLAMPORTS),
-    lane,
+    priorityFee: count("PRIORITY_FEE_MICROLAMPORTS", env.PRIORITY_FEE_MICROLAMPORTS, 1000),
+    vanityThreads: count("VANITY_THREADS", env.VANITY_THREADS, 1),
+    lane: lane as "local" | "staging",
   };
 }
 

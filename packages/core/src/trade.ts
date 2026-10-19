@@ -21,16 +21,24 @@ type Side = { global: Global; mint: PublicKey; user: PublicKey; quoteMint: Publi
 type Amm = InstanceType<typeof OnlinePumpAmmSdk>;
 type Pool = { amm: Amm; mint: PublicKey; quoteMint: PublicKey; user: PublicKey };
 
-export const ataIx = (payer: PublicKey, mint: PublicKey, owner: PublicKey) =>
+export const ataIx = (payer: PublicKey, mint: PublicKey, owner: PublicKey, program = T22) =>
   createAssociatedTokenAccountIdempotentInstruction(
     payer,
-    getAssociatedTokenAddressSync(mint, owner, true, T22),
+    getAssociatedTokenAddressSync(mint, owner, true, program),
     owner,
     mint,
-    T22,
+    program,
   );
 
 const isSol = (q: PublicKey): boolean => q.equals(NATIVE_MINT);
+const quoteProgram = (q: PublicKey): PublicKey => (isSol(q) ? TOKEN_PROGRAM_ID : T22);
+
+// PumpSwap v2 needs the buyback wallet's quote ATA on SOL pools too, unlike the v3 curve, which pays a SOL
+// buyback in lamports. Fork check on migrated Q's SOL pool (2026-10-19): with that WSOL ATA emptied, buy_v2
+// fails 6027 AccountTypeNotSupported, a Token-2022 create fails IncorrectProgramId, and a classic create
+// lands. On mainnet all 8 listed buyback wallets already hold one, so the create is a no-op there.
+export const buybackAtaIx = (payer: PublicKey, quoteMint: PublicKey, buyback: PublicKey) =>
+  ataIx(payer, quoteMint, buyback, quoteProgram(quoteMint));
 
 // Pitfall 5: the program never creates the buyback wallet's quote ATA, and the SDK default picks a random
 // listed wallet on SOL curves, so the first listed one is passed everywhere.
@@ -42,7 +50,7 @@ export function buybackRecipient(g: Global): PublicKey {
 
 function accounts(o: Side) {
   const buyback = buybackRecipient(o.global);
-  const quoteTokenProgram = isSol(o.quoteMint) ? TOKEN_PROGRAM_ID : T22;
+  const quoteTokenProgram = quoteProgram(o.quoteMint);
   const base = { user: o.user, mint: o.mint, quoteMint: o.quoteMint, tokenProgram: T22, quoteTokenProgram };
   const buybackAta = isSol(o.quoteMint) ? [] : [ataIx(o.user, o.quoteMint, buyback)];
   return { base: { ...base, buybackFeeRecipient: buyback }, buybackAta };
@@ -86,12 +94,12 @@ export async function poolState(o: Pool) {
 export async function poolBuy(o: Pool & { baseOut: BN; maxQuoteIn: BN }): Promise<TransactionInstruction[]> {
   const { state, buyback } = await poolState(o);
   const buy = await PUMP_AMM_SDK.buyV2Instructions(state, o.baseOut, o.maxQuoteIn);
-  return [ataIx(o.user, o.quoteMint, buyback), ...buy];
+  return [buybackAtaIx(o.user, o.quoteMint, buyback), ...buy];
 }
 
 // PumpSwap sell_v2 of exactly baseIn; the SDK creates the user's quote ATA when missing.
 export async function poolSell(o: Pool & { baseIn: BN; minQuoteOut: BN }): Promise<TransactionInstruction[]> {
   const { state, buyback } = await poolState(o);
   const sell = await PUMP_AMM_SDK.sellV2Instructions(state, o.baseIn, o.minQuoteOut);
-  return [ataIx(o.user, o.quoteMint, buyback), ...sell];
+  return [buybackAtaIx(o.user, o.quoteMint, buyback), ...sell];
 }

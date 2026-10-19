@@ -20,7 +20,7 @@ import {
 } from "@solana/web3.js";
 import { COIN_DECIMALS } from "./launch.ts";
 import { BN, buyQuoteInput, type Global, type OnlinePumpAmmSdk, PUMP_AMM_SDK, PUMP_SDK } from "./pump.ts";
-import { ataIx, buyExactIn, buyExactOut, poolState } from "./trade.ts";
+import { buybackAtaIx, buyExactIn, buyExactOut, poolState } from "./trade.ts";
 
 type Amm = InstanceType<typeof OnlinePumpAmmSdk>;
 type W = { ops: PublicKey; w: PublicKey; wFloatLamports: number };
@@ -147,5 +147,10 @@ export async function poolBuyBurnIxs(
     user: o.w,
   });
   const buy = await PUMP_AMM_SDK.buyV2Instructions(state, o.baseOut, o.maxQuoteIn);
-  return [...float(o), ataIx(o.ops, o.quoteMint, buyback), ...buy, burnIx(o.w, o.mint, big(o.baseOut))];
+  return [
+    ...float(o),
+    buybackAtaIx(o.ops, o.quoteMint, buyback),
+    ...buy,
+    burnIx(o.w, o.mint, big(o.baseOut)),
+  ];
 }

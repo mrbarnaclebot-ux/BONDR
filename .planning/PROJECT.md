@@ -2,7 +2,7 @@
 
 ## What This Is
 
-BONDR is a Solana memecoin launchpad built on pump.fun through the official pump SDK. Until a coin bonds, its creator fees are locked away from the dev. They force the coin to bond and burn supply. After bonding, the dev earns a permanent share of trading fees. BONDR also lists, charts and trades every coin launched on it.
+BONDR is a Solana memecoin launchpad built on pump.fun through the official pump SDK. Positioning: every token is meant to bond. Until a coin bonds, its creator fees are locked away from the dev. They force the coin to bond and burn supply. After bonding, the dev earns a permanent share of trading fees. BONDR also lists, charts and trades every coin launched on it.
 
 ## Core Value
 

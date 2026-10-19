@@ -26,16 +26,16 @@
 - [ ] **LAUNCH-02**: Dev must enter a dev buy of at least 0.25 SOL and choose insta sell or insta burn before the launch button enables
 - [ ] **LAUNCH-03**: Dev signs one transaction in Phantom that creates the coin (mint ending in `bndr`), buys, and sells or burns the dev buy
 - [ ] **LAUNCH-04**: Server co-signs with the mint key only when the signed message matches the one it built and contains the chosen exit
-- [ ] **LAUNCH-05**: Dev lands on the new coin's page within 5 seconds of confirmation, showing "Dev holds 0 launch supply" with the exit transaction link
+- [ ] **LAUNCH-05**: Dev sees a success screen within 5 seconds of confirmation with "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy-to-clipboard button, and a button to open the coin page
 - [ ] **LAUNCH-06**: Dev sees a clear paused state when launches are paused (kill switch, or BONDR awaiting migration)
 - [ ] **LAUNCH-07**: Coin metadata and image are pinned to IPFS (Pinata) before signing
 
 ### Discovery
 
-- [ ] **LIST-01**: User sees a Trending list on the home page, ranked by quote volume in the last hour
+- [ ] **LIST-01**: User sees a separate Trending section on the home page: a horizontal side-scroller of coin cards ranked by quote volume in the last hour
 - [ ] **LIST-02**: User sees a Top list ranked by market cap
-- [ ] **LIST-03**: User sees a Latest list (newest launches first) and an Oldest list
-- [ ] **LIST-04**: Each list row shows image, name, symbol, market cap, 1h change, bond progress and age, and updates live without a reload
+- [ ] **LIST-03**: User sees Latest (newest launches first) and Oldest, in tabs alongside Top, each shown as a card grid of at most 5 cards per row
+- [ ] **LIST-04**: Each coin card shows image, name, symbol, market cap, 1h change, bond progress and age, and updates live without a reload
 - [ ] **LIST-05**: User can search BONDR coins by name, symbol or mint
 
 ### Token page
@@ -112,8 +112,66 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| SPIKE-01 | Phase 1 | Pending |
+| SPIKE-02 | Phase 1 | Pending |
+| SPIKE-03 | Phase 1 | Pending |
+| SPIKE-04 | Phase 1 | Pending |
+| SPIKE-05 | Phase 1 | Pending |
+| PLAT-01 | Phase 2 | Pending |
+| PLAT-02 | Phase 2 | Pending |
+| PLAT-03 | Phase 2 | Pending |
+| PLAT-04 | Phase 2 | Pending |
+| LAUNCH-01 | Phase 2 | Pending |
+| LAUNCH-02 | Phase 2 | Pending |
+| LAUNCH-03 | Phase 2 | Pending |
+| LAUNCH-04 | Phase 2 | Pending |
+| LAUNCH-05 | Phase 2 | Pending |
+| LAUNCH-06 | Phase 2 | Pending |
+| LAUNCH-07 | Phase 2 | Pending |
+| LIST-01 | Phase 3 | Pending |
+| LIST-02 | Phase 3 | Pending |
+| LIST-03 | Phase 3 | Pending |
+| LIST-04 | Phase 3 | Pending |
+| LIST-05 | Phase 3 | Pending |
+| TOKEN-01 | Phase 3 | Pending |
+| TOKEN-02 | Phase 3 | Pending |
+| TOKEN-03 | Phase 5 | Pending |
+| TOKEN-04 | Phase 5 | Pending |
+| TOKEN-05 | Phase 5 | Pending |
+| TOKEN-06 | Phase 3 | Pending |
+| TRADE-01 | Phase 4 | Pending |
+| TRADE-02 | Phase 4 | Pending |
+| TRADE-03 | Phase 4 | Pending |
+| TRADE-04 | Phase 4 | Pending |
+| FEE-01 | Phase 5 | Pending |
+| FEE-02 | Phase 5 | Pending |
+| FEE-03 | Phase 5 | Pending |
+| FEE-04 | Phase 5 | Pending |
+| FEE-05 | Phase 5 | Pending |
+| FEE-06 | Phase 5 | Pending |
+| FEE-07 | Phase 5 | Pending |
+| FEE-08 | Phase 5 | Pending |
+| FEE-09 | Phase 5 | Pending |
+| FEE-10 | Phase 2 | Pending |
+| ADMIN-01 | Phase 6 | Pending |
+| ADMIN-02 | Phase 6 | Pending |
+| ADMIN-03 | Phase 6 | Pending |
+| ADMIN-04 | Phase 6 | Pending |
+| ADMIN-05 | Phase 6 | Pending |
+| ADMIN-06 | Phase 6 | Pending |
+| ADMIN-07 | Phase 6 | Pending |
+| ADMIN-08 | Phase 6 | Pending |
+| ADMIN-09 | Phase 6 | Pending |
+| ADMIN-10 | Phase 6 | Pending |
+| ADMIN-11 | Phase 6 | Pending |
+| OPS-01 | Phase 7 | Pending |
+| OPS-02 | Phase 7 | Pending |
+| OPS-03 | Phase 7 | Pending |
+| OPS-04 | Phase 7 | Pending |
+| OPS-05 | Phase 7 | Pending |
 
-**Coverage:** 57 v1 requirements, to be mapped by the roadmap.
+**Coverage:** 57/57 v1 requirements mapped, no orphans, no duplicates.
 
 ---
 *Requirements defined: 2026-10-19*
+*Last updated: 2026-10-19 after roadmap creation*

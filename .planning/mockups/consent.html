@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BONDR Consent and Terms</title>
+<meta name="description" content="First-connect consent prompt over the home page, and the short terms page.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Martian+Mono:wdth,wght@75..112.5,400..600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .stage { position: relative; min-height: 860px; overflow: hidden; border-bottom: 1px solid var(--line-strong); }
+  .behind { padding-block: var(--space-3xl); opacity: 0.55; pointer-events: none; user-select: none; }
+  .behind-art { position: absolute; inset: 0 0 auto 25%; height: 560px; background: url(assets/hero-bond.jpg) 70% 50% / cover; -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%), linear-gradient(0deg, transparent, #000 40%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 45%), linear-gradient(0deg, transparent, #000 40%); mask-composite: intersect; }
+  .behind h1 { position: relative; font-size: clamp(4rem, 10vw, 9rem); line-height: 0.82; }
+  .behind h1 em { font-style: normal; color: var(--accent); }
+  .behind #ghost { position: relative; }
+  .behind .ghost-row { display: grid; grid-template-columns: 36px 1fr 120px 200px; gap: var(--space-md); align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .stage::after { content: ""; position: absolute; inset: 0; background: color-mix(in oklch, var(--ink) 55%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .consent { position: absolute; z-index: 2; top: 120px; left: 50%; translate: -50% 0; width: min(540px, calc(100% - 32px)); border-radius: var(--radius-lg); background: radial-gradient(90% 50% at 50% 0%, color-mix(in oklch, var(--accent) 12%, transparent), transparent 70%), linear-gradient(180deg, var(--surface-2), var(--surface)); border: 1px solid var(--line-strong); box-shadow: var(--elev-2), 0 0 0 1px color-mix(in oklch, var(--accent) 18%, transparent); padding: var(--space-xl); display: grid; gap: var(--space-md); animation: rise 620ms var(--ease-spring) both; }
+  .consent h2 { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: var(--fs-2xl); line-height: 0.95; }
+  .who { display: flex; gap: 8px; align-items: center; font-size: var(--fs-xs); color: var(--muted); }
+  .who .dot { color: var(--accent); }
+  .stores { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: var(--fs-sm); }
+  .stores li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; }
+  .stores svg { width: 16px; height: 16px; color: var(--primary); margin-top: 3px; }
+  .never { font-size: var(--fs-sm); padding: var(--space-sm) var(--space-md); border-radius: var(--radius); background: var(--accent-wash); border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent); color: var(--text); }
+  .check { display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: var(--fs-sm); cursor: pointer; align-items: start; }
+  .check input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
+  .consent .row { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+  .consent .row .btn { flex: 1; }
+
+  .terms { display: grid; grid-template-columns: 220px minmax(0, 68ch); gap: var(--space-2xl); padding-top: var(--space-3xl); }
+  .terms nav { position: sticky; top: 88px; align-self: start; display: grid; gap: 6px; font-size: var(--fs-sm); padding: var(--space-md); border-radius: var(--radius-lg); border: 1px solid var(--line); background: linear-gradient(180deg, var(--surface-2), var(--surface)); box-shadow: var(--elev-1); }
+  .terms nav a { color: var(--muted); text-decoration: none; padding-block: 3px; }
+  .terms nav a:hover { color: var(--text); }
+  .terms h1 { font-size: clamp(2.75rem, 6vw, 4.5rem); }
+  .terms article { display: grid; gap: var(--space-xl); line-height: 1.65; }
+  .terms h2 { font-size: var(--fs-lg); display: flex; gap: var(--space-sm); align-items: baseline; margin-bottom: var(--space-xs); }
+  .terms h2 span { font-family: var(--font-num); font-size: var(--fs-sm); color: var(--primary); font-weight: 400; }
+  .terms p + p { margin-top: var(--space-sm); }
+  .terms ul { margin: var(--space-xs) 0 0; padding-left: 1.2em; }
+  @media (max-width: 760px) {
+    .terms { grid-template-columns: 1fr; gap: var(--space-lg); padding-top: var(--space-2xl); }
+    .terms nav { display: none; }
+    .stage { min-height: 900px; }
+    .consent { top: auto; bottom: 0; left: 0; translate: none; width: 100%; padding: var(--space-lg) var(--space-md); border-width: 1px 0 0; border-radius: 24px 24px 0 0; }
+    .consent h2 { font-size: var(--fs-xl); }
+    .behind .ghost-row { grid-template-columns: 36px 1fr 90px; }
+    .behind .ghost-row > :last-child { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="mockbar"></div>
+<div id="header"></div>
+
+<div class="stage">
+  <div class="behind-art" aria-hidden="true"></div>
+  <div class="wrap behind" aria-hidden="true">
+    <h1 class="display">Built<br>to <em>bond.</em></h1>
+    <div id="ghost" style="margin-top:var(--space-2xl)"></div>
+  </div>
+  <section class="consent" role="dialog" aria-modal="true" aria-labelledby="c-h" aria-describedby="c-d">
+    <div class="who"><span class="dot"></span>Phantom connected, <span class="num">9wRt&hellip;e3Fk</span></div>
+    <h2 id="c-h">Before BONDR remembers this wallet</h2>
+    <p id="c-d" class="muted" style="font-size:var(--fs-sm)">Browsing needs nothing from you. If you accept, BONDR stores:</p>
+    <ul class="stores" id="stores">
+      <li>Your wallet address and the time you accepted these terms</li>
+      <li>Coins you launch and trades you make through BONDR, which are public on Solana anyway</li>
+      <li>Error reports when something breaks, without wallet data</li>
+    </ul>
+    <p class="never">BONDR never sees your private key or seed phrase and cannot move your funds. Every transaction is signed by you in Phantom.</p>
+    <label class="check"><input type="checkbox" id="agree"><span>I have read the <a href="#terms">terms</a> and I am 18 or older.</span></label>
+    <div class="row">
+      <button class="btn btn-quiet btn-lg" type="button" id="decline">Not now, disconnect</button>
+      <button class="btn btn-primary btn-lg" type="button" id="accept" disabled>Accept and continue</button>
+    </div>
+  </section>
+</div>
+
+<main class="wrap terms" id="terms">
+  <nav aria-label="Terms sections"><span class="label">On this page</span>
+    <a href="#t1">What BONDR is</a><a href="#t2">Your wallet</a><a href="#t3">Fees</a><a href="#t4">Launching</a><a href="#t5">Risk</a><a href="#t6">Your data</a><a href="#t7">No warranty</a><a href="#t8">Changes</a></nav>
+  <article>
+    <header><h1 class="display">Terms</h1><p class="muted" style="margin-top:var(--space-sm)">Short on purpose. Last updated <span class="num">19 Oct 2026</span>.</p></header>
+    <section id="t1"><h2><span>01</span>What BONDR is</h2><p>BONDR is a hobby project: a site that launches and trades Solana memecoins through pump.fun's public programs. It is software, not a broker, exchange or adviser. It is run by one person.</p></section>
+    <section id="t2"><h2><span>02</span>Your wallet, your responsibility</h2><p>You connect with Phantom and sign every transaction yourself. BONDR never holds your keys. Transactions on Solana are final; nobody, including BONDR, can reverse them.</p></section>
+    <section id="t3"><h2><span>03</span>Fees</h2><p>Trading fees are set by pump: 2.45% on the bonding curve (0.95% protocol, 1.5% creator) and 1.75% on PumpSwap after bond. BONDR adds no platform fee. Creator fees on BONDR coins follow the mechanic shown on each coin's public ledger: before bond they force the bond and burn supply, with 10% to the BONDR treasury; after bond the deployer gets 80% and the treasury 20%.</p></section>
+    <section id="t4"><h2><span>04</span>Launching</h2><p>When you launch, your dev buy is sold or burned in the same transaction, as you choose. This cannot be undone. Names, symbols and images must not be illegal or impersonate someone. BONDR may hide a coin from its lists or block a wallet from launching; it cannot remove a coin from Solana.</p></section>
+    <section id="t5"><h2><span>05</span>Risk</h2><p>Memecoins are speculative and can go to zero in minutes. Only use money you can lose. Nothing on BONDR is financial advice.</p></section>
+    <section id="t6"><h2><span>06</span>Your data</h2><p>With your consent BONDR stores your wallet address, your consent time, your launches and trades through BONDR, and error reports. Ask the owner to delete the off-chain records at any time; on-chain data is public and permanent.</p></section>
+    <section id="t7"><h2><span>07</span>No warranty</h2><p>BONDR is provided as is. Pump can change its programs without notice, so features may pause or break, and launches may stop while BONDR's own token migrates.</p></section>
+    <section id="t8"><h2><span>08</span>Changes and contact</h2><p>These terms may change; the date above shows when. Continuing to use BONDR after a change means you accept it. Questions go to the owner through the BONDR X account.</p></section>
+  </article>
+</main>
+<div id="footer"></div>
+
+<script src="mock.js"></script>
+<script>
+  renderHeader("home"); renderFooter();
+  const c = document.getElementById("connect"); c.className = "btn btn-solid"; c.querySelector("span").innerHTML = '<span class="num">9wRt…e3Fk</span>';
+  document.getElementById("ghost").innerHTML = COINS.slice(0, 8).map((x) => `<div class="ghost-row"><span class="ava">${avatar(x.sym)}</span><b>${x.name}</b><span class="num">${fmt.sol(x.mcap)} SOL</span><span class="bar" style="--v:${x.bond}%"><i></i></span></div>`).join("");
+  document.querySelectorAll("#stores li").forEach((li) => li.insertAdjacentHTML("afterbegin", ICON.check));
+  const agree = document.getElementById("agree"), accept = document.getElementById("accept");
+  agree.addEventListener("change", () => (accept.disabled = !agree.checked));
+  accept.addEventListener("click", () => { accept.textContent = "Saved"; setTimeout(() => (location.href = "home.html"), 600); });
+  document.getElementById("decline").addEventListener("click", () => (location.href = "home.html"));
+  mockbar("Consent and terms", []);
+</script>
+</body>
+</html>

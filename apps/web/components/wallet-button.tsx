@@ -1,7 +1,7 @@
 "use client";
 import { Wallet } from "lucide-react";
 import { useRef, useState } from "react";
-import { btn } from "./btn";
+import { buttonVariants } from "./ui-button";
 import { useWallet } from "./wallet";
 
 // The consent dialog returns focus here by id, whichever state the control is in.
@@ -27,7 +27,7 @@ export function WalletButton() {
     <button
       id={WALLET_BUTTON_ID}
       type="button"
-      className={btn("quiet")}
+      className={buttonVariants({ variant: "quiet" })}
       disabled={status === "connecting"}
       aria-disabled={loading || undefined}
       onClick={() => status === "idle" && connect()}
@@ -55,7 +55,7 @@ function ConnectedMenu({ address }: { address: string }) {
         id={WALLET_BUTTON_ID}
         type="button"
         popoverTarget="wallet-menu"
-        className={`${btn("solid")} ${ANCHOR}`}
+        className={`${buttonVariants({ variant: "solid" })} ${ANCHOR}`}
       >
         <span className="num">{short(address)}</span>
       </button>
@@ -90,7 +90,7 @@ function MissingPopover() {
         id={WALLET_BUTTON_ID}
         type="button"
         popoverTarget="wallet-missing"
-        className={`${btn("quiet")} ${ANCHOR}`}
+        className={`${buttonVariants({ variant: "quiet" })} ${ANCHOR}`}
       >
         {icon}
         <span>Connect Phantom</span>
@@ -102,11 +102,16 @@ function MissingPopover() {
       >
         <p className="text-sm">Phantom is not installed. BONDR works with the Phantom wallet only.</p>
         {mobile && (
-          <a href={browse} className={btn("primary")}>
+          <a href={browse} className={buttonVariants({ variant: "primary" })}>
             Open BONDR in Phantom
           </a>
         )}
-        <a href="https://phantom.com/download" target="_blank" rel="noopener" className={btn("quiet")}>
+        <a
+          href="https://phantom.com/download"
+          target="_blank"
+          rel="noopener"
+          className={buttonVariants({ variant: "quiet" })}
+        >
           Get Phantom<span className="sr-only"> (opens in a new tab)</span>
         </a>
       </div>

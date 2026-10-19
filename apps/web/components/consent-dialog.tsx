@@ -1,7 +1,7 @@
 "use client";
 import { Check, CircleAlert } from "lucide-react";
 import { type RefObject, useEffect, useRef, useState } from "react";
-import { btn } from "./btn";
+import { Button } from "./ui-button";
 import { useWallet } from "./wallet";
 import { focusButton, short } from "./wallet-button";
 
@@ -71,17 +71,12 @@ function ConsentPrompt({ address }: { address: string }) {
         <Agree box={box} agreed={agreed} onChange={setAgreed} />
         {state === "failed" && <SaveFailed />}
         <div className="flex flex-wrap gap-3 [&>*]:flex-1">
-          <button type="button" className={btn("quiet", "lg")} disabled={saving} onClick={decline}>
+          <Button type="button" size="lg" disabled={saving} onClick={decline}>
             Not now, disconnect
-          </button>
-          <button
-            type="button"
-            className={btn("primary", "lg")}
-            disabled={!agreed || saving}
-            onClick={accept}
-          >
+          </Button>
+          <Button type="button" variant="primary" size="lg" disabled={!agreed || saving} onClick={accept}>
             {saving ? "Saving…" : "Accept and continue"}
-          </button>
+          </Button>
         </div>
       </div>
     </dialog>

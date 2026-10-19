@@ -38,6 +38,10 @@ const config: NextConfig = {
   poweredByHeader: false,
   allowedDevOrigins: ["127.0.0.1"], // the e2e baseURL; next dev otherwise blocks its own scripts and HMR there
   agentRules: false, // next dev would otherwise write a second AGENTS.md here, shadowing the root one
+  async redirects() {
+    // ponytail: Phase 3 replaces / with the home lists
+    return [{ source: "/", destination: "/launch", permanent: false }];
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

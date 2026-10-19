@@ -20,6 +20,7 @@ export const {
   newBondingCurve,
   getBuyV3TokenAmountFromQuoteAmount,
   getBuyV3QuoteAmountFromTokenAmount,
+  getSellSolAmountFromTokenAmount,
   getPumpFeeProgram,
   PUMP_PROGRAM_ID,
   PUMP_AMM_PROGRAM_ID,

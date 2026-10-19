@@ -28,7 +28,7 @@ async function sizes(base: LaunchOpts, ixs: TransactionInstruction[]) {
   };
 }
 
-async function tokenAmount(ctx: Ctx, mint: PublicKey, owner: PublicKey): Promise<string> {
+export async function tokenAmount(ctx: Ctx, mint: PublicKey, owner: PublicKey): Promise<string> {
   const ata = getAssociatedTokenAddressSync(mint, owner, true, T22);
   if (!(await ctx.conn.getAccountInfo(ata))) return "0"; // a closed or never-created ATA holds nothing
   return (await ctx.conn.getTokenAccountBalance(ata)).value.amount;

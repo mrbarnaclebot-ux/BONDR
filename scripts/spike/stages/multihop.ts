@@ -16,7 +16,7 @@ const TRADER_FLOAT = 0.02 * LAMPORTS_PER_SOL;
 type Online = InstanceType<typeof OnlinePumpSdk>;
 type Leg = { id: string; step: string; route: Route; amountIn: BN };
 
-function tokenDelta(meta: ConfirmedTransactionMeta, mint: PublicKey, owner: PublicKey): bigint {
+export function tokenDelta(meta: ConfirmedTransactionMeta, mint: PublicKey, owner: PublicKey): bigint {
   const pick = (list: ConfirmedTransactionMeta["preTokenBalances"]) =>
     BigInt(
       list?.find((b) => b.mint === mint.toBase58() && b.owner === owner.toBase58())?.uiTokenAmount.amount ??

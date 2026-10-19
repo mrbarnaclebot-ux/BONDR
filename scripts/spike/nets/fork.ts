@@ -3,6 +3,7 @@ import type { Stage } from "../results.ts";
 import { configStage } from "../stages/config.ts";
 import { createStage } from "../stages/create.ts";
 import { launchStage } from "../stages/launch.ts";
+import { prebondStage } from "../stages/prebond.ts";
 
-const stages: Stage[] = [configStage, createStage, launchStage];
+const stages: Stage[] = [configStage, createStage, launchStage, prebondStage];
 export default stages;

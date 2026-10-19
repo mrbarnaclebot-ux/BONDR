@@ -1,6 +1,6 @@
 {
   "net": "devnet",
-  "updatedAt": "2026-10-19T06:09:47.028Z",
+  "updatedAt": "2026-10-19T06:13:01.019Z",
   "state": {
     "Q": "5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6",
     "C0": "HGC7QFRXC9V5ris4SXLFopCurvkM2w8G5irmRkgKKh9u",
@@ -223,6 +223,49 @@
         "minAmountOut": "1389854",
         "outAmount": "1463005"
       },
+      "env": "devnet"
+    },
+    {
+      "id": "sharing.config",
+      "step": "create_fee_sharing_config (unbonded C0)",
+      "ok": true,
+      "sig": "67XyaXMAK8xVqgb4mR6PqmxzcYBcXE3P4UVC9n5KgUWZeCTTMXmfXSbYbTcBFtPWbY63QGYeyWRwiboeC5SKmiKJ",
+      "bytes": 1167,
+      "cu": 266751,
+      "cuLimit": 400000,
+      "notes": "config and update in one tx",
+      "env": "devnet"
+    },
+    {
+      "id": "sharing.update",
+      "step": "update_fee_shares_v2 to 80/20",
+      "ok": true,
+      "sig": "67XyaXMAK8xVqgb4mR6PqmxzcYBcXE3P4UVC9n5KgUWZeCTTMXmfXSbYbTcBFtPWbY63QGYeyWRwiboeC5SKmiKJ",
+      "bytes": 1167,
+      "cu": 266751,
+      "cuLimit": 400000,
+      "notes": "config and update in one tx",
+      "facts": {
+        "deployer": "9Hm1YEfXqR2WD78rLHBM6nhnEB9tTURcwxtpU9TjwQM6",
+        "treasury": "4J9kCp2QvsGMid3YW2B11Ua6g58YHegt7TxAG4Yp6BDF",
+        "shares": "8000,2000",
+        "holders": "9Hm1YEfXqR2WD78rLHBM6nhnEB9tTURcwxtpU9TjwQM6,4J9kCp2QvsGMid3YW2B11Ua6g58YHegt7TxAG4Yp6BDF",
+        "adminRevoked": true
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "sharing.update2.rejected",
+      "step": "Second update_fee_shares_v2 (must be rejected)",
+      "ok": true,
+      "sig": "3yp5BinX23o4tXWABxLGgpggmt9jtaBFQ9bXGySBB3xTht5s629kwZ5BNR71URh3k4nGxk9PZcxBcqn6ibP2xdGh",
+      "bytes": 1150,
+      "cu": 73401,
+      "err": "SharingConfigAdminRevoked {\"InstructionError\":[3,{\"Custom\":6009}]}",
+      "code": 6009,
+      "expectFail": true,
+      "cuLimit": 400000,
+      "notes": "pump-fees 6009 sharingConfigAdminRevoked",
       "env": "devnet"
     }
   ]

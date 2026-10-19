@@ -15,7 +15,8 @@
     "spike:check": "node --env-file=.env scripts/spike/check.ts",
     "spike:page": "node scripts/spike/page.ts",
     "spike:fork-up": "sh scripts/spike/fork.sh up",
-    "spike:fork-down": "sh scripts/spike/fork.sh down"
+    "spike:fork-down": "sh scripts/spike/fork.sh down",
+    "spike:all": "sh scripts/spike/all.sh"
   },
   "dependencies": {
     "@bondr/core": "workspace:*",

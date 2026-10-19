@@ -12,12 +12,14 @@ The phase 1 chain spike: run pump steps on devnet and on a local Surfpool mainne
 - `fork.sh`: starts and stops the local Surfpool mainnet fork (see Fork below).
 - `check.ts`: the strict gate. It fails on a missing row, a row that is not ok, a rule failure, or a leaked RPC key.
 - `page.ts`: writes `results/index.html`.
+- `all.sh`: the one-command gate behind `pnpm spike:all` (see below).
 - `results/<net>.json`: committed evidence. It holds public chain data only.
 
 ## Commands
 
 | Command | Does |
 |---------|------|
+| `pnpm spike:all` | The phase gate in one command (`all.sh`): starts the fork if needed, runs devnet then the fork, writes the page, runs the check, then prints `spike:all run=<n> check=<n>` and exits 1 if either is non-zero |
 | `pnpm spike:keys` | Creates the seeds if missing (idempotent) and prints the public keys and the devnet payer to fund |
 | `pnpm spike` | Runs the stages and writes `results/<net>.json`. Exits 1 if any row failed, but only after saving |
 | `pnpm spike:check` | Checks every rule against the results. Prints one PASS or FAIL line per id and exits 1 on any failure |
@@ -26,6 +28,19 @@ The phase 1 chain spike: run pump steps on devnet and on a local Surfpool mainne
 | `pnpm spike:fork-down` | Stops the fork |
 
 The page is written whatever the check says. Failed rows show their error code and text. Steps that never ran show as NOT RUN, and expected failures show as EXPECTED FAIL.
+
+## spike:all
+
+- `all.sh` runs every step even when one fails (no `set -e`). If the fork does not start it prints "fork did not start" and carries on; the run records row `fork.error`, so the page shows it.
+- The page `results/index.html` is committed with both JSON files, including runs with failing rows: a failure is evidence too.
+- Expected runtime is about 45 s from a stopped fork: devnet stages whose rows already pass skip, and the fork rebuilds everything.
+- Fork signature links point the explorer at 127.0.0.1:18899, so they only open while the fork runs. Devnet links always open.
+- Reading the page:
+  - PASS: the row landed and its rule holds.
+  - FAIL: the row failed (error code and text shown), or it landed but its rule failed (reason shown).
+  - EXPECTED FAIL: the program refused as the spec predicts, with the code shown (150 bps on devnet, the second fee-share update, 6107).
+  - NOT RUN: a required step has no row, usually because an earlier stage crashed.
+  - TOP-UP: in Notes marks a balance top-up the spike made, not part of the mechanic.
 
 ## Environment
 

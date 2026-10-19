@@ -1,16 +1,16 @@
 {
   "net": "fork",
-  "updatedAt": "2026-10-19T07:03:06.611Z",
+  "updatedAt": "2026-10-19T07:08:05.800Z",
   "state": {
-    "Q": "GFsYGcXQep5oVXJMPqpGXXYDkJPFYgaTzJ7Fipsdx64X",
-    "C0": "D93vUuZb1PncRmEnqwuKo4JJd9QWsEmgztvjGWxBPJPC",
-    "C.burn": "FyoiFSkQKKDdH49txck25bdaqtKAnAMbCjWi2i6auyRM",
-    "C.sell": "FzJfHqwnDUJtzLV6epxqcVa9uTY1PL4qE2NBnRTmhmJ8",
-    "C2": "EYHu7cfLGSDegkF4SonT4HxvTnFLams6KnYPo1P3E8it",
-    "bond.forced.sig": "RfCTYDvaEUCCwrmdQfDm1bsD5GhAVBUT4ijMLaVDoJYGRMqBYtX9fGUt4NYdaMXnMhumTGPSV9YfyhG2HhVk4f2",
-    "C2b": "EH4RuwtB9YZNH7iw8XBvVGDzuREFJUVVK1zu5okYWmmv",
+    "Q": "64m9kUW8Ap8NCWGpKLgsbKSbC8E4vXssScKZNtJSekph",
+    "C0": "HiK4jMZ1PbtAo8AGs4Nx6joatqQyBjFBkDCNZENdp8Wz",
+    "C.burn": "Ftv1L47c61asU19E6EFMaYp4ohHGBtxuHntJKcacA8jP",
+    "C.sell": "GHidRd22eU7MrwELyVx2V1fxEzgfz431gZY8HCmq1kPF",
+    "C2": "Cin73D3YWwr35CohifrZiHin7PRTZNn2T7os2qNsjmub",
+    "bond.forced.sig": "5UViydNBmxfnc2DsJaQaXD3LwLWVrpKHeC5B32prnndwKuBiq7bFNYdPDqHQW1PGn6dcbEmaEWUrUAcbNd9EVU3Y",
+    "C2b": "AHtNnkaynNHdWEYj2tifCorXWjKfGovZSJTA9hPguBws",
     "Q.complete": "true",
-    "C3": "8NzhMaHaJU7RNxhnVxS3nzXoNYjvrPZbhDetJuf6CaMw"
+    "C3": "3eKh84pVgggSUpC1rwgh2fmJV9qoDUqiVWTFo5DDv6iH"
   },
   "rows": [
     {
@@ -47,15 +47,15 @@
       "env": "fork"
     },
     {
-      "id": "aux.prefund.GFsYGcXQ",
-      "step": "Prefund mint GFsYGcXQ (fork rent)",
+      "id": "aux.prefund.64m9kUW8",
+      "step": "Prefund mint 64m9kUW8 (fork rent)",
       "ok": true,
       "status": "landed",
-      "sig": "G7fbJ2prdjk8fYHi9FdmtvXqsRa9mZYe1hf5XSBBfNAGh78xnuEYuwS7sUb2e4UGVVDDXbGmHP8tCzfEuuNcLM8",
+      "sig": "2cjDkhEU65nswXZSEGXPaePoPJVcZt1GSat2HF6McKfmutSWGAYYMyf749T77eKmHU7W2Q3L4NyotvQtXqr56B9h",
       "bytes": 217,
       "cu": 150,
       "facts": {
-        "mint": "GFsYGcXQep5oVXJMPqpGXXYDkJPFYgaTzJ7Fipsdx64X"
+        "mint": "64m9kUW8Ap8NCWGpKLgsbKSbC8E4vXssScKZNtJSekph"
       },
       "env": "fork"
     },
@@ -64,26 +64,26 @@
       "step": "Stand-in Q create_v2 (SOL pair, treasury creator)",
       "ok": true,
       "status": "landed",
-      "sig": "5vbxqUhXgZ3yR2QmbUeGJmFcW4uCL2zkvszg86wFoPwDuXKgbR936RwqhvvnthDBSV4VCfhDT2QcGAKUqSq3YNkP",
+      "sig": "4E54kNtLNXGFa9MfbRF1JW5WczsQbXAu41buLBntHjATRHkowzXosgEfxPbCpnM8t8TaHgE5YeKBoLr9R2kGwggu",
       "bytes": 928,
-      "cu": 102803,
+      "cu": 104303,
       "cuLimit": 300000,
       "facts": {
-        "Q": "GFsYGcXQep5oVXJMPqpGXXYDkJPFYgaTzJ7Fipsdx64X",
+        "Q": "64m9kUW8Ap8NCWGpKLgsbKSbC8E4vXssScKZNtJSekph",
         "creator": "HSRgAnRH6651pLNW5VSh4tpVPTAk52zYf6v2xptQHHhg"
       },
       "env": "fork"
     },
     {
-      "id": "aux.prefund.D93vUuZb",
-      "step": "Prefund mint D93vUuZb (fork rent)",
+      "id": "aux.prefund.HiK4jMZ1",
+      "step": "Prefund mint HiK4jMZ1 (fork rent)",
       "ok": true,
       "status": "landed",
-      "sig": "5Rj7vLx3hXdnokrTMbdk77RQnNtPa8tLsTmCeN42bjtfTDpmhQuebvEPwXXR3beDEQWxFaDKEthV6oJZJxtgmVRq",
+      "sig": "ujjngTgXUq1NbrxKosY2qaSeA1wMfh5PqqDYiBagsHAs2teMraLJzjY7mNM7SHv1LErRWYcdGvR1q7cHpfMkocd",
       "bytes": 217,
       "cu": 150,
       "facts": {
-        "mint": "D93vUuZb1PncRmEnqwuKo4JJd9QWsEmgztvjGWxBPJPC"
+        "mint": "HiK4jMZ1PbtAo8AGs4Nx6joatqQyBjFBkDCNZENdp8Wz"
       },
       "env": "fork"
     },
@@ -92,30 +92,30 @@
       "step": "Child create_v2 (quote Q, creator W, 150 bps)",
       "ok": true,
       "status": "landed",
-      "sig": "2asRjk1kWTddnXgFy9q6PJ3MMZyv2gQWCrTqPMU1VVuKwSz6hHE9uk2un64bKE8sG68eo679XuaHWUocNNFKzJzt",
+      "sig": "2zuzPpaE3dYbHkqTV9nD4LBGzxJUDLht6QboyWbmHDUME7yuaJnZi3UKypYMgdkjb1yoPNdW5Z8VS7wgTnGLaR8M",
       "bytes": 1064,
-      "cu": 150860,
+      "cu": 146360,
       "cuLimit": 300000,
       "facts": {
-        "mint": "D93vUuZb1PncRmEnqwuKo4JJd9QWsEmgztvjGWxBPJPC",
-        "W": "9JPHwehVwU22MtEmgiVKn1Gjc6gXm9AhEE79gikqrCqu",
-        "creator": "9JPHwehVwU22MtEmgiVKn1Gjc6gXm9AhEE79gikqrCqu",
-        "quoteMint": "GFsYGcXQep5oVXJMPqpGXXYDkJPFYgaTzJ7Fipsdx64X",
+        "mint": "HiK4jMZ1PbtAo8AGs4Nx6joatqQyBjFBkDCNZENdp8Wz",
+        "W": "9apCp49MbZNoWxSD3STMpjmKZ2LfmXKBYCcKUWdDSrcd",
+        "creator": "9apCp49MbZNoWxSD3STMpjmKZ2LfmXKBYCcKUWdDSrcd",
+        "quoteMint": "64m9kUW8Ap8NCWGpKLgsbKSbC8E4vXssScKZNtJSekph",
         "depth": 1,
         "creatorFeeBps": "150"
       },
       "env": "fork"
     },
     {
-      "id": "aux.prefund.FyoiFSkQ",
-      "step": "Prefund mint FyoiFSkQ (fork rent)",
+      "id": "aux.prefund.Ftv1L47c",
+      "step": "Prefund mint Ftv1L47c (fork rent)",
       "ok": true,
       "status": "landed",
-      "sig": "2McphM5H6k74M8dZaNQXihBx4pHiHdv5hAJSkJY7yNYFrfvNuPY3zDuTMJWQKNxL4MiQBGZCJyJqbAK8pLViabHc",
+      "sig": "3PYj6LGCeKzwzhc7cxfoapiwfbzazsciB5DoCnpSirVgVy32zXRGERdm1QFU6WYE1T5iqVgTZbAAaGMFESKcrDoU",
       "bytes": 217,
       "cu": 150,
       "facts": {
-        "mint": "FyoiFSkQKKDdH49txck25bdaqtKAnAMbCjWi2i6auyRM"
+        "mint": "Ftv1L47c61asU19E6EFMaYp4ohHGBtxuHntJKcacA8jP"
       },
       "env": "fork"
     },
@@ -125,9 +125,9 @@
       "ok": true,
       "bytes": 1072,
       "cu": 29739,
-      "sig": "WFjyGdXdNDV9JUvLyaTDN8V8zrfih9ksLavGju55PN9Ko7qKjZevjACAVFdr6L6t9HeyPmpKCVBwDKxRyGYMKvH",
+      "sig": "RYhq9drMQNbGSjcvng3QEwbwKjvY8UVUDtzxpEGxKrYurxvB75ygXQL92thk2KgzKZTBapFoyK1y6nW22e1Kqxg",
       "facts": {
-        "table": "EK2V2i6fHDMiVq1Dq37dz223raYhBW71VVEye8w31xFQ",
+        "table": "Cg4JcDPyZMesAU8pVSNu1VGdjndDM73sSXWLy9MsmPty",
         "keys": 26,
         "txs": 2
       },
@@ -138,13 +138,13 @@
       "step": "Launch: create + exact-out dev buy + insta burn (one v0 tx, per-coin table)",
       "ok": true,
       "status": "landed",
-      "sig": "s8rX4QgBUyeNR2yC92YwgCpiWcNqqNeik6HbrZCanqzFQUTk3dXkk7iSD2h49LpY17R8rjMtiGtFmLVnXtoS9wC",
+      "sig": "26yTv3fhzvVKB9SM87agRS9a1Nu9eaFPGWjxneJ81EeBmhimpNzGJSdDnQjTXg6XAH5iyuk41ft3uuJ16MqD6ujh",
       "bytes": 780,
-      "cu": 322814,
+      "cu": 316738,
       "cuLimit": 600000,
       "facts": {
-        "mint": "FyoiFSkQKKDdH49txck25bdaqtKAnAMbCjWi2i6auyRM",
-        "W": "FJSKJw6pjcw15JmB3Dpn9Z1VNoJXJqpYHtwvTqREJzuL",
+        "mint": "Ftv1L47c61asU19E6EFMaYp4ohHGBtxuHntJKcacA8jP",
+        "W": "26kXqNoRffyXwhZVbYNqsoAtkrGKducFNMu4HUouwuPr",
         "amount": "31310323469601",
         "qMin": "8671591758466",
         "solIn": "250000000",
@@ -159,15 +159,15 @@
       "env": "fork"
     },
     {
-      "id": "aux.prefund.FzJfHqwn",
-      "step": "Prefund mint FzJfHqwn (fork rent)",
+      "id": "aux.prefund.GHidRd22",
+      "step": "Prefund mint GHidRd22 (fork rent)",
       "ok": true,
       "status": "landed",
-      "sig": "3Wtr76bdUzQj1dYR8udodgsJz5M2V6G5bLo3HqdHaJrnAxwo9EFgfbztDrNccyhs51A8aQ16s5AE4MmZZUcwhqJp",
+      "sig": "3LLaEtsEKE4y7wyzxTWQTCQu21ZhyEEAX3UWSViEepXbWgiZofj6NkK4ZSKg5kLXcJvqEqoYoqCSUrWBPnRouMqH",
       "bytes": 217,
       "cu": 150,
       "facts": {
-        "mint": "FzJfHqwnDUJtzLV6epxqcVa9uTY1PL4qE2NBnRTmhmJ8"
+        "mint": "GHidRd22eU7MrwELyVx2V1fxEzgfz431gZY8HCmq1kPF"
       },
       "env": "fork"
     },
@@ -177,9 +177,9 @@
       "ok": true,
       "bytes": 1072,
       "cu": 31182,
-      "sig": "1xNUFmBH11fAiB9XsKqAqRi4UKEEYitx2pX6Ko7FYnE4FAm5B5Eg5J4WA86pazKDwtNCwG6bh2nZESZek1H7xKC",
+      "sig": "55xL9c8Nbg4JBx4bPzYe4cExKzp6jYuiUK4qGfuK1evGbDN5svZqD3WZ57jfqqKJFj3XfbfcLttssN7KTAPF6r7T",
       "facts": {
-        "table": "83fwDV6gkr3RceMnEs3Y7XozPTZExXTtaji7AtuDWRW1",
+        "table": "FSPyzokMHkHc75FnNj1z1vHvrgTBnKUMw2v3UJqXG7uB",
         "keys": 31,
         "txs": 2
       },
@@ -190,13 +190,13 @@
       "step": "Launch: create + exact-out dev buy + insta sell (one v0 tx, per-coin table)",
       "ok": true,
       "status": "landed",
-      "sig": "ATdehaRJb2e1xKjW1jJymnsYrYhvJCsqrWuT8LsnAdPoXzdTy9ED7XGxFDix2by1bf7eizm5p2M2h6aNpeaeuea",
+      "sig": "3hDFdqnpYFFaQXypVgxdbCzuEmfid3bCAUKozZMVjNU5CnyAzbQcCTHrG6XMFonz6aojFQTWgGmvRCXEvyKuzpoN",
       "bytes": 881,
-      "cu": 483352,
+      "cu": 448775,
       "cuLimit": 600000,
       "facts": {
-        "mint": "FzJfHqwnDUJtzLV6epxqcVa9uTY1PL4qE2NBnRTmhmJ8",
-        "W": "Eea45aMUJimwALdK2bSaxs3XfZBatJY4TL87Wb8pHotc",
+        "mint": "GHidRd22eU7MrwELyVx2V1fxEzgfz431gZY8HCmq1kPF",
+        "W": "8yUJYSmauJA5qxHDAG2x3Pewzc2PW47w7BW9Upxbqm1w",
         "amount": "31129019829766",
         "qMin": "8531161123679",
         "solIn": "250000000",
@@ -215,9 +215,9 @@
       "step": "Trader buy_exact_quote_in_v3 on Q with 2 SOL",
       "ok": true,
       "status": "landed",
-      "sig": "346Jhq8qWA45LvpzCs7awQAzMVGDsMnxG7GtBWCMx5oewyMYibEj2Dmv1wP3Jqxggx26UQZSWFvCxviRZkpV4dtD",
+      "sig": "3oZRU3onr5ESAdS7NP9Y9NmHUHqz1Ka1BsNezJtTfJjkLuEY7CfkwrHo9bop46V9rWpbSNFSfbwEKqJouAXL5Uo3",
       "bytes": 787,
-      "cu": 67954,
+      "cu": 69378,
       "cuLimit": 300000,
       "facts": {
         "spend": "2000000000",
@@ -231,9 +231,9 @@
       "step": "Trader buy_exact_quote_in_v3 C0 with Q (1)",
       "ok": true,
       "status": "landed",
-      "sig": "2LxPXxGqqtMQGjgwcAvvfRrANBCwqZuZxNST5f1fNY8gPpEmWmtz6BxBhZd7DMzKYwcaGiHQwnCXP4QhwmDrjAjX",
+      "sig": "4s3gPw48hryp4jopQpuSjLpnzqdVRPCeXNB6XChXwkibURRXxuSuhZTRQU2jeqRaVBwY6Sjeh1kbhjwyicKKdn2s",
       "bytes": 797,
-      "cu": 94159,
+      "cu": 103159,
       "cuLimit": 300000,
       "facts": {
         "side": "buy",
@@ -249,9 +249,9 @@
       "step": "Trader sell_v3 all C0 to Q (2)",
       "ok": true,
       "status": "landed",
-      "sig": "VmL1Er6F9rRYrSbJ26LLymVSWsaZ4iMtxzCGoRDZmMGMig1wGG7FPBY48fosAMiBkRCti95NmRPtC8C5YxTLUVe",
+      "sig": "26YojseiZLBawpsSMDHJqzaAkx4ZsQWoL5T6FAvCiEn6G6uQuGDjJVZutE7uhpuWDaicviTJpBkeXrQ6MFsm42T4",
       "bytes": 796,
-      "cu": 76914,
+      "cu": 87414,
       "cuLimit": 300000,
       "facts": {
         "side": "sell",
@@ -267,9 +267,9 @@
       "step": "Trader buy_exact_quote_in_v3 C0 with Q (3)",
       "ok": true,
       "status": "landed",
-      "sig": "4pKgMDw396k3t1VGEsZgesmn3v7ftwAUg9u9DaPMvzZDFRHC3Y1ock6WzfbFrkaPz3yLnY58g2xrcjv5ent7b7XG",
+      "sig": "eqptz3CNT1pW2vkCDoDg1SSyLRUnUGgtHqhZatMpzGzcTmnsR1mfWi8iq7o7rrDrrx8B17GUQJMkCLS7WBAaYR9",
       "bytes": 797,
-      "cu": 81408,
+      "cu": 90408,
       "cuLimit": 300000,
       "facts": {
         "side": "buy",
@@ -285,9 +285,9 @@
       "step": "Trader sell_v3 all C0 to Q (4)",
       "ok": true,
       "status": "landed",
-      "sig": "AttCghqFNMv66ZcVBtXNgQmzM7afMNCyWvpDfwHMBQwiiDSXpADzELqWymrfNpp63dV4gZp3p3FPo43BtCXgLSS",
+      "sig": "5DYiA5okk85xV8pBRrFQJPZpAsDwxYSu4d5npgVDeG1UmkiiHNqYinim2MFnoPQaLEXXde4NXxfkoFqEV6JTXVJL",
       "bytes": 796,
-      "cu": 76915,
+      "cu": 87415,
       "cuLimit": 300000,
       "facts": {
         "side": "sell",
@@ -303,12 +303,12 @@
       "step": "Sweep + collect_creator_fee_v2 of W0's C0 fees (ops pays, W0 not a signer)",
       "ok": true,
       "status": "landed",
-      "sig": "3FfJUkwfwHXqgfsooUV9gK2gyDxUmeTPCJ14Chat5QpJxxmLN93j5TVKyyfBEKMQ9vCv3mSJXndHwcih2FC48Aet",
+      "sig": "3kyWAdknxLDM2yJuYM2J8Npf3fHtjdiQMj2DWxbgosuaYQ4FwX2sTn7NypoTpzN6hXMc1XiKg5gyXhrjQo3g7uTr",
       "bytes": 691,
-      "cu": 95850,
+      "cu": 97350,
       "cuLimit": 300000,
       "facts": {
-        "W": "9JPHwehVwU22MtEmgiVKn1Gjc6gXm9AhEE79gikqrCqu",
+        "W": "9apCp49MbZNoWxSD3STMpjmKZ2LfmXKBYCcKUWdDSrcd",
         "wBefore": "0",
         "collected": "1885978742080",
         "volumeQ": "125731916138464",
@@ -321,7 +321,7 @@
       "step": "90/10 split: W0 sends 10% of the collect to the treasury Q ATA (ops pays)",
       "ok": true,
       "status": "landed",
-      "sig": "zB7msT1poez9vRzx4oxtjKbBCTVQNe3UvtEu5ayQwyDUX42HkTRoBR8ZLRsWaz4prFHJsFwaxqxWvrFRJQh57Zw",
+      "sig": "5EznFG4Pyr18yoAiaL6HXfdRsS2AvqJKAakYKq4xwCbqA8khUKu76CJJiYjbkRd5QJfmbjDQQSZdwHo32sfTawbp",
       "bytes": 552,
       "cu": 20196,
       "cuLimit": 300000,
@@ -344,9 +344,9 @@
       "step": "Whale buy_exact_quote_in_v3 takes stand-in Q to about 90% (still state 1)",
       "ok": true,
       "status": "landed",
-      "sig": "4B7cRKhA3Rm2nTepngwBfAY35PiBfrYQJAgbyMfpG9Zx2prNkqqFk439aN9aTFw7CY2yQ6rnH6bp6bseQGqWUb5Q",
+      "sig": "2vrkAXniqhRCFT3P5ijegKHw5s11JRJa562K6wHeNPQETZ5v1nWQdXHgqx7usSFYg5F1MZfb7CV51EugYtBXMZzb",
       "bytes": 787,
-      "cu": 69463,
+      "cu": 67887,
       "cuLimit": 600000,
       "facts": {
         "qCost": "83804548516",
@@ -357,15 +357,15 @@
       "env": "fork"
     },
     {
-      "id": "aux.prefund.EYHu7cfL",
-      "step": "Prefund mint EYHu7cfL (fork rent)",
+      "id": "aux.prefund.Cin73D3Y",
+      "step": "Prefund mint Cin73D3Y (fork rent)",
       "ok": true,
       "status": "landed",
-      "sig": "31i3SsuJCmQ9QHUfGm8Zk47weLhF3X4ksmcCtdfsniEJGtp5TS1KA7bj3gM1JiemaqHzvPCvx5pmveEuqEaosZNy",
+      "sig": "2irKoLZAMYtfbsAyfofzCvFxHC5kBxhruia9sV8feP8qPjTMKJR9tMQzM3uoKJgjzZCsD4fMgDnibUF1xkCa6fpE",
       "bytes": 217,
       "cu": 150,
       "facts": {
-        "mint": "EYHu7cfLGSDegkF4SonT4HxvTnFLams6KnYPo1P3E8it"
+        "mint": "Cin73D3YWwr35CohifrZiHin7PRTZNn2T7os2qNsjmub"
       },
       "env": "fork"
     },
@@ -374,25 +374,25 @@
       "step": "Child C2 create_v2 (quote Q, creator W, 150 bps) on the 90% Q",
       "ok": true,
       "status": "landed",
-      "sig": "2VrEHTgWX2cmus9fi2qpBaCxDqhK75nQJgVaSW4k5gKoSP83eCFjHVtsVE3Pm1TQdKTKD5QifQSGA9oeaWq6DDZe",
+      "sig": "iue8DaiqJZ1iB1Z1wkttFBFkNXbx3mHjNoHy66jyzf9nXkiTVZXraZvG6WCsrQdv8phMdMb3iVDFHWkixnovRva",
       "bytes": 1064,
-      "cu": 139993,
+      "cu": 157993,
       "cuLimit": 600000,
       "facts": {
-        "mint": "EYHu7cfLGSDegkF4SonT4HxvTnFLams6KnYPo1P3E8it",
-        "W": "4UHGKvEg6gTdAfy2MAo4SYgaD34pBJiVixv6ef6b3z6v",
+        "mint": "Cin73D3YWwr35CohifrZiHin7PRTZNn2T7os2qNsjmub",
+        "W": "BH8pBSnYKRSCEKfjFobFsMzsUHoA9Gj2ojCLdCaQdJTN",
         "childRaiseQ": "122808523808861"
       },
       "env": "fork"
     },
     {
       "id": "bond.topup",
-      "step": "TOP-UP: whale sends 130177035237392 Q to W 4UHGKvEg",
+      "step": "TOP-UP: whale sends 130177035237392 Q to W BH8pBSnY",
       "ok": true,
       "status": "landed",
-      "sig": "3hyvEdNjZNTiQqe6oA9kAgsG9HjyqQKigrmeAP5H61iZTKNiSpJPmxr8M2GNFN8NQkCGtFS1t35L7AwWwKYoFXXH",
+      "sig": "294h8Tq3MAHiBXwP8fu3Wsh6awZCet8WUFuQx3Dhb7wVXERrdLkyiquUJH53DNa4kiyrRaUgvRzfJVX6MG5vXcba",
       "bytes": 439,
-      "cu": 27546,
+      "cu": 20046,
       "cuLimit": 600000,
       "facts": {
         "cost2": "122808523808861",
@@ -409,9 +409,9 @@
       "step": "Forced bond: W buy_exact_quote_in_v3 with its whole budget completes C2, BurnChecked(simOut), one tx",
       "ok": true,
       "status": "landed",
-      "sig": "RfCTYDvaEUCCwrmdQfDm1bsD5GhAVBUT4ijMLaVDoJYGRMqBYtX9fGUt4NYdaMXnMhumTGPSV9YfyhG2HhVk4f2",
+      "sig": "5UViydNBmxfnc2DsJaQaXD3LwLWVrpKHeC5B32prnndwKuBiq7bFNYdPDqHQW1PGn6dcbEmaEWUrUAcbNd9EVU3Y",
       "bytes": 926,
-      "cu": 111006,
+      "cu": 127506,
       "cuLimit": 600000,
       "facts": {
         "simPath": "accounts",
@@ -430,15 +430,15 @@
       "env": "fork"
     },
     {
-      "id": "aux.prefund.EH4RuwtB",
-      "step": "Prefund mint EH4RuwtB (fork rent)",
+      "id": "aux.prefund.AHtNnkay",
+      "step": "Prefund mint AHtNnkay (fork rent)",
       "ok": true,
       "status": "landed",
-      "sig": "2gy8Xgu4efaBbwkcmky1Lp1K52jFpActNYXkD4XT3eQu3Aod8yqQnkTEPQuM3zbhhk5nX6dxfXJ2UKqcjdTZKSx5",
+      "sig": "2rBSzQYggkEN9LiE67Ri9gSWdvgWqLL2WkgsSgrGm6uBmQ7VmgAe4cRfR4JvXavMAZ653Lq7CgF82En4FCSmUesi",
       "bytes": 217,
       "cu": 150,
       "facts": {
-        "mint": "EH4RuwtB9YZNH7iw8XBvVGDzuREFJUVVK1zu5okYWmmv"
+        "mint": "AHtNnkaynNHdWEYj2tifCorXWjKfGovZSJTA9hPguBws"
       },
       "env": "fork"
     },
@@ -447,25 +447,25 @@
       "step": "Child C2b create_v2 (quote Q, creator W, 150 bps) on the 90% Q",
       "ok": true,
       "status": "landed",
-      "sig": "5ZFAujDTeHHdFCuKdsaHegAvuaFxxMmtWxinZfny6k8qNvsfm59Fy9j4da4M8NN2bJVVmMtE9qCudGez9mqSvfDS",
+      "sig": "4qE2PE6sGgYbSdSZ9M58siTuraLMG7hY7ieW19ohDCCPHWNL94mJYp8JDYrUTizLzyMRP6d6VRKMtzjJ66YEjJhH",
       "bytes": 1064,
-      "cu": 139993,
+      "cu": 138493,
       "cuLimit": 600000,
       "facts": {
-        "mint": "EH4RuwtB9YZNH7iw8XBvVGDzuREFJUVVK1zu5okYWmmv",
-        "W": "5gjH1j3QoTz1zvoS43fFtJAZ8F2CMV6k5FXnLB17qpjh",
+        "mint": "AHtNnkaynNHdWEYj2tifCorXWjKfGovZSJTA9hPguBws",
+        "W": "EWjcfjpK6uwrABLyt5SeFBhEpPiThVD887Q1pA7wW6GZ",
         "childRaiseQ": "122808523808861"
       },
       "env": "fork"
     },
     {
       "id": "bond.exact.topup",
-      "step": "TOP-UP: whale sends 130177035237392 Q to W 5gjH1j3Q",
+      "step": "TOP-UP: whale sends 130177035237392 Q to W EWjcfjpK",
       "ok": true,
       "status": "landed",
-      "sig": "4xteccM7vQYGNuCwcyT9jhWsYXxHTdnwhYdDeBzaKt7npEyALW6XZ5zipUvva3GoSNc7stHaNJX8AUwAuq1r8rcJ",
+      "sig": "4EnZMvwiRduMcb9KEBVWirUfi3fxWLPidEWrVLoT8iv5ofH9LSD84xB51jdgQXTxs8rCQvZx3K7z3rDWDNkwbwxk",
       "bytes": 439,
-      "cu": 20046,
+      "cu": 21546,
       "cuLimit": 600000,
       "facts": {
         "cost": "122808523808861",
@@ -481,9 +481,9 @@
       "step": "Exact bond: W buy_v3 of every token left completes C2b, BurnChecked(amount), one tx (D-16)",
       "ok": true,
       "status": "landed",
-      "sig": "3CFtiXZA4SsAsVb4aZakcdw5Q2vqAdye8fk5mzACup2Xnoi5sUrq3F3iroZkKwoaB6mbmw8PmhF61bZeLeTTKmVQ",
+      "sig": "fRHu22JuNXhLmnEWBrTpqatWMUtGLwY9kzePHVipTwtP5AW3HW2QKx6x6xCheio1Vespqy5SLatXNvGSz9TPaaQ",
       "bytes": 926,
-      "cu": 104770,
+      "cu": 112270,
       "cuLimit": 600000,
       "facts": {
         "amount": "793100000000000",
@@ -503,12 +503,12 @@
       "step": "migrate_v2 of the forced-bonded C2 to its PumpSwap pool (ops signs)",
       "ok": true,
       "status": "landed",
-      "sig": "2cqNKsj6bsFQrtEPpaWUg4crnQqSiw9DRUQqJsyZToBEBr6KCATrUfB6JnJgdeQaYR85Ei6v9TT7hzAcBHXYhtue",
+      "sig": "eo7WYexRGo9AWVkYJkpNFppMkK9AB5dMyY3VqYTzV2uiRiUmejUQmbyqJWgGK4euXVRX8oJzV623BhvJbeV7K8K",
       "bytes": 1060,
-      "cu": 331961,
+      "cu": 396461,
       "cuLimit": 600000,
       "facts": {
-        "pool": "7dFQk115VvesaSm2CyEBh1bTAiqcD9EFKGjY4iNfPHdE",
+        "pool": "HqkXU66gJ6XaBPKS93LynTUYy24iZebwazw4YC8i1ceP",
         "poolExists": true
       },
       "notes": "spike calls migrate itself; on mainnet the timing depends on pump's keeper (D-03)",
@@ -516,12 +516,12 @@
     },
     {
       "id": "bond.pool.topup",
-      "step": "TOP-UP: whale sends 4366296784613 Q to W 4UHGKvEg",
+      "step": "TOP-UP: whale sends 4366296784613 Q to W BH8pBSnY",
       "ok": true,
       "status": "landed",
-      "sig": "prt2RJXdFCs6ZvTMLkhYHjohHmzS8bDT5TjGo2W5xQT6Sqpfx5yMHEZTu6UqXfx1aS4JjzThCPXStRSkgZfmZPH",
+      "sig": "3Lqxd5YpYJWn2KhKBhuzt9sR35GqviiCRshzsaz2CGcRKGKEVxJ6cZ5bPpFpemrhfxrsTftZ5x6mxMxjD5rTSFyr",
       "bytes": 439,
-      "cu": 14802,
+      "cu": 7302,
       "cuLimit": 600000,
       "facts": {
         "amount": "4366296784613"
@@ -535,9 +535,9 @@
       "step": "Pool buy + burn: W2 PumpSwap buy_v2 of exactly baseOut, BurnChecked(baseOut), one tx",
       "ok": true,
       "status": "landed",
-      "sig": "28tAycwnZKcgjAaJ5AjjtS9sP3Qq3UKbJohtaydi6ywJgmMZGdsQjND6xyPg2D4Tvmw33PQnNYEU9UD4BcWVTYXh",
+      "sig": "7KEMqi7LyJzKHeYYLY632DsQvMsAfXGXbd9vbTiyhWw8cHv3x9q3zvDKQf4R8wR3YEZ2URbHiGNnRybZZGerhmK",
       "bytes": 915,
-      "cu": 69391,
+      "cu": 79891,
       "cuLimit": 600000,
       "facts": {
         "baseOut": "6067640892546",
@@ -555,9 +555,9 @@
       "step": "Sim trader PumpSwap buy_v2 on C2's pool (creator fees accrue)",
       "ok": true,
       "status": "landed",
-      "sig": "55RjggUsY11goDxAsD7SYhczKuqV5LhtC11jUCmEATF99wJDY1xxZenejr5YSxDX3nxxtjWUkMbpWCEEwC5mL2gL",
+      "sig": "56ic5B27rLsdVGZANnEyGghr9aFetXZ6YEmU9r5FBygPhRPdwboa19xzuvEg4bL1pqqTiApyqUhsyuNTsye12tep",
       "bytes": 796,
-      "cu": 81459,
+      "cu": 97883,
       "cuLimit": 600000,
       "facts": {
         "side": "buy",
@@ -571,9 +571,9 @@
       "step": "Sim trader PumpSwap sell_v2 on C2's pool (creator fees accrue)",
       "ok": true,
       "status": "landed",
-      "sig": "33eCTL8wBdt8133EMFWsk5EAjUtUTBLXhjHAot4z86CaAZjfDPbDhC1Ssqn5QDdsWBWNWzn6k6t9gHpuqjMV8Q9X",
+      "sig": "4QASKcBb8hz7VfzoHiW8WNTrrd7PUB71FKLTmQfies3DuwMn4YFMy2i36uwdY1xSingKZ3oT9hbg3wP2S4CLdRCu",
       "bytes": 786,
-      "cu": 63585,
+      "cu": 72585,
       "cuLimit": 600000,
       "facts": {
         "side": "sell",
@@ -587,9 +587,9 @@
       "step": "Sim trader PumpSwap buy_v2 on C2's pool (creator fees accrue)",
       "ok": true,
       "status": "landed",
-      "sig": "z4RNQzAiTLsxxzVqavJSrwJbvPHxyRgKYBXJngBniJdwc9f5gd4Vq76PPALfSFDBBzRWRzLJjMiUXkhYrtjD7YD",
+      "sig": "5sDRX1gumy2ZcD1WCxY7KA4goqWp7QUM8rtyDLh86T7WBy4honHTu2Z9PsLrTp94o3CSgam3KGchzfG5mxuDbs4A",
       "bytes": 786,
-      "cu": 64362,
+      "cu": 73362,
       "cuLimit": 600000,
       "facts": {
         "side": "buy",
@@ -603,9 +603,9 @@
       "step": "Sim trader PumpSwap sell_v2 on C2's pool (creator fees accrue)",
       "ok": true,
       "status": "landed",
-      "sig": "3Vezb9dpZ6bNwnAFe8kG6GXbp2AxNxyiLApXBEJdGjFnuwaY2kZFEqUVM5rtDwHKGdaRPVWCu3VwcDM3nB9jcSnv",
+      "sig": "4ifFN1FggaD6xczsvA2iHUWZi8iGkZyNo1uFK8SqdBynmohEYuhGRLx3SAgdQ6ZJ2VJJ29zLRkg65gqSRxFS9SKX",
       "bytes": 786,
-      "cu": 63585,
+      "cu": 72585,
       "cuLimit": 600000,
       "facts": {
         "side": "sell",
@@ -619,9 +619,9 @@
       "step": "Sweeps + create_fee_sharing_config with C2's pool (W2 signs, ops floats W2)",
       "ok": true,
       "status": "landed",
-      "sig": "5FhRQMxjkKNvwAm2ovGPfK6BiWBV4G6MarhkBF3u3YAvKUC4PrqqxjQxGHYTykb1F5PRjrzuT26Kr5BMH75VRr8F",
+      "sig": "3DVDWjsWZ9PMrVJLd5GtU5f9q8zi17mR75gJ5wAGScp9E1mXhFLFQ8orbUZSQFHogpqEbizKk4uMMnEnmMcu2djq",
       "bytes": 1076,
-      "cu": 205231,
+      "cu": 209731,
       "cuLimit": 600000,
       "facts": {
         "split": true,
@@ -635,9 +635,9 @@
       "step": "Pool sweep + update_fee_shares_v2 to deployer 8000 / treasury 2000 (bonded C2)",
       "ok": true,
       "status": "landed",
-      "sig": "kcEgBrrywyzh6aYvjhL1412V9NzM3DRtEZqTuNhTjk2JZnUJrejBH1u6w9DUMJwG5jTdp6rmXF4u6GY8hZ9mMdj",
+      "sig": "2KkrWvPQgVpg4D44oe9xcFyRhxwygi545pUDuRYwEHm8cBsnbiXjWYABPnLWeYMFid1eNtzNf9GX8zVmJkpHjzkH",
       "bytes": 1126,
-      "cu": 153435,
+      "cu": 132435,
       "cuLimit": 600000,
       "facts": {
         "split": true,
@@ -656,9 +656,9 @@
       "step": "Sim trader PumpSwap buy_v2 on C2's pool (creator fees accrue)",
       "ok": true,
       "status": "landed",
-      "sig": "5A6D6eF4Lt9w3Vc6LviUFHzWoYBv8bbMQ3KGuWcbCrh7nXzi1mCQSHnrGAgUCcXrPEeuy4YbJFRmQRJrcqa7WXfq",
+      "sig": "4cnHbHFpAWccHYzFgk7ucru9trfy8x5jhk2jtRUWddMmELpm9iCRE9BkBHuUnTRTMyiHNipGuGWV6JwgxNRb3RU",
       "bytes": 786,
-      "cu": 64362,
+      "cu": 73362,
       "cuLimit": 600000,
       "facts": {
         "side": "buy",
@@ -672,9 +672,9 @@
       "step": "Sim trader PumpSwap sell_v2 on C2's pool (creator fees accrue)",
       "ok": true,
       "status": "landed",
-      "sig": "4XbCCrHr57et8mWFDW56bELHUvWGHAVtPZyynDbNydfa78tDteoQsQy69CeL2d1Sb18AA897TigBSJoumJDG9Wqe",
+      "sig": "aZ9YvJXoK1AnQbBpRSSqyZBcVaxmiuZ3NdK5DVPnXsnf8SSjehYBj9vVSBzADqzUsZ9gW12XtPuv9TbPPArVBgz",
       "bytes": 786,
-      "cu": 63585,
+      "cu": 72585,
       "cuLimit": 600000,
       "facts": {
         "side": "sell",
@@ -688,9 +688,9 @@
       "step": "Distribute: sweeps, transfer_creator_fees_to_pump_v2, distribute_creator_fees_v2 (ops pays)",
       "ok": true,
       "status": "landed",
-      "sig": "2DtSnhb6qkG2qj6X3fRDBPnnrttkZvjZkYm3iALpZbV1UP8grsQp7AVyL2gRuduHmADsHAdRZAL2R49HE143LbSe",
+      "sig": "2HdGVu6C8URiwhYjeTeBvrVDUV1wJ1ZuJ7UbVuGzrTimvae3dCVnCTHJ61vkoyuV93iGD4WEqaq1brRdEWMPRWaS",
       "bytes": 966,
-      "cu": 130829,
+      "cu": 123329,
       "cuLimit": 600000,
       "facts": {
         "deployerDelta": "138264336404",
@@ -704,9 +704,9 @@
       "step": "Second update_fee_shares_v2 on bonded C2 (must be rejected)",
       "ok": true,
       "status": "landed",
-      "sig": "41XUi5vPyWDshisUCCk7TKoxGQfznHTqc7hySbLKuc5HyBbMgDbqLy5R8HQcbtogv8HVH8KQxkMZQTV55QNDokvp",
+      "sig": "UXHk3rRffw6s4w83Vn3dCQxJ8MAHQvFAfZvck8Hq2NdeqVU3wadnw2QfMtg82ay2xR6CPCejGgqcWtpU2v7n8N6",
       "bytes": 1214,
-      "cu": 63427,
+      "cu": 58927,
       "err": "SharingConfigAdminRevoked {\"InstructionError\":[3,{\"Custom\":6009}]}",
       "code": 6009,
       "expectFail": true,
@@ -720,15 +720,15 @@
       "env": "fork"
     },
     {
-      "id": "aux.prefund.G4S2YGew",
-      "step": "Prefund mint G4S2YGew (fork rent)",
+      "id": "aux.prefund.GrLKeCEp",
+      "step": "Prefund mint GrLKeCEp (fork rent)",
       "ok": true,
       "status": "landed",
-      "sig": "2yMQNCPY1NzDDRmSogFiar1dA5xe4jDsdGYMeuTccxDACiMwz9k1auf44RQohNMAdW5SphW5dqFfJN7afZBBwHR8",
+      "sig": "kr2AuXTwYLPVCVQSPPMM2taQiTLQgC1jykKtovorLJk12skef9FEBW3vHdU1t8LG9zuMJDiE9y9QXdzfWkCumJM",
       "bytes": 217,
       "cu": 150,
       "facts": {
-        "mint": "G4S2YGewEFJAf29eaPa4JGXBue8wqW3B6zGdvYYTK6kh"
+        "mint": "GrLKeCEppuLvwU3Qymwr8nF2ChuaPpd1ej4ayZPEuezx"
       },
       "env": "fork"
     },
@@ -738,9 +738,9 @@
       "ok": true,
       "bytes": 1072,
       "cu": 23639,
-      "sig": "4n4nQqC6JyfpyPoPdG4AiHzrmesdya5t2NxCezQkqf6MVRbpvYFuVfwYcwZBkdyGrWYdQJbkMd3aYDcBDox18ant",
+      "sig": "5SD8YJs1BmsUMoNoK5iEQXBJcaehyFBpyKvKiZnaKngi8HwYehmq14LZizP7XSLnhvVxWxZXa4bY8baskND4tuwF",
       "facts": {
-        "table": "EtC7zU87qj8NaXRuLL2in5drV2gFoXYBcwVXUpaht6Lc",
+        "table": "Fs3AiwQFHLpgnA1s2etPYGtsgmj1etJ9hALi7kz7NYj9",
         "txs": 1
       },
       "env": "fork"
@@ -750,19 +750,19 @@
       "step": "One tx: buy completes the stand-in, then child create_v2 on it (must fail 6107)",
       "ok": true,
       "status": "landed",
-      "sig": "3WR7PsWzi5g5RkGQTieQJAr6T1cvnXn3oAr1JGXjkjNwo8npdCx8hsZRn5QS3e4rCcy5Mn3cSvNjZqTKCpcnVHio",
+      "sig": "2bpQSgAVf75bXGDg5fqiQKvZdDCqXrmCifrE7y3tvbXMzM4wR2qkeedFFGTYZSrEBXeD6HoPZUKwgiivP1Cm8s6h",
       "bytes": 666,
-      "cu": 162327,
+      "cu": 163827,
       "err": "QuoteCurveAwaitingMigration {\"InstructionError\":[4,{\"Custom\":6107}]}",
       "code": 6107,
       "expectFail": true,
       "cuLimit": 600000,
       "facts": {
-        "quote": "GFsYGcXQep5oVXJMPqpGXXYDkJPFYgaTzJ7Fipsdx64X",
+        "quote": "64m9kUW8Ap8NCWGpKLgsbKSbC8E4vXssScKZNtJSekph",
         "cost": "8380454856",
         "spend": "8883282147",
-        "mint": "G4S2YGewEFJAf29eaPa4JGXBue8wqW3B6zGdvYYTK6kh",
-        "W": "FK4Pb2CoDhcd8Gy332BiKHJvsinrbVMZoTToLsMyRpeF"
+        "mint": "GrLKeCEppuLvwU3Qymwr8nF2ChuaPpd1ej4ayZPEuezx",
+        "W": "4u66EFpq3vZMQCbqWTxqY2smdHVYLcyPUa2KB3h5uyeS"
       },
       "env": "fork"
     },
@@ -771,12 +771,12 @@
       "step": "Whale buy_exact_quote_in_v3 completes stand-in Q",
       "ok": true,
       "status": "landed",
-      "sig": "5ic5wnq4fTx8A8RGuyNUPQ4o7veWGLRLPDPiFBC3d5UNFbqTaX21EpBdBSLK9eUFpCXPvi7RXU5KT4wkoTnCSoBP",
+      "sig": "4wRZk9jY2UzHNVte48xjJWx2BnGVQ6wTNbrm26hYuYFY93m52VVYB2U1zjpmr4V95HfJWXkU18fFyARV8rpCT5f2",
       "bytes": 787,
-      "cu": 73088,
+      "cu": 68588,
       "cuLimit": 600000,
       "facts": {
-        "quote": "GFsYGcXQep5oVXJMPqpGXXYDkJPFYgaTzJ7Fipsdx64X",
+        "quote": "64m9kUW8Ap8NCWGpKLgsbKSbC8E4vXssScKZNtJSekph",
         "cost": "8380454856",
         "spend": "8883282147",
         "complete": true
@@ -788,27 +788,27 @@
       "step": "migrate_v2 of the complete stand-in Q to its PumpSwap pool (ops signs)",
       "ok": true,
       "status": "landed",
-      "sig": "2H6wp1diLedSoToUWdVNVoqWSTMNWoiF29jQSK4XcSwk8UAme5AULRuf77RQge8EqETndbVLSEa1S9PhoG4bHNpi",
+      "sig": "5dK54G59fnqACE9cM6VGFVVqgkM2skCDrXKfTk2F8izcdyNNzkUK9xPDPFKPNmBUE4MteK2s1Az85ducW9BJ3br3",
       "bytes": 1092,
-      "cu": 347225,
+      "cu": 314225,
       "cuLimit": 600000,
       "facts": {
-        "pool": "pUuA4aDEqKrWgvmvQK42r9eznobejAYU2VDYWurFRUN",
+        "pool": "JB8hHA78rFsBUVsFvtivSfEwr96UBAGznGsPopzYNTVH",
         "poolExists": true
       },
       "notes": "spike calls migrate itself; on mainnet pump's keeper migrates about 10 slots after completion",
       "env": "fork"
     },
     {
-      "id": "aux.prefund.8NzhMaHa",
-      "step": "Prefund mint 8NzhMaHa (fork rent)",
+      "id": "aux.prefund.3eKh84pV",
+      "step": "Prefund mint 3eKh84pV (fork rent)",
       "ok": true,
       "status": "landed",
-      "sig": "61Nyyts5rRxM175eLjFZ7ebG65LkkbHZSsrEnpbSa3DDMn37VihjvmGDjn5cHsM4nW7SPD9ivsPb44RX7KrMy3WL",
+      "sig": "3VuP6rHrg7cRdyW9RqHd1NqpBSkVa8F6ibvbAPKjPRYnD8GWURAzm1u8VRw7g13m6R1diGATEV351jBATGUHWFNj",
       "bytes": 217,
       "cu": 150,
       "facts": {
-        "mint": "8NzhMaHaJU7RNxhnVxS3nzXoNYjvrPZbhDetJuf6CaMw"
+        "mint": "3eKh84pVgggSUpC1rwgh2fmJV9qoDUqiVWTFo5DDv6iH"
       },
       "env": "fork"
     },
@@ -817,15 +817,15 @@
       "step": "Child C3 create_v2 on the migrated Q (quote group + 3 pool accounts, creator W3, 150 bps)",
       "ok": true,
       "status": "landed",
-      "sig": "4xgnMAb7oJm3QtTsnpMKpHexdnKSNiisMLw7gBNvUR8R89t7SDxm3nWFTCWPafEot7GaXy2DqcbzYotPFGXk8acs",
+      "sig": "4qLB47PRW4NzeJi2b6FgrKcLLTxGQuPnmSUbwzkYdrvwkXnYZi2XqtpQrA6K2AFKLEQvFfZtu463w2RUUk2ujDpA",
       "bytes": 1163,
-      "cu": 162685,
+      "cu": 159685,
       "cuLimit": 600000,
       "facts": {
-        "mint": "8NzhMaHaJU7RNxhnVxS3nzXoNYjvrPZbhDetJuf6CaMw",
-        "W": "5JDMdUBYRQwDmQZCVzmXUSUDBEGMDF7arEXJyXen2Am4",
-        "creator": "5JDMdUBYRQwDmQZCVzmXUSUDBEGMDF7arEXJyXen2Am4",
-        "quoteMint": "GFsYGcXQep5oVXJMPqpGXXYDkJPFYgaTzJ7Fipsdx64X",
+        "mint": "3eKh84pVgggSUpC1rwgh2fmJV9qoDUqiVWTFo5DDv6iH",
+        "W": "C6ntvyVCJZknSh37dfQpg5or6FqGzF58LFF4rJwqsaWG",
+        "creator": "C6ntvyVCJZknSh37dfQpg5or6FqGzF58LFF4rJwqsaWG",
+        "quoteMint": "64m9kUW8Ap8NCWGpKLgsbKSbC8E4vXssScKZNtJSekph",
         "creatorFeeBps": "150",
         "depth": 1,
         "wireSize": 1163,
@@ -838,9 +838,9 @@
       "step": "Sim trader buy_exact_quote_in_v3 on C3 with Q",
       "ok": true,
       "status": "landed",
-      "sig": "PSxEsYqegsC4HvX32dvHiAWXVoVncbnexYJ4dDL1X6qwAdCHWc3YwhqR2sGs9ixTQtQ1DUifnnBtg2mGYNzT1Ju",
+      "sig": "49kbH1wiCXmZcbE2TT4XVkj3oXt4Fb9uVLd1pZzp55B6r8xBs8yLTeBcUHyAQsxrYXQKiQvdVyHVLA6xQJreSxS5",
       "bytes": 797,
-      "cu": 98551,
+      "cu": 106051,
       "cuLimit": 600000,
       "facts": {
         "spend": "5253558763365",
@@ -853,9 +853,9 @@
       "step": "multi_hop_swap buy SOL -> Q -> C3",
       "ok": true,
       "status": "landed",
-      "sig": "3Ud2HiDUMNFBr5yRQJxUPEAfn5MwqbyqdYQSsWDJ4mqnVNsC4fL3DrhcQsVnj4p3d2MXk4vLWGnB38buveR6PT4s",
+      "sig": "WuMb7dXBMotDA3oTNZNoYLuc9NG8p1F8uT9oT7Zotmke9Ya6nFzmR2cU5rD6KoVHDsSm3gj8escgEM6o7bRPiW7",
       "bytes": 1132,
-      "cu": 162017,
+      "cu": 151517,
       "cuLimit": 600000,
       "facts": {
         "amountIn": "1000000000",
@@ -871,9 +871,9 @@
       "step": "multi_hop_swap sell C3 -> Q -> SOL",
       "ok": true,
       "status": "landed",
-      "sig": "44WycpbXMuVAsy3F7eQD4YsrVrj16R9a359dyCFrvkNNygLuQUo8jeSUM4tswETRXBdnxg1qchXYULPVGCRkq6uP",
+      "sig": "5UWk3nh1nEQFeU9C46s8u8ouYbjacYDcy3LX3pHu9j8TQ7nZ7VNh7XyyQffGymCxJJ9Qz6GEgrCF9HLij6iEhAya",
       "bytes": 1100,
-      "cu": 150068,
+      "cu": 142568,
       "cuLimit": 600000,
       "facts": {
         "amountIn": "183152825256376",

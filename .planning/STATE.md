@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-10-19T14:59:35.756Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-10-19T15:10:00.825Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 15
+  completed_plans: 16
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 6 of 18
+Plan: 7 of 18
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [█████░░░░░] 54%
+Progress: [██████░░░░] 57%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [█████░░░░░] 54%
 | Phase 02 P02 | 20 min | 2 tasks | 7 files |
 | Phase 02 P04 | 150 min | 3 tasks | 13 files |
 | Phase 02 P05 | 25 min | 2 tasks | 18 files |
+| Phase 02 P06 | 10 min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,9 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-02: next.config.ts sets agentRules: false so next dev stops writing apps/web/AGENTS.md and CLAUDE.md
 - [Phase 02]: Neon project bondr (royal-waterfall-05278863, aws-us-east-1) in the Launch-plan org, pay as you go — Owner chose option A on 2026-10-19; the only org that can create projects is on Launch
 - [Phase 02]: Drizzle casing snake_case in db() and drizzle.config.ts; integrity via CHECK and the landed-mint partial unique index — Database constraints over app checks (AGENTS.md section 6)
+- [Phase 02]: 02-06: /status fees are those of a fresh BONDR-quoted child curve at the network default creator fee; the insta-sell estimate is fee-only over legs [bondr, child, child, bondr]
+- [Phase 02]: 02-06: Worker status is cached 5 s on demand; a chain read failure nulls fees and minimum (UI disables signing); a missing settings row fails closed
+- [Phase 02]: 02-06: /quote ignores the kill switch and maps AwaitingMigration to 409 paused awaiting_migration
 
 ### Pending Todos
 
@@ -148,6 +152,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T14:59:32.591Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-10-19T15:10:00.820Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None

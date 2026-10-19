@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
 // Importing the web config runs its allowlist loader in this process too, so the runner holds only the
 // WEB_ENV names from the root .env, never the worker secrets. Do not load the root .env here: the web
@@ -19,7 +20,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
-  use: { baseURL, trace: "retain-on-failure" },
+  // The web routes rate limit per client IP (02-10) and dev reuses one server across runs, so each runner
+  // process (each worker loads this file) presents its own random X-Real-IP instead of sharing 127.0.0.1.
+  use: {
+    baseURL,
+    trace: "retain-on-failure",
+    extraHTTPHeaders: { "x-real-ip": `10.${randomInt(256)}.${randomInt(256)}.${randomInt(256)}` },
+  },
   // Desktop Chrome carries a normal Chrome user agent, not HeadlessChrome (Pitfall 4).
   // paused.e2e.ts flips the shared kill switch, so it runs alone after every other spec.
   projects: [

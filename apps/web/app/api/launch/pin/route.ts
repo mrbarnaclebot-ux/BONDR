@@ -1,0 +1,115 @@
+import "server-only";
+import type { Links } from "@bondr/core/api";
+import {
+  checkDescription,
+  checkImage,
+  checkName,
+  checkSymbol,
+  checkUri,
+  MAX_IMAGE_BYTES,
+  normalizeLink,
+} from "@bondr/core/rules";
+import { eq } from "drizzle-orm";
+import { db, wallets } from "@/lib/db";
+import { BASE58_KEY, rateLimited, sameOrigin } from "@/lib/guard";
+import { ipfsUri, type MetaFields, metadataJson, PinError, pinFile } from "@/lib/pinata";
+
+export const runtime = "nodejs";
+
+const MAX_BODY = MAX_IMAGE_BYTES + 64 * 1024;
+const MAX_META = 8 * 1024;
+const LIMIT = 5;
+const WINDOW_MS = 10 * 60_000;
+
+const fail = (status: number, error?: string) =>
+  error ? Response.json({ error }, { status }) : new Response(null, { status });
+
+type Parsed = { wallet: string; image: File; raw: Record<string, unknown> };
+
+// Multipart: `image` (File) and `meta` (JSON: wallet, name, symbol, description, links).
+async function parse(req: Request): Promise<Parsed | null> {
+  const form = await req.formData().catch(() => null);
+  const image = form?.get("image");
+  const meta = form?.get("meta");
+  if (!(image instanceof File) || typeof meta !== "string" || meta.length > MAX_META) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(meta);
+  } catch {
+    return null;
+  }
+  const wallet = (raw as { wallet?: unknown } | null)?.wallet;
+  if (typeof wallet !== "string" || !BASE58_KEY.test(wallet)) return null;
+  return { wallet, image, raw: raw as Record<string, unknown> };
+}
+
+// Server-side rerun of the browser's checks (rules.ts); null when any field is invalid.
+function fields(raw: Record<string, unknown>): MetaFields | null {
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const name = checkName(str(raw.name));
+  const symbol = checkSymbol(str(raw.symbol));
+  const description = checkDescription(str(raw.description));
+  if (!name.ok || !symbol.ok || !description.ok) return null;
+  const given = (raw.links ?? {}) as Record<string, unknown>;
+  const links: Links = {};
+  for (const kind of ["x", "telegram", "website"] as const) {
+    const link = normalizeLink(kind, str(given[kind]));
+    if (!link.ok) return null;
+    if (link.value) links[kind] = link.value;
+  }
+  return { name: name.value, symbol: symbol.value, description: description.value, links };
+}
+
+async function consented(wallet: string): Promise<boolean> {
+  const rows = await db()
+    .select({ address: wallets.address })
+    .from(wallets)
+    .where(eq(wallets.address, wallet))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Pins the image, then the metadata JSON pointing at it (LAUNCH-07). Nothing is signed before this. */
+export async function POST(req: Request): Promise<Response> {
+  if (!sameOrigin(req)) return fail(403);
+  const length = Number(req.headers.get("content-length"));
+  if (!(length > 0 && length <= MAX_BODY)) return fail(413); // a missing length could stream without end
+  const parsed = await parse(req);
+  if (!parsed) return fail(400, "invalid_input");
+  const limited = rateLimited(req, "pin", LIMIT, WINDOW_MS, parsed.wallet);
+  if (limited) return limited;
+  try {
+    if (!(await consented(parsed.wallet))) return fail(403, "consent_required");
+  } catch (e) {
+    console.error("pin consent read failed", (e as { cause?: { code?: string } }).cause?.code ?? "unknown");
+    return fail(503);
+  }
+  const meta = fields(parsed.raw);
+  const bytes = new Uint8Array(await parsed.image.arrayBuffer());
+  const image = checkImage(bytes.subarray(0, 12), bytes.length);
+  if (!meta || !image.ok) return fail(400, "invalid_input");
+  return pin(meta, bytes, image.value);
+}
+
+async function pin(meta: MetaFields, bytes: Uint8Array<ArrayBuffer>, type: string): Promise<Response> {
+  const jwt = process.env.pinata_jwt; // lowercase, as in the root .env (Pitfall 9)
+  if (!jwt) {
+    console.error("pin failed", "pinata_jwt is not set");
+    return fail(502, "pin_failed");
+  }
+  try {
+    const imageCid = await pinFile(
+      new Blob([bytes], { type: `image/${type}` }),
+      `${meta.symbol}.${type}`,
+      jwt,
+    );
+    const json = new Blob([JSON.stringify(metadataJson(meta, imageCid))], { type: "application/json" });
+    const cid = await pinFile(json, `${meta.symbol}.json`, jwt);
+    const uri = ipfsUri(cid);
+    if (!checkUri(uri).ok) throw new PinError(200);
+    return Response.json({ uri, cid, imageCid }, { headers: { "cache-control": "no-store" } });
+  } catch (e) {
+    console.error("pin failed", e instanceof PinError ? e.status : "unknown");
+    return fail(502, "pin_failed");
+  }
+}

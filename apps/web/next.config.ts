@@ -33,10 +33,17 @@ const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
 ];
 
+// Coin images: the owner's dedicated Pinata gateway host when set, and ipfs.io (the on-chain URI) always.
+const gateway = process.env.PINATA_GATEWAY?.trim()
+  .replace(/^https?:\/\//, "")
+  .replace(/\/.*$/, "");
+const IMAGE_HOSTS = [gateway, "ipfs.io"].filter(Boolean).map((host) => new URL(`https://${host}/ipfs/**`));
+
 const config: NextConfig = {
   transpilePackages: ["@bondr/core"], // raw .ts exports (D-15)
   poweredByHeader: false,
   allowedDevOrigins: ["127.0.0.1"], // the e2e baseURL; next dev otherwise blocks its own scripts and HMR there
+  images: { remotePatterns: IMAGE_HOSTS },
   agentRules: false, // next dev would otherwise write a second AGENTS.md here, shadowing the root one
   async redirects() {
     // ponytail: Phase 3 replaces / with the home lists

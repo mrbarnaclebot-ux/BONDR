@@ -1,14 +1,15 @@
 import { db, wallets } from "@/lib/db";
-import { json, sameOrigin } from "@/lib/guard";
+import { BASE58_KEY, json, rateLimited, sameOrigin } from "@/lib/guard";
 import { TERMS_VERSION } from "@/lib/terms";
 
 const MAX_BODY = 16 * 1024;
-// A Solana public key in base58: 32 bytes encode to 32-44 characters of this alphabet.
-const BASE58_KEY = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 /** Records consent (PLAT-02). The address travels in the body, never the URL, and is never logged. */
 export async function POST(req: Request): Promise<Response> {
   if (!sameOrigin(req)) return new Response(null, { status: 403 });
+  // Before the body is read: the upsert is cheap, but the table should not be spammable.
+  const limited = rateLimited(req, "consent", 10, 10 * 60_000);
+  if (limited) return limited;
   const body = await json(req, MAX_BODY);
   const wallet = (body as { wallet?: unknown } | null)?.wallet;
   if (typeof wallet !== "string" || !BASE58_KEY.test(wallet)) return new Response(null, { status: 400 });

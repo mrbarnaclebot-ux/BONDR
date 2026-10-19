@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { applyBps, split90_10 } from "./math.ts";
+import { applyBps, split90_10, trigger105 } from "./math.ts";
 
 test("applyBps floors x * bps / 10000", () => {
   expect(applyBps(1000n, 9900)).toBe(990n);
@@ -40,4 +40,10 @@ test("split90_10 floors the treasury tenth and gives the remainder to burn", () 
     const { treasury, burn } = split90_10(x);
     expect(treasury + burn).toBe(x);
   }
+});
+
+test("trigger105 fires at 105% of the cost to complete and not below", () => {
+  expect(trigger105(105n, 100n)).toBe(true);
+  expect(trigger105(104n, 100n)).toBe(false);
+  expect(trigger105(0n, 0n)).toBe(true);
 });

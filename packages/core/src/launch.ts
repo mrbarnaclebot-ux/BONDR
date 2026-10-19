@@ -72,7 +72,7 @@ export type LaunchOpts = Coin & {
 
 const big = (x: BN): bigint => BigInt(x.toString());
 // burnChecked fails unless this matches the mint; every pump create_v2 mint has 6 decimals.
-const COIN_DECIMALS = 6;
+export const COIN_DECIMALS = 6;
 
 // Exact-out (D-16): SOL buys at least qMin of Q, then exactly `amount` of the child costs at most qMin.
 // 1% and 2% margins absorb Q's price moving and rounding between quote and landing.

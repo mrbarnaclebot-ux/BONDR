@@ -15,3 +15,9 @@ export function split90_10(x: bigint): { treasury: bigint; burn: bigint } {
   const treasury = applyBps(x, TREASURY_BPS);
   return { treasury, burn: x - treasury };
 }
+
+// PROJECT.md default 2: the forced bond fires once W's burn budget is at least 105% of the cost to complete
+// the curve, so price moves between quote and landing still complete it.
+const TRIGGER_PCT = 105n;
+
+export const trigger105 = (budget: bigint, cost: bigint): boolean => budget * 100n >= cost * TRIGGER_PCT;

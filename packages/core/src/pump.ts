@@ -25,7 +25,9 @@ export const {
   PUMP_PROGRAM_ID,
   PUMP_AMM_PROGRAM_ID,
   PUMP_FEE_PROGRAM_ID,
+  PUMP_EVENT_AUTHORITY_PDA,
+  pumpIdl,
 } = pump;
-export const { PUMP_AMM_SDK, OnlinePumpAmmSdk } = amm;
+export const { PUMP_AMM_SDK, OnlinePumpAmmSdk, buyQuoteInput } = amm;
 export type { BondingCurve, Global, PumpQuoteAccounts } from "@pump-fun/pump-sdk"; // types only, erased at runtime
 export { BN }; // SDK amount arguments (bn.js 5.2.5, never anchor's BN)

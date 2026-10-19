@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-10-19T06:01:52.516Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-10-19T06:02:10.531Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
@@ -73,6 +73,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-01: TDD RED verified but not committed separately (AGENTS.md forbids red commits)
 - [Phase 01]: Config drift compares the effective schedule a BONDR-quoted coin pays (exotic, flat when exotic is all zero)
 - [Phase 01]: A successful rerun drops stale stage/net error rows so old crashes do not fail spike:check forever
+- [Phase 01]: 01-03: sendTx confirms by polling signature status; confirmTransaction's websocket kept the process alive
+- [Phase 01]: 01-03: devnet launch with per-coin table: burn 780 B / 304k CU, sell to SOL 881 B / 421k CU; shared-only sell 1,191 B (41 B headroom)
 
 ### Pending Todos
 
@@ -94,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T06:01:47.711Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-10-19T06:02:10.526Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None

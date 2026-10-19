@@ -7,8 +7,8 @@
 
 ### Chain proof (spike)
 
-- [ ] **SPIKE-01**: Owner can run one script on a Surfpool mainnet fork that creates a coin with creator = W, a pump-coin quote and creator_fee_bps 150, then prints the signature
-- [ ] **SPIKE-02**: Owner can see that create + dev buy + insta sell (and, separately, + insta burn) fits in one transaction, with the measured size and compute units
+- [x] **SPIKE-01**: Owner can run one script on a Surfpool mainnet fork that creates a coin with creator = W, a pump-coin quote and creator_fee_bps 150, then prints the signature
+- [x] **SPIKE-02**: Owner can see that create + dev buy + insta sell (and, separately, + insta burn) fits in one transaction, with the measured size and compute units
 - [ ] **SPIKE-03**: Owner can see a forced-bond buy + burn complete the curve in one transaction, and the fallback PumpSwap buy + burn after migration
 - [ ] **SPIKE-04**: Owner can see create_fee_sharing_config + the single update_fee_shares_v2 set deployer 80 / treasury 20 after migration, and distribution pay both
 - [ ] **SPIKE-05**: Owner can see a multi_hop_swap buy and sell SOL to BONDR-stand-in to coin
@@ -112,8 +112,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SPIKE-01 | Phase 1 | Pending |
-| SPIKE-02 | Phase 1 | Pending |
+| SPIKE-01 | Phase 1 | Complete |
+| SPIKE-02 | Phase 1 | Complete |
 | SPIKE-03 | Phase 1 | Pending |
 | SPIKE-04 | Phase 1 | Pending |
 | SPIKE-05 | Phase 1 | Pending |

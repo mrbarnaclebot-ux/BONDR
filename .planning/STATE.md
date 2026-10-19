@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-10-19T06:02:10.531Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-10-19T06:06:08.512Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 1 (Chain Spike) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [███░░░░░░░] 30%
 | Phase 01 P01 | 6 min | 3 tasks | 16 files |
 | Phase 01 P02 | 9 min | 2 tasks | 10 files |
 | Phase 01 P03 | 18 min | 3 tasks | 14 files |
+| Phase 01 P04 | 6 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase 01]: A successful rerun drops stale stage/net error rows so old crashes do not fail spike:check forever
 - [Phase 01]: 01-03: sendTx confirms by polling signature status; confirmTransaction's websocket kept the process alive
 - [Phase 01]: 01-03: devnet launch with per-coin table: burn 780 B / 304k CU, sell to SOL 881 B / 421k CU; shared-only sell 1,191 B (41 B headroom)
+- [Phase 01]: Live mainnet pump config on the fork matches PROJECT.md fee assumptions with no drift (max creator fee 300 bps)
+- [Phase 01]: fork.sh honours a hand-set SURFPOOL_DATASOURCE_RPC_URL, so the public RPC fallback is an env override
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T06:02:10.526Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-10-19T06:06:08.503Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None

@@ -1,7 +1,12 @@
 {
   "net": "fork",
-  "updatedAt": "2026-10-19T06:04:02.456Z",
-  "state": {},
+  "updatedAt": "2026-10-19T06:05:06.315Z",
+  "state": {
+    "Q": "621k7ZQP7XKWsmtDF8jrsXxzGJ6fG9ye2yoV6sQtUgGV",
+    "C0": "ChjgqLsdjp2a6WHfpwJMGHQeu89Dw798bugRFiyYfqBt",
+    "C.burn": "EomURLLiLy6S3TPrcnFQX7WXAcGYAi77WKUi7oiMCq6C",
+    "C.sell": "DHLfRa6RY7uUKyE8jxvZcsoPWXRDphTHF58r5oXPERZ7"
+  },
   "rows": [
     {
       "id": "config",
@@ -33,6 +38,162 @@
         "ammTier0.creator": "30",
         "ammTier0.lp": "2",
         "drift": ""
+      },
+      "env": "fork"
+    },
+    {
+      "id": "aux.prefund.621k7ZQP",
+      "step": "Prefund mint 621k7ZQP (fork rent)",
+      "ok": true,
+      "sig": "4kEgX6Wvtfg1XPFUz52xEBoYXhuJY2YyAb4d9Pa4jptrY5KLmA5BEJo7veT3BuK66fPQBeVbwAsBxqTmiVVxX5rw",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "mint": "621k7ZQP7XKWsmtDF8jrsXxzGJ6fG9ye2yoV6sQtUgGV"
+      },
+      "env": "fork"
+    },
+    {
+      "id": "standin.create",
+      "step": "Stand-in Q create_v2 (SOL pair, treasury creator)",
+      "ok": true,
+      "sig": "4DnRcqTjJc84bhhzVemdZkpgnsKqS7rwJvEKHNpq7pQeu27NQZFieBt1YSvS97TFmYAqwVEYBLkwseHEPeWWSGfw",
+      "bytes": 928,
+      "cu": 98303,
+      "cuLimit": 300000,
+      "facts": {
+        "Q": "621k7ZQP7XKWsmtDF8jrsXxzGJ6fG9ye2yoV6sQtUgGV",
+        "creator": "HSRgAnRH6651pLNW5VSh4tpVPTAk52zYf6v2xptQHHhg"
+      },
+      "env": "fork"
+    },
+    {
+      "id": "aux.prefund.ChjgqLsd",
+      "step": "Prefund mint ChjgqLsd (fork rent)",
+      "ok": true,
+      "sig": "3rPAsuGAy8KfaCm4bxwk2yVDByCMFJtukB5nyKxadGwUhqUabWiBoGXoincSdzYC3FcbcQEhGRETKZyu9RkS9ziB",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "mint": "ChjgqLsdjp2a6WHfpwJMGHQeu89Dw798bugRFiyYfqBt"
+      },
+      "env": "fork"
+    },
+    {
+      "id": "child.create",
+      "step": "Child create_v2 (quote Q, creator W, 150 bps)",
+      "ok": true,
+      "sig": "3BZcSa2nouP6Nz89cfCCVmLmGLx3kh1FnMEFZBM8Kp8yxGiebZg1hLhCJ5yHbrYhDS4YSVDuQrah9q7S9wAv2Pne",
+      "bytes": 1064,
+      "cu": 140360,
+      "cuLimit": 300000,
+      "facts": {
+        "mint": "ChjgqLsdjp2a6WHfpwJMGHQeu89Dw798bugRFiyYfqBt",
+        "W": "eF9JbArnwkPhzMGG9T7MPNpicPJeuyL7pLNRvNiMwGT",
+        "creator": "eF9JbArnwkPhzMGG9T7MPNpicPJeuyL7pLNRvNiMwGT",
+        "quoteMint": "621k7ZQP7XKWsmtDF8jrsXxzGJ6fG9ye2yoV6sQtUgGV",
+        "depth": 1,
+        "creatorFeeBps": "150"
+      },
+      "env": "fork"
+    },
+    {
+      "id": "aux.prefund.EomURLLi",
+      "step": "Prefund mint EomURLLi (fork rent)",
+      "ok": true,
+      "sig": "3siLvWrdZMbQUEge6Yfv27FAGFxV5XiHqnKPHSsUupTJhpy1g3SzZJQvocSMFAUiDBBW1H4waTvaQaZDdssk6txv",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "mint": "EomURLLiLy6S3TPrcnFQX7WXAcGYAi77WKUi7oiMCq6C"
+      },
+      "env": "fork"
+    },
+    {
+      "id": "launch.table.burn",
+      "step": "Per-coin lookup table (burn)",
+      "ok": true,
+      "bytes": 1072,
+      "cu": 29739,
+      "sig": "2MgR4pgDRf1Cs41X6z3FWJJaeNemJFB8h69T7xE2yJmxKbV6fow218f8ixiQyhaCNved3NZbCMDSk3gUQRZVuS1W",
+      "facts": {
+        "table": "6PJ1HBhaCE22YKf5xdeVjzrd74xJ43tF7T25B8nRvb2g",
+        "keys": 26,
+        "txs": 2
+      },
+      "env": "fork"
+    },
+    {
+      "id": "launch.burn",
+      "step": "Launch: create + exact-out dev buy + insta burn (one v0 tx, per-coin table)",
+      "ok": true,
+      "sig": "4b7H1fg4L5zcknk6rgieLaXUr6dbDpz28Sjt8LeyBYhQNp4RB7hV3jQzeMVQXjDXt9yco2U8faZUvuLZvdn9MsSP",
+      "bytes": 780,
+      "cu": 309238,
+      "cuLimit": 600000,
+      "facts": {
+        "mint": "EomURLLiLy6S3TPrcnFQX7WXAcGYAi77WKUi7oiMCq6C",
+        "W": "ALxvzVXdPi4XHBqdyBBWy4EfyPRQHthyqUEeUQbotAs",
+        "amount": "31310323469601",
+        "qMin": "8671591758466",
+        "solIn": "250000000",
+        "noTableBytes": 1552,
+        "sharedOnlyBytes": 1059,
+        "tableKeys": 26,
+        "supplyBefore": "1000000000000000",
+        "devChildAfter": "0",
+        "supplyAfter": "968689676530399",
+        "devQLeft": "140041204774"
+      },
+      "env": "fork"
+    },
+    {
+      "id": "aux.prefund.DHLfRa6R",
+      "step": "Prefund mint DHLfRa6R (fork rent)",
+      "ok": true,
+      "sig": "2QqxRcyG3WtacRuFvbgiCTLz3rMxspmQ53amWbj9kDTj597d4RAge3NBeUxQ3ZVieZonJXPaHtVabEn1xbxHSDTj",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "mint": "DHLfRa6RY7uUKyE8jxvZcsoPWXRDphTHF58r5oXPERZ7"
+      },
+      "env": "fork"
+    },
+    {
+      "id": "launch.table.sell",
+      "step": "Per-coin lookup table (sell)",
+      "ok": true,
+      "bytes": 1072,
+      "cu": 31182,
+      "sig": "4UCSwwr34jTS1uyJmrGSWxpCXPqciJjP7GA5Jx5gvhAgcJzUd1mxvCa1QWaePHncUNwQc33LamQUQ3yWK13UDHJQ",
+      "facts": {
+        "table": "AU4eMaossbeTj8TyrAegS6A6HQj8GdhLDgD5ssb8cwyW",
+        "keys": 31,
+        "txs": 2
+      },
+      "env": "fork"
+    },
+    {
+      "id": "launch.sell",
+      "step": "Launch: create + exact-out dev buy + insta sell (one v0 tx, per-coin table)",
+      "ok": true,
+      "sig": "vpSjo2WRbp97FRyL18rDrauZwGLcr2aLgu9rHXmPqCsHkqEgXubV7AfqZCddAGSbHUnS9oz3whRm7Wr8PvWasDx",
+      "bytes": 881,
+      "cu": 442775,
+      "cuLimit": 600000,
+      "facts": {
+        "mint": "DHLfRa6RY7uUKyE8jxvZcsoPWXRDphTHF58r5oXPERZ7",
+        "W": "wB4FzMMcuJPoJPAMwoABTxDsvSP1uegRX4hu88YLorE",
+        "amount": "31129019829766",
+        "qMin": "8531161123679",
+        "solIn": "250000000",
+        "noTableBytes": 1808,
+        "sharedOnlyBytes": 1191,
+        "tableKeys": 31,
+        "supplyBefore": "1000000000000000",
+        "devChildAfter": "0",
+        "supplyAfter": "1000000000000000",
+        "devQLeft": "277783497517"
       },
       "env": "fork"
     }

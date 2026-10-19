@@ -4,7 +4,7 @@ import { buildCreate, type Coin } from "@bondr/core/launch";
 import { BN, OnlinePumpSdk, type PumpQuoteAccounts } from "@bondr/core/pump";
 import { budget, sendTx } from "@bondr/core/send";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { fundSol, paceMs, prefundMint } from "../fund.ts";
+import { fundFork, fundSol, paceMs, prefundMint } from "../fund.ts";
 import type { Ctx, Rule, Stage } from "../results.ts";
 
 const CU = 300_000;
@@ -131,6 +131,7 @@ export const createStage: Stage = {
   async run(ctx) {
     const online = new OnlinePumpSdk(ctx.conn);
     const dev = ctx.key("sim", "dev");
+    await fundFork(ctx);
     const rent = await ctx.conn.getMinimumBalanceForRentExemption(0);
     await fundSol(ctx, dev.publicKey, rent + 2 * PER_CREATE);
     const Q = await standIn(ctx, dev);

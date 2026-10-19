@@ -10,6 +10,7 @@ type Key = string | { toBase58(): string };
 export type EventTx = {
   transaction: { message: { accountKeys?: readonly Key[]; staticAccountKeys?: readonly Key[] } };
   meta: {
+    err?: unknown;
     innerInstructions?:
       | { index: number; instructions: { programIdIndex: number; accounts: number[]; data: string }[] }[]
       | null;
@@ -42,7 +43,10 @@ const keysOf = (tx: EventTx): string[] =>
     ...(tx.meta?.loadedAddresses?.readonly ?? []),
   ].map(String);
 
+// A failed tx rolled back everything it did, but its meta can still list the inner instructions it ran
+// before failing, so those events never happened.
 export function innerEvents(tx: EventTx): { name: string; data: Record<string, unknown> }[] {
+  if (tx.meta?.err) return [];
   const keys = keysOf(tx);
   const [program, authority] = [PUMP_PROGRAM_ID.toBase58(), PUMP_EVENT_AUTHORITY_PDA.toBase58()];
   const out: { name: string; data: Record<string, unknown> }[] = [];

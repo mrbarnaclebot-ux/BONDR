@@ -23,6 +23,12 @@ test("an event under another account 0 is ignored", () => {
   expect(innerEvents(tx)).toEqual([]);
 });
 
+test("a failed tx yields no events", () => {
+  const tx = fixture("forced-bond.json");
+  if (tx.meta) tx.meta.err = { InstructionError: [3, { Custom: 6003 }] };
+  expect(innerEvents(tx)).toEqual([]);
+});
+
 // The fork forced bond (01-07): one tx completes C2 and burns; its mint is the run's state "C2".
 test("completeEvents finds exactly one CompleteEvent for the forced-bonded child", () => {
   const { mint } = load("forced-bond.json");

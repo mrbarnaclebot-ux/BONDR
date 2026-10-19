@@ -24,4 +24,5 @@ export const {
   PUMP_FEE_PROGRAM_ID,
 } = pump;
 export const { PUMP_AMM_SDK, OnlinePumpAmmSdk } = amm;
+export type { BondingCurve, Global, PumpQuoteAccounts } from "@pump-fun/pump-sdk"; // types only, erased at runtime
 export { BN }; // SDK amount arguments (bn.js 5.2.5, never anchor's BN)

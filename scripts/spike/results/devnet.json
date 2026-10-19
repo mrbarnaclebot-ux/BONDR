@@ -1,7 +1,10 @@
 {
   "net": "devnet",
-  "updatedAt": "2026-10-19T05:37:59.645Z",
-  "state": {},
+  "updatedAt": "2026-10-19T05:52:19.398Z",
+  "state": {
+    "Q": "5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6",
+    "C0": "HGC7QFRXC9V5ris4SXLFopCurvkM2w8G5irmRkgKKh9u"
+  },
   "rows": [
     {
       "id": "config",
@@ -33,6 +36,67 @@
         "ammTier0.creator": "30",
         "ammTier0.lp": "2",
         "drift": "creator fee not configurable, assumed 150 bps per coin; AMM LP 25 bps, assumed 20"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "aux.fund.9Hm1YEfX",
+      "step": "Fund 9Hm1YEfX from ops",
+      "ok": true,
+      "sig": "t2op6qH55VoCgXPB27Yczu4iTaCZkT57Y4hLvg8JPuXppAwaC9cYZwcsDg1LuJ6eq43peCWK5G8APG7S7iJqwdL",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "to": "9Hm1YEfXqR2WD78rLHBM6nhnEB9tTURcwxtpU9TjwQM6",
+        "lamports": 100650240
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "standin.create",
+      "step": "Stand-in Q create_v2 (SOL pair, treasury creator)",
+      "ok": true,
+      "sig": "4odjtHPPidXxF1Q84GcQ5RC98YnMvtGFZwR9j56zMsRVC1mBWQ9FeSLbnk8GaR3VL18ra4dGKG8NTzindtQ5u1xG",
+      "bytes": 928,
+      "cu": 105129,
+      "cuLimit": 300000,
+      "facts": {
+        "Q": "5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6",
+        "creator": "4J9kCp2QvsGMid3YW2B11Ua6g58YHegt7TxAG4Yp6BDF"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "child.create",
+      "step": "Child create_v2 (quote Q, creator W, default fee)",
+      "ok": true,
+      "sig": "5fqdXEmvZDuGurCWe7rC7f6eQ8peYyJBcbLXt8pN8kPZSzFhZWRiYJQHjNNm82WGevvQkLfsh5baX6nYMGbhyqTa",
+      "bytes": 1064,
+      "cu": 139971,
+      "cuLimit": 300000,
+      "facts": {
+        "mint": "HGC7QFRXC9V5ris4SXLFopCurvkM2w8G5irmRkgKKh9u",
+        "W": "F9eEXsaZBPGw9JyVc1YLxiHq2KNcyQzUJVPRq56kcuKd",
+        "creator": "F9eEXsaZBPGw9JyVc1YLxiHq2KNcyQzUJVPRq56kcuKd",
+        "quoteMint": "5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6",
+        "depth": 1,
+        "creatorFeeBps": "0"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "child.create150.refused",
+      "step": "Child create_v2 with creator_fee_bps 150 (devnet must refuse)",
+      "ok": true,
+      "sig": "4NGjAsYG3tCf8xBbUR3fka1nUc5wGCTHQRDqWCwLLFRkhgyfcEqzq6pp7oZ2DNR7Da3EsGUf3ZXr9kiCcZXN6FWd",
+      "bytes": 1064,
+      "cu": 114382,
+      "err": "CreatorFeeNotConfigurable {\"InstructionError\":[2,{\"Custom\":6077}]}",
+      "code": 6077,
+      "expectFail": true,
+      "cuLimit": 300000,
+      "facts": {
+        "mint": "2PwFpVzAvwGVAhaA2EgxxL48EMehbhSuLAyE9ha9gnnW"
       },
       "env": "devnet"
     }

@@ -9,7 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "lint": "biome ci .",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && pnpm --filter @bondr/web typecheck",
     "spike:keys": "node scripts/spike/keygen.ts",
     "spike": "node --env-file=.env scripts/spike/run.ts",
     "spike:check": "node --env-file=.env scripts/spike/check.ts",

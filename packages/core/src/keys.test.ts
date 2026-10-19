@@ -20,6 +20,12 @@ describe("derive", () => {
     expect(pk(master, "w", "devnet", "Y")).not.toBe(base);
   });
 
+  test("mint keys are disjoint per lane and from wallet keys (D-20)", () => {
+    const local = pk(master, "mint", "devnet", "local.7");
+    expect(local).not.toBe(pk(master, "mint", "devnet", "staging.7"));
+    expect(local).not.toBe(pk(master, "w", "devnet", "local.7"));
+  });
+
   test("a different master gives a different key", () => {
     const other = Buffer.alloc(32, 7);
     expect(pk(other, "w", "devnet", "X")).not.toBe(pk(master, "w", "devnet", "X"));

@@ -1,0 +1,8 @@
+packages:
+  - "packages/*"
+# agencybook D-153: refuse any package version younger than a day (supply-chain buffer).
+minimumReleaseAge: 1440
+ignoredBuiltDependencies:
+  - bigint-buffer
+  - bufferutil
+  - utf-8-validate

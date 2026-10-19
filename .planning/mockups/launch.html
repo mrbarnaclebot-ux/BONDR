@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch a coin on BONDR</title>
+<meta name="description" content="Launch flow: coin details, dev buy and mandatory exit, review, Phantom signing, live.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Martian+Mono:wdth,wght@75..112.5,400..600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .launch { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: var(--space-2xl); align-items: start; padding-top: var(--space-2xl); }
+  .launch h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
+  .lede { color: var(--muted); max-width: 56ch; margin-top: var(--space-sm); }
+  /* the stepper is a bond chain: nodes link up as the launch progresses */
+  .steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); list-style: none; padding: 0; margin: var(--space-xl) 0 var(--space-xl); }
+  .steps li { position: relative; padding-top: 34px; font-size: var(--fs-xs); color: var(--muted); transition: color var(--dur); }
+  .steps li::before { content: ""; position: absolute; top: 10px; left: 10px; right: -10px; height: 4px; border-radius: 4px; background: var(--surface-3); transition: background 600ms var(--ease-out); }
+  .steps li:last-child::before { display: none; }
+  .steps li::after { content: ""; position: absolute; top: 2px; left: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); border: 2px solid var(--line-strong); transition: background 500ms var(--ease-spring), border-color var(--dur), box-shadow 500ms var(--ease-out), transform 500ms var(--ease-spring); }
+  .steps li span { display: block; font-family: var(--font-num); }
+  .steps li b { font-weight: 600; }
+  .steps li.done { color: var(--text); }
+  .steps li.done::before { background: linear-gradient(90deg, var(--secondary), var(--accent)); }
+  .steps li.done::after { background: var(--secondary); border-color: var(--primary); }
+  .steps li.on { color: var(--text); }
+  .steps li.on::after { background: var(--accent); border-color: var(--accent); transform: scale(1.15); box-shadow: 0 0 0 6px color-mix(in oklch, var(--accent) 18%, transparent), 0 0 22px var(--accent); }
+  .panel { display: none; gap: var(--space-lg); padding: var(--space-xl); }
+  .panel.on { display: grid; animation: rise 420ms var(--ease-out); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); }
+  textarea.input { min-height: 96px; resize: vertical; }
+  .count { font-family: var(--font-num); font-stretch: 87.5%; font-weight: 400; font-size: var(--fs-xs); color: var(--muted); }
+  .count.over { color: var(--danger); }
+  .drop { display: grid; grid-template-columns: 88px 1fr; gap: var(--space-md); align-items: center; padding: var(--space-md); border: 1px dashed var(--line-strong); border-radius: var(--radius); cursor: pointer; background: radial-gradient(60% 100% at 0% 50%, color-mix(in oklch, var(--accent) 8%, transparent), transparent); transition: border-color var(--dur), background var(--dur), box-shadow 400ms var(--ease-out); }
+  .drop .ava { border-radius: 18px; }
+  .field > .drop { display: grid; justify-content: normal; font-weight: 400; font-size: var(--fs-sm); }
+  .drop:hover { border-color: var(--primary); background: var(--surface); }
+  .drop .ava { width: 88px; height: 88px; }
+  .actions { display: flex; gap: var(--space-sm); justify-content: space-between; align-items: center; padding-top: var(--space-md); border-top: 1px solid var(--line); }
+
+  .amount { position: relative; max-width: 320px; }
+  .amount .input { font-family: var(--font-num); font-stretch: 87.5%; font-size: var(--fs-lg); min-height: 56px; padding-right: 60px; }
+  .amount .unit { position: absolute; right: 12px; top: 50%; translate: 0 -50%; font-weight: 700; font-size: var(--fs-sm); color: var(--muted); }
+  .chips { display: flex; gap: 6px; max-width: 320px; }
+  .chips button { flex: 1; min-height: 32px; background: transparent; border: 1px solid var(--line); border-radius: var(--radius); font-family: var(--font-num); font-stretch: 87.5%; font-size: var(--fs-xs); cursor: pointer; }
+  .chips button:hover { border-color: var(--primary); color: var(--primary); }
+
+  fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: var(--space-sm); }
+  legend { font-weight: 600; font-size: var(--fs-sm); margin-bottom: var(--space-sm); padding: 0; }
+  .exit { display: grid; grid-template-columns: 22px 1fr; gap: 4px var(--space-sm); padding: var(--space-md); border: 1px solid var(--line-strong); border-radius: var(--radius); cursor: pointer; background: color-mix(in oklch, var(--ink) 30%, var(--surface)); transition: border-color var(--dur), background var(--dur), box-shadow 400ms var(--ease-out), transform 500ms var(--ease-spring); }
+  .exit:not(.disabled):hover { transform: translateY(-2px); }
+  .exit:hover { border-color: var(--primary); }
+  .exit input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); grid-row: span 2; }
+  .exit b { font-size: var(--fs-md); display: flex; gap: 8px; align-items: center; }
+  .exit p { font-size: var(--fs-sm); color: var(--muted); grid-column: 2; }
+  .exit:has(input:checked) { border-color: var(--accent); background: radial-gradient(100% 120% at 0% 0%, color-mix(in oklch, var(--accent) 20%, transparent), transparent 70%), var(--surface); box-shadow: var(--glow); }
+  .exit.disabled { cursor: not-allowed; border-style: dashed; }
+  .exit.disabled:hover { border-color: var(--line-strong); }
+  .exit.disabled b { color: var(--muted); }
+  .exit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); }
+
+  .review { display: grid; gap: 0; }
+  .review > div { display: grid; grid-template-columns: 180px 1fr; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+  .review dt { color: var(--muted); }
+  .review dd { margin: 0; }
+  .callout { padding: var(--space-md); background: var(--surface); font-size: var(--fs-sm); display: grid; grid-template-columns: 20px 1fr; gap: var(--space-sm); }
+  .steps-mini { margin: 6px 0 0; padding-left: 1.1em; display: grid; gap: 4px; }
+  .callout svg { width: 18px; height: 18px; color: var(--primary); margin-top: 2px; }
+  .callout.warn svg { color: var(--warn); }
+  .callout.bad { background: var(--danger-wash); }
+  .callout.bad svg { color: var(--danger); }
+
+  .sign { list-style: none; margin: 0; padding: 0; display: grid; }
+  .sign li { display: grid; grid-template-columns: 28px 1fr auto; gap: var(--space-sm); padding: var(--space-md) 0; border-bottom: 1px solid var(--line); align-items: start; }
+  .sign .ic { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-strong); display: grid; place-items: center; }
+  .sign .ic svg { width: 12px; height: 12px; }
+  .sign li.done .ic { background: var(--secondary); border-color: var(--secondary); color: var(--text); }
+  .sign li.now .ic { border-color: var(--accent); border-top-color: transparent; animation: spin 900ms linear infinite; }
+  .sign li.wait { color: var(--muted); }
+  .sign small { display: block; color: var(--muted); font-size: var(--fs-xs); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .live h2 { font-size: clamp(2.5rem, 6vw, 4.5rem); }
+  .live h2 em { font-style: normal; color: var(--accent); }
+  .proof { display: grid; grid-template-columns: auto 1fr; gap: 0 var(--space-md); align-items: center; padding: var(--space-md) var(--space-lg) var(--space-md) var(--space-md); border-radius: var(--radius-lg); border: 1px solid color-mix(in oklch, var(--accent) 60%, transparent); outline: 1px solid color-mix(in oklch, var(--accent) 22%, transparent); outline-offset: 4px; max-width: 460px; background: radial-gradient(120% 140% at 0% 50%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 60%), color-mix(in oklch, var(--surface) 85%, transparent); }
+  .live-art { position: relative; height: 220px; border-radius: var(--radius); overflow: hidden; display: grid; place-items: center; background: url(assets/hero-bond-960.jpg) 60% 50% / cover; }
+  .live-art::before { content: ""; position: absolute; inset: 0; background: radial-gradient(closest-side, transparent 35%, color-mix(in oklch, var(--ink) 70%, transparent)); }
+  .live-art .orb { left: 9%; }
+  .orb { position: relative; display: grid; place-items: center; }
+  .orb .ava { position: relative; z-index: 1; width: 84px; height: 84px; border-radius: 22px; box-shadow: 0 0 0 2px var(--accent), 0 0 40px color-mix(in oklch, var(--accent) 70%, transparent); }
+  .orb i { position: absolute; width: 84px; height: 84px; border-radius: 26px; border: 1.5px solid var(--accent); opacity: 0; animation: orbRing 2.8s var(--ease-out) infinite; }
+  .orb i:nth-child(2) { animation-delay: 0.9s; } .orb i:nth-child(3) { animation-delay: 1.8s; }
+  @keyframes orbRing { 0% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: scale(2.6); } }
+  .proof .zero { font-family: var(--font-display); font-weight: 900; font-size: var(--fs-3xl); line-height: 0.8; color: var(--accent); grid-row: span 2; padding-right: var(--space-sm); border-right: 1px solid color-mix(in oklch, var(--accent) 40%, transparent); }
+  .ca { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) var(--space-md); padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md); border-radius: var(--radius-lg); border: 1px solid var(--line); background: color-mix(in oklch, var(--surface) 85%, transparent); max-width: 640px; }
+  .ca-l { font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; flex-basis: 100%; }
+  .ca-v { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-sm); }
+  .ca-btn { min-height: 40px; gap: 6px; }
+  .ca-btn svg { width: 14px; height: 14px; }
+  .ca-btn.done { color: var(--accent); border-color: color-mix(in oklch, var(--accent) 60%, transparent); }
+  .proof p { font-size: var(--fs-xs); color: var(--muted); }
+
+  .receipt { position: sticky; top: 88px; border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: radial-gradient(100% 40% at 50% 0%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 70%), linear-gradient(180deg, var(--surface-2), var(--surface)); box-shadow: var(--elev-2); padding: var(--space-lg); padding-top: calc(var(--space-lg) + 6px); }
+  .receipt::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 8px; background: radial-gradient(circle at 6px -1px, var(--background) 5px, transparent 5.5px) 0 0 / 12px 8px repeat-x; }
+  .rc-head { display: flex; gap: var(--space-sm); align-items: center; padding-bottom: var(--space-md); border-bottom: 1px dashed var(--line-strong); }
+  .rc-head .ava { width: 52px; height: 52px; }
+  .rc-head b { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); text-transform: uppercase; line-height: 1; display: block; overflow-wrap: anywhere; }
+  .rc { display: grid; gap: 8px; padding-block: var(--space-md); border-bottom: 1px dashed var(--line-strong); font-size: var(--fs-xs); margin: 0; }
+  .rc > div { display: flex; justify-content: space-between; gap: var(--space-sm); }
+  .rc dt { color: var(--muted); }
+  .rc dd { margin: 0; text-align: right; font-family: var(--font-num); font-stretch: 87.5%; }
+  .rc-l { display: grid; gap: 8px; margin: 0; }
+  .rc-l > div { display: flex; justify-content: space-between; gap: var(--space-sm); }
+  .rch { font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .rc:last-child { border-bottom: 0; padding-bottom: 0; }
+  .paused-note { display: none; }
+  body.paused .paused-note { display: grid; }
+
+  @media (max-width: 1080px) { .launch { grid-template-columns: 1fr; } .receipt { position: static; } }
+  @media (max-width: 680px) {
+    .two, .three, .exit-grid { grid-template-columns: 1fr; }
+    .panel { padding: var(--space-md); }
+    .steps li b { display: none; }
+    .steps li.on b { display: block; white-space: nowrap; }
+    .review > div { grid-template-columns: 1fr; gap: 2px; }
+    .actions { flex-wrap: wrap; }
+    .actions .btn { flex: 1; }
+    .drop { grid-template-columns: 64px 1fr; } .drop .ava { width: 64px; height: 64px; }
+  }
+</style>
+</head>
+<body>
+<div id="mockbar"></div>
+<div id="header"></div>
+
+<main class="wrap launch">
+  <div>
+    <h1 class="display">Launch a coin</h1>
+    <p class="lede">One Phantom signature creates your coin, makes your dev buy, and sells or burns it. From then on its creator fees work to bond it. After bond, 80% of them are yours, permanently.</p>
+    <ol class="steps" id="steps">
+      <li><span>01</span><b>Coin</b></li><li><span>02</span><b>Dev buy and exit</b></li><li><span>03</span><b>Review</b></li><li><span>04</span><b>Sign</b></li><li><span>05</span><b>Live</b></li>
+    </ol>
+
+    <div class="callout warn paused-note" role="status" style="margin-bottom:var(--space-lg)"><span class="ic-warn"></span><div><b>Launches are paused.</b> BONDR's own curve is complete and migrating to PumpSwap. You can fill this in now; the Launch button unlocks automatically when the pool is live.</div></div>
+
+    <form class="panel on" data-step="1" novalidate>
+      <div class="two">
+        <div class="field"><div class="label-row"><label for="name">Name</label><span class="count" id="name-c"></span></div>
+          <input class="input" id="name" value="Grubworm" maxlength="40" autocomplete="off" aria-describedby="name-e"><span class="error" id="name-e" hidden></span></div>
+        <div class="field"><div class="label-row"><label for="sym">Symbol</label><span class="count" id="sym-c"></span></div>
+          <input class="input num" id="sym" value="GRUB" maxlength="20" autocomplete="off" style="text-transform:uppercase" aria-describedby="sym-e"><span class="error" id="sym-e" hidden></span></div>
+      </div>
+      <div class="field"><span class="label-row">Image</span>
+        <label class="drop" for="img"><span class="ava" id="img-prev"></span><span><b>grubworm.png</b> <span class="muted">uploaded, 512 x 512</span><span class="hint" style="display:block">Square PNG, JPG, GIF or WEBP up to 4 MB. Pinned to IPFS before you sign. Click to replace.</span></span></label>
+        <input type="file" id="img" accept="image/png,image/jpeg,image/gif,image/webp" class="sr-only"></div>
+      <div class="field"><div class="label-row"><label for="desc">Description</label><span class="count" id="desc-c"></span></div>
+        <textarea class="input" id="desc" maxlength="500">A worm that eats its own supply. Fees force the bond, the bond burns the bag.</textarea></div>
+      <div class="three">
+        <div class="field"><label for="x">X <span class="muted" style="font-weight:400">optional</span></label><input class="input" id="x" value="x.com/grubwormsol" placeholder="x.com/yourcoin"></div>
+        <div class="field"><label for="tg">Telegram <span class="muted" style="font-weight:400">optional</span></label><input class="input" id="tg" placeholder="t.me/yourcoin"></div>
+        <div class="field"><label for="web">Website <span class="muted" style="font-weight:400">optional</span></label><input class="input" id="web" value="grubworm.fun" placeholder="yourcoin.xyz"></div>
+      </div>
+      <div class="actions"><span class="hint">Name and symbol are permanent once launched.</span><button class="btn btn-primary btn-lg" type="button" data-next="2">Continue to dev buy</button></div>
+    </form>
+
+    <form class="panel" data-step="2" novalidate>
+      <div class="field"><label for="buy">Dev buy</label>
+        <div class="amount"><input class="input" id="buy" inputmode="decimal" value="0.50" aria-describedby="buy-e buy-h"><span class="unit">SOL</span></div>
+        <div class="chips" id="buy-chips"><button type="button">0.25</button><button type="button">0.5</button><button type="button">1</button><button type="button">2</button></div>
+        <span class="hint" id="buy-h">Minimum 0.25 SOL. In the same transaction your SOL buys BONDR, which buys your coin. About <span class="num" id="buy-out">12.4M</span> tokens.</span>
+        <span class="error" id="buy-e" hidden></span>
+      </div>
+      <fieldset>
+        <legend>What happens to your dev buy <span class="muted" style="font-weight:400">required</span></legend>
+        <div class="exit-grid">
+          <label class="exit"><input type="radio" name="exit" value="sell"><b>Insta sell</b><p>Sold back in the same transaction. You get your SOL back, minus fees and price impact.</p><p class="num">You get back about <span class="up" id="back-sell">0.475 SOL</span></p></label>
+          <label class="exit"><input type="radio" name="exit" value="burn"><b>Insta burn</b><p>Burned in the same transaction. Supply shrinks for every holder; you get nothing back.</p><p class="num">You get back <span>0 SOL</span>, burn about <span id="back-burn">12.4M</span> tokens</p></label>
+        </div>
+        <label class="exit disabled" aria-disabled="true"><input type="radio" name="exit" value="lock" disabled><b>Streamflow lock <span class="tag">Coming later</span></b><p>Lock the dev buy for 1 hour to 12 months. Waiting on a Token-2022 test.</p></label>
+        <p class="hint">BONDR only co-signs your launch if this exit is inside the transaction you sign.</p>
+      </fieldset>
+      <div class="actions"><button class="btn btn-quiet" type="button" data-next="1">Back</button><button class="btn btn-primary btn-lg" type="button" data-next="3" id="to-review">Review launch</button></div>
+    </form>
+
+    <div class="panel" data-step="3">
+      <dl class="review" id="review"></dl>
+      <div class="callout"><span class="ic-lock"></span><div><b>Where the 1.5% creator fee goes</b><ul class="steps-mini"><li><b>Before bond:</b> 90% builds a burn budget, 10% to the BONDR treasury.</li><li><b>At 105% of the cost to finish the curve:</b> the budget buys the rest and burns it.</li><li><b>After bond:</b> 80% to you, 20% to the treasury, permanently.</li></ul><p class="hint" style="margin-top:6px">No bond within 24 hours? That window's budget buys and burns BONDR instead.</p></div></div>
+      <div class="actions"><button class="btn btn-quiet" type="button" data-next="2">Back</button><button class="btn btn-primary btn-lg launch-btn" type="button" data-next="4">Sign in Phantom</button></div>
+    </div>
+
+    <div class="panel" data-step="4">
+      <ol class="sign" id="sign"></ol>
+      <div class="callout bad" id="rejected" hidden><span class="ic-x"></span><div><b>Phantom rejected the request.</b> Nothing was sent and no SOL left your wallet. Your mint address stays reserved for 10 minutes. <a href="#" id="retry">Try again</a></div></div>
+      <div class="actions"><span class="hint">Keep this tab open. Launches go through a private path so snipers cannot see them early.</span><button class="btn btn-quiet" type="button" data-next="3">Cancel</button></div>
+    </div>
+
+    <div class="panel live" data-step="5">
+      <div class="live-art" id="live-art" aria-hidden="true"></div>
+      <h2 class="display">GRUB is <em>live.</em></h2>
+      <div class="proof"><span class="zero" aria-hidden="true">0</span><strong>Dev holds 0 launch supply</strong><p><span id="live-exit"></span> <span id="live-tx"></span></p></div>
+      <div class="ca"><span class="ca-l">Contract address</span><span class="num ca-v" id="live-mint"></span><button class="btn btn-quiet ca-btn" type="button" id="ca-copy"><span id="ca-ico"></span><span id="ca-txt">Copy</span></button><span class="sr-only" aria-live="polite" id="ca-live"></span></div>
+      <div class="actions"><a class="btn btn-quiet" href="launch.html">Launch another</a><a class="btn btn-primary btn-lg" href="token.html">Open GRUB</a></div>
+    </div>
+  </div>
+
+  <aside class="receipt" aria-label="Launch summary">
+    <div class="rc-head"><span class="ava" id="rc-ava"></span><div><b id="rc-name">Grubworm</b><span class="num muted" id="rc-sym" style="font-size:var(--fs-sm)">GRUB</span></div></div>
+    <dl class="rc">
+      <div><dt>Mint, reserved</dt><dd id="rc-mint"></dd></div>
+      <div><dt>Dev buy</dt><dd id="rc-buy">0.50 SOL</dd></div>
+      <div><dt>Exit</dt><dd id="rc-exit">Insta burn</dd></div>
+      <div><dt>Launch supply you hold</dt><dd class="up">0</dd></div>
+    </dl>
+    <div class="rc">
+      <h2 class="rch">Every curve trade</h2><dl class="rc-l">
+      <div><dt>Pump protocol</dt><dd>0.95%</dd></div>
+      <div><dt>Creator fee</dt><dd>1.50%</dd></div>
+      <div><dt>BONDR platform fee</dt><dd class="up">0</dd></div>
+    </dl></div>
+    <div class="rc">
+      <h2 class="rch">Creator fee, before bond</h2><dl class="rc-l">
+      <div><dt>Burn budget for this coin</dt><dd>90%</dd></div>
+      <div><dt>BONDR treasury</dt><dd>10%</dd></div>
+      <div><dt>You</dt><dd>0%</dd></div>
+    </dl></div>
+    <div class="rc">
+      <h2 class="rch">Creator fee, after bond</h2><dl class="rc-l">
+      <div><dt>You, permanently</dt><dd class="up">80%</dd></div>
+      <div><dt>BONDR treasury</dt><dd>20%</dd></div>
+    </dl></div>
+    <div class="rc">
+      <h2 class="rch">You pay now</h2><dl class="rc-l">
+      <div><dt>Dev buy</dt><dd id="rc-buy2">0.50 SOL</dd></div>
+      <div><dt>Pump create and accounts</dt><dd>0.0214 SOL</dd></div>
+      <div><dt>Network fee</dt><dd>0.0001 SOL</dd></div>
+      <div><dt>Back to you on insta sell</dt><dd id="rc-back">none, burned</dd></div>
+    </dl></div>
+  </aside>
+</main>
+<div id="footer"></div>
+
+<script src="mock.js"></script>
+<script>
+  renderHeader("launch"); renderFooter();
+  const $ = (id) => document.getElementById(id);
+  const MINT = mintOf("GRUB");
+  $("img-prev").innerHTML = avatar("GRUB"); $("rc-ava").innerHTML = avatar("GRUB");
+  $("rc-mint").textContent = short(MINT, 4, 4);
+  $("live-art").innerHTML = `<div class="orb"><i></i><i></i><i></i><span class="ava">${avatar("GRUB")}</span></div>`;
+  document.querySelector(".ic-warn").outerHTML = ICON.warn;
+  document.querySelector(".ic-lock").outerHTML = ICON.flame;
+  document.querySelector(".ic-x").outerHTML = ICON.x;
+  document.querySelector(".launch-btn").innerHTML = ICON.wallet + " Sign in Phantom";
+  let step = 1, paused = false;
+
+  function counter(id, max, label) {
+    const el = $(id), c = $(id + "-c"), e = $(id + "-e");
+    const run = () => {
+      const n = el.value.length; c.textContent = n + " / " + max; c.classList.toggle("over", n > max);
+      const bad = n > max || (e && n === 0);
+      if (e) { e.hidden = !bad; e.innerHTML = bad ? ICON.warn.replace("<svg", '<svg width="12" height="12"') + (n === 0 ? `${label} is required.` : `${label} is ${n} characters. Keep it to ${max} or fewer.`) : ""; el.setAttribute("aria-invalid", String(bad)); }
+      return !bad;
+    };
+    el.addEventListener("input", () => { run(); sync(); }); run();
+    return run;
+  }
+  const okName = counter("name", 32, "Name"), okSym = counter("sym", 13, "Symbol"); counter("desc", 500);
+
+  function okBuy() {
+    const v = parseFloat($("buy").value), bad = !(v >= 0.25);
+    $("buy-e").hidden = !bad;
+    $("buy-e").innerHTML = bad ? ICON.warn.replace("<svg", '<svg width="12" height="12"') + "Minimum dev buy is 0.25 SOL. Enter 0.25 or more." : "";
+    $("buy").setAttribute("aria-invalid", String(bad));
+    $("buy-out").textContent = $("back-burn").textContent = ((v || 0) * 24.8).toFixed(1) + "M";
+    $("back-sell").textContent = ((v || 0) * 0.951).toFixed(3) + " SOL";
+    return !bad;
+  }
+  const exit = () => document.querySelector('input[name="exit"]:checked')?.value;
+  function sync() {
+    const v = parseFloat($("buy").value) || 0;
+    $("rc-name").textContent = $("name").value || "Your coin";
+    $("rc-sym").textContent = ($("sym").value || "SYMBOL").toUpperCase();
+    $("rc-buy").textContent = $("rc-buy2").textContent = v.toFixed(2) + " SOL";
+    $("rc-exit").textContent = exit() === "sell" ? "Insta sell" : exit() === "burn" ? "Insta burn" : "Not chosen";
+    $("rc-back").textContent = exit() === "sell" ? "about " + (v * 0.951).toFixed(3) + " SOL" : exit() === "burn" ? "none, burned" : "\u2013";
+    const ready = okBuy() && !!exit();
+    $("to-review").disabled = !ready;
+    $("to-review").textContent = !exit() ? "Choose an exit to continue" : ready ? "Review launch" : "Fix the dev buy";
+    document.querySelectorAll(".launch-btn").forEach((b) => (b.disabled = paused));
+  }
+  $("buy").addEventListener("input", sync);
+  document.querySelectorAll('input[name="exit"]').forEach((r) => r.addEventListener("change", sync));
+  $("buy-chips").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { $("buy").value = parseFloat(b.textContent).toFixed(2); sync(); } });
+
+  function review() {
+    const rows = [["Coin", `${$("name").value} (${$("sym").value.toUpperCase()})`], ["Mint", `<span class="num">${short(MINT, 8, 4)}</span>, vanity, ends in bndr`], ["Image and metadata", "Pinned to IPFS when you sign"],
+      ["Links", [$("x").value, $("tg").value, $("web").value].filter(Boolean).join(", ") || "None"],
+      ["Dev buy", `<span class="num">${parseFloat($("buy").value).toFixed(2)} SOL</span>, about ${$("buy-out").textContent} ${$("sym").value.toUpperCase()}`],
+      ["Exit", $("rc-exit").textContent + ", in the same transaction"], ["Creator of record", "A fee wallet for this coin only. It can force the bond, burn, sweep to the BONDR buyback, or pay you after bond. Nothing else."], ["You after bond", "80% of the 1.5% creator fee, permanently"]];
+    $("review").innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+  }
+
+  const SIGN = [["Image and metadata pinned to IPFS", "CID bafkrei…x4qe"], ["Transaction built", "1,148 of 1,232 bytes, create + buy + burn"], ["Waiting for your signature in Phantom", "Check the Phantom window"], ["BONDR checks the message and adds the mint signature", "Only if your exit is inside"], ["Sent through a private path, confirming", "Usually under 2 seconds"]];
+  let signTimer;
+  function runSign(fail) {
+    clearTimeout(signTimer); $("rejected").hidden = true;
+    let i = 2;
+    const draw = () => { $("sign").innerHTML = SIGN.map(([t, s], k) => `<li class="${k < i ? "done" : k === i ? "now" : "wait"}"><span class="ic">${k < i ? ICON.check : ""}</span><div>${t}<small>${s}</small></div><span class="num muted" style="font-size:var(--fs-xs)">${k < i ? "done" : ""}</span></li>`).join(""); };
+    draw();
+    if (fail) { $("sign").lastElementChild; $("rejected").hidden = false; document.querySelector(".sign li.now").className = "wait"; return; }
+    const tick = () => { i++; draw(); if (i < SIGN.length) signTimer = setTimeout(tick, 1200); else signTimer = setTimeout(() => go(5), 700); };
+    signTimer = setTimeout(tick, 2200);
+  }
+  $("retry").onclick = (e) => { e.preventDefault(); runSign(false); };
+
+  function go(n) {
+    if (n >= 3 && !exit()) { document.querySelector('input[name="exit"][value="burn"]').checked = true; sync(); }
+    step = n;
+    document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("on", +p.dataset.step === n));
+    document.querySelectorAll("#steps li").forEach((li, k) => { li.className = k + 1 < n ? "done" : k + 1 === n ? "on" : ""; if (k + 1 === n) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current"); });
+    if (n === 3) review();
+    if (n === 4) runSign(new URLSearchParams(location.search).has("rejected"));
+    if (n === 5) {
+      const v = parseFloat($("buy").value).toFixed(2), tok = $("buy-out").textContent;
+      $("live-exit").textContent = exit() === "sell" ? `Your ${v} SOL dev buy (${tok} tokens) was sold back in the launch transaction.` : `Your ${v} SOL dev buy (${tok} tokens) was burned in the launch transaction.`;
+      $("live-tx").innerHTML = txLink("launch-grub", "Launch tx " + short(sigOf("launch-grub")));
+      $("live-mint").textContent = MINT;
+      $("ca-ico").outerHTML = ICON.copy;
+      $("ca-copy").onclick = () => { navigator.clipboard?.writeText(MINT); $("ca-txt").textContent = "Copied"; $("ca-live").textContent = "Contract address copied"; $("ca-copy").classList.add("done"); setTimeout(() => { $("ca-txt").textContent = "Copy"; $("ca-copy").classList.remove("done"); }, 1600); };
+    }
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-next]"); if (!b || b.disabled) return;
+    const n = +b.dataset.next;
+    if (n === 2 && step === 1 && !(okName() & okSym())) return;
+    go(n);
+  });
+  sync();
+  const qs = new URLSearchParams(location.search);
+  if (qs.has("step")) go(+qs.get("step")); else go(1);
+
+  mockbar("Launch flow", [
+    { key: "paused", label: "Launches paused", on() { paused = true; document.body.classList.add("paused"); sync(); }, off() { paused = false; document.body.classList.remove("paused"); sync(); } },
+    { key: "errors", label: "Validation errors", on() { $("name").value = "Grubworm The Supply Eating Worm Of Doom"; $("sym").value = ""; $("buy").value = "0.18"; ["name", "sym"].forEach((id) => $(id).dispatchEvent(new Event("input"))); sync(); if (step > 2) go(2); },
+      off() { $("name").value = "Grubworm"; $("sym").value = "GRUB"; $("buy").value = "0.50"; ["name", "sym"].forEach((id) => $(id).dispatchEvent(new Event("input"))); sync(); } },
+  ]);
+  const stepBar = document.getElementById("mockbar");
+  [1, 2, 3, 4, 5].forEach((n) => { const b = document.createElement("button"); b.type = "button"; b.textContent = "Step " + n; b.onclick = () => go(n); stepBar.insertBefore(b, stepBar.lastElementChild); });
+</script>
+</body>
+</html>

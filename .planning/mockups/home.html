@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BONDR Coins</title>
+<meta name="description" content="BONDR: every coin is built to bond. Fees force the bond, then burn supply.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Martian+Mono:wdth,wght@75..112.5,400..600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .banner { display: none; position: relative; z-index: 2; }
+  .banner .wrap { padding-top: var(--space-md); }
+  .banner-in { display: flex; gap: var(--space-sm); align-items: flex-start; padding: var(--space-sm) var(--space-md); border-radius: var(--radius); background: color-mix(in oklch, var(--warn) 10%, var(--surface)); border: 1px solid color-mix(in oklch, var(--warn) 40%, transparent); box-shadow: 0 10px 40px -16px color-mix(in oklch, var(--warn) 50%, transparent); font-size: var(--fs-sm); }
+  .banner svg { width: 16px; height: 16px; color: var(--warn); flex: none; margin-top: 3px; }
+  .banner strong { color: var(--warn); }
+  body.paused .banner { display: block; }
+
+  /* hero: generated bond art on the right, copy on the dark left third */
+  .hero { position: relative; isolation: isolate; overflow: hidden; min-height: 660px; display: grid; align-items: center; }
+  .hero-art { position: absolute; inset: 0; z-index: -1; -webkit-mask-image: linear-gradient(90deg, transparent 12%, #000 52%), linear-gradient(0deg, transparent 2%, #000 34%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 12%, #000 52%), linear-gradient(0deg, transparent 2%, #000 34%); mask-composite: intersect; }
+  .hero-art img, .hero-art video { width: 100%; height: 100%; object-fit: cover; object-position: 86% 50%; animation: breathe 14s ease-in-out infinite alternate; }
+  @keyframes breathe { from { transform: scale(1.02) translateX(0); } to { transform: scale(1.08) translateX(-1.5%); } }
+  .motes { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+  .motes i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 10px var(--accent); opacity: 0; animation: mote var(--d) linear infinite; animation-delay: var(--dl); }
+  @keyframes mote { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 0.8; } 100% { opacity: 0; transform: translate(var(--dx), -120px); } }
+  .hero-in { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: var(--space-2xl); align-items: end; padding-block: var(--space-4xl) var(--space-3xl); }
+  .hero h1 { font-size: clamp(4rem, 10vw, 9.5rem); line-height: 0.82; letter-spacing: -0.005em; text-shadow: 0 10px 50px color-mix(in oklch, var(--background) 80%, transparent); }
+  .hero h1 em { font-style: normal; color: var(--accent); text-shadow: 0 0 60px color-mix(in oklch, var(--accent) 45%, transparent); }
+  .hero-copy p.lede { max-width: 46ch; margin-top: var(--space-lg); font-size: 1.0625rem; line-height: 1.6; color: color-mix(in oklch, var(--text) 82%, var(--background)); }
+  .cta { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-xl); }
+  .pulse-line { margin-top: var(--space-lg); font-size: var(--fs-sm); color: var(--muted); display: flex; align-items: center; gap: 10px; }
+  .pulse-line b { color: var(--text); font-family: var(--font-num); font-stretch: 87.5%; font-weight: 500; }
+
+  /* next to bond: the closest coins, as live bond motifs */
+  .next { padding: var(--space-lg); justify-self: end; width: min(100%, 460px); background: linear-gradient(180deg, color-mix(in oklch, var(--surface-2) 78%, transparent), color-mix(in oklch, var(--surface) 88%, transparent)); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .next-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-sm); }
+  .next-top { display: grid; grid-template-columns: 56px 1fr; gap: 6px var(--space-md); align-items: center; padding-block: var(--space-md); text-decoration: none; color: var(--text); }
+  .next-top .ava { width: 56px; height: 56px; border-radius: 14px; grid-row: span 2; }
+  .next-top b { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 800; text-transform: uppercase; line-height: 1; }
+  .next-top .bond-wrap { grid-column: 1 / 3; margin-top: 6px; }
+  .next-meta { display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-xs); color: var(--muted); grid-column: 1 / 3; }
+  .next-meta .num { color: var(--accent); }
+  .next-row { display: grid; grid-template-columns: 28px 64px minmax(0, 1fr) auto; gap: var(--space-sm); align-items: center; padding: 10px 0; border-top: 1px solid var(--line); text-decoration: none; color: var(--text); font-size: var(--fs-sm); transition: transform 400ms var(--ease-spring); }
+  .next-row:hover { transform: translateX(4px); }
+  .next-row .ava { width: 28px; height: 28px; border-radius: 8px; }
+  .next-row .num { font-size: var(--fs-xs); }
+  .ready { position: relative; height: 10px; border-radius: 999px; background: var(--surface-3); box-shadow: inset 0 1px 2px var(--ink); }
+  .ready > i { position: absolute; inset: 0 auto 0 0; width: var(--v); border-radius: inherit; background: linear-gradient(90deg, var(--secondary), var(--accent)); box-shadow: 0 0 14px -2px color-mix(in oklch, var(--accent) 70%, transparent); animation: grow 1200ms var(--ease-spring) both; transform-origin: left; }
+  .ready > b { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--text); left: calc(100% / 1.2 * 1.05); }
+  .ready > b.c { background: var(--line-strong); left: calc(100% / 1.2); }
+  .ready.lg { height: 16px; }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .bondrow .lbl { color: var(--muted); font-family: var(--font-ui); margin-right: 4px; }
+
+  /* live ledger tape */
+  .tape { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; border-block: 1px solid var(--line); background: color-mix(in oklch, var(--surface) 70%, transparent); }
+  .tape-ctl { display: flex; align-items: center; gap: 6px; padding: 0 14px 0 var(--gutter); background: none; border: 0; border-right: 1px solid var(--line); color: var(--muted); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; min-height: 44px; }
+  .tape-ctl:hover { color: var(--text); }
+  .tape-ctl svg { width: 12px; height: 12px; }
+  .tape-view { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+  .tape-track { display: flex; width: max-content; animation: tape 70s linear infinite; }
+  .tape:hover .tape-track, .tape:focus-within .tape-track, .tape.stopped .tape-track { animation-play-state: paused; }
+  .tape-item { display: flex; align-items: center; gap: 10px; padding: 8px 22px; font-size: var(--fs-xs); white-space: nowrap; }
+  .tape-item + .tape-item { border-left: 1px solid var(--line); }
+  @keyframes tape { to { transform: translateX(-50%); } }
+
+  .sec-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--space-sm) var(--space-lg); margin-bottom: var(--space-lg); }
+  .sec-head h2 { font-size: clamp(2.5rem, 5vw, 4rem); }
+  .sec-head p { color: var(--muted); font-size: var(--fs-sm); margin-top: 4px; }
+  section.block { padding-top: var(--space-3xl); }
+
+  /* trending scroller */
+  .arrows { display: flex; gap: 8px; }
+  .arrow { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line-strong); color: var(--text); cursor: pointer; box-shadow: var(--elev-1); transition: transform 420ms var(--ease-spring), border-color var(--dur), opacity var(--dur); }
+  .arrow:hover { transform: scale(1.08); border-color: var(--primary); }
+  .arrow[aria-disabled="true"] { opacity: 0.35; cursor: default; transform: none; }
+  .arrow svg { width: 18px; height: 18px; }
+  .scroller { display: grid; grid-auto-flow: column; grid-auto-columns: 288px; gap: var(--space-md); overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter); padding: 6px var(--gutter) var(--space-lg); margin-inline: calc(var(--gutter) * -1); scrollbar-width: none; overscroll-behavior-x: contain; cursor: grab; }
+  .scroller::-webkit-scrollbar { display: none; }
+  .scroller:active { cursor: grabbing; }
+
+  /* coin cards: the coin art bleeds into the card */
+  .card { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-lg); text-decoration: none; color: var(--text); scroll-snap-align: start; background: linear-gradient(180deg, var(--surface-2), var(--surface) 60%); border: 1px solid var(--line); box-shadow: var(--elev-1); transition: transform 560ms var(--ease-spring), box-shadow 400ms var(--ease-out), border-color var(--dur); user-select: none; -webkit-user-drag: none; }
+  .card:hover { transform: translateY(-6px); box-shadow: var(--elev-2), 0 0 0 1px color-mix(in oklch, var(--accent) 35%, transparent); color: var(--text); }
+  .card .art { position: relative; height: 150px; overflow: hidden; }
+  .card .bleed { position: absolute; inset: -30%; filter: blur(28px) saturate(1.3); opacity: 0.75; transform: scale(1.15); transition: transform 900ms var(--ease-out); }
+  .card .bleed svg { width: 100%; height: 100%; }
+  .card:hover .bleed { transform: scale(1.3) rotate(4deg); }
+  .card .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, var(--surface-2)); }
+  .card .art .ava { position: absolute; z-index: 1; left: var(--space-md); bottom: var(--space-md); width: 72px; height: 72px; border-radius: 18px; box-shadow: 0 0 0 1px color-mix(in oklch, var(--text) 18%, transparent), 0 14px 30px -10px var(--ink); transition: transform 560ms var(--ease-spring); }
+  .card:hover .art .ava { transform: translateY(-4px) rotate(-4deg); }
+  .chip { position: absolute; z-index: 1; padding: 3px 9px; border-radius: 999px; font-size: var(--fs-xs); background: color-mix(in oklch, var(--ink) 72%, transparent); border: 1px solid var(--line); backdrop-filter: blur(6px); }
+  .chip.rank { top: var(--space-sm); left: var(--space-sm); font-family: var(--font-display); font-weight: 800; font-size: var(--fs-md); padding: 1px 10px; }
+  .chip.tr { top: var(--space-sm); right: var(--space-sm); }
+  .card .body { position: relative; display: grid; gap: 10px; padding: 4px var(--space-md) var(--space-md); }
+  .name-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  .name-row b { font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; text-transform: uppercase; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name-row .sym { font-size: var(--fs-xs); color: var(--muted); font-weight: 600; letter-spacing: 0.06em; }
+  .price-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .price-row .mcap { font-size: var(--fs-lg); padding: 0 4px; margin: 0 -4px; border-radius: 6px; }
+  .price-row .usd { display: block; font-size: var(--fs-xs); color: var(--muted); margin-top: 2px; }
+  .chg { font-size: var(--fs-sm); padding: 2px 8px; border-radius: 999px; background: color-mix(in oklch, currentColor 12%, transparent); }
+  .bondrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .bondrow .num { font-size: var(--fs-xs); min-width: 46px; text-align: right; white-space: nowrap; }
+  .bondrow .tag { font-size: 0.6875rem; padding: 2px 8px; }
+  .card.new { animation: rise 700ms var(--ease-spring) both; box-shadow: var(--glow); }
+
+  /* grid lists */
+  .controls { display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center; justify-content: space-between; margin-bottom: var(--space-lg); }
+  .search { position: relative; flex: 0 1 360px; }
+  .search svg { position: absolute; left: 14px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; color: var(--muted); }
+  .search .input { padding-left: 40px; border-radius: 999px; }
+  .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-md); list-style: none; margin: 0; padding: 0; }
+  .grid > li { display: flex; }
+  .grid .card { flex: 1; }
+  .grid .card .art { height: 104px; }
+  .grid .card .art .ava { width: 56px; height: 56px; border-radius: 14px; bottom: var(--space-sm); }
+  .grid .name-row b { font-size: 1.35rem; }
+  .empty { grid-column: 1 / -1; padding: var(--space-3xl) var(--space-lg); border-radius: var(--radius-lg); border: 1px dashed var(--line-strong); }
+  .empty h3 { font-size: var(--fs-lg); margin-bottom: 6px; }
+
+  @media (max-width: 1199px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 1080px) {
+    .hero-in { grid-template-columns: 1fr; gap: var(--space-xl); padding-top: var(--space-3xl); }
+    .next { justify-self: start; width: min(100%, 560px); }
+    .hero-art { inset: 0 0 auto 0; height: 560px; opacity: 0.75; -webkit-mask-image: linear-gradient(90deg, transparent 35%, #000 90%), linear-gradient(0deg, transparent 2%, #000 40%); mask-image: linear-gradient(90deg, transparent 35%, #000 90%), linear-gradient(0deg, transparent 2%, #000 40%); }
+  }
+  @media (max-width: 899px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 759px) { .arrows { display: none; } .scroller { grid-auto-columns: 80%; } }
+  @media (max-width: 559px) {
+    .grid { grid-template-columns: 1fr; }
+    .hero { min-height: 0; }
+    .hero-art { height: 420px; inset: 0 -40% auto 0; }
+    .hero-art img, .hero-art video { object-position: 64% 40%; }
+    .hero-art { -webkit-mask-image: linear-gradient(0deg, transparent 8%, #000 70%); mask-image: linear-gradient(0deg, transparent 8%, #000 70%); opacity: 0.7; }
+    .grid .card { flex-direction: row; }
+    .grid .card .art { width: 108px; height: auto; flex: none; }
+    .grid .card .art::after { background: linear-gradient(90deg, transparent 40%, var(--surface-2)); }
+    .grid .card .art .ava { left: 50%; top: 50%; bottom: auto; translate: -50% -50%; }
+    .grid .card .chip.tr { top: auto; bottom: 8px; right: auto; left: 8px; }
+    .grid .card .body { flex: 1; min-width: 0; padding: var(--space-sm) var(--space-md); gap: 8px; }
+    .hero-in { padding-top: 140px; padding-bottom: var(--space-2xl); }
+    .hero h1 { font-size: 4.25rem; }
+    .search { flex: 1 1 100%; }
+    .seg { width: 100%; }
+    .next-row { grid-template-columns: 28px 56px minmax(0, 1fr) auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { .motes { display: none; } .hero-art img, .hero-art video { animation: none; } }
+</style>
+</head>
+<body>
+<div id="mockbar"></div>
+<div id="header"></div>
+
+<div class="banner" role="status"><div class="wrap"><div class="banner-in">
+  <span aria-hidden="true" id="ban-ico"></span>
+  <p><strong>Launches paused.</strong> BONDR's own curve is complete and migrating to PumpSwap. Trading is unaffected. Launches resume automatically once the pool is live.</p>
+</div></div></div>
+
+<main>
+  <section class="hero" aria-labelledby="hero-h">
+    <div class="hero-art" aria-hidden="true" id="hero-art"><img src="assets/hero-bond.jpg" srcset="assets/hero-bond-960.jpg 960w, assets/hero-bond.jpg 1920w" sizes="100vw" alt=""></div>
+    <div class="motes" aria-hidden="true" id="motes"></div>
+    <div class="wrap hero-in">
+      <div class="hero-copy">
+        <h1 id="hero-h" class="display" data-reveal>Built<br>to <em>bond.</em></h1>
+        <p class="lede" data-reveal style="--i:1">Every coin on BONDR launches with one job: reach its bond. Until it does, its creator fees buy its own curve to completion and burn what they buy. If a day passes without a bond, those fees buy and burn BONDR instead.</p>
+        <div class="cta" data-reveal style="--i:2"><a class="btn btn-primary btn-lg" id="launch-cta" href="launch.html">Launch a coin</a><a class="btn btn-quiet btn-lg" href="token.html">Watch a coin bond</a></div>
+        <p class="pulse-line" data-reveal style="--i:3"><span class="dot dot-live up"></span><span><b>31</b> coins bonded by their own fees. Next up: <b>BOGW</b>, <b>96.4%</b> ready.</span></p>
+      </div>
+      <div class="next panel panel-hi" role="region" aria-labelledby="next-h" data-reveal style="--i:2">
+        <div class="next-head"><h2 id="next-h" class="label">Next to bond</h2><span class="hint">Burn budget vs cost to finish the curve. Marks at 100% and 105%.</span></div>
+        <div id="next"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tape" aria-label="Live fee ledger across BONDR coins"><button class="tape-ctl" type="button" id="tape-ctl" aria-pressed="false"></button><div class="tape-view"><div class="tape-track" id="tape"></div></div></section>
+
+  <section class="wrap block" aria-labelledby="trend-h">
+    <div class="sec-head" data-reveal>
+      <div><h2 id="trend-h" class="display">Trending</h2><p>Ranked by volume in the last hour. Drag, swipe or use the arrows.</p></div>
+      <div class="arrows"><button class="arrow" type="button" id="prev" aria-label="Scroll trending left"></button><button class="arrow" type="button" id="nextb" aria-label="Scroll trending right"></button></div>
+    </div>
+    <div class="scroller" id="trend" tabindex="0" role="region" aria-label="Trending coins"></div>
+  </section>
+
+  <section class="wrap block" aria-labelledby="lists-h">
+    <div class="sec-head" data-reveal><div><h2 id="lists-h" class="display">All coins</h2><p>Only coins launched on BONDR.</p></div></div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Sort coins" id="tabs">
+        <button type="button" aria-pressed="true" data-k="top">Top</button>
+        <button type="button" aria-pressed="false" data-k="latest">Latest</button>
+        <button type="button" aria-pressed="false" data-k="oldest">Oldest</button>
+      </div>
+      <label class="search"><span class="sr-only">Search coins by name, symbol or mint</span><span id="search-ico"></span><input class="input" id="q" type="search" placeholder="Search name, symbol or mint" autocomplete="off"></label>
+    </div>
+    <ol class="grid" id="grid" aria-label="Coins"></ol>
+  </section>
+</main>
+<div id="footer"></div>
+
+<script src="mock.js"></script>
+<script>
+  renderHeader("home"); renderFooter();
+  document.getElementById("ban-ico").outerHTML = ICON.pause;
+  document.getElementById("search-ico").outerHTML = ICON.search;
+  document.getElementById("prev").innerHTML = ICON.left; document.getElementById("nextb").innerHTML = ICON.right;
+  const coins = COINS.map((c) => ({ ...c }));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // hero video, with the still as poster; skipped for reduced motion
+  // seamless 6s loop generated from the still; the still stays for reduced motion
+  if (!reduce) document.getElementById("hero-art").innerHTML = '<video autoplay muted loop playsinline preload="auto" poster="assets/hero-bond-poster.jpg"><source src="assets/hero-bond.mp4" type="video/mp4"></video>';
+  const mr = rng("motes");
+  document.getElementById("motes").innerHTML = Array.from({ length: 16 }, () => `<i style="left:${45 + mr() * 50}%;top:${25 + mr() * 60}%;--d:${7 + mr() * 8}s;--dl:${-mr() * 10}s;--dx:${(mr() - 0.5) * 60}px"></i>`).join("");
+
+  // next to bond: [sym, ready %, window left]
+  const NEXT = [["BOGW", 96.4, "3h 12m"], ["GRUB", 73.8, "16h 18m"], ["MOSS", 58.1, "9h 40m"], ["KELP", 31.0, "23h 02m"]];
+  const nameOf = (s) => coins.find((c) => c.sym === s).name;
+  document.getElementById("next").innerHTML = `<a class="next-top" href="token.html"><span class="ava">${avatar(NEXT[0][0])}</span><b>${nameOf(NEXT[0][0])}</b><span class="muted" style="font-size:var(--fs-xs)">${NEXT[0][0]}, sweep in ${NEXT[0][2]}</span>
+      <div class="bond-wrap"><div class="ready lg" role="img" aria-label="Burn budget ${NEXT[0][1]} percent ready; forced bond at 105 percent"><i style="--v:${NEXT[0][1] / 1.2}%"></i><b class="c"></b><b></b></div></div>
+      <div class="next-meta"><span><span class="num">${NEXT[0][1]}%</span> ready</span><span>Forced bond fires at 105%</span></div></a>`
+    + NEXT.slice(1).map(([s, v, w]) => `<a class="next-row" href="token.html"><span class="ava">${avatar(s)}</span><b>${s}</b><div class="ready" role="img" aria-label="Burn budget ${v} percent ready"><i style="--v:${v / 1.2}%"></i><b class="c"></b><b></b></div><span class="num"><span class="up">${v}%</span></span></a>`).join("");
+
+  // ledger tape
+  const ev = [["tag-burn", "Forced bond", "SWMP", "bought the rest of its curve, burned 118.2M SWMP"], ["tag-bond", "Split 90/10", "GRUB", "84,210 BONDR collected"], ["tag-burn", "Buyback burn", "BONDR", "burned 2.18M BONDR"], ["", "Sweep", "LILY", "window closed, 312,400 BONDR to buyback"], ["tag-bond", "Finalize 80/20", "FERN", "fee shares locked for good"], ["tag-burn", "Launch burn", "SPRT", "0.40 SOL dev buy burned at launch"], ["tag-burn", "Fallback burn", "BOGW", "PumpSwap buy, burned 9.7M BOGW"]];
+  const tapeHtml = (hid) => ev.map(([cls, t, sym, d], i) => `<div class="tape-item"${hid ? ' aria-hidden="true"' : ""}><span class="tag ${cls}">${t}</span><b>${sym}</b><span class="muted">${d}</span>${hid ? `<span class="tx muted">${short(sigOf("t" + i))}</span>` : txLink("t" + i)}</div>`).join("");
+  document.getElementById("tape").innerHTML = tapeHtml(false) + tapeHtml(true);
+  const tctl = document.getElementById("tape-ctl"), PLAY = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 3l9 5-9 5z"/></svg>';
+  const setTape = (stop) => { tctl.setAttribute("aria-pressed", String(stop)); tctl.innerHTML = (stop ? PLAY : ICON.pause) + (stop ? "Play" : "Pause") + '<span class="sr-only"> ledger ticker</span>'; tctl.closest(".tape").classList.toggle("stopped", stop); };
+  tctl.onclick = () => setTape(tctl.getAttribute("aria-pressed") !== "true"); setTape(reduce);
+
+  // cards
+  const bondBlock = (c) => c.bond >= 100 ? `<div class="bondrow">${bondGlyph(100, 160, 18)}<span class="tag tag-burn">Bonded</span></div>`
+    : `<div class="bondrow">${bondGlyph(c.bond, 160, 18)}<span class="num" data-f="bond"><span class="lbl">curve</span>${c.bond.toFixed(1)}%</span></div>`;
+  const card = (c, i, rank) => `<a class="card" href="token.html" data-sym="${c.sym}" draggable="false">
+      <div class="art"><div class="bleed" aria-hidden="true">${avatar(c.sym)}</div>${rank ? `<span class="chip rank">#${i + 1}</span><span class="chip tr num">${fmt.sol(c.vol)} SOL 1h</span>` : `<span class="chip tr num">${fmt.age(c.ageMin)}</span>`}<span class="ava">${avatar(c.sym)}</span></div>
+      <div class="body">
+        <div class="name-row"><b>${c.name}</b><span class="sym">${c.sym}</span></div>
+        <div class="price-row"><div><span class="num mcap" data-f="mcap">${fmt.sol(c.mcap)} SOL</span><span class="usd">${fmt.usd(c.mcap * SOL_USD)}${rank ? `, ${fmt.age(c.ageMin)} old` : ""}</span></div><span class="num chg ${c.ch >= 0 ? "up" : "down"}" data-f="ch">${fmt.pct(c.ch)}</span></div>
+        ${bondBlock(c)}
+      </div></a>`;
+
+  const trend = document.getElementById("trend");
+  trend.innerHTML = [...coins].sort((a, b) => b.vol - a.vol).slice(0, 10).map((c, i) => card(c, i, true)).join("");
+  dragScroll(trend);
+  const prev = document.getElementById("prev"), nextb = document.getElementById("nextb");
+  const step = () => trend.firstElementChild.offsetWidth * 2 + 32;
+  prev.onclick = () => trend.scrollBy({ left: -step(), behavior: reduce ? "auto" : "smooth" });
+  nextb.onclick = () => trend.scrollBy({ left: step(), behavior: reduce ? "auto" : "smooth" });
+  const edges = () => { prev.setAttribute("aria-disabled", String(trend.scrollLeft < 8)); nextb.setAttribute("aria-disabled", String(trend.scrollLeft + trend.clientWidth > trend.scrollWidth - 8)); };
+  trend.addEventListener("scroll", edges, { passive: true }); edges();
+
+  let sort = "top", q = "";
+  const sorters = { top: (a, b) => b.mcap - a.mcap, latest: (a, b) => a.ageMin - b.ageMin, oldest: (a, b) => b.ageMin - a.ageMin };
+  function render() {
+    const list = coins.filter((c) => !q || (c.name + " " + c.sym + " " + c.mint).toLowerCase().includes(q)).sort(sorters[sort]);
+    document.getElementById("grid").innerHTML = list.length ? list.map((c, i) => `<li data-reveal style="--i:${i % 5}">${card(c, i, false)}</li>`).join("")
+      : `<li class="empty"><h3>No BONDR coin matches "${q.replace(/[<>&"]/g, "")}"</h3><p class="muted">Search looks at name, symbol and mint. Only coins launched on BONDR are listed.</p></li>`;
+    reveal(document.getElementById("grid"));
+  }
+  initSeg(document.getElementById("tabs"), (b) => { sort = b.dataset.k; render(); });
+  document.getElementById("q").addEventListener("input", (e) => { q = e.target.value.trim().toLowerCase(); render(); });
+  render();
+
+  // live ticks: every card for that coin updates and flashes
+  setInterval(() => {
+    for (let n = 0; n < 2; n++) {
+      const c = coins[Math.floor(Math.random() * (coins.length - 1))], d = (Math.random() - 0.45) * 0.03;
+      c.mcap *= 1 + d; c.ch += d * 100;
+      document.querySelectorAll(`.card[data-sym="${c.sym}"]`).forEach((el) => {
+        const m = el.querySelector('[data-f="mcap"]'); m.textContent = fmt.sol(c.mcap) + " SOL"; flash(m, d);
+        const ch = el.querySelector('[data-f="ch"]'); ch.textContent = fmt.pct(c.ch); ch.className = `num chg ${c.ch >= 0 ? "up" : "down"}`;
+      });
+    }
+  }, 1200);
+  const fresh = [["Pond Scum", "SCUM"], ["Hornwort", "HORN"], ["Duckweed", "DUCK"]];
+  setInterval(() => {
+    if (sort !== "latest" || !fresh.length) return;
+    const [name, sym] = fresh.shift();
+    coins.push({ name, sym, mcap: 4.2, ch: 0, bond: 0.8, ageMin: 0.05, vol: 0.4, mint: mintOf(sym) });
+    render(); document.querySelector(`#grid .card[data-sym="${sym}"]`).classList.add("new");
+  }, 5000);
+
+  mockbar("Home", [{ key: "paused", label: "Launches paused banner", on() {
+      document.body.classList.add("paused"); const a = document.getElementById("launch-cta"); a.setAttribute("aria-disabled", "true"); a.className = "btn btn-quiet btn-lg"; a.textContent = "Launches paused";
+    }, off() { document.body.classList.remove("paused"); const a = document.getElementById("launch-cta"); a.removeAttribute("aria-disabled"); a.className = "btn btn-primary btn-lg"; a.textContent = "Launch a coin"; } }]);
+</script>
+</body>
+</html>

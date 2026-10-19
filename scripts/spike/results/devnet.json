@@ -1,0 +1,390 @@
+{
+  "net": "devnet",
+  "updatedAt": "2026-10-19T07:07:15.987Z",
+  "state": {
+    "Q": "4Jw2pr67qmpMi7DQGNZBwKF5Trgse5tNszLkpCnFEovA",
+    "C0": "Ft4qizAAoTGDq8geDpfUdomR1vTT1CayrNKUrbZFDxK5",
+    "C.burn": "9bb72hNzN5YwDYpy34T6gKSbqDes7Yk1Q2c6sAC6L3WV",
+    "C.sell": "4iQs4tv7W1GKTfA9fmYnfGWc6RUUhtSZSeSfKUzsnJhY",
+    "Q.complete": "true",
+    "Q2": "HZaBE3kb7N4d8EJCvAUm6HJxG1KunxejgBhzEcbtktVL"
+  },
+  "rows": [
+    {
+      "id": "config",
+      "step": "Live pump config",
+      "ok": true,
+      "facts": {
+        "creatorFeeConfigurable": false,
+        "maxConfigurableCreatorFeeBps": "0",
+        "maxCurveDepth": 2,
+        "initialVirtualSolReserves": "300000000",
+        "initialVirtualTokenReserves": "1073000000000000",
+        "initialRealTokenReserves": "793100000000000",
+        "tokenTotalSupply": "1000000000000000",
+        "withdrawAuthority": "5PXxuZkvftsg5CAGjv5LL5tEtvBRskdx1AAjxw8hK2Qx",
+        "buybackFeeRecipient0": "5YxQFdt3Tr9zJLvkFccqXVUwhdTWJQc1fFg2YPbxvxeD",
+        "createV2Enabled": true,
+        "globalBytes": 1088,
+        "curveFlat.protocol": "95",
+        "curveFlat.creator": "30",
+        "curveExotic.protocol": "0",
+        "curveExotic.creator": "0",
+        "ammFlat.protocol": "5",
+        "ammFlat.creator": "0",
+        "ammFlat.lp": "25",
+        "ammExotic.protocol": "0",
+        "ammExotic.creator": "0",
+        "ammExotic.lp": "0",
+        "ammTier0.protocol": "93",
+        "ammTier0.creator": "30",
+        "ammTier0.lp": "2",
+        "drift": "creator fee not configurable, assumed 150 bps per coin; AMM LP 25 bps, assumed 20"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "aux.fund.9Hm1YEfX",
+      "step": "Fund 9Hm1YEfX from ops",
+      "ok": true,
+      "status": "landed",
+      "sig": "3XB2QWcmJ4dHawPx9Cu6uVoxF43nkMvovY6dRSCL9gfizXkSt6NTiZqfP2HQLd6i4pxjt8HvUpFpmQYQzet55QBD",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "to": "9Hm1YEfXqR2WD78rLHBM6nhnEB9tTURcwxtpU9TjwQM6",
+        "lamports": 57984750
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "standin.create",
+      "step": "Stand-in Q create_v2 (SOL pair, treasury creator)",
+      "ok": true,
+      "status": "landed",
+      "sig": "arR7G22oawgUmaAoNwSvZhR3xwtkdsm3yCBvcUBhudeqwizA8HUqG43rFGqigCaH9oPVKVJRkDDiTssVBs1otz3",
+      "bytes": 928,
+      "cu": 102129,
+      "cuLimit": 300000,
+      "facts": {
+        "Q": "4Jw2pr67qmpMi7DQGNZBwKF5Trgse5tNszLkpCnFEovA",
+        "creator": "4J9kCp2QvsGMid3YW2B11Ua6g58YHegt7TxAG4Yp6BDF"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "child.create",
+      "step": "Child create_v2 (quote Q, creator W, default fee)",
+      "ok": true,
+      "status": "landed",
+      "sig": "1UsFdo1hgN8w7oFK8QxrFTNXMCYeiyBs1nqMt6mjVH4Fzq17ej6DBiYRgxXvW6n5coc3kxMsRFWjbdgAcz2WC15",
+      "bytes": 1064,
+      "cu": 142971,
+      "cuLimit": 300000,
+      "facts": {
+        "mint": "Ft4qizAAoTGDq8geDpfUdomR1vTT1CayrNKUrbZFDxK5",
+        "W": "8XSGARXUaHFeTP1kCxr6kkdE5HNdxCAQ4FxotNiwF5rW",
+        "creator": "8XSGARXUaHFeTP1kCxr6kkdE5HNdxCAQ4FxotNiwF5rW",
+        "quoteMint": "4Jw2pr67qmpMi7DQGNZBwKF5Trgse5tNszLkpCnFEovA",
+        "depth": 1,
+        "creatorFeeBps": "0"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "child.create150.refused",
+      "step": "Child create_v2 with creator_fee_bps 150 (devnet must refuse)",
+      "ok": true,
+      "status": "landed",
+      "sig": "4UQzPgfbpvcSmnuEKbae6EyKUGJro3HPJ1LwJdULT6XkiSea1pSAnbqxWXQ9HCEK33E5jBL2zyJaauYhBHbzHh1M",
+      "bytes": 1064,
+      "cu": 118873,
+      "err": "CreatorFeeNotConfigurable {\"InstructionError\":[2,{\"Custom\":6077}]}",
+      "code": 6077,
+      "expectFail": true,
+      "cuLimit": 300000,
+      "facts": {
+        "mint": "3QDp2SV9FeR6uAZD689wDcgHk2ZByoQqDX3tWPNBPrRE"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "launch.table.burn",
+      "step": "Per-coin lookup table (burn)",
+      "ok": true,
+      "bytes": 1072,
+      "cu": 29712,
+      "sig": "58xz6AnfAqm4UL9cQW4QjqGKhH1cXBjuovwywScfHg6NSvMnB42L6j4NeePjE5TgWLFzFNDJaXoAD541PJTdmDHN",
+      "facts": {
+        "table": "3RsK8HP7jYD8U7o9uq5kPabnMHsQbByQvdZtNB22R2Wm",
+        "keys": 26,
+        "txs": 2
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "launch.burn",
+      "step": "Launch: create + exact-out dev buy + insta burn (one v0 tx, per-coin table)",
+      "ok": true,
+      "status": "landed",
+      "sig": "2cYEyQd2JaHCkozYPYE8vJuzipoLr9dsT3bsiYwFDPTfqwzULFwDn9ZQpyVtLvLT4sSRDYkJND1KBieHQHXj134r",
+      "bytes": 780,
+      "cu": 313495,
+      "cuLimit": 600000,
+      "facts": {
+        "mint": "9bb72hNzN5YwDYpy34T6gKSbqDes7Yk1Q2c6sAC6L3WV",
+        "W": "Dhe68cMeite2sNJiJiV1GXdmJLgQ63BkUB17v8t6jX1r",
+        "amount": "31310301754067",
+        "qMin": "8671585558147",
+        "solIn": "2500000",
+        "noTableBytes": 1552,
+        "sharedOnlyBytes": 1059,
+        "tableKeys": 26,
+        "supplyBefore": "1000000000000000",
+        "devChildAfter": "0",
+        "supplyAfter": "968689698245933",
+        "devQLeft": "240997308542"
+      },
+      "notes": "devnet scaled; curves are 100x cheaper",
+      "env": "devnet"
+    },
+    {
+      "id": "launch.table.sell",
+      "step": "Per-coin lookup table (sell)",
+      "ok": true,
+      "bytes": 1072,
+      "cu": 31173,
+      "sig": "4m8AAxK2TnApdKDDdjq3nE4aZpNHAtM2rcGgKtuaDMJ8CWkmSiuFKthnVZ2ZbdGbEudxMxkFQGuBWi39mUzu88wL",
+      "facts": {
+        "table": "Ee9mvXANyfAcZyYnAyA54WyV3aEiMjAy7GiACDtLQeBZ",
+        "keys": 31,
+        "txs": 2
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "launch.sell",
+      "step": "Launch: create + exact-out dev buy + insta sell (one v0 tx, per-coin table)",
+      "ok": true,
+      "status": "landed",
+      "sig": "43Bndc1Gm33f2j9FGmkN3MbduWXP2cP1uXcmx8PKe1dMkshFKidcjX81mF4BZWoCou7wF1RXDJsaYpdX3NzBtac5",
+      "bytes": 881,
+      "cu": 431536,
+      "cuLimit": 600000,
+      "facts": {
+        "mint": "4iQs4tv7W1GKTfA9fmYnfGWc6RUUhtSZSeSfKUzsnJhY",
+        "W": "5MKNwKt9ocqRhaHYz2CkKoBZUWR5tpT6U3j7BWU8JFyr",
+        "amount": "31128589351080",
+        "qMin": "8531155095670",
+        "solIn": "2500000",
+        "noTableBytes": 1808,
+        "sharedOnlyBytes": 1191,
+        "tableKeys": 31,
+        "supplyBefore": "1000000000000000",
+        "devChildAfter": "0",
+        "supplyAfter": "1000000000000000",
+        "devQLeft": "478061084830"
+      },
+      "notes": "devnet scaled; curves are 100x cheaper",
+      "env": "devnet"
+    },
+    {
+      "id": "aux.fund.37MRDH4h",
+      "step": "Fund 37MRDH4h from ops",
+      "ok": true,
+      "status": "landed",
+      "sig": "3EuRdKsPLKvhYhHWdAEWWsUTgMR1F3kM5oFS3rfA3YVHYC67jA8Fcj8VZb9GTdWoEFJReVRA5ocnmme8HQBFZuJ5",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "to": "37MRDH4hHVAEDUfWHVSZjGn5PLPgeRKEXhSo1fpqVaVi",
+        "lamports": 2908235
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "multihop.buy",
+      "step": "multi_hop_swap buy SOL -> Q -> C0",
+      "ok": true,
+      "status": "landed",
+      "sig": "kb1irdzojFZWc1gNo3o68hqhuL7rUPC4vWDXWQKs8tChJrBxXw8STqcsT2vtWDZa9qjrAuNqRxH57X6CmYHH8p3",
+      "bytes": 1110,
+      "cu": 176418,
+      "cuLimit": 600000,
+      "facts": {
+        "amountIn": "1500000",
+        "expectedOut": "19509427302151",
+        "minAmountOut": "18533955937043",
+        "venues": "curve,curve",
+        "outAmount": "19509427302151"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "multihop.sell",
+      "step": "multi_hop_swap sell C0 -> Q -> SOL",
+      "ok": true,
+      "status": "landed",
+      "sig": "2Rgsjcb8B4Er71ytFujZ5pwevc1F5R98xtGnVSMXWv2w4yuGc6ZYVNsypLHJGKRSgFL56yiWhj5gn8L91XF4uxjy",
+      "bytes": 1100,
+      "cu": 153289,
+      "cuLimit": 600000,
+      "facts": {
+        "amountIn": "19509427302151",
+        "expectedOut": "1463005",
+        "minAmountOut": "1389854",
+        "venues": "curve,curve",
+        "outAmount": "1463005"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "sharing.config",
+      "step": "create_fee_sharing_config (unbonded C0)",
+      "ok": true,
+      "sig": "67XyaXMAK8xVqgb4mR6PqmxzcYBcXE3P4UVC9n5KgUWZeCTTMXmfXSbYbTcBFtPWbY63QGYeyWRwiboeC5SKmiKJ",
+      "bytes": 1167,
+      "cu": 266751,
+      "cuLimit": 400000,
+      "notes": "config and update in one tx",
+      "env": "devnet"
+    },
+    {
+      "id": "sharing.update",
+      "step": "update_fee_shares_v2 to 80/20",
+      "ok": true,
+      "sig": "67XyaXMAK8xVqgb4mR6PqmxzcYBcXE3P4UVC9n5KgUWZeCTTMXmfXSbYbTcBFtPWbY63QGYeyWRwiboeC5SKmiKJ",
+      "bytes": 1167,
+      "cu": 266751,
+      "cuLimit": 400000,
+      "notes": "config and update in one tx",
+      "facts": {
+        "deployer": "9Hm1YEfXqR2WD78rLHBM6nhnEB9tTURcwxtpU9TjwQM6",
+        "treasury": "4J9kCp2QvsGMid3YW2B11Ua6g58YHegt7TxAG4Yp6BDF",
+        "shares": "8000,2000",
+        "holders": "9Hm1YEfXqR2WD78rLHBM6nhnEB9tTURcwxtpU9TjwQM6,4J9kCp2QvsGMid3YW2B11Ua6g58YHegt7TxAG4Yp6BDF",
+        "adminRevoked": true
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "sharing.update2.rejected",
+      "step": "Second update_fee_shares_v2 (must be rejected)",
+      "ok": true,
+      "sig": "3yp5BinX23o4tXWABxLGgpggmt9jtaBFQ9bXGySBB3xTht5s629kwZ5BNR71URh3k4nGxk9PZcxBcqn6ibP2xdGh",
+      "bytes": 1150,
+      "cu": 73401,
+      "err": "SharingConfigAdminRevoked {\"InstructionError\":[3,{\"Custom\":6009}]}",
+      "code": 6009,
+      "expectFail": true,
+      "cuLimit": 400000,
+      "notes": "pump-fees 6009 sharingConfigAdminRevoked",
+      "env": "devnet",
+      "facts": {
+        "idlName": "sharingConfigAdminRevoked"
+      }
+    },
+    {
+      "id": "aux.fund.4LpEeqRC",
+      "step": "Fund 4LpEeqRC from ops",
+      "ok": true,
+      "sig": "52MUfPwbsUiaFwAN6FSDSifFaVPTUHB5mPGhtiaV72q9QUHdtDtKNwrvobqmA2dYa7cYkMnYwGNC595PFThL92JU",
+      "bytes": 217,
+      "cu": 150,
+      "facts": {
+        "to": "4LpEeqRCYdi3yDtfCJGcm51tzprR4zabbrerA3ySWUfw",
+        "lamports": 918177697
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "quote.complete",
+      "step": "Whale buy_exact_quote_in_v3 completes stand-in Q",
+      "ok": true,
+      "sig": "5vvjbPLsvxBi9pLSD9FaGPUmSrPSkxEoLYVRKBo7yp48w3NheJ3WReMJPv2SiBf7X6mCjEJZxjAiYgTSiYWP8Ju3",
+      "bytes": 787,
+      "cu": 84709,
+      "cuLimit": 400000,
+      "facts": {
+        "cost": "858065148",
+        "spend": "909549056",
+        "opsLamports": "4858939120",
+        "complete": true
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "aux.child.create.migratedQ",
+      "step": "Child create_v2 on Q after pump's devnet crank migrated it (landed)",
+      "ok": true,
+      "sig": "4xGS5AMsa78pHMsNXvwkjPQgYtmFXBtcqZAR1GpoWCLhGneSdbRTXjhgvNZMNsoN4XebEAEbwT4rCCBT7N6j8B7p",
+      "bytes": 1163,
+      "cu": 178797,
+      "cuLimit": 300000,
+      "facts": {
+        "mint": "BMjZZzrQydg8tUQSm5sUzPx9sLZUhmg1dUvKLSh9cGYw",
+        "W": "FGsCPpvHX6LVUMtr5jK7RNPNPBSwMPmycN9xzzSQwzuq",
+        "pumpQuote": "fresh fetchPumpQuote (Q migrated, pool group included)"
+      },
+      "env": "devnet",
+      "notes": "landed during a 6107 attempt: the crank ran MigrateV2 on Q at slot 512704061, 10 slots after the whale completed it"
+    },
+    {
+      "id": "aux.standin2.create",
+      "step": "Fresh stand-in Q2 for the 6107 test",
+      "ok": true,
+      "sig": "397Rb9rak14hkJJV6byw14LUXAfVhUUjLFSUinhrZR8Pj6FgR32DhteHF3v2Nnqc6qjcDuMGUk98WEZEMiaJHkoS",
+      "bytes": 928,
+      "cu": 105129,
+      "facts": {
+        "Q2": "HZaBE3kb7N4d8EJCvAUm6HJxG1KunxejgBhzEcbtktVL"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "aux.6107.table",
+      "step": "Lookup table for the 6107 tx",
+      "ok": true,
+      "bytes": 1072,
+      "cu": 23630,
+      "sig": "2VbntjTuVJgvcqcjx4cwZvfMXE4TWGhXMfTX6eQw7CHwn9ARviqKXSzNypgktS4RregGWs7Vuo4hUv3QuZEY2ef2",
+      "facts": {
+        "txs": 1
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "child.create.6107",
+      "step": "One tx: buy completes the stand-in, then child create_v2 on it (must fail 6107)",
+      "ok": true,
+      "sig": "5PXPtHkY6rLQTeCwkrhKUjP9teqw5YzshY1YKrtku51PAPVYZ7EG7EstdSKQe1Fji6asxX8BmGhxecPvjh2boEdb",
+      "bytes": 666,
+      "cu": 170819,
+      "err": "QuoteCurveAwaitingMigration {\"InstructionError\":[4,{\"Custom\":6107}]}",
+      "code": 6107,
+      "expectFail": true,
+      "cuLimit": 600000,
+      "facts": {
+        "quote": "HZaBE3kb7N4d8EJCvAUm6HJxG1KunxejgBhzEcbtktVL",
+        "cost": "860679262",
+        "spend": "912320017",
+        "mint": "Em1GpRMFJUEbVVvBryhkq5m9gD5XVkmvgdQYrNX15csr",
+        "W": "9DRJAJ8Htp3c1nAXbsVfiK6nHeQogbA5nduHKTBaCvsv"
+      },
+      "env": "devnet"
+    },
+    {
+      "id": "aux.devnet.refresh",
+      "step": "Devnet refresh: create, launch and multihop rerun with SPIKE_FRESH=1 after the launch.ts refactor (01-06) and the multihop factory (01-09)",
+      "ok": true,
+      "notes": "old Q 5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6 (complete and migrated in 01-05), new Q 4Jw2pr67qmpMi7DQGNZBwKF5Trgse5tNszLkpCnFEovA (fresh stand-in on its curve). The sharing rows (sharing.config, sharing.update, sharing.update2.rejected) ran against the old Q and old C0 HGC7QFRXC9V5ris4SXLFopCurvkM2w8G5irmRkgKKh9u; the 6107 rows (quote.complete, child.create.6107, aux.child.create.migratedQ) ran against the old Q and Q2; the state keys Q.complete and Q2 refer to those runs. Ops balance 2.978331927 SOL before, 2.917428942 SOL after",
+      "env": "devnet",
+      "facts": {
+        "oldQ": "5xUbg6818zFdHMWBjoxhz1VVUs9hT8zv3kd61hgxBTb6",
+        "newQ": "4Jw2pr67qmpMi7DQGNZBwKF5Trgse5tNszLkpCnFEovA",
+        "opsBeforeSol": "2.978331927",
+        "opsAfterSol": "2.917428942"
+      }
+    }
+  ]
+}

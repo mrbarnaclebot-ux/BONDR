@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-10-19T11:27:59.594Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-10-19T14:34:14.801Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 13
+  completed_plans: 14
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 4 of 18
+Plan: 5 of 18
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [█████░░░░░] 46%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [█████░░░░░] 46%
 | Phase 02 P01 | 10 min | 3 tasks | 14 files |
 | Phase 02 P03 | 25 min | 2 tasks | 12 files |
 | Phase 02 P02 | 20 min | 2 tasks | 7 files |
+| Phase 02 P04 | 150 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ Recent decisions affecting current work:
 - [Phase 2]: 02-03: quoteVenue throws AwaitingMigration in the complete-but-unmigrated window; the worker maps it to paused
 - [Phase 02]: 02-02: playwright.config.ts imports WEB_ENV from next.config.ts, whose loader resolves the root .env from its file path, so runner and server see only web names
 - [Phase 02]: 02-02: next.config.ts sets agentRules: false so next dev stops writing apps/web/AGENTS.md and CLAUDE.md
+- [Phase 02]: Neon project bondr (royal-waterfall-05278863, aws-us-east-1) in the Launch-plan org, pay as you go — Owner chose option A on 2026-10-19; the only org that can create projects is on Launch
+- [Phase 02]: Drizzle casing snake_case in db() and drizzle.config.ts; integrity via CHECK and the landed-mint partial unique index — Database constraints over app checks (AGENTS.md section 6)
 
 ### Pending Todos
 
@@ -134,6 +137,7 @@ None yet.
 - Resolved 2026-10-19: Sentry (OPS-01) moved to Phase 2, so ADMIN-06 can read real issue counts in Phase 6.
 - Phase 7: BONDR's own launch is a SOL pair at the standard creator fee, so the Phase 2 launch builder needs a SOL-quote path for it.
 - Pump ships breaking changes on short notice; re-verify against pump-public-docs before each phase.
+- OPS-01 Sentry projects pending: sentry_auth_token not in .env (02-04); create bondr-web and bondr-worker before 02-14
 
 ## Deferred Items
 
@@ -143,6 +147,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T11:27:44.906Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-10-19T14:33:51.677Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None

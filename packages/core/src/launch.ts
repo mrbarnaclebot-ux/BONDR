@@ -71,6 +71,8 @@ export type LaunchOpts = Coin & {
 };
 
 const big = (x: BN): bigint => BigInt(x.toString());
+// burnChecked fails unless this matches the mint; every pump create_v2 mint has 6 decimals.
+const COIN_DECIMALS = 6;
 
 // Exact-out (D-16): SOL buys at least qMin of Q, then exactly `amount` of the child costs at most qMin.
 // 1% and 2% margins absorb Q's price moving and rounding between quote and landing.
@@ -99,10 +101,12 @@ function amounts(g: Global, fc: FeeConfig, q: Curve, pq: PumpQuote, o: LaunchOpt
 async function exitIxs(o: LaunchOpts, amount: BN, g: Global): Promise<TransactionInstruction[]> {
   if (o.exit === "burn") {
     const devAta = getAssociatedTokenAddressSync(o.mint, o.dev, true, T22);
-    return [createBurnCheckedInstruction(devAta, o.mint, o.dev, big(amount), 6, [], T22)];
+    return [createBurnCheckedInstruction(devAta, o.mint, o.dev, big(amount), COIN_DECIMALS, [], T22)];
   }
   if (o.exit === "sellq")
     return sellExactIn({ global: g, mint: o.mint, user: o.dev, quoteMint: o.Q, amount, minQuote: new BN(1) });
+  const buybackFeeRecipient = g.buybackFeeRecipients[0];
+  if (!buybackFeeRecipient) throw new Error("Global has no buybackFeeRecipients for the multi_hop sell");
   // ponytail: minAmountOut 1, because the child does not exist before this tx, so simulateMultiHopSwap
   // cannot price it. Phase 2 sets a real floor from the curve math.
   return PUMP_SDK.multiHopSwapInstructions({
@@ -110,7 +114,7 @@ async function exitIxs(o: LaunchOpts, amount: BN, g: Global): Promise<Transactio
     side: "sell",
     amountIn: amount,
     minAmountOut: new BN(1),
-    buybackFeeRecipient: g.buybackFeeRecipients[0],
+    buybackFeeRecipient,
     hops: [
       { venue: "curve", baseMint: o.mint, quoteMint: o.Q, baseTokenProgram: T22, quoteTokenProgram: T22 },
       {

@@ -12,7 +12,7 @@ BONDR goes from proof to production in seven vertical slices. First, a mainnet-f
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Chain Spike** - Prove every pump assumption on a Surfpool mainnet fork, each step with a signature
+- [ ] **Phase 1: Chain Spike** - Prove every pump assumption on a Surfpool mainnet fork, each step with a signature (awaiting owner sign-off)
 - [ ] **Phase 2: Launch Flow** - Phantom connect, consent, launch form, one-tx launch with server co-sign, bare token page
 - [ ] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards
 - [ ] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond
@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Owner sees a forced-bond buy_exact_quote_in_v3 + burn complete a curve in one transaction, and a post-migration PumpSwap buy + burn, each with a signature
   4. Owner sees create_fee_sharing_config + one update_fee_shares_v2 set deployer 8000 / treasury 2000, a second update rejected, and distribution paying both
   5. Owner opens a bare page that lists every spike step with its signature, including a multi_hop_swap buy and sell SOL to stand-in to coin; any failed step forces a PROJECT.md change before Phase 2
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 plans executed, owner sign-off pending (01-10 Task 3)
 
 Plans:
 - [x] 01-01-PLAN.md - Walking skeleton part 1: phase branch, workspace, packages/core pump loader, network guard, key derivation, idempotent key generation
@@ -135,7 +135,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Chain Spike | 9/10 | In Progress|  |
+| 1. Chain Spike | 10/10 | Awaiting owner sign-off |  |
 | 2. Launch Flow | 0/TBD | Not started | - |
 | 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
 | 4. Trading | 0/TBD | Not started | - |

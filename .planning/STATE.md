@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-09-PLAN.md
-last_updated: "2026-10-19T07:04:14.629Z"
+stopped_at: 01-10 Task 3, awaiting owner sign-off
+last_updated: "2026-10-19T07:11:51.061Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 
 Phase: 1 (Chain Spike) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: Awaiting owner sign-off (01-10 Task 3: evidence page and PROJECT.md changes)
 Last activity: 2026-10-19
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100% of plans executed; owner sign-off pending
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 90%
 | Phase 01 P07 | 10 min | 3 tasks | 15 files |
 | Phase 01 P08 | 12 min | 2 tasks | 9 files |
 | Phase 01 P09 | 15 min | 2 tasks | 8 files |
+| Phase 01 P10 | 20 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,10 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-09: the fork 6107 proof uses the devnet one-tx pattern [completing buy, child create], so both nets' evidence is comparable
 - [Phase 01]: 01-09: a child create on a migrated Q has 8 remaining accounts and is 1,163 B, 99 more than on an unmigrated Q
 - [Phase 01]: 01-09: resolveMultiHopRoute picks the pool venue for a migrated Q by itself (buy pool,curve 1,132 B / 162k CU; sell curve,pool 1,100 B / 150k CU)
+- [Phase 01]: 01-10: pnpm spike:all is the phase gate; final run exit 0 (run=0 check=0), page PASS 67, FAIL 0, EXPECTED FAIL 5, NOT RUN 0
+- [Phase 01]: 01-10: Phase 5 forced-bond default proposed as the full-budget buy_exact_quote_in_v3 with simulated burn (row bond.forced); owner to confirm
+- [Phase 01]: 01-10: launch table rent about 0.007-0.008 SOL at mainnet rent and W finalize float 0.018 SOL, both corrected in PROJECT.md
+- [Phase 01]: 01-10: devnet refreshed on new Q 4Jw2pr67...; devnet ops holds 2.917 SOL
 
 ### Pending Todos
 
@@ -122,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T07:04:05.494Z
-Stopped at: Completed 01-09-PLAN.md
-Resume file: None
+Last session: 2026-10-19T07:11:51.056Z
+Stopped at: 01-10 Task 3, awaiting owner sign-off
+Resume file: .planning/phases/01-chain-spike/01-10-SUMMARY.md

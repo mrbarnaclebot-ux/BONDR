@@ -1,10 +1,10 @@
 // Idempotent: an existing master seed is reused, never overwritten, so every run prints the same keys.
 // Seeds live outside the repo (dir 0700, file 0600) and only public keys are printed.
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { derive, type Role } from "@bondr/core/keys";
+import { derive, type Role, readSeed } from "@bondr/core/keys";
 
 const NETS = ["devnet", "fork"] as const;
 const FIXED: [Role, string][] = [
@@ -23,9 +23,7 @@ function loadOrCreate(net: string): Buffer {
     // flag "wx" refuses to clobber a seed created between the check and the write.
     writeFileSync(file, randomBytes(32), { mode: 0o600, flag: "wx" });
   }
-  const seed = readFileSync(file);
-  if (seed.length !== 32) throw new Error(`${file} is not a 32-byte seed`);
-  return seed;
+  return readSeed(file);
 }
 
 for (const net of NETS) {

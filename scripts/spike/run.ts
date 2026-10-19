@@ -1,9 +1,9 @@
 // Runs each net's stage list in order. Every failure becomes a saved row before the exit code is decided,
 // so the page can always show what broke; nothing here sends a transaction itself.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { derive } from "@bondr/core/keys";
+import { derive, readSeed } from "@bondr/core/keys";
 import { connect, redact } from "@bondr/core/net";
 import {
   type Ctx,
@@ -19,16 +19,14 @@ import {
 
 const message = (e: unknown): string => redact(e instanceof Error ? e.message : String(e));
 
-function readSeed(net: Net): Buffer {
+function masterSeed(net: Net): Buffer {
   const file = join(process.env.SPIKE_KEYS_DIR || join(homedir(), ".bondr-spike"), net, "master.seed");
   if (!existsSync(file)) throw new Error(`${net} master seed missing: run pnpm spike:keys first`);
-  const seed = readFileSync(file);
-  if (seed.length !== 32) throw new Error(`${file} is not a 32-byte seed`);
-  return seed;
+  return readSeed(file);
 }
 
 async function loadNet(net: Net, file: ResultsFile): Promise<{ ctx: Ctx; stages: Stage[] }> {
-  const master = readSeed(net);
+  const master = masterSeed(net);
   const conn = await connect(net);
   const stages = (await import(`./nets/${net}.ts`)).default as Stage[];
   const ctx: Ctx = {

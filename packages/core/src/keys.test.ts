@@ -1,5 +1,8 @@
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { derive, type Net } from "./keys.ts";
+import { derive, type Net, readSeed } from "./keys.ts";
 
 const master = Buffer.from(Array.from({ length: 32 }, (_, i) => i));
 const pk = (m: Buffer, role: Parameters<typeof derive>[1], net: Net, id: string) =>
@@ -21,4 +24,15 @@ describe("derive", () => {
     const other = Buffer.alloc(32, 7);
     expect(pk(other, "w", "devnet", "X")).not.toBe(pk(master, "w", "devnet", "X"));
   });
+});
+
+test("readSeed refuses a shared or wrong-length seed file", () => {
+  const file = join(mkdtempSync(join(tmpdir(), "seed-")), "master.seed");
+  writeFileSync(file, Buffer.alloc(32, 1), { mode: 0o600 });
+  expect(readSeed(file).length).toBe(32);
+  chmodSync(file, 0o640);
+  expect(() => readSeed(file)).toThrow("readable by others");
+  writeFileSync(file, Buffer.alloc(31));
+  chmodSync(file, 0o600);
+  expect(() => readSeed(file)).toThrow("not a 32-byte seed");
 });

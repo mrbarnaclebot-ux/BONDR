@@ -108,8 +108,9 @@ async function freshStandIn(ctx: Ctx): Promise<PublicKey> {
 async function tablesFor(ctx: Ctx, ixs: TransactionInstruction[]): Promise<AddressLookupTableAccount[]> {
   const whale = ctx.key("sim", "whale");
   if (wireSize(whale.publicKey, ixs) <= PACKET_LIMIT) return [];
-  const { table, txs, ...t } = await createTable(ctx.conn, whale, tableKeys(ixs), paceMs(ctx));
-  ctx.record({ id: "aux.6107.table", step: "Lookup table for the 6107 tx", ...t, facts: { txs } });
+  const { address, table, txs, ...t } = await createTable(ctx.conn, whale, tableKeys(ixs), paceMs(ctx));
+  const facts = { table: address.toBase58(), txs };
+  ctx.record({ id: "aux.6107.table", step: "Lookup table for the 6107 tx", ...t, facts });
   if (!table) throw new Error(`lookup table for the 6107 tx failed: ${t.err}`);
   return [table];
 }

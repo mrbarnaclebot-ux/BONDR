@@ -1,6 +1,6 @@
-import { Keypair, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import { type Connection, Keypair, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import { expect, test } from "vitest";
-import { sharedKeys, tableKeys } from "./alt.ts";
+import { createTable, freshSlot, sharedKeys, tableKeys } from "./alt.ts";
 
 const key = () => Keypair.generate().publicKey;
 const signer = key();
@@ -32,4 +32,15 @@ test("sharedKeys returns only keys present in both lists", () => {
   const one = [ix(prog, { pubkey: a, isSigner: false }, { pubkey: b, isSigner: false })];
   const two = [ix(prog, { pubkey: b, isSigner: false }, { pubkey: c, isSigner: false })];
   expect(sharedKeys(one, two).map(String)).toEqual([String(b)]);
+});
+
+test("freshSlot never hands one authority the same finalized slot twice", async () => {
+  const slots = [10, 10, 11];
+  const conn = { getSlot: async () => slots.shift() } as unknown as Connection;
+  expect(await freshSlot(conn, signer)).toBe(10);
+  expect(await freshSlot(conn, signer)).toBe(11);
+});
+
+test("createTable refuses an empty key list", async () => {
+  await expect(createTable({} as Connection, Keypair.generate(), [])).rejects.toThrow("at least one key");
 });

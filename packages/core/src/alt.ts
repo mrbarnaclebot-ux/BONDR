@@ -51,7 +51,25 @@ async function warm(conn: Connection, key: PublicKey, n: number): Promise<Addres
   throw new Error(`lookup table ${key.toBase58()} did not warm up`);
 }
 
+// The table address derives from (authority, recentSlot), so two tables from one authority in the same
+// finalized slot would collide. Each authority waits for a finalized slot newer than its last one.
+// ponytail: per-process memory; read the authority's last table slot from chain if several processes share one.
+const usedSlot = new Map<string, number>();
+export async function freshSlot(conn: Connection, authority: PublicKey): Promise<number> {
+  const id = authority.toBase58();
+  for (let i = 0; i < 60; i++) {
+    const slot = await conn.getSlot("finalized");
+    if (slot > (usedSlot.get(id) ?? -1)) {
+      usedSlot.set(id, slot);
+      return slot;
+    }
+    await delay(400);
+  }
+  throw new Error(`no new finalized slot for lookup table authority ${id}`);
+}
+
 export type TableResult = {
+  address: PublicKey; // set even when a tx fails, so the table can be closed and its rent reclaimed
   table?: AddressLookupTableAccount;
   ok: boolean;
   sig?: string;
@@ -69,14 +87,15 @@ export async function createTable(
   keys: PublicKey[],
   paceMs = 0,
 ): Promise<TableResult> {
+  if (keys.length === 0) throw new Error("createTable needs at least one key");
   const authority = payer.publicKey;
-  const recentSlot = await conn.getSlot("finalized");
+  const recentSlot = await freshSlot(conn, authority);
   const [create, lookupTable] = AddressLookupTableProgram.createLookupTable({
     authority,
     payer: authority,
     recentSlot,
   });
-  const out: TableResult = { ok: true, bytes: 0, cu: 0, txs: 0 };
+  const out: TableResult = { address: lookupTable, ok: true, bytes: 0, cu: 0, txs: 0 };
   for (let i = 0; i < keys.length; i += CHUNK) {
     const extend = AddressLookupTableProgram.extendLookupTable({
       payer: authority,
@@ -93,5 +112,9 @@ export async function createTable(
     out.txs++;
     if (!r.ok) return { ...out, ok: false, err: r.err };
   }
-  return { ...out, table: await warm(conn, lookupTable, keys.length) };
+  try {
+    return { ...out, table: await warm(conn, lookupTable, keys.length) };
+  } catch (e) {
+    return { ...out, ok: false, err: e instanceof Error ? e.message : String(e) };
+  }
 }

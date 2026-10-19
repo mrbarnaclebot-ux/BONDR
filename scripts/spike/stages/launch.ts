@@ -68,8 +68,8 @@ async function launchOne(run: Run, exit: Exit): Promise<boolean> {
   const [mint, dev] = [Keypair.generate(), ctx.key("sim", "dev")];
   const { base, built, sized } = await prepare(run, exit, mint, dev);
   const keys = tableKeys(built.ixs);
-  const { table, txs, ...t } = await createTable(ctx.conn, dev, keys, paceMs(ctx));
-  const tableFacts = { table: table?.key.toBase58() ?? "none", keys: keys.length, txs };
+  const { address, table, txs, ...t } = await createTable(ctx.conn, dev, keys, paceMs(ctx));
+  const tableFacts = { table: address.toBase58(), keys: keys.length, txs };
   ctx.record({ id: rowId(exit, true), step: `Per-coin lookup table (${exit})`, ...t, facts: tableFacts });
   if (!table) throw new Error(`lookup table for ${exit} failed: ${t.err}`);
   const r = await sendTx({

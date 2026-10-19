@@ -268,7 +268,10 @@
       "expectFail": true,
       "cuLimit": 400000,
       "notes": "pump-fees 6009 sharingConfigAdminRevoked",
-      "env": "devnet"
+      "env": "devnet",
+      "facts": {
+        "idlName": "sharingConfigAdminRevoked"
+      }
     },
     {
       "id": "aux.fund.4LpEeqRC",

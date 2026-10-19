@@ -98,7 +98,8 @@ async function secondUpdate(ctx: Ctx, k: Keys): Promise<void> {
   const name = getPumpFeeProgram(ctx.conn).idl.errors.find((e) => e.code === r.code)?.name;
   const notes = `pump-fees ${r.code} ${name ?? "not in the pump-fees IDL"}`;
   const step = "Second update_fee_shares_v2 (must be rejected)";
-  ctx.record({ id: "sharing.update2.rejected", step, ...r, expectFail: true, cuLimit: CU, notes });
+  const facts = name ? { idlName: name } : undefined;
+  ctx.record({ id: "sharing.update2.rejected", step, ...r, expectFail: true, cuLimit: CU, notes, facts });
 }
 
 const sigOk: Rule = (row) => (row.sig ? null : "no signature");
@@ -117,10 +118,10 @@ const updateRule: Rule = (row) => {
 const rejectedRule: Rule = (row) => {
   if (!row.expectFail || !row.sig) return "not a landed expected failure";
   if (row.code === undefined || row.code < 6000 || row.code > 6999) return `code ${row.code} not 6000..6999`;
-  const name = row.notes?.split(" ")[2];
-  return name && row.err?.toLowerCase().startsWith(name.toLowerCase())
+  const name = row.facts?.idlName;
+  return typeof name === "string" && row.err?.toLowerCase().startsWith(name.toLowerCase())
     ? null
-    : `logged error ${row.err} does not match notes ${row.notes}`;
+    : `logged error ${row.err} does not match IDL name ${name}`;
 };
 
 export const sharingStage: Stage = {

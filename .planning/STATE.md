@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-10-19T06:44:59.001Z"
+stopped_at: Completed 01-08-PLAN.md
+last_updated: "2026-10-19T06:55:10.256Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 1 (Chain Spike) — EXECUTING
-Plan: 8 of 10
+Plan: 9 of 10
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [███████░░░] 70%
 | Phase 01 P05 | 15 min | 3 tasks | 13 files |
 | Phase 01 P06 | 20 min | 2 tasks | 13 files |
 | Phase 01 P07 | 10 min | 3 tasks | 15 files |
+| Phase 01 P08 | 12 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,10 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-07: the forced-bond burn is in the same tx as the completing buy, so pump's keeper cannot migrate between completion and burn
 - [Phase 01]: 01-07: simulateTransaction with the accounts option works on Surfpool 1.6.1 (A7 holds); forced bond 926 B / 110k CU, exact variant 926 B / 108k CU
 - [Phase 01]: 01-07: a buy_exact_quote_in_v3 budget above cost also buys from the pool-to-be, so the forced bond burns more than the curve's remaining supply
+- [Phase 01]: 01-08: the bonded finalize is two txs (config 1,076 B / 244k CU, update 1,126 B / 134k CU); one tx measured 1,351 B
+- [Phase 01]: 01-08: after finalize on a complete curve the sweeps are the pool sweep only, so the bonded second update fits at 1,214 B
+- [Phase 01]: 01-08: the bonded second update is rejected with pump-fees 6009 SharingConfigAdminRevoked, same as devnet
+- [Phase 01]: 01-08: distribution after bond paid exactly 80:20 (deployer 138,264,336,404 Q, treasury 34,566,084,101 Q)
 
 ### Pending Todos
 
@@ -113,6 +118,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T06:44:43.501Z
-Stopped at: Completed 01-06-PLAN.md
+Last session: 2026-10-19T06:55:10.247Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None

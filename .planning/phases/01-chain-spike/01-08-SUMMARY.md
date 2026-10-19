@@ -77,7 +77,7 @@ Notes on the evidence:
 - `SPIKE_NET=fork pnpm spike:check` gave 41 passed, 0 failed, including the secret scan. `SPIKE_NET=devnet pnpm spike:check` still gives 22 passed (the devnet rules are now exported for reuse, and nothing else changed).
 - `pnpm spike:page` gave PASS 57, FAIL 0, EXPECTED FAIL 4, NOT RUN 0.
 - `pnpm vitest run` passed 25 tests. `pnpm lint` and `pnpm typecheck` exit 0. `pnpm biome lint scripts/spike/stages/finalize.ts` exits 0, so no function there is over 40 lines. The file has 7 helper functions (traderQ, tradeIxs, poolTrades, finalizeTx, readShares, distribute, secondUpdate), plus distributeRule.
-- `rg -n buildDistributeCreatorFeesInstructions packages/core/src/sharing.ts` matches once (line 127; the comment does not name it). `rg -c canonicalPumpPoolPdaWithQuote packages/core/src/bond.ts` finds 0.
+- `rg -n buildDistributeCreatorFeesInstructions packages/core/src/sharing.ts` matches once (line 128; the comment does not name it). `rg -c canonicalPumpPoolPdaWithQuote packages/core/src/bond.ts` finds 0.
 - File sizes: finalize.ts 213 lines, sharing.ts 129, trade.ts 91, bond.ts 156. prebond.ts is unchanged at 298.
 - `api-key` appears 0 times in fork.json. The fork was stopped with `pnpm spike:fork-down`. No devnet sends were made.
 

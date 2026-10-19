@@ -6,7 +6,7 @@ import {
   TOKEN_2022_PROGRAM_ID as T22,
 } from "@solana/spl-token";
 import type { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { creatorVaultPda, feeSharingConfigPda, PUMP_SDK } from "./pump.ts";
+import { creatorVaultPda, feeSharingConfigPda, type OnlinePumpSdk, PUMP_SDK } from "./pump.ts";
 
 // PROJECT.md 80/20: deployer, then treasury. Locked after the one allowed update, so it lives here only.
 export const FINAL_SHARES = { deployer: 8000, treasury: 2000 } as const;
@@ -105,4 +105,17 @@ export async function readSharing(conn: Connection, mint: PublicKey) {
     holders: c.shareholders.map((s) => s.address.toBase58()),
     adminRevoked: c.adminRevoked,
   };
+}
+
+// Permissionless payout to the shareholders. The SDK list is [sweeps, transfer_creator_fees_to_pump_v2 when
+// bonded, distribute_creator_fees_v2 with initialize_ata], and its order is kept as is (RESEARCH Don't
+// Hand-Roll): distribution refuses an un-swept curve bucket.
+export async function distributeIxs(o: {
+  online: InstanceType<typeof OnlinePumpSdk>;
+  mint: PublicKey;
+  quoteMint: PublicKey;
+  payer: PublicKey;
+}): Promise<TransactionInstruction[]> {
+  const opts = { quoteMint: o.quoteMint, quoteTokenProgram: T22, payer: o.payer };
+  return (await o.online.buildDistributeCreatorFeesInstructions(o.mint, opts)).instructions;
 }

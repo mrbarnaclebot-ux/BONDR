@@ -8,9 +8,18 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import type { PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { type BN, type Global, PUMP_SDK } from "./pump.ts";
+import {
+  type BN,
+  canonicalPumpPoolPdaWithQuote,
+  type Global,
+  type OnlinePumpAmmSdk,
+  PUMP_AMM_SDK,
+  PUMP_SDK,
+} from "./pump.ts";
 
 type Side = { global: Global; mint: PublicKey; user: PublicKey; quoteMint: PublicKey };
+type Amm = InstanceType<typeof OnlinePumpAmmSdk>;
+type Pool = { amm: Amm; mint: PublicKey; quoteMint: PublicKey; user: PublicKey };
 
 export const ataIx = (payer: PublicKey, mint: PublicKey, owner: PublicKey) =>
   createAssociatedTokenAccountIdempotentInstruction(
@@ -56,4 +65,27 @@ export async function sellExactIn(o: Side & { amount: BN; minQuote: BN }): Promi
   const ix = await PUMP_SDK.getSellV3InstructionRaw({ ...base, amount: o.amount, quoteAmount: o.minQuote });
   const quoteAta = isSol(o.quoteMint) ? [] : [ataIx(o.user, o.quoteMint, o.user)];
   return [...quoteAta, ...buybackAta, ix];
+}
+
+// The one PumpSwap state fetch. The SDK picks a random listed buyback wallet and v2 never creates its quote
+// ATA, so the first listed one is pinned and the caller creates its ATA (Pitfall 5).
+export async function poolState(o: Pool) {
+  const s = await o.amm.swapSolanaState(canonicalPumpPoolPdaWithQuote(o.mint, o.quoteMint), o.user);
+  const buyback = s.globalConfig.buybackFeeRecipients[0];
+  if (!buyback) throw new Error("PumpSwap GlobalConfig has no buyback fee recipients");
+  return { state: { ...s, globalConfig: { ...s.globalConfig, buybackFeeRecipients: [buyback] } }, buyback };
+}
+
+// PumpSwap buy_v2 of exactly baseOut; the SDK creates the user's base ATA when missing.
+export async function poolBuy(o: Pool & { baseOut: BN; maxQuoteIn: BN }): Promise<TransactionInstruction[]> {
+  const { state, buyback } = await poolState(o);
+  const buy = await PUMP_AMM_SDK.buyV2Instructions(state, o.baseOut, o.maxQuoteIn);
+  return [ataIx(o.user, o.quoteMint, buyback), ...buy];
+}
+
+// PumpSwap sell_v2 of exactly baseIn; the SDK creates the user's quote ATA when missing.
+export async function poolSell(o: Pool & { baseIn: BN; minQuoteOut: BN }): Promise<TransactionInstruction[]> {
+  const { state, buyback } = await poolState(o);
+  const sell = await PUMP_AMM_SDK.sellV2Instructions(state, o.baseIn, o.minQuoteOut);
+  return [ataIx(o.user, o.quoteMint, buyback), ...sell];
 }

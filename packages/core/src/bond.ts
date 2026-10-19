@@ -20,16 +20,8 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { COIN_DECIMALS } from "./launch.ts";
-import {
-  BN,
-  buyQuoteInput,
-  canonicalPumpPoolPdaWithQuote,
-  type Global,
-  type OnlinePumpAmmSdk,
-  PUMP_AMM_SDK,
-  PUMP_SDK,
-} from "./pump.ts";
-import { ataIx, buyExactIn, buyExactOut } from "./trade.ts";
+import { BN, buyQuoteInput, type Global, type OnlinePumpAmmSdk, PUMP_AMM_SDK, PUMP_SDK } from "./pump.ts";
+import { ataIx, buyExactIn, buyExactOut, poolState } from "./trade.ts";
 
 type Amm = InstanceType<typeof OnlinePumpAmmSdk>;
 type W = { ops: PublicKey; w: PublicKey; wFloatLamports: number };
@@ -122,16 +114,6 @@ export async function migrateIxs(o: {
   return [await PUMP_SDK.migrateV2Instruction({ ...args, baseTokenProgram: T22, quoteTokenProgram })];
 }
 
-// The SDK picks a random listed buyback wallet and v2 never creates its quote ATA, so the first listed one
-// is pinned and its ATA created idempotently by ops (Pitfall 5).
-async function poolState(amm: Amm, ops: PublicKey, w: PublicKey, mint: PublicKey, quoteMint: PublicKey) {
-  const s = await amm.swapSolanaState(canonicalPumpPoolPdaWithQuote(mint, quoteMint), w);
-  const buyback = s.globalConfig.buybackFeeRecipients[0];
-  if (!buyback) throw new Error("PumpSwap GlobalConfig has no buyback fee recipients");
-  const state = { ...s, globalConfig: { ...s.globalConfig, buybackFeeRecipients: [buyback] } };
-  return { state, buybackAta: ataIx(ops, quoteMint, buyback) };
-}
-
 // The base a quote buys on the pool, after fees: what the fallback burn sizes from.
 export async function poolBaseOut(o: {
   amm: Amm;
@@ -140,7 +122,7 @@ export async function poolBaseOut(o: {
   quoteMint: PublicKey;
   quote: BN;
 }) {
-  const s = await o.amm.swapSolanaState(canonicalPumpPoolPdaWithQuote(o.mint, o.quoteMint), o.w);
+  const { state: s } = await poolState({ amm: o.amm, mint: o.mint, quoteMint: o.quoteMint, user: o.w });
   return buyQuoteInput({
     quote: o.quote,
     slippage: 0,
@@ -163,7 +145,12 @@ export async function poolBaseOut(o: {
 export async function poolBuyBurnIxs(
   o: W & { connAmm: Amm; mint: PublicKey; quoteMint: PublicKey; baseOut: BN; maxQuoteIn: BN },
 ): Promise<TransactionInstruction[]> {
-  const { state, buybackAta } = await poolState(o.connAmm, o.ops, o.w, o.mint, o.quoteMint);
+  const { state, buyback } = await poolState({
+    amm: o.connAmm,
+    mint: o.mint,
+    quoteMint: o.quoteMint,
+    user: o.w,
+  });
   const buy = await PUMP_AMM_SDK.buyV2Instructions(state, o.baseOut, o.maxQuoteIn);
-  return [...float(o), buybackAta, ...buy, burnIx(o.w, o.mint, big(o.baseOut))];
+  return [...float(o), ataIx(o.ops, o.quoteMint, buyback), ...buy, burnIx(o.w, o.mint, big(o.baseOut))];
 }

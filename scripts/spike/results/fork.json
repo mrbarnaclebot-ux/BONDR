@@ -1,0 +1,40 @@
+{
+  "net": "fork",
+  "updatedAt": "2026-10-19T06:04:02.456Z",
+  "state": {},
+  "rows": [
+    {
+      "id": "config",
+      "step": "Live pump config",
+      "ok": true,
+      "facts": {
+        "creatorFeeConfigurable": true,
+        "maxConfigurableCreatorFeeBps": "300",
+        "maxCurveDepth": 2,
+        "initialVirtualSolReserves": "30000000000",
+        "initialVirtualTokenReserves": "1073000000000000",
+        "initialRealTokenReserves": "793100000000000",
+        "tokenTotalSupply": "1000000000000000",
+        "withdrawAuthority": "39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg",
+        "buybackFeeRecipient0": "5YxQFdt3Tr9zJLvkFccqXVUwhdTWJQc1fFg2YPbxvxeD",
+        "createV2Enabled": true,
+        "globalBytes": 1088,
+        "curveFlat.protocol": "95",
+        "curveFlat.creator": "30",
+        "curveExotic.protocol": "95",
+        "curveExotic.creator": "30",
+        "ammFlat.protocol": "5",
+        "ammFlat.creator": "0",
+        "ammFlat.lp": "25",
+        "ammExotic.protocol": "5",
+        "ammExotic.creator": "5",
+        "ammExotic.lp": "20",
+        "ammTier0.protocol": "93",
+        "ammTier0.creator": "30",
+        "ammTier0.lp": "2",
+        "drift": ""
+      },
+      "env": "fork"
+    }
+  ]
+}

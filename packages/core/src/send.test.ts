@@ -9,7 +9,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { describe, expect, test } from "vitest";
-import { checkMessage, PACKET_LIMIT, wireSize } from "./send.ts";
+import { checkMessage, PACKET_LIMIT, statusOf, wireSize } from "./send.ts";
 
 const payer = Keypair.generate();
 const to = Keypair.generate().publicKey;
@@ -69,4 +69,16 @@ describe("wireSize", () => {
     });
     expect(wireSize(payer.publicKey, [big])).toBeGreaterThan(PACKET_LIMIT);
   });
+});
+
+test("statusOf maps send outcomes", () => {
+  const fail = { err: { InstructionError: [0, { Custom: 6077 }] } };
+  expect(statusOf({ sent: false, expectFail: false })).toBe("failed");
+  expect(statusOf({ sent: true, expectFail: false })).toBe("unknown");
+  expect(statusOf({ sent: true, expectFail: true })).toBe("unknown");
+  expect(statusOf({ sent: true, meta: { err: null }, expectFail: false })).toBe("landed");
+  expect(statusOf({ sent: true, meta: fail, code: 6077, expectFail: false })).toBe("failed");
+  expect(statusOf({ sent: true, meta: fail, code: 6077, expectFail: true })).toBe("landed");
+  expect(statusOf({ sent: true, meta: fail, expectFail: true })).toBe("failed");
+  expect(statusOf({ sent: true, meta: { err: null }, expectFail: true })).toBe("failed");
 });

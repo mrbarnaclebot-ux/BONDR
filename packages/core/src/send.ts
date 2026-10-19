@@ -31,8 +31,16 @@ export const ALLOWED_PROGRAMS: ReadonlySet<string> = new Set([
   "AddressLookupTab1e1111111111111111111111111",
 ]);
 
+// "landed": on chain and met the expectation (for expectFail: failed with a program code). "failed": never
+// sent, or on chain without meeting it. "unknown": sent, but neither confirmation nor a final history lookup
+// saw it, so it may still land. A caller must never resend an "unknown" tx without re-checking its signature
+// first (getSignatureStatuses with searchTransactionHistory, after lastValidBlockHeight has passed), or the
+// same action can land twice.
+export type SendStatus = "landed" | "failed" | "unknown";
+
 export type SendResult = {
-  ok: boolean;
+  ok: boolean; // always status === "landed"
+  status: SendStatus;
   sig?: string;
   bytes: number;
   cu?: number;
@@ -118,6 +126,24 @@ function customCode(err: unknown): number | undefined {
   return typeof custom === "number" ? custom : undefined;
 }
 
+export function statusOf(o: {
+  sent: boolean;
+  meta?: { err: unknown };
+  code?: number;
+  expectFail: boolean;
+}): SendStatus {
+  if (!o.sent) return "failed";
+  if (!o.meta) return "unknown";
+  const met = o.expectFail ? o.meta.err !== null && o.code !== undefined : o.meta.err === null;
+  return met ? "landed" : "failed";
+}
+
+const result = (status: SendStatus, r: Omit<SendResult, "ok" | "status">): SendResult => ({
+  ok: status === "landed",
+  status,
+  ...r,
+});
+
 // getTransaction can return null for a moment after confirmation on a load-balanced RPC.
 export async function fetchMeta(
   conn: Connection,
@@ -142,23 +168,41 @@ export async function confirm(conn: Connection, sig: string, lastValidBlockHeigh
   }
 }
 
+// One last look with history after confirm gave up: the tx can land after its poll expired, and the poll
+// itself can fail on a flaky RPC. Returns the confirm error text only when the tx is still unseen.
+async function unseen(conn: Connection, sig: string, lastValidBlockHeight: number): Promise<string | null> {
+  try {
+    await confirm(conn, sig, lastValidBlockHeight);
+    return null;
+  } catch (e) {
+    const st = await conn.getSignatureStatuses([sig], { searchTransactionHistory: true }).then(
+      (r) => r.value[0],
+      () => null,
+    );
+    const seen = st?.confirmationStatus === "confirmed" || st?.confirmationStatus === "finalized";
+    return seen ? null : redact(e instanceof Error ? e.message : String(e));
+  }
+}
+
 async function settle(conn: Connection, sig: string, bytes: number, expectFail: boolean, bh: BlockhashInfo) {
-  await confirm(conn, sig, bh.lastValidBlockHeight);
+  const lost = await unseen(conn, sig, bh.lastValidBlockHeight);
+  if (lost) return result("unknown", { sig, bytes, err: `landed status unknown: ${lost}` });
   const meta = await fetchMeta(conn, sig);
-  if (!meta) return { ok: false, sig, bytes, err: "landed status unknown: no transaction meta" };
+  if (!meta) return result("unknown", { sig, bytes, err: "landed status unknown: no transaction meta" });
   const logs = fromLogs(meta.logMessages);
   const code = customCode(meta.err) ?? (meta.err ? logs.code : undefined);
   const err = meta.err ? redact(`${logs.name ?? "failed"} ${JSON.stringify(meta.err)}`) : undefined;
-  const ok = expectFail ? meta.err !== null && code !== undefined : meta.err === null;
-  return { ok, sig, bytes, cu: meta.computeUnitsConsumed, err, code };
+  const status = statusOf({ sent: true, meta, code, expectFail });
+  return result(status, { sig, bytes, cu: meta.computeUnitsConsumed, err, code });
 }
 
-function thrown(e: unknown, bytes: number, expectFail: boolean, sig?: string): SendResult {
-  const logs = fromLogs((e as { logs?: string[]; transactionLogs?: string[] }).logs);
+// A throw before sendRawTransaction returned means nothing went out; after it, the tx may still land.
+function thrown(e: unknown, bytes: number, sig?: string): SendResult {
+  const logs = fromLogs((e as { logs?: string[] }).logs);
   const name = e instanceof Error ? e.name : "Error";
   const text = e instanceof Error ? e.message : String(e);
   const err = redact(`${logs.name ?? name}: ${text}`).slice(0, 400);
-  return { ok: expectFail && logs.code !== undefined, sig, bytes, err, code: logs.code };
+  return result(sig ? "unknown" : "failed", { sig, bytes, err, code: logs.code });
 }
 
 type BlockhashInfo = { blockhash: string; lastValidBlockHeight: number };
@@ -177,8 +221,9 @@ export async function sendTx(o: SendOpts): Promise<SendResult> {
   const msg = compile(o.payer.publicKey, o.ixs, o.tables ?? [], bh.blockhash);
   const bytes = messageSize(msg);
   const refused = checkMessage(msg);
-  if (refused) return { ok: false, bytes, err: `refused to sign: ${refused}` };
-  if (bytes > PACKET_LIMIT) return { ok: false, bytes, err: `too large: ${bytes} > ${PACKET_LIMIT} bytes` };
+  if (refused) return result("failed", { bytes, err: `refused to sign: ${refused}` });
+  if (bytes > PACKET_LIMIT)
+    return result("failed", { bytes, err: `too large: ${bytes} > ${PACKET_LIMIT} bytes` });
   const tx = new VersionedTransaction(msg);
   tx.sign([o.payer, ...(o.signers ?? [])]);
   await pace(o.paceMs ?? 0);
@@ -188,6 +233,6 @@ export async function sendTx(o: SendOpts): Promise<SendResult> {
     sig = await o.conn.sendRawTransaction(tx.serialize(), { skipPreflight: expectFail, maxRetries: 3 });
     return await settle(o.conn, sig, bytes, expectFail, bh);
   } catch (e) {
-    return thrown(e, bytes, expectFail, sig); // sig is set when the send went out but confirmation threw
+    return thrown(e, bytes, sig);
   }
 }

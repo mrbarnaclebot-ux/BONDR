@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-09-PLAN.md
-last_updated: "2026-10-19T16:10:24.747Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-10-19T16:30:10.344Z"
 last_activity: 2026-10-19
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 18
+  completed_plans: 19
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 9 of 18
+Plan: 10 of 18
 Status: Ready to execute
 Last activity: 2026-10-19
 
-Progress: [██████░░░░] 64%
+Progress: [███████░░░] 68%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [██████░░░░] 64%
 | Phase 02 P06 | 10 min | 3 tasks | 18 files |
 | Phase 02 P07 | 25 min | 2 tasks | 17 files |
 | Phase 02 P09 | 75 min | 2 tasks | 11 files |
+| Phase 02 P08 | 45 min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,9 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-09: reserve never hands out a mint whose launch is signed, sent, unknown or landed, even after its 10-minute window expired — An expired reservation whose tx may still land would give the next dev a used mint (T-02-09-02)
 - [Phase 02]: 02-09: vanity rows are claimed with a scalar idx = (select ... limit 1 for update skip locked) — IN (subquery) was re-run per row and reserved every free mint for one wallet
 - [Phase 02]: 02-09: the Mac pre-fill uses 4 grinder threads — worker_threads stop scaling past the M4 performance cores because of OpenSSL lock contention (73k keys/s at 4 threads, 50k at 10)
+- [Phase 02]: 02-08: A pause outranks the wallet on step 3; Launches paused shows even when disconnected
+- [Phase 02]: 02-08: One useStatus poll and one useQuote live in LaunchFlow; steps and the receipt read StepProps.live
+- [Phase 02]: 02-08: paused.e2e.ts runs in its own Playwright project after chromium, since it flips the shared kill switch
 
 ### Pending Todos
 
@@ -159,6 +163,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T16:10:15.775Z
-Stopped at: Completed 02-09-PLAN.md
+Last session: 2026-10-19T16:30:03.023Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None

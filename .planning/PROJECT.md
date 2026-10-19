@@ -20,8 +20,9 @@ Verified against pump-fun/pump-public-docs @ 639b87f and live mainnet accounts o
 1. **BONDR token first.** BONDR launches on BONDR paired with SOL; its creator is the treasury, at the standard pump schedule. Every other coin pairs with BONDR as its quote (pump coin quote, depth 1; current `max_curve_depth` is 2).
 2. **Launch, one atomic transaction:**
    - `create_v2` with the `bndr` vanity mint, `creator` = that coin's BONDR token wallet W, quote = BONDR, `creator_fee_bps` = 150.
-   - Mandatory dev buy of at least 0.25 SOL, routed SOL to BONDR to coin.
-   - The dev's chosen exit, **insta sell** or **insta burn** (Streamflow lock deferred).
+   - Mandatory dev buy of at least 0.25 SOL. SOL buys BONDR (exact SOL in), then `buy_v3` buys an exact coin amount, so the exit knows the exact amount. The dev may keep a small BONDR remainder, which is not launch supply.
+   - The dev's chosen exit, **insta sell** (back to SOL) or **insta burn** (Streamflow lock deferred).
+   - The launch uses a v0 transaction with a per-coin address lookup table. The server creates it while preparing the launch, ops pays about 0.003 SOL rent, and it is closed later to reclaim the rent. Without the table, insta sell to SOL exceeds 1232 bytes. Measured with the table on a fork: 742-745 bytes, 347k-382k CU.
    - The server co-signs with the mint key only if that exit is present.
 3. **Fees per trade.** Bonding curve: 0.95% protocol + 1.5% creator = 2.45%. PumpSwap after bond: 0.20% LP + 0.05% protocol + 1.5% creator = 1.75%.
 4. **Pre-bond split.** The worker collects W's creator fees: 90% stays in W as the burn budget, 10% goes to the treasury.
@@ -29,7 +30,7 @@ Verified against pump-fun/pump-public-docs @ 639b87f and live mainnet accounts o
 6. **Fallback burn.** If traders bond the coin first, W buys on PumpSwap right after migration and burns in the same transaction.
 7. **Rolling 24h sweep.** For every 24h window a coin spends unbonded, W's burn budget goes to the BONDR buyback wallet and that BONDR is burned. W stays the fee recipient until the coin bonds.
 8. **Finalize after bond.** W runs `create_fee_sharing_config`, then the single allowed `update_fee_shares_v2`: deployer 8000 bps / treasury 2000 bps. This is permanent and distribution is permissionless.
-9. **Ops wallet.** It pays transaction fees for every worker transaction, so W never needs SOL for gas.
+9. **Ops wallet.** It pays transaction fees for every worker transaction. W still needs a small SOL float for rent (sharing config about 0.006 SOL, plus its trade-tracking accounts). Ops tops W up inside the same transaction that needs it.
 
 ## Requirements
 
@@ -161,6 +162,7 @@ Each UI step ends with Playwright screenshots at mobile, tablet and desktop widt
 | Master seed leak | Unexpected outflow from any W | EVACUATE, rotate the seed for new launches |
 | BONDR price volatility drags every coin | Large BONDR drawdown | Accept; show SOL-equivalent values everywhere |
 | BONDR curve awaiting migration blocks launches | Pump error 6107 | Auto-pause launches with a banner |
+| While BONDR's curve is complete but unmigrated, SOL-routed child trades also stall, and each child's ~85 SOL-equivalent raise pushes BONDR's own curve (research 2026-10-19) | Phase 1 spike results | Decide at Phase 7 whether BONDR must bond before child launches open |
 | Forced bond rarely triggers (thin volume in 24h windows) | Under 10% of coins reach the trigger in month 1 | Revisit the 90/10 split or the 24h window |
 | Pump breaking change | Weekly contract check, or a send fails with a program error | Kill switch, update the pinned SDK, re-run the spike suite |
 | RPC cost above budget | Helius credits over 80% | Reduce subscriptions, poll inactive coins less often |

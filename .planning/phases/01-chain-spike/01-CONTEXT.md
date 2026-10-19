@@ -53,6 +53,11 @@ The deliverable is a bare results page listing every step with its signature or 
 - **D-11:** To reach the forced-bond threshold quickly, W may be topped up directly. The results page labels every top-up as such and keeps it separate from fees earned by trading.
 - **D-12:** The 90/10 split is an off-chain transfer from W. 10% moves to the treasury keypair and 90% stays in W as the burn budget. The spike proves that both transfers land.
 
+### Decisions after research (owner, 2026-10-19)
+- **D-14:** Insta sell goes back to SOL. The launch tx uses a per-coin address lookup table that the server creates while preparing. The spike proves the table is created and warmed up, and that the launch fits under 1232 bytes with it.
+- **D-15:** The owner funds the devnet spike wallet with about 1.5 devnet SOL from a web faucet. Execution generates a fresh BONDR devnet wallet and prints its public key so the owner can fund it. The agencybook devnet wallets are not touched.
+- **D-16:** The dev buy is exact-out (`buy_v3` for an exact coin amount after a SOL to stand-in hop). The forced-bond burn uses a simulated exact amount; the exact-amount `buy_v3` variant is also recorded.
+
 ### Results page
 - **D-13:** The spike writes one JSON results file and generates one static HTML page from it. Each row shows the step, pass/fail, signature, transaction bytes, compute units used and notes; failures show the error code. No server and no framework.
 

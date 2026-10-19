@@ -57,7 +57,7 @@ Plans:
   2. Dev fills name, symbol, image, description and optional links, and the launch button stays disabled until the dev buy is at least 0.25 SOL and insta sell or insta burn is chosen
   3. Dev signs one Phantom transaction that creates a `bndr` mint with creator = that coin's W, with metadata and image already pinned on Pinata, and buys then sells or burns the dev buy; a tampered message or one missing the exit gets no mint co-signature
   4. Dev sees the success screen within 5 seconds of confirmation, showing "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy button, and a button to the coin's token page
-  5. Dev sees a clear paused state instead of the form when launches are paused (launch flag off, or BONDR awaiting migration), and the launch pages work at mobile, tablet and desktop widths
+  5. Dev sees a clear paused banner with the Launch button disabled (the form stays fillable, owner decision 2026-10-19) when launches are paused (launch flag off, or BONDR awaiting migration), and the launch pages work at mobile, tablet and desktop widths
   6. Errors thrown in web and worker show up in Sentry (moved from Phase 7 on owner approval, 2026-10-19)
 **Plans**: TBD
 **UI hint**: yes

@@ -132,6 +132,10 @@ None. The multi_hop sell uses `minAmountOut` 1 on purpose. A `ponytail:` comment
 - The lookup tables are never deactivated or closed. Each one holds about 0.008 SOL of devnet rent. Reclaim it later if devnet SOL gets tight.
 - Q has taken 0.005 SOL of buys plus the sell-back. The devnet Q curve is still far from its about 0.85 SOL completion (Pitfall 1).
 
+## Requirements
+
+SPIKE-01 and SPIKE-02 stay **Pending** in REQUIREMENTS.md. Both are worded for the Surfpool fork (SPIKE-01 needs creator_fee_bps 150, and devnet refuses it), and this plan covers only the devnet part. Plan 01-04 completes them on the fork.
+
 ## Self-Check: PASSED
 
 - All 11 created files and the 3 modified files are present.

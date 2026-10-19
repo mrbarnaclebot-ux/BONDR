@@ -93,6 +93,8 @@ None yet.
 
 ### Blockers/Concerns
 
+- Phase 2 (from Phase 1 code review, 2026-10-19): apps/web must only import pure @bondr/core modules (math and similar). Add a Biome noRestrictedImports rule in apps/web blocking pump.ts, send.ts, alt.ts and any module importing them. Core exports raw .ts (Node type stripping): Next.js needs transpilePackages, and a pnpm deploy/injected install for the Railway worker would break it, so record this as a ponytail note in the core README.
+
 - Phase 1 is a hard gate: any spike step without a signature changes PROJECT.md before Phase 2.
 - Phase 2: web must get each W pubkey without holding the master seed (FEE-10). The planner must decide how the worker supplies W pubkeys and vanity mint keys for the co-sign.
 - Resolved 2026-10-19: Sentry (OPS-01) moved to Phase 2, so ADMIN-06 can read real issue counts in Phase 6.

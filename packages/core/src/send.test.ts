@@ -3,13 +3,14 @@ import {
   ComputeBudgetProgram,
   Keypair,
   PublicKey,
+  SendTransactionError,
   SystemProgram,
   TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
 import { describe, expect, test } from "vitest";
-import { checkMessage, PACKET_LIMIT, pace, statusOf, wireSize } from "./send.ts";
+import { checkMessage, PACKET_LIMIT, pace, preflightRejected, statusOf, wireSize } from "./send.ts";
 
 const payer = Keypair.generate();
 const to = Keypair.generate().publicKey;
@@ -81,6 +82,16 @@ test("statusOf maps send outcomes", () => {
   expect(statusOf({ sent: true, meta: fail, code: 6077, expectFail: true })).toBe("landed");
   expect(statusOf({ sent: true, meta: fail, expectFail: true })).toBe("failed");
   expect(statusOf({ sent: true, meta: { err: null }, expectFail: true })).toBe("failed");
+});
+
+// A throw mid-send is "unknown" (it may still land) unless preflight rejected it with simulation logs.
+test("only a preflight rejection with logs counts as never sent", () => {
+  const reject = (logs?: string[]) =>
+    new SendTransactionError({ action: "simulate", signature: "", transactionMessage: "x", logs });
+  const sent = (e: unknown) => statusOf({ sent: !preflightRejected(e), expectFail: false });
+  expect(sent(reject(["Program log: Error: slippage"]))).toBe("failed");
+  expect(sent(reject())).toBe("unknown");
+  expect(sent(new Error("fetch failed: timeout"))).toBe("unknown");
 });
 
 test("pace spaces concurrent callers", async () => {

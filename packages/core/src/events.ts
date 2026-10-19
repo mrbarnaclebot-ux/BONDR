@@ -1,6 +1,7 @@
 // Pump events read from the anchor emit_cpi inner instruction (port of agencybook chain/events.ts). Only the
 // program can sign as its event authority, so account 0 of the self-CPI proves the event is real. Never parse
 // "Program data" logs: Surfpool and RPCs truncate them.
+import bs58 from "bs58";
 import { PUMP_EVENT_AUTHORITY_PDA, PUMP_PROGRAM_ID, PUMP_SDK, pumpIdl } from "./pump.ts";
 
 // Both the raw RPC JSON (fixtures) and web3.js VersionedTransactionResponse fit: keys may be strings or
@@ -28,15 +29,6 @@ const DECODE: Record<string, (b: Buffer) => object> = {
   CompleteEvent: (b) => PUMP_SDK.decodeCompleteEventBc(b),
 };
 
-const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-function base58(s: string): Buffer {
-  let n = 0n;
-  for (const c of s) n = n * 58n + BigInt(B58.indexOf(c));
-  const hex = n === 0n ? "" : n.toString(16);
-  const zeros = s.length - s.replace(/^1+/, "").length;
-  return Buffer.concat([Buffer.alloc(zeros), Buffer.from(hex.length % 2 ? `0${hex}` : hex, "hex")]);
-}
-
 // BN and PublicKey to strings, so facts and JSON stay exact.
 function normalize(o: object): Record<string, unknown> {
   const str = (v: unknown) => (v && typeof v === "object" && "toString" in v ? String(v) : v);
@@ -57,7 +49,7 @@ export function innerEvents(tx: EventTx): { name: string; data: Record<string, u
   for (const g of tx.meta?.innerInstructions ?? [])
     for (const ix of g.instructions) {
       if (keys[ix.programIdIndex] !== program || keys[ix.accounts[0] ?? -1] !== authority) continue;
-      const d = base58(ix.data);
+      const d = Buffer.from(bs58.decode(ix.data));
       if (d.length < 16 || d.subarray(0, 8).toString("hex") !== TAG) continue;
       const disc = d.subarray(8, 16).toString("hex");
       const name = NAMES[disc] ?? `unknown:${disc}`;

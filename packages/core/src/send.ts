@@ -8,11 +8,13 @@ import {
   type Connection,
   type Keypair,
   PublicKey,
+  SendTransactionError,
   type TransactionInstruction,
   TransactionMessage,
   type VersionedMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+import bs58 from "bs58";
 import { redact } from "./net.ts";
 
 export const PACKET_LIMIT = 1232;
@@ -42,6 +44,7 @@ export type SendResult = {
   ok: boolean; // always status === "landed"
   status: SendStatus;
   sig?: string;
+  lastValidBlockHeight?: number; // an "unknown" sig is only safe to retry once the chain is past this height
   bytes: number;
   cu?: number;
   err?: string;
@@ -199,13 +202,19 @@ async function settle(conn: Connection, sig: string, bytes: number, expectFail: 
   return result(status, { sig, bytes, cu: meta.computeUnitsConsumed, err, code });
 }
 
-// A throw before sendRawTransaction returned means nothing went out; after it, the tx may still land.
-function thrown(e: unknown, bytes: number, sig?: string): SendResult {
-  const logs = fromLogs((e as { logs?: string[] }).logs);
+// Only a preflight rejection carries simulation logs, and preflight runs before the RPC forwards the tx, so
+// that alone proves nothing went out. A timeout or network error can hit after the tx reached a leader.
+export const preflightRejected = (e: unknown): boolean =>
+  e instanceof SendTransactionError && Array.isArray(e.transactionError.logs);
+
+function thrown(e: unknown, bytes: number, sig: string, lastValidBlockHeight: number): SendResult {
+  const logs = fromLogs(e instanceof SendTransactionError ? e.transactionError.logs : undefined);
   const name = e instanceof Error ? e.name : "Error";
   const text = e instanceof Error ? e.message : String(e);
   const err = redact(`${logs.name ?? name}: ${text}`).slice(0, 400);
-  return result(sig ? "unknown" : "failed", { sig, bytes, err, code: logs.code });
+  const status = statusOf({ sent: !preflightRejected(e), expectFail: false });
+  const seen = status === "unknown" ? { sig, lastValidBlockHeight } : {};
+  return result(status, { ...seen, bytes, err, code: logs.code });
 }
 
 type BlockhashInfo = { blockhash: string; lastValidBlockHeight: number };
@@ -231,11 +240,16 @@ export async function sendTx(o: SendOpts): Promise<SendResult> {
   tx.sign([o.payer, ...(o.signers ?? [])]);
   await pace(o.paceMs ?? 0);
   const expectFail = o.expectFail === true;
-  let sig: string | undefined;
+  const raw = tx.serialize();
+  // The signature is the tx id, known before sending, so a throw mid-send still leaves a sig to look up.
+  const sig = bs58.encode(tx.signatures[0]);
   try {
-    sig = await o.conn.sendRawTransaction(tx.serialize(), { skipPreflight: expectFail, maxRetries: 3 });
-    return await settle(o.conn, sig, bytes, expectFail, bh);
+    await o.conn.sendRawTransaction(raw, { skipPreflight: expectFail, maxRetries: 3 });
+    return {
+      ...(await settle(o.conn, sig, bytes, expectFail, bh)),
+      lastValidBlockHeight: bh.lastValidBlockHeight,
+    };
   } catch (e) {
-    return thrown(e, bytes, sig);
+    return thrown(e, bytes, sig, bh.lastValidBlockHeight);
   }
 }

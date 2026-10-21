@@ -12,5 +12,5 @@ Playwright specs (`*.e2e.ts`, run with `pnpm e2e`) and their helpers. `E2E_BASE_
 - `consent.e2e.ts`: the consent prompt and its server row.
 - `pin.e2e.ts`: the pin route's refusals.
 - `terms.e2e.ts`: the terms page.
-- `responsive.e2e.ts`: the UI-SPEC matrix, 12 surfaces at 390, 768 and 1440: no horizontal scroll, 0 axe violations, and a full-page screenshot each in `.planning/phases/02-launch-flow/screenshots/` (`-staging` suffix when `E2E_BASE_URL` is set). Steps 4 and 5 use the launch-live stubs.
+- `responsive.e2e.ts`: the UI-SPEC matrix, 12 surfaces at 390, 768 and 1440: no horizontal scroll, 0 axe violations, and a full-page screenshot each in `.planning/phases/02-launch-flow/screenshots/` (`-staging` suffix when `E2E_BASE_URL` is set). Steps 4 and 5 use the launch-live stubs. `E2E_COIN_MINT` sets the coin page's mint (staging); otherwise it is the newest landed launch on the dev branch.
 - `paused.e2e.ts`: flips the real kill switch; runs alone after every other spec.

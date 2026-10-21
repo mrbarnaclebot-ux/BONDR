@@ -88,11 +88,16 @@ const SURFACES: Record<string, (page: Page) => Promise<void>> = {
     await page.goto("/terms");
     await visible(page, "Terms");
   },
+  // On staging the root .env points at the dev branch, so the staging run passes its launch's mint.
   coin: async (page) => {
-    test.skip(!sql, "needs DATABASE_URL in the root .env");
-    const [row] = await (sql as postgres.Sql)<{ mint: string }[]>`select mint from launches
-      where state = 'landed' order by created_at desc limit 1`;
-    await page.goto(`/coin/${row?.mint}`);
+    let mint = process.env.E2E_COIN_MINT;
+    if (!mint) {
+      test.skip(!sql, "needs DATABASE_URL in the root .env or E2E_COIN_MINT");
+      const [row] = await (sql as postgres.Sql)<{ mint: string }[]>`select mint from launches
+        where state = 'landed' order by created_at desc limit 1`;
+      mint = row?.mint;
+    }
+    await page.goto(`/coin/${mint}`);
     await expect(page.getByRole("complementary", { name: "Launch supply proof" })).toBeVisible();
   },
   "coin-404": async (page) => {

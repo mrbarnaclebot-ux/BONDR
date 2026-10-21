@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-14-PLAN.md
-last_updated: "2026-10-21T18:41:11.000Z"
+stopped_at: Completed 02-15-PLAN.md
+last_updated: "2026-10-21T18:54:23.000Z"
 last_activity: 2026-10-22
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 24
+  completed_plans: 25
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 15 of 18
+Plan: 16 of 18
 Status: Ready to execute
 Last activity: 2026-10-22
 
-Progress: [████████░░] 86%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [████████░░] 86%
 | Phase 02 P12 | 14 min | 3 tasks | - |
 | Phase 02 P13 | 21 min | 2 tasks | - |
 | Phase 02 P14 | 14 min | 2 tasks | - |
+| Phase 02 P15 | 13 min | 2 tasks | - |
 
 ## Accumulated Context
 
@@ -145,6 +146,7 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-13: a lost submit answer keeps step 4 polling instead of offering Try again, since the tx may already be out
 - [Phase 02]: 02-14: Sentry projects bondr-web and bondr-worker in org mrbarnacle; one shared restrictive privacy config; web DSN must be a Railway build variable
 - [Phase 02]: 02-14: open check: confirm the next real browser event carries no geo data (IP storage prevention switched on, not re-tested)
+- [Phase 02]: 02-15: coin image is a CSS background (ipfs.io 429s the server); switch back to next/image once PINATA_GATEWAY is set
 
 ### Pending Todos
 
@@ -176,6 +178,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-21T18:41:11.000Z
-Stopped at: Completed 02-14-PLAN.md
+Last session: 2026-10-21T18:54:23.000Z
+Stopped at: Completed 02-15-PLAN.md
 Resume file: None

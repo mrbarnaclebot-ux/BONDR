@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import type { LaunchState } from "@bondr/core/api";
 import type { Db } from "@bondr/core/db";
 import { launches, vanityMints, wallets } from "@bondr/core/schema";
-import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 // A transaction exposes the same builders as the db, so tests can run inside one and roll back.
 export type Exec = Pick<Db, "select" | "update" | "insert" | "$count">;
@@ -74,3 +74,10 @@ export const newTablesLastHour = (exec: Exec): Promise<number> =>
     launches,
     and(eq(launches.newTable, true), sql`${launches.createdAt} > now() - interval '1 hour'`),
   );
+
+// Rows a restart must pick up: signed (maybe never sent), sent and unknown (maybe landed).
+export const unsettled = (exec: Exec): Promise<LaunchRow[]> =>
+  exec
+    .select()
+    .from(launches)
+    .where(inArray(launches.state, ["signed", "sent", "unknown"]));

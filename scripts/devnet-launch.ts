@@ -78,7 +78,7 @@ async function sizeOnly(ctx: PrepareCtx): Promise<void> {
   const { keys, builds } = await unionTableKeys(o);
   const table = memoryTable(keys);
   for (const exit of ["burn", "sell"] as const) {
-    const msg = compileLaunch(o, builds[exit].ixs, table, PublicKey.default.toBase58());
+    const msg = compileLaunch({ ...o, exit }, builds[exit].ixs, table, PublicKey.default.toBase58());
     console.log(`size insta ${exit}: ${messageSize(msg)} bytes (max fields, ${keys.length} table keys)`);
   }
 }

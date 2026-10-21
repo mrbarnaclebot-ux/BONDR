@@ -98,9 +98,11 @@ export async function reserve(exec: Exec, wallet: string): Promise<{ idx: bigint
 }
 
 // Releasing while signed, sent or unknown could hand the next dev a mint that is about to land.
+export const canRelease = (launchState: string): boolean =>
+  launchState === "prepared" || launchState === "failed";
+
 export async function release(exec: Exec, idx: bigint, launchState: string): Promise<void> {
-  if (launchState !== "prepared" && launchState !== "failed")
-    throw new Error(`refusing to release vanity ${idx} while ${launchState}`);
+  if (!canRelease(launchState)) throw new Error(`refusing to release vanity ${idx} while ${launchState}`);
   await exec
     .update(vanityMints)
     .set({ reservedBy: null, reservedUntil: null })
@@ -112,3 +114,8 @@ export async function markUsed(exec: Exec, pubkey: string): Promise<void> {
 }
 
 export const poolSize = (exec: Exec): Promise<number> => exec.$count(vanityMints, ready);
+
+export async function vanityRow(exec: Exec, pubkey: string): Promise<{ idx: bigint; pubkey: string } | null> {
+  const [row] = await exec.select(picked).from(vanityMints).where(eq(vanityMints.pubkey, pubkey)).limit(1);
+  return row ?? null;
+}

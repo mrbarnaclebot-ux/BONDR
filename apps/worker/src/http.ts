@@ -27,6 +27,9 @@ const STATUS: Partial<Record<LaunchErrorCode, number>> = {
   rate_limited: 429,
   insufficient_balance: 402,
   build_failed: 500,
+  not_found: 404,
+  expired: 410,
+  cosign_refused: 422,
 };
 export const fail = (body: ApiError): Fail => new Fail(STATUS[body.error] ?? 500, body);
 

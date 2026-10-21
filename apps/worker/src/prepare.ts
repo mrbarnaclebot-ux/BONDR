@@ -170,7 +170,7 @@ type Sized = { o: LaunchOpts; builds: Builds; table: AddressLookupTableAccount }
 async function finalMessage(ctx: PrepareCtx, s: Sized, blockhash: string) {
   const fee = networkFee(ctx.priorityFee);
   const solIn = BigInt(s.o.solIn.toString());
-  const msgOf = (e: Exit) => compileLaunch(s.o, s.builds[e].ixs, s.table, blockhash);
+  const msgOf = (e: Exit) => compileLaunch({ ...s.o, exit: e }, s.builds[e].ixs, s.table, blockhash);
   const sim = (msg: ReturnType<typeof msgOf>) => simulateLaunch(ctx.conn, msg, s.o.dev);
   if (s.o.exit === "burn") {
     const msg = msgOf("burn");

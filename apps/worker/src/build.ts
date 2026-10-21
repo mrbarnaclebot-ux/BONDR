@@ -3,6 +3,7 @@
 
 import { createTable, tableKeys } from "@bondr/core/alt";
 import type { ApiError } from "@bondr/core/api";
+import { exitPresent } from "@bondr/core/cosign";
 import { AwaitingMigration, buildLaunch, type LaunchOpts } from "@bondr/core/launch";
 import { redact } from "@bondr/core/net";
 import { checkMessage, messageSize, PACKET_LIMIT } from "@bondr/core/send";
@@ -70,9 +71,10 @@ export async function ensureTable(conn: Connection, ops: Keypair, keys: PublicKe
   return { table: r.table, created: true };
 }
 
-// Payer is the dev (signature 0) and the mint is signature 1: submit relies on that order (Pattern 3).
+// Payer is the dev (signature 0) and the mint is signature 1: submit relies on that order (Pattern 3). The
+// exit check repeats submit's, so a builder change that drops the exit fails at prepare, not at sign time.
 export function compileLaunch(
-  o: Pick<LaunchOpts, "dev" | "mint">,
+  o: Pick<LaunchOpts, "dev" | "mint" | "exit">,
   ixs: TransactionInstruction[],
   table: AddressLookupTableAccount,
   blockhash: string,
@@ -85,6 +87,8 @@ export function compileLaunch(
   if (bytes > PACKET_LIMIT) throw buildFailed(`${bytes} bytes`);
   if (v0.header.numRequiredSignatures !== 2 || !v0.staticAccountKeys[1]?.equals(o.mint))
     throw buildFailed("signer layout");
+  if (o.exit === "sellq" || !exitPresent(v0, [table], { exit: o.exit, mint: o.mint, dev: o.dev }))
+    throw buildFailed(`exit ${o.exit} missing`);
   return v0;
 }
 

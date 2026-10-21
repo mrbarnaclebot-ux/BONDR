@@ -6,7 +6,7 @@ import type { ApiError } from "@bondr/core/api";
 // status and quote: a few RPC reads; 15 s leaves room for a Neon cold start.
 const TIMEOUT_MS = 15_000;
 // The worker's contract errors are passed through; anything else (401, a crash, a timeout) is one code.
-const PASS = new Set([400, 402, 403, 404, 409, 413, 429, 500, 503]);
+const PASS = new Set([400, 402, 403, 404, 409, 410, 413, 422, 429, 500, 503]);
 
 export type WorkerReply<T> = { status: number; body: T | ApiError };
 

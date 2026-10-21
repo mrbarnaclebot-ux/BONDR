@@ -22,11 +22,11 @@ export function ProofStamp({
     <aside aria-label="Launch supply proof" className={STAMP}>
       <span
         aria-hidden="true"
-        className="row-span-3 border-r border-leaf/40 pr-2 font-display text-[72px] leading-[0.8] font-black text-leaf"
+        className="row-span-3 border-r border-leaf/40 pr-2 font-display text-[72px] leading-[0.8] font-extrabold text-leaf"
       >
         0
       </span>
-      <span className="text-xs tracking-[0.08em] text-muted-foreground uppercase">
+      <span className="text-xs font-semibold tracking-[0.09em] text-leaf uppercase">
         Proof, checked on-chain
       </span>
       <strong className="font-semibold">Dev holds 0 launch supply</strong>

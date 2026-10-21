@@ -51,7 +51,7 @@ export function Header() {
             className="group flex items-center gap-2.5 text-foreground no-underline"
           >
             <BrandMark />
-            <span className="font-display text-[1.6rem] leading-none font-extrabold tracking-[0.04em]">
+            <span className="font-display text-[1.6rem] leading-none font-extrabold tracking-[0.04em] max-[359px]:hidden">
               BONDR
             </span>
           </Link>

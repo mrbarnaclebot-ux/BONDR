@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { field, liveStatus, solText, toStep2, toStep3 } from "./coin.ts";
+import { field, liveStatus, panel, row, solText, toStep2, toStep3 } from "./coin.ts";
 import { FACTS, signRow, stub, toSign, view } from "./launch-stubs.ts";
 import { injectPhantom, newTestAccount, rootEnv } from "./phantom.ts";
 
@@ -46,9 +46,13 @@ const SURFACES: Record<string, (page: Page) => Promise<void>> = {
     await expect(page.getByText(/^Minimum dev buy is/)).toBeVisible();
   },
   "launch-step3": async (page) => {
+    await injectPhantom(page, newTestAccount()); // installed, not connected: the button the mockup shows
     await page.goto("/launch");
     await toStep2(page);
     await toStep3(page, (await liveStatus(page)).minLamports as string);
+    await expect(row(panel(page, "Step 3 of 5: Review"), "Dev buy")).toHaveText(/about [\d.]+[KMB]? GRUB/, {
+      timeout: 20_000,
+    });
   },
   "launch-step4": async (page) => {
     await stub(page, { view: () => ({ json: view("sent") }) });
@@ -104,6 +108,11 @@ for (const width of [390, 768, 1440]) {
       test(name, async ({ page }) => {
         await reach(page);
         await page.evaluate(() => document.fonts.ready);
+        // The dev-only Next indicator is not the app, and a full-page shot taken mid-scroll draws the
+        // sticky header (and its backdrop blur) over the content.
+        await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.mouse.move(0, 0); // no hover state left on the last clicked control
         // The elements past the right edge name the culprit when the widths differ.
         const { scroll, client, wide } = await page.evaluate(() => {
           const client = document.documentElement.clientWidth;
@@ -116,8 +125,23 @@ for (const width of [390, 768, 1440]) {
         const { violations } = await new AxeBuilder({ page }).analyze();
         const found = violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
         expect(found).toEqual([]);
-        await page.screenshot({ path: `${SHOTS}${name}-${width}${SUFFIX}.png`, fullPage: true });
+        // The consent sheet is fixed to the viewport, so a full-page stitch would float it mid-page.
+        const fullPage = name !== "consent";
+        await page.screenshot({ path: `${SHOTS}${name}-${width}${SUFFIX}.png`, fullPage });
       });
     }
   });
 }
+
+// UI-SPEC: no horizontal scroll from 320 up. The devnet header (brand, badge, wallet) is the widest row.
+test("the header fits at 320", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/coin/not-a-mint");
+  await page.evaluate(() => document.fonts.ready);
+  const wallet = await page
+    .getByRole("banner")
+    .getByRole("button", { name: "Connect Phantom" })
+    .boundingBox();
+  expect((wallet?.x ?? 0) + (wallet?.width ?? 0)).toBeLessThanOrEqual(320 - 16);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+});

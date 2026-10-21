@@ -32,7 +32,11 @@ export function WalletButton() {
       onClick={() => status === "idle" && connect()}
     >
       {icon}
-      <span>{status === "connecting" ? "Opening Phantom…" : "Connect Phantom"}</span>
+      <span>
+        {status === "connecting" ? "Opening" : "Connect"}
+        <span className="max-sm:sr-only"> Phantom</span>
+        {status === "connecting" && "…"}
+      </span>
     </button>
   );
 }
@@ -92,7 +96,9 @@ function MissingPopover() {
         className={`${buttonVariants({ variant: "quiet" })} ${ANCHOR}`}
       >
         {icon}
-        <span>Connect Phantom</span>
+        <span>
+          Connect<span className="max-sm:sr-only"> Phantom</span>
+        </span>
       </button>
       <div
         id="wallet-missing"

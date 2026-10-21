@@ -1,6 +1,7 @@
 import {
   AddressLookupTableProgram,
   ComputeBudgetProgram,
+  type Connection,
   Keypair,
   PublicKey,
   SendTransactionError,
@@ -10,7 +11,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { describe, expect, test } from "vitest";
-import { checkMessage, PACKET_LIMIT, pace, preflightRejected, statusOf, wireSize } from "./send.ts";
+import { checkMessage, PACKET_LIMIT, pace, preflightRejected, sendRaw, statusOf, wireSize } from "./send.ts";
 
 const payer = Keypair.generate();
 const to = Keypair.generate().publicKey;
@@ -98,4 +99,31 @@ test("pace spaces concurrent callers", async () => {
   const done: number[] = [];
   await Promise.all([0, 1, 2].map(() => pace(40).then(() => done.push(Date.now()))));
   expect(done[2] - done[0]).toBeGreaterThanOrEqual(75);
+});
+
+describe("sendRaw", () => {
+  const opts = { sig: "SiG", bytes: 10, blockhash: BH, lastValidBlockHeight: 77 };
+  const throwing = (e: unknown) =>
+    ({
+      sendRawTransaction: async () => {
+        throw e;
+      },
+    }) as unknown as Connection;
+
+  test("a preflight rejection with logs is failed: nothing went out", async () => {
+    const e = new SendTransactionError({
+      action: "simulate",
+      signature: "",
+      transactionMessage: "x",
+      logs: ["Program log: Error: slippage"],
+    });
+    const r = await sendRaw(throwing(e), new Uint8Array(1), opts);
+    expect(r.status).toBe("failed");
+    expect(r.sig).toBeUndefined();
+  });
+
+  test("a network error is unknown, with the signature and lastValidBlockHeight", async () => {
+    const r = await sendRaw(throwing(new Error("fetch failed")), new Uint8Array(1), opts);
+    expect(r).toMatchObject({ status: "unknown", sig: "SiG", lastValidBlockHeight: 77 });
+  });
 });

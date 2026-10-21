@@ -226,13 +226,43 @@ function thrown(e: unknown, bytes: number, sig: string, lastValidBlockHeight: nu
 }
 
 type BlockhashInfo = { blockhash: string; lastValidBlockHeight: number };
+export type RawOpts = {
+  sig: string; // slot 0 of the wire: the tx id, known before sending
+  bytes: number;
+  blockhash: string;
+  lastValidBlockHeight: number;
+  paceMs?: number;
+  expectFail?: boolean; // skips preflight, so the expected failure lands with a signature and meta.err
+};
+
+// Paced send of a signed wire. null: the RPC accepted it. Otherwise the throw as a result: "failed" when
+// preflight rejected it (nothing went out), "unknown" when it may have gone out.
+export async function broadcast(conn: Connection, raw: Uint8Array, o: RawOpts): Promise<SendResult | null> {
+  await pace(o.paceMs ?? 0);
+  try {
+    await conn.sendRawTransaction(raw, { skipPreflight: o.expectFail === true, maxRetries: 3 });
+    return null;
+  } catch (e) {
+    return thrown(e, o.bytes, o.sig, o.lastValidBlockHeight);
+  }
+}
+
+export async function sendRaw(conn: Connection, raw: Uint8Array, o: RawOpts): Promise<SendResult> {
+  const sent = await broadcast(conn, raw, o);
+  if (sent) return sent;
+  return {
+    ...(await settle(conn, o.sig, o.bytes, o.expectFail === true, o)),
+    lastValidBlockHeight: o.lastValidBlockHeight,
+  };
+}
+
 export type SendOpts = {
   conn: Connection;
   payer: Keypair;
   signers?: Keypair[];
   ixs: TransactionInstruction[];
   tables?: AddressLookupTableAccount[];
-  expectFail?: boolean; // skips preflight, so the expected failure lands with a signature and meta.err
+  expectFail?: boolean;
   paceMs?: number;
 };
 
@@ -246,18 +276,6 @@ export async function sendTx(o: SendOpts): Promise<SendResult> {
     return result("failed", { bytes, err: `too large: ${bytes} > ${PACKET_LIMIT} bytes` });
   const tx = new VersionedTransaction(msg);
   tx.sign([o.payer, ...(o.signers ?? [])]);
-  await pace(o.paceMs ?? 0);
-  const expectFail = o.expectFail === true;
-  const raw = tx.serialize();
-  // The signature is the tx id, known before sending, so a throw mid-send still leaves a sig to look up.
   const sig = bs58.encode(tx.signatures[0]);
-  try {
-    await o.conn.sendRawTransaction(raw, { skipPreflight: expectFail, maxRetries: 3 });
-    return {
-      ...(await settle(o.conn, sig, bytes, expectFail, bh)),
-      lastValidBlockHeight: bh.lastValidBlockHeight,
-    };
-  } catch (e) {
-    return thrown(e, bytes, sig, bh.lastValidBlockHeight);
-  }
+  return sendRaw(o.conn, tx.serialize(), { ...bh, sig, bytes, paceMs: o.paceMs, expectFail: o.expectFail });
 }

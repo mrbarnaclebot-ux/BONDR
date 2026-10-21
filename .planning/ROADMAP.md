@@ -59,7 +59,7 @@ Plans:
   4. Dev sees the success screen within 5 seconds of confirmation, showing "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy button, and a button to the coin's token page
   5. Dev sees a clear paused banner with the Launch button disabled (the form stays fillable, owner decision 2026-10-19) when launches are paused (launch flag off, or BONDR awaiting migration), and the launch pages work at mobile, tablet and desktop widths
   6. Errors thrown in web and worker show up in Sentry (moved from Phase 7 on owner approval, 2026-10-19)
-**Plans:** 11/18 plans executed
+**Plans:** 12/18 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md - Web scaffold: Next.js 16, BONDR tokens and visual system, header and footer, Biome web import rule, web env allowlist, quick-run latency measured
@@ -73,7 +73,7 @@ Plans:
 - [x] 02-09-PLAN.md - Seed-derived bndr vanity pool: reservation, grinder, local pre-fill
 - [x] 02-10-PLAN.md - Pinata pin route and rate limits (pin, quote, consent)
 - [x] 02-11-PLAN.md - Worker prepare: table, build, simulate, insta-sell floor; web prepare route; devnet driver with budgets, size and prepare proof
-- [ ] 02-12-PLAN.md - Co-sign (sign order A), submit and settle; devnet launches for both exits and a refused tamper
+- [x] 02-12-PLAN.md - Co-sign (sign order A), submit and settle; devnet launches for both exits and a refused tamper
 - [ ] 02-13-PLAN.md - Step 4 sign and step 5 success screen with copy CA and the error-code mapping; launch e2e on devnet
 - [ ] 02-14-PLAN.md - Sentry on web and worker with address scrub, web boot guard, client bundle gate
 - [ ] 02-15-PLAN.md - Bare token page /coin/[mint] with the proof and contract address
@@ -156,7 +156,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
-| 2. Launch Flow | 11/18 | In Progress|  |
+| 2. Launch Flow | 12/18 | In Progress|  |
 | 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
 | 4. Trading | 0/TBD | Not started | - |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |

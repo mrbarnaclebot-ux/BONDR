@@ -15,7 +15,9 @@
 - `launch-sign.tsx`: step 4 Sign, the five rows, the failure table, and the stored launch id that restores a posted launch after a reload.
 - `launch-live.tsx`: step 5 Live, the success art, the proof and the contract address.
 - `proof-stamp.tsx`: the "Dev holds 0 launch supply" stamp (step 5 and the token page).
-- `ca-row.tsx`: the contract address with Copy and the manual-copy fallback.
+- `ca-row.tsx`: the contract address with Copy and the manual-copy fallback; exports `useCopy`, shared with the copy chip.
+- `coin-identity.tsx`: the token page identity bar (avatar bleed, name, symbol, meta row with tag, age and links).
+- `copy-chip.tsx`: the token page short-mint copy chip.
 - `tx-link.tsx`: the Solscan transaction link (cluster param on devnet).
 - `launch-receipt.tsx`: the receipt aside, every fee and cost from the live worker status.
 - `callout.tsx`: info, warn and error callouts (status or alert role).

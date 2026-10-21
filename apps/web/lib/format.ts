@@ -31,3 +31,11 @@ export const short = (a: string): string => `${a.slice(0, 4)}…${a.slice(-4)}`;
 /** Solscan link; devnet appends the cluster param. */
 export const explorer = (kind: "tx" | "account" | "token", value: string, net: Net): string =>
   `https://solscan.io/${kind}/${value}${net === "devnet" ? "?cluster=devnet" : ""}`;
+
+/** Time since `iso` as "3d 7h", "5h 12m" or "4m" (the token page meta row). */
+export function age(iso: string, now = Date.now()): string {
+  const m = Math.max(1, Math.floor((now - Date.parse(iso)) / 60_000));
+  const [d, h] = [Math.floor(m / 1440), Math.floor((m % 1440) / 60)];
+  if (d) return `${d}d ${h}h`;
+  return h ? `${h}h ${m % 60}m` : `${m}m`;
+}

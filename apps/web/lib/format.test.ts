@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { compact, explorer, pct, short, sol } from "./format";
+import { age, compact, explorer, pct, short, sol } from "./format";
 
 test("sol trims trailing zeros and rounds to the given places", () => {
   expect(sol(2_500_000n)).toBe("0.0025");
@@ -28,4 +28,12 @@ test("compact, short and explorer", () => {
   expect(short("4xEfLsmWx8o89XA9iWtf2T5KESn3hLjT4sLK7kBJbndr")).toBe("4xEf…bndr");
   expect(explorer("tx", "sig", "devnet")).toBe("https://solscan.io/tx/sig?cluster=devnet");
   expect(explorer("token", "m", "mainnet")).toBe("https://solscan.io/token/m");
+});
+
+test("age reads days and hours, hours and minutes, or minutes", () => {
+  const t = Date.parse("2026-10-22T12:00:00Z");
+  expect(age("2026-10-19T04:30:00Z", t)).toBe("3d 7h");
+  expect(age("2026-10-22T06:48:00Z", t)).toBe("5h 12m");
+  expect(age("2026-10-22T11:56:00Z", t)).toBe("4m");
+  expect(age("2026-10-22T11:59:59Z", t)).toBe("1m");
 });

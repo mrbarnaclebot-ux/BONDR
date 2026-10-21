@@ -16,36 +16,46 @@ function selectText(el: HTMLElement | null) {
   selection.addRange(range);
 }
 
-/** The full contract address with Copy (UI-SPEC CA row). */
-export function CaRow({ mint }: { mint: string }) {
-  const [shown, setShown] = useState<"idle" | "copied" | "manual">("idle");
-  const text = useRef<HTMLSpanElement>(null);
+export type CopyShown = "idle" | "copied" | "manual";
+
+export const manualHint = (): string =>
+  `Press ${typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent) ? "Cmd" : "Ctrl"}+C`;
+
+/** Copies `text`; on failure selects `fallback` for a manual copy. The shown state resets after SHOW_MS. */
+export function useCopy(text: string) {
+  const [shown, setShown] = useState<CopyShown>("idle");
   useEffect(() => {
     if (shown === "idle") return;
     const timer = setTimeout(() => setShown("idle"), SHOW_MS);
     return () => clearTimeout(timer);
   }, [shown]);
-  const copy = () =>
-    navigator.clipboard.writeText(mint).then(
+  const copy = (fallback: HTMLElement | null) =>
+    navigator.clipboard.writeText(text).then(
       () => setShown("copied"),
       () => {
-        selectText(text.current);
+        selectText(fallback);
         setShown("manual");
       },
     );
-  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
-  const label = { idle: "Copy address", copied: "Copied", manual: `Press ${mac ? "Cmd" : "Ctrl"}+C` }[shown];
+  return { shown, copy };
+}
+
+/** The full contract address with Copy (UI-SPEC CA row). */
+export function CaRow({ mint }: { mint: string }) {
+  const { shown, copy } = useCopy(mint);
+  const text = useRef<HTMLSpanElement>(null);
+  const label = { idle: "Copy address", copied: "Copied", manual: manualHint() }[shown];
   return (
     <div className="flex max-w-[640px] flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-line bg-surface/85 py-2 pr-2 pl-4">
       <span className="basis-full text-xs tracking-[0.08em] text-muted-foreground uppercase">
         Contract address
       </span>
-      <span ref={text} className="num min-w-0 flex-1 text-[13px] [overflow-wrap:anywhere]">
+      <span ref={text} id="ca-address" className="num min-w-0 flex-1 text-[13px] [overflow-wrap:anywhere]">
         {mint}
       </span>
       <Button
         type="button"
-        onClick={copy}
+        onClick={() => copy(text.current)}
         className={cn("md:min-h-10", shown === "copied" && "border-leaf/60 text-leaf hover:text-leaf")}
       >
         {shown === "copied" ? (

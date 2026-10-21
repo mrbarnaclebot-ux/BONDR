@@ -68,6 +68,23 @@
       transform: scale(2.6);
     }
   }
+  /* token page avatar bleed (UI-SPEC Motion); reduced motion stops it through the global override */
+  --animate-drift: drift 18s ease-in-out infinite alternate;
+  @keyframes drift {
+    to {
+      transform: translate(4%, 6%) scale(1.08);
+    }
+  }
+  /* the live dot on the "On curve" tag */
+  --animate-live: live 1.6s var(--ease-out) infinite;
+  @keyframes live {
+    from {
+      box-shadow: 0 0 0 0 color-mix(in oklch, currentColor 60%, transparent);
+    }
+    to {
+      box-shadow: 0 0 0 7px transparent;
+    }
+  }
   /* consent bottom sheet below 768px; ease-out, because a spring overshoot would lift it off the edge */
   --animate-sheet: sheet 620ms var(--ease-out) both;
   @keyframes sheet {

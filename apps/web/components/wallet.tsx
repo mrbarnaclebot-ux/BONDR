@@ -1,7 +1,16 @@
 "use client";
 // Phantom through Wallet Standard. Bytes in and out only: no Solana library in the browser (D-15).
 import { getWallets } from "@wallet-standard/app";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 type W = ReturnType<ReturnType<typeof getWallets>["get"]>[number];
 type Account = W["accounts"][number];
@@ -31,6 +40,8 @@ export type WalletApi = {
   /** Fires when Phantom switches from one connected account to another. Returns the unsubscribe. */
   onAccountChange(cb: (address: string) => void): () => void;
   markConsented(): void;
+  /** The server has no consent row (consent_required): forget the local mark so the prompt opens again. */
+  forgetConsent(): void;
 };
 
 const GRACE_MS = 600; // Phantom can register a moment after first render
@@ -140,6 +151,8 @@ function useWalletApi(chain: Chain): WalletApi {
   const { wallet, graceOver } = usePhantom(chain);
   const { account, setAccount, connecting, setConnecting } = useConnection(wallet, chain);
   const [accepted, setAccepted] = useState<string | null>(null);
+  // Consent read from storage alone leaves `accepted` null, so forgetting it needs its own re-render.
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
   const address = account?.address ?? null;
   const onAccountChange = useAccountListeners(address);
   const status: WalletStatus = account
@@ -173,7 +186,18 @@ function useWalletApi(chain: Chain): WalletApi {
       } catch {} // the server row is the record; storage only saves asking twice
       setAccepted(address);
     },
+    forgetConsent: () => {
+      if (address) forget(address);
+      setAccepted(null);
+      rerender();
+    },
   };
+}
+
+function forget(address: string) {
+  try {
+    localStorage.removeItem(consentKey(address));
+  } catch {} // storage blocked: hasConsent already reads false
 }
 
 async function connectTo(

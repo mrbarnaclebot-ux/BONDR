@@ -27,9 +27,9 @@ export async function liveStatus(page: Page): Promise<Status> {
 export const solText = (lamports: string) => String(Number(lamports) / 1e9);
 
 /** Fills step 1 with valid values and continues to step 2. */
-export async function toStep2(page: Page): Promise<void> {
-  await field(page, "Name").fill("Grubworm");
-  await field(page, "Symbol").fill("grub");
+export async function toStep2(page: Page, name = "Grubworm", symbol = "grub"): Promise<void> {
+  await field(page, "Name").fill(name);
+  await field(page, "Symbol").fill(symbol);
   await page.getByLabel("Image").setInputFiles({ name: "grub.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByText("uploaded, 1 x 1")).toBeVisible();
   await page.getByRole("button", { name: "Continue to dev buy" }).click();

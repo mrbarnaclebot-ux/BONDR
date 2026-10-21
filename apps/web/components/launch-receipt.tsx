@@ -1,7 +1,7 @@
 "use client";
 import { parseSol } from "@bondr/core/rules";
 import type { ReactNode } from "react";
-import { pct, sol } from "@/lib/format";
+import { pct, short, sol } from "@/lib/format";
 import { EXIT_NAME } from "./launch-buy";
 import type { Launch, Live } from "./launch-flow";
 
@@ -41,7 +41,7 @@ export function LaunchReceipt({ state, live }: { state: Launch; live: Live }) {
   const parsed = parseSol(state.devBuy);
   const buy = parsed.ok ? `${sol(parsed.value)} SOL` : "–";
   const launch: Row[] = [
-    ["Mint, reserved", "…bndr, at signing"],
+    ["Mint, reserved", state.mint ? short(state.mint) : "…bndr, at signing"],
     ["Dev buy", buy],
     ["Exit", state.exit ? EXIT_NAME[state.exit] : "Not chosen"],
     ["Launch supply you hold", <Up key="held">0</Up>],

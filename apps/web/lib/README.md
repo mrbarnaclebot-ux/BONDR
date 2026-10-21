@@ -6,6 +6,9 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `guard.ts`: POST guards: `sameOrigin`, `json` (capped body), `BASE58_KEY`, and the fixed-window `take`, `clientIp`, `rateLimited`.
 - `guard.test.ts`: rate limit windows, client IP choice and the 429 response.
 - `worker.ts`: server-only `workerGet` and `workerPost`, the bearer-token proxy to the worker.
+- `worker.test.ts`: contract errors (410, 422, 409) pass through, anything else becomes worker_unavailable.
+- `launches.ts`: server-only `launchView` and `launchByMint`, a launch row's public fields (never the message or the signed wire).
+- `launch-run.ts`: the step 4 network sequence (pin, prepare, sign, submit, poll) and `getView`.
 - `pinata.ts`: `metadataJson`, `ipfsUri` and `pinFile` (Pinata v3 uploads). The pin route supplies the JWT.
 - `pinata.test.ts`: metadata shape, URI length, upload request and JWT redaction; a live pin with `PINATA_LIVE=1`.
 - `format.ts`: display formats `sol`, `pct`, `compact`, `short`, `explorer`.

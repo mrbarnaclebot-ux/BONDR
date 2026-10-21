@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
 // The root .env also holds worker secrets (seed path, Helius key, Sentry token). Web copies only these
@@ -45,6 +46,8 @@ const config: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"], // the e2e baseURL; next dev otherwise blocks its own scripts and HMR there
   images: { remotePatterns: IMAGE_HOSTS },
   agentRules: false, // next dev would otherwise write a second AGENTS.md here, shadowing the root one
+  // The browser has no runtime env, so the client Sentry environment is fixed at build time.
+  env: { NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT_NAME ?? "local" },
   async redirects() {
     // ponytail: Phase 3 replaces / with the home lists
     return [{ source: "/", destination: "/launch", permanent: false }];
@@ -54,4 +57,5 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+// No authToken: source map upload waits for Phase 7. telemetry off: the build sends nothing to Sentry.
+export default withSentryConfig(config, { silent: true, telemetry: false });

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-13-PLAN.md
-last_updated: "2026-10-21T10:12:02.000Z"
-last_activity: 2026-10-21
+stopped_at: Completed 02-14-PLAN.md
+last_updated: "2026-10-21T18:41:11.000Z"
+last_activity: 2026-10-22
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 23
+  completed_plans: 24
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 14 of 18
+Plan: 15 of 18
 Status: Ready to execute
-Last activity: 2026-10-21
+Last activity: 2026-10-22
 
-Progress: [████████░░] 82%
+Progress: [████████░░] 86%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [████████░░] 82%
 | Phase 02 P11 | 20 min | 2 tasks | 12 files |
 | Phase 02 P12 | 14 min | 3 tasks | - |
 | Phase 02 P13 | 21 min | 2 tasks | - |
+| Phase 02 P14 | 14 min | 2 tasks | - |
 
 ## Accumulated Context
 
@@ -142,6 +143,8 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-11: web prepare route has its own 30 s worker timeout (measured 10-18 s on devnet)
 - [Phase 02]: 02-12: co-sign runs before a row is marked signed, so a signed row always holds a resendable tx; settle never resends an unseen launch
 - [Phase 02]: 02-13: a lost submit answer keeps step 4 polling instead of offering Try again, since the tx may already be out
+- [Phase 02]: 02-14: Sentry projects bondr-web and bondr-worker in org mrbarnacle; one shared restrictive privacy config; web DSN must be a Railway build variable
+- [Phase 02]: 02-14: open check: confirm the next real browser event carries no geo data (IP storage prevention switched on, not re-tested)
 
 ### Pending Todos
 
@@ -173,6 +176,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-21T10:12:02.000Z
-Stopped at: Completed 02-13-PLAN.md
+Last session: 2026-10-21T18:41:11.000Z
+Stopped at: Completed 02-14-PLAN.md
 Resume file: None

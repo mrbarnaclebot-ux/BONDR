@@ -114,7 +114,7 @@ The sim dev went from 0.052755 to 0.032418 SOL over the two launches, about 0.02
 - Acceptance greps:
   - These match: `pool-sell-launch` in cosign.test.ts, `createPublicKey` in cosign.ts, `export async function sendRaw` in send.ts, `searchTransactionHistory` in settle.ts, and `resumeLaunches` in main.ts.
   - These find nothing: tweetnacl, the deserialize-and-reserialize compare, and `req.exit` / `body.exit` in submit.ts.
-- File sizes: cosign.ts 105, settle.ts 144, submit.ts 91, build.ts 150, devnet-launch.ts 244, devnet-checks.ts 46 lines.
+- File sizes: cosign.ts 101, settle.ts 144, submit.ts 91, build.ts 150, devnet-launch.ts 244, devnet-checks.ts 46 lines.
 
 ## Deviations from Plan
 

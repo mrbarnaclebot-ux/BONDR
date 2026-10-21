@@ -4,23 +4,36 @@
 //   --size-only     both exits with max-length fields against an in-memory table; sends nothing, no table
 //   --fund          tops the sim dev up from ops; the devnet e2e groups run this in beforeAll
 //   --prepare-only  prepare insta burn, then insta sell for the same wallet; asserts the same mint and table
-// 02-12 adds the sign-and-submit run (no flag) and --tamper.
+//   (no flag)       insta burn, then insta sell: prepare, sign slot 0 as the dev (Phantom's role), submit, settle
+//   --tamper        prepare, sign, flip one message byte, submit: asserts cosign_refused and nothing sent
 // Run: VANITY_THREADS=0 node --env-file=.env scripts/devnet-launch.ts --prepare-only
+import { setTimeout as delay } from "node:timers/promises";
 import { parseArgs } from "node:util";
 import { memoryTable } from "@bondr/core/alt";
+import { signatureOf } from "@bondr/core/cosign";
 import { close, db, wallets } from "@bondr/core/db";
 import { derive } from "@bondr/core/keys";
 import type { LaunchOpts } from "@bondr/core/launch";
 import { connect, redact } from "@bondr/core/net";
 import { BN, OnlinePumpSdk } from "@bondr/core/pump";
-import { messageSize, sendTx } from "@bondr/core/send";
-import { type Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
+import { fetchTx, messageSize, sendTx } from "@bondr/core/send";
+import {
+  type Connection,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import { TERMS_VERSION } from "../apps/web/lib/terms.ts";
 import { compileLaunch, unionTableKeys } from "../apps/worker/src/build.ts";
 import { loadEnv, ops } from "../apps/worker/src/env.ts";
-import { getLaunch } from "../apps/worker/src/launches.ts";
+import { Fail } from "../apps/worker/src/http.ts";
+import { getLaunch, type LaunchRow } from "../apps/worker/src/launches.ts";
 import { type PrepareCtx, prepare } from "../apps/worker/src/prepare.ts";
 import { LAUNCH_CU_LIMIT, liveStatus } from "../apps/worker/src/status.ts";
+import { submit } from "../apps/worker/src/submit.ts";
+import { assertLanded } from "./devnet-checks.ts";
 
 // Derived, not flat. Ops held 2.917 SOL at phase start. The phase plans about 0.28 SOL of ops spend: 7
 // per-coin tables at about 0.006 each (1 for the 02-11 prepare, 3 for the 02-12 two launches plus tamper,
@@ -83,7 +96,8 @@ async function sizeOnly(ctx: PrepareCtx): Promise<void> {
   }
 }
 
-async function prepareOnly(ctx: PrepareCtx): Promise<void> {
+// The sim dev's consent row and a request at the live minimum dev buy.
+async function baseRequest(ctx: PrepareCtx, name: string, symbol: string) {
   const wallet = simDev(ctx.env.seed).publicKey.toBase58();
   const consentedAt = new Date();
   await db()
@@ -91,8 +105,11 @@ async function prepareOnly(ctx: PrepareCtx): Promise<void> {
     .values({ address: wallet, consentedAt, termsVersion: TERMS_VERSION })
     .onConflictDoUpdate({ target: wallets.address, set: { consentedAt, termsVersion: TERMS_VERSION } });
   const solIn = (await liveStatus(ctx)).minLamports ?? "2500000";
-  const req = { wallet, name: "BONDR devnet prepare", symbol: "BPREP", links: {}, solIn };
-  const base = { ...req, uri: `https://ipfs.io/ipfs/${CID}`, imageCid: CID };
+  return { wallet, name, symbol, links: {}, solIn, uri: `https://ipfs.io/ipfs/${CID}`, imageCid: CID };
+}
+
+async function prepareOnly(ctx: PrepareCtx): Promise<void> {
+  const base = await baseRequest(ctx, "BONDR devnet prepare", "BPREP");
   const runs = [];
   for (const exit of ["burn", "sell"] as const) {
     const t0 = Date.now();
@@ -111,13 +128,75 @@ async function prepareOnly(ctx: PrepareCtx): Promise<void> {
   console.log(`reuse ok: mint ${a.mint}, table ${a.table}`);
 }
 
+// Phantom's role: sign slot 0 of the prepared wire with the dev key, nothing else.
+function signAsDev(tx: string, dev: Keypair): Uint8Array {
+  const vtx = VersionedTransaction.deserialize(Buffer.from(tx, "base64"));
+  vtx.sign([dev]);
+  return vtx.serialize();
+}
+
+const b64 = (wire: Uint8Array): string => Buffer.from(wire).toString("base64");
+
+// Settle runs in the background of this process; wait for landed with facts, or failed (60 s cap).
+async function settled(id: string): Promise<LaunchRow> {
+  for (let i = 0; i < 60; i++) {
+    const row = await getLaunch(db(), id);
+    if (row && ((row.state === "landed" && row.facts) || row.state === "failed")) return row;
+    await delay(1000);
+  }
+  throw new Error(`launch ${id} did not settle in 60 s`);
+}
+
+async function launchBoth(ctx: PrepareCtx): Promise<void> {
+  const stamp = Date.now().toString(36);
+  for (const exit of ["burn", "sell"] as const) {
+    const base = await baseRequest(ctx, `BONDR ${exit} ${stamp}`, exit === "burn" ? "BBURN" : "BSELL");
+    const r = await prepare(ctx, { ...base, exit });
+    console.log(
+      `prepared ${exit}: ${r.launchId} mint ${r.mint}, ${r.bytes} bytes, preview ${JSON.stringify(r.preview)}`,
+    );
+    const signed = signAsDev(r.tx, simDev(ctx.env.seed));
+    const s = await submit(ctx, { launchId: r.launchId, signed: b64(signed) });
+    console.log(`submitted ${exit}: ${JSON.stringify(s)}`);
+    const row = await settled(r.launchId);
+    const tx = row.signature ? await fetchTx(ctx.conn, row.signature) : undefined;
+    console.log(
+      `settled ${exit}: ${row.state} ${row.error ?? ""} facts ${JSON.stringify(row.facts)} cu ${tx?.meta.computeUnitsConsumed}`,
+    );
+    await assertLanded(ctx, row);
+  }
+}
+
+async function tamper(ctx: PrepareCtx): Promise<void> {
+  const base = await baseRequest(ctx, `BONDR tamper ${Date.now().toString(36)}`, "BTAMP");
+  const r = await prepare(ctx, { ...base, exit: "burn" });
+  const wire = signAsDev(r.tx, simDev(ctx.env.seed));
+  wire[wire.length - 10] ^= 1; // inside the message section, after the dev signed it
+  const sig = signatureOf(wire);
+  const e = await submit(ctx, { launchId: r.launchId, signed: b64(wire) }).then(
+    () => null,
+    (x: unknown) => x,
+  );
+  const row = await getLaunch(db(), r.launchId);
+  console.log(
+    `tamper ${r.launchId}: ${e instanceof Fail ? `${e.status} ${e.body.error}` : "accepted"}, row ${row?.state} ${row?.error}`,
+  );
+  if (!(e instanceof Fail) || e.body.error !== "cosign_refused")
+    throw new Error("tampered wire was not refused");
+  if (row?.state !== "failed" || row.error !== "cosign_refused")
+    throw new Error("row not failed cosign_refused");
+  await delay(5000);
+  const st = await ctx.conn.getSignatureStatuses([sig], { searchTransactionHistory: true });
+  if (st.value[0]) throw new Error(`signature ${sig} was seen on chain`);
+  console.log(`not sent: ${sig} has no status after 5 s`);
+}
+
 function modeOf(): Mode {
   const flag = { type: "boolean" } as const;
-  const { values } = parseArgs({ options: { "size-only": flag, fund: flag, "prepare-only": flag } });
-  const set = Object.entries(values).flatMap(([k, v]) => (v ? [k] : []));
-  if (set.length !== 1)
-    throw new Error("pass one of --size-only, --fund, --prepare-only (submit modes: 02-12)");
-  return set[0] as Mode;
+  const options = { "size-only": flag, fund: flag, "prepare-only": flag, tamper: flag };
+  const set = Object.entries(parseArgs({ options }).values).flatMap(([k, v]) => (v ? [k] : []));
+  if (set.length > 1) throw new Error("pass at most one of --size-only, --fund, --prepare-only, --tamper");
+  return (set[0] ?? "launch") as Mode;
 }
 
 async function balances(conn: Connection, seed: Buffer) {
@@ -145,6 +224,8 @@ async function main(): Promise<void> {
   const funded = mode === "size-only" ? 0 : await fundSimDev(conn, env.seed);
   if (mode === "size-only") await sizeOnly(ctx);
   if (mode === "prepare-only") await prepareOnly(ctx);
+  if (mode === "launch") await launchBoth(ctx);
+  if (mode === "tamper") await tamper(ctx);
   const after = await balances(conn, env.seed);
   const spend = before.ops - after.ops - funded;
   console.log(`after: ops ${sol(after.ops)} SOL, sim dev ${sol(after.dev)} SOL`);

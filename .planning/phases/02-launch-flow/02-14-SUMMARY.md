@@ -29,20 +29,20 @@ key-decisions:
   - "forbiddenEnv ignores empty values: an empty name holds no secret"
   - "Client environment comes from next.config env NEXT_PUBLIC_SENTRY_ENVIRONMENT = RAILWAY_ENVIRONMENT_NAME ?? local at build time"
   - "withSentryConfig with silent and telemetry false, no authToken (source maps Phase 7)"
-requirements-completed: [FEE-10]
+requirements-completed: [FEE-10, OPS-01]
 duration: ~45 min
 completed: 2026-10-21
 ---
 
 # Phase 2 Plan 14: Sentry, address scrub and FEE-10 gates Summary
 
-**Sentry is wired on the web server, the web client and the worker with a restrictive v11 dataCollection and a base58 scrub. The web refuses to boot holding a seed or owner secret, and the client bundle gate passes. Proven end to end against a local fake Sentry ingest; the live check in the real Sentry projects waits on the DSNs.**
+**Sentry is wired on the web server, the web client and the worker with a restrictive v11 dataCollection and a base58 scrub. The web refuses to boot holding a seed or owner secret, and the client bundle gate passes. Proven against a local fake ingest for all three, and live in the new bondr-web and bondr-worker Sentry projects for web server and worker.**
 
 ## Performance
 
 - **Duration:** about 45 min
 - **Completed:** 2026-10-21
-- **Tasks:** 2 of 2 code tasks; the live Sentry check is pending (see Checkpoint)
+- **Tasks:** 2 of 2, plus the live Sentry check
 - **Files:** 15 (7 created, 8 modified)
 
 ## Tasks
@@ -65,13 +65,23 @@ completed: 2026-10-21
   - Raw address hits across all envelopes: 0. No `user` object anywhere; client settings `infer_ip: never`; authorization and x-forwarded-* headers `[Filtered]`; the Helius RPC breadcrumb url has no query (api key stripped).
 - Acceptance greps: no `sendDefaultPii`; `dataCollection` in all three init files; no replay or non-zero tracesSampleRate; `RAILWAY_ENVIRONMENT_NAME` in instrumentation.ts and worker sentry.ts.
 
-## Checkpoint: live Sentry events (OPS-01)
+## Live Sentry check (OPS-01), 2026-10-21
 
-Not done: `.env` has no `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` or `sentry_auth_token`. It has `SENTRY_PERSONAL_TOKEN` and `SENTRY_API_KEY`, which the plan does not name. The remaining step needs one of:
-- Add `SENTRY_DSN` (bondr-worker) and `NEXT_PUBLIC_SENTRY_DSN` (bondr-web), plus `sentry_auth_token` to read events back; or
-- Confirm `SENTRY_PERSONAL_TOKEN` may be used as the auth token, to create the two projects (approved 2026-10-19 in 02-04) and append both DSNs.
-
-Then: build the web, start worker and web with SENTRY_TEST_ROUTE=1, hit /api/sentry-test once, and read the latest event of each project through the API with `node --env-file=.env <scratch script>`. OPS-01 stays open until then.
+- On the owner's choice (option 2), `SENTRY_PERSONAL_TOKEN` was used in org `mrbarnacle` (us region, team `mrbarnacle`).
+  - It created `bondr-web` (javascript-nextjs) and `bondr-worker` (node). Neither existed, and no other project was touched.
+  - It wrote `NEXT_PUBLIC_SENTRY_DSN` and `SENTRY_DSN` into `.env`. `.env` is gitignored and uncommitted. `.env.example` lists both names, plus `SENTRY_TEST_ROUTE`, with empty values.
+  - The token and DSNs were never printed. The scripts ran from the scratchpad with `node --env-file=.env`.
+- The web was built with the real DSN, and the bundle gate exited 0. The worker started, and the web started with `SENTRY_TEST_ROUTE=1`.
+  - `GET /api/sentry-test` was hit once (500, as designed), which also called the worker's `POST /sentry-test` once.
+  - Both services were then stopped, so the test switch is off. `.env` never held `SENTRY_TEST_ROUTE`.
+- Read back through the Sentry API (each project had exactly 1 event):
+  - bondr-web `40133668746b4d8f86e801b6fb18fdcd`: "Error: sentry test from web: wallet [addr]", environment local.
+  - bondr-worker `e697313bbee74f7a96e02725a437ad18`: "POST /sentry-test failed: sentry test from worker: wallet [addr]", environment local.
+  - In both, the raw address is absent from the full event JSON. `user.id`, email, username and `ip_address` are all null, and there are no cookies.
+- Found: Sentry still filled `user.geo` (country and city) from the sending connection at ingest, with no IP stored. For the server and worker that is the host, but for browser events it would be the visitor.
+  - Both bondr projects now have `scrubIPAddresses: true` ("Prevent Storing of IP Addresses", PUT returned 200).
+  - Not re-tested, because the brief allowed one test hit per service. The next browser event should be checked for `user.geo`.
+- OPS-01 is met for the web server and the worker. Browser capture was proven only against the local fake ingest above.
 
 ## Deviations from Plan
 

@@ -18,6 +18,7 @@
     "spike:fork-down": "sh scripts/spike/fork.sh down",
     "spike:all": "sh scripts/spike/all.sh",
     "e2e": "playwright test",
+    "check:bundle": "sh scripts/check-client-bundle.sh",
     "db:generate": "pnpm --filter @bondr/core exec drizzle-kit generate --name init",
     "db:migrate": "node --env-file=.env packages/core/src/migrate.ts"
   },

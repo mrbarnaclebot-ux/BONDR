@@ -3,7 +3,9 @@ import postgres from "postgres";
 import { injectPhantom, newTestAccount, rootEnv, type TestAccount } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
-const sql = url ? postgres(url, { max: 1, onnotice: () => {} }) : undefined;
+// idle_timeout instead of end() in afterAll: a fullyParallel worker runs afterAll when it leaves this file
+// and reuses the module if it comes back, and an ended client refuses every query (CONNECTION_ENDED).
+const sql = url ? postgres(url, { max: 1, idle_timeout: 5, onnotice: () => {} }) : undefined;
 const used: string[] = [];
 const HEADING = "Before BONDR remembers this wallet";
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
@@ -18,7 +20,6 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => {
   if (sql && used.length) await sql`delete from wallets where address in ${sql(used)}`;
-  await sql?.end({ timeout: 5 });
 });
 
 async function connectFresh(page: Page): Promise<{ account: TestAccount; leaks: string[] }> {

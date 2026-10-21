@@ -64,11 +64,12 @@ for (const width of [390, 768, 1440]) {
 
 // Steps 2 and 3 read live devnet values through the worker, so a Neon or RPC cold start can take seconds.
 const url = rootEnv().DATABASE_URL;
-const sql = url ? postgres(url, { max: 1, onnotice: () => {} }) : undefined;
+// idle_timeout instead of end() in afterAll: a fullyParallel worker runs afterAll when it leaves this file
+// and reuses the module if it comes back, and an ended client refuses every query (CONNECTION_ENDED).
+const sql = url ? postgres(url, { max: 1, idle_timeout: 5, onnotice: () => {} }) : undefined;
 const consented: string[] = [];
 test.afterAll(async () => {
   if (sql && consented.length) await sql`delete from wallets where address in ${sql(consented)}`;
-  await sql?.end({ timeout: 5 });
 });
 const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 const devBuy = (page: Page) => field(page, "Dev buy");

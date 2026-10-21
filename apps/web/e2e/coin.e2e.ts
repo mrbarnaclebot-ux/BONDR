@@ -6,7 +6,9 @@ import postgres from "postgres";
 import { rootEnv } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
-const sql = url ? postgres(url, { max: 1, onnotice: () => {} }) : undefined;
+// idle_timeout instead of end() in afterAll: a fullyParallel worker runs afterAll when it leaves this file
+// and reuses the module if it comes back, and an ended client refuses every query (CONNECTION_ENDED).
+const sql = url ? postgres(url, { max: 1, idle_timeout: 5, onnotice: () => {} }) : undefined;
 const db = () => sql as postgres.Sql;
 const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const fakeMint = () => Array.from({ length: 44 }, () => B58[randomInt(58)]).join("");
@@ -33,7 +35,6 @@ test.afterAll(async () => {
     await sql`delete from launches where mint in ${sql(fixtures)}`;
     await sql`delete from vanity_mints where pubkey in ${sql(fixtures)}`;
   }
-  await sql?.end({ timeout: 5 });
 });
 
 const newest = async (): Promise<Landed> => {

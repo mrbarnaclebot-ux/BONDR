@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-08-PLAN.md
-last_updated: "2026-10-19T16:40:13.683Z"
-last_activity: 2026-10-19
+stopped_at: Completed 02-11-PLAN.md
+last_updated: "2026-10-21T09:35:53.000Z"
+last_activity: 2026-10-21
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 20
+  completed_plans: 21
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 11 of 18
+Plan: 12 of 18
 Status: Ready to execute
-Last activity: 2026-10-19
+Last activity: 2026-10-21
 
-Progress: [███████░░░] 71%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [███████░░░] 71%
 | Phase 02 P09 | 75 min | 2 tasks | 11 files |
 | Phase 02 P08 | 45 min | 2 tasks | 18 files |
 | Phase 02 P10 | 9 min | 2 tasks | 12 files |
+| Phase 02 P11 | 20 min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,8 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-08: paused.e2e.ts runs in its own Playwright project after chromium, since it flips the shared kill switch
 - [Phase 02]: 02-10: one in-memory fixed-window limiter in guard.ts (entries carry their own end time); pin 5/10min per IP and wallet, quote 60/min, consent 10/10min
 - [Phase 02]: 02-10: pinned files are named <SYMBOL>.<type>; the uploaded file name never reaches Pinata
+- [Phase 02]: 02-11: insta-sell floor = (simulated burn spend - sell spend) less 300 bps; failed prepares keep their paid table as a failed row
+- [Phase 02]: 02-11: web prepare route has its own 30 s worker timeout (measured 10-18 s on devnet)
 
 ### Pending Todos
 
@@ -166,6 +169,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-19T16:40:10.121Z
-Stopped at: Completed 02-08-PLAN.md
+Last session: 2026-10-21T09:35:53.000Z
+Stopped at: Completed 02-11-PLAN.md
 Resume file: None

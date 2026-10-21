@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-12-PLAN.md
-last_updated: "2026-10-21T09:50:24.000Z"
+stopped_at: Completed 02-13-PLAN.md
+last_updated: "2026-10-21T10:12:02.000Z"
 last_activity: 2026-10-21
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 22
+  completed_plans: 23
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 13 of 18
+Plan: 14 of 18
 Status: Ready to execute
 Last activity: 2026-10-21
 
-Progress: [████████░░] 79%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [████████░░] 79%
 | Phase 02 P10 | 9 min | 2 tasks | 12 files |
 | Phase 02 P11 | 20 min | 2 tasks | 12 files |
 | Phase 02 P12 | 14 min | 3 tasks | - |
+| Phase 02 P13 | 21 min | 2 tasks | - |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-11: insta-sell floor = (simulated burn spend - sell spend) less 300 bps; failed prepares keep their paid table as a failed row
 - [Phase 02]: 02-11: web prepare route has its own 30 s worker timeout (measured 10-18 s on devnet)
 - [Phase 02]: 02-12: co-sign runs before a row is marked signed, so a signed row always holds a resendable tx; settle never resends an unseen launch
+- [Phase 02]: 02-13: a lost submit answer keeps step 4 polling instead of offering Try again, since the tx may already be out
 
 ### Pending Todos
 
@@ -171,6 +173,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-21T09:50:24.000Z
-Stopped at: Completed 02-12-PLAN.md
+Last session: 2026-10-21T10:12:02.000Z
+Stopped at: Completed 02-13-PLAN.md
 Resume file: None

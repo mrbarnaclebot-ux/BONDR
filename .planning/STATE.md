@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-16-PLAN.md
+stopped_at: 02-18 awaiting owner sign-off
 last_updated: "2026-10-22T16:40:00.000Z"
 last_activity: 2026-10-22
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 26
+  completed_plans: 27
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 17 of 18
-Status: Ready to execute
+Plan: 18 of 18
+Status: Awaiting owner sign-off (02-18)
 Last activity: 2026-10-22
 
-Progress: [█████████░] 93%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -152,6 +152,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Neon has a hard 500 CU-h/month quota (compute_time_seconds 1800000); hitting it suspends dev and staging until the 1st. Computes stay at 0.25 CU and nothing polls the database
 - [Phase 02]: The kill switch lives in worker memory (loaded on first status read); flip it with the bearer-protected worker POST /kill-switch {enabled}, which writes the DB too. Prepare and submit re-read the DB, so a pause set in raw SQL still stops launches, but open pages show it only after the next launch attempt or a worker restart
 - [Phase 02]: 02-16: staging is Railway project bondr, env staging, web public at web-staging-72bad.up.railway.app, worker private, both in US East next to Neon. railway.json is deprecated for new services, so it was deleted and the settings live on the services (IaC .railway/railway.ts deferred to Phase 7). Railway's edge overwrites a forged X-Real-IP (12 forged requests, 429 from the 11th), so web WR-03 holds
+- [Phase 02]: Lookup table recentSlot is the newest rooted block below finalized: Helius devnet reports finalized equal to confirmed, so the finalized slot failed the create with "is not a recent slot"
+- [Phase 02]: 02-17: staging launch CyR56jVf...bndr landed; staging matrix 37/37. ipfs.io now 429s our images (service-worker-only gateway), so coin images and on-chain metadata image links need a new gateway
 - [Phase 02]: Coin page reads are cached per process: a landed coin with facts for an hour, a miss or a coin without facts for a minute
 
 ### Pending Todos
@@ -185,5 +187,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-10-22T16:40:00.000Z
-Stopped at: Completed 02-16-PLAN.md
+Stopped at: 02-18 awaiting owner sign-off
 Resume file: None

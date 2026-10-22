@@ -240,10 +240,12 @@ async function finish(ctx: PrepareCtx, req: Req, s: Sized, created: boolean): Pr
 
 async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult> {
   const { req, prior, createCost } = await admit(ctx, body);
+  // Before the reservation, so a wallet that cannot pay never holds a mint out of the pool (WR-01).
+  const need = req.solIn + createCost + networkFee(ctx.priorityFee);
+  const balance = await ctx.conn.getBalance(new PublicKey(req.wallet));
+  if (BigInt(balance) < need) throw fail({ error: "insufficient_balance" });
   const mint = await reserveMint(ctx, req.wallet);
   const o = await optsFor(ctx, req, mint.pubkey);
-  const need = req.solIn + createCost + networkFee(ctx.priorityFee);
-  if (BigInt(await ctx.conn.getBalance(o.dev)) < need) throw fail({ error: "insufficient_balance" });
   const union = await unionTableKeys(o);
   // Same mint after an expired hold: its table still fits this wallet, so look it up by mint.
   const held = prior?.mint === mint.pubkey ? prior : await tableFor(db(), req.wallet, mint.pubkey);

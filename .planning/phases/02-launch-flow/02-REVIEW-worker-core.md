@@ -102,6 +102,8 @@ Also:
 
 ### WR-01: The mint is reserved before the balance check, so the vanity pool can be drained with zero-balance wallets
 
+**Status:** fixed (2026-10-22) in 75b8b19. `prepareOne` checks the dev balance before `reserveMint`, so a wallet that cannot pay never holds a mint. Not added: a release on later refusals and a web-side reservation cap. Signed consent (CR-01) already bounds new wallets per IP, and `reserve` gives each wallet one live hold.
+
 **File:** `apps/worker/src/prepare.ts:229-234`, `apps/worker/src/vanity.ts:71-98`
 
 **Issue:** `reserveMint` runs before `getBalance(o.dev) < need`. A prepare that ends in `insufficient_balance` still holds a `bndr` mint for 10 minutes. `admit` only looks at the table cap, and that cap does not apply until a table exists.
@@ -117,6 +119,8 @@ const mint = await reserveMint(ctx, req.wallet);
 Also cap live reservations per IP or wallet on the web side.
 
 ### WR-02: Tables that ops paid for are not recorded on several failure paths, so the cap does not count them and their rent cannot be reclaimed
+
+**Status:** fixed (2026-10-22) in 98f7b21. `createTable` returns the address on any throw once it exists. `ensureTable` returns an unwarmed table's address instead of throwing. `prepareOne` re-prices inside the `try`, and `recordPaid` records every paid table, logging an insert failure through `console.error` instead of swallowing it. Only a process crash between the table send and the `catch` can still lose one.
 
 **File:** `apps/worker/src/prepare.ts:239-249`, `apps/worker/src/build.ts:69-71`, `packages/core/src/alt.ts:106-118`
 
@@ -136,6 +140,8 @@ Put the re-price (`line 241`) inside the `try`. Have `ensureTable` return or rec
 
 ### WR-03: Re-using a live reservation does not extend it, so a second wallet can get the same mint while the first wallet's prepared tx is still valid
 
+**Status:** fixed (2026-10-22) in 68c84f4, test follow-up 13737b6. `reserve` renews the wallet's live hold with one UPDATE ... RETURNING. `inFlight` also counts prepared rows from the last 2 minutes, so a released mint whose prepared tx can still be signed stays out of the pool.
+
 **File:** `apps/worker/src/vanity.ts:71-83, 93`
 
 **Issue:** The `live` branch returns the wallet's reservation without touching `reserved_until`. Only a new reservation sets `now() + 10 min`. A `prepared` row does not count as in-flight (`inFlight` covers only signed, sent, unknown and landed).
@@ -154,6 +160,8 @@ Also count `prepared` rows whose `last_valid_block_height` has not passed as in-
 
 ### WR-04: A mint that already landed can be handed out again, failing every launch that gets it and paying a table each time
 
+**Status:** fixed (2026-10-22) in 319dc26. `reserveMint` reads the mint account before any table is paid and retires a mint that already exists (`markUsed`, `build_failed` to the dev). `landed()` runs the move to landed and `markUsed` in one `db().transaction`. The transaction wrap has no dedicated test.
+
 **File:** `apps/worker/src/settle.ts:37, 85-90, 95-97`, `apps/worker/src/vanity.ts:61-67`, `apps/worker/src/prepare.ts:229-239`
 
 **Issue:** The mint pool trusts the DB alone, which goes wrong in two ways:
@@ -170,6 +178,8 @@ Also run `advance(...→landed)` and `markUsed` in one `db().transaction(...)`.
 
 ### WR-05: `unknown` launches are only re-checked when the worker restarts
 
+**Status:** fixed (2026-10-22) in d47492e. `settleLaunch` checks an unknown row again after 30 s, 2 min and 10 min. The retries are bounded, so there is still no standing loop; the boot resume picks up anything left.
+
 **File:** `apps/worker/src/settle.ts:99-100, 128-144`, `apps/worker/src/main.ts:41`
 
 **Issue:** An RPC outage past expiry sets `unknown`, and only `resumeLaunches` on boot ever looks at that row again. The design has no standing loop.
@@ -179,6 +189,8 @@ Also run `advance(...→landed)` and `markUsed` in one `db().transaction(...)`.
 **Fix:** Re-settle `unknown` rows on demand without a timer. For example, in `submit` or `GET /status`, fire `settleInBackground` for `unknown` rows older than 60 s, with a per-process guard. Alternatively, have `settleLaunch` back off and retry the history recheck (30 s, 2 min, 10 min) instead of giving up after one pass.
 
 ### WR-06: The metadata URI and `imageCid` come from the client and are never tied to what web pinned
+
+**Status:** fixed (2026-10-22) in 9c3e755. The pin route returns `proof`, an HMAC with `SESSION_SECRET` over (uri, imageCid). Web's prepare route refuses `invalid_input` unless it matches. Enforced in web, not the worker: only web can call the worker, as with the session wallet. Not tied to the wallet: reusing BONDR-pinned metadata is harmless, and Try again keeps working after an account switch.
 
 **File:** `apps/worker/src/prepare.ts:82-94` (with `apps/web/app/api/launch/prepare/route.ts:30`)
 
@@ -190,6 +202,8 @@ Also run `advance(...→landed)` and `markUsed` in one `db().transaction(...)`.
 
 ### WR-07: On any net where the creator fee is configurable, the quote and status preview use a different creator fee from the one the launch is built with
 
+**Status:** fixed (2026-10-22) in 4890f83. `creatorFeeFor(g)` in `core/launch.ts` is the one source. `price()` resolves it from the live Global, `buildLaunch` passes the same fee to the create, `childFees` uses it for the status fees, and prepare no longer sets it.
+
 **File:** `apps/worker/src/status.ts:54-69, 201`, `apps/worker/src/prepare.ts:161`, `packages/core/src/launch.ts:162-165`
 
 **Issue:** `prepare` passes `creatorFeeBps: 150` when `g.creatorFeeConfigurable`. `childFees` passes `undefined`, which is the network default, and so does `launchQuote(ctx.online, ctx.Q, solIn)`. Devnet is not configurable, so the two match today and every test passes.
@@ -199,6 +213,8 @@ Also run `advance(...→landed)` and `markUsed` in one `db().transaction(...)`.
 **Fix:** Derive one `creatorFeeBps` from `g.creatorFeeConfigurable` in one helper and pass it to `childFees`, `launchQuote` and `optsFor`.
 
 ### WR-08: `forcedBondIxs` sets minOut to W's whole child balance, so any leftover in W makes every later forced bond revert
+
+**Status:** deferred to Phase 5 (owner decision 2026-10-22). This is fee-engine code that the worker does not call yet. Tracked under Pending Todos in `.planning/STATE.md`.
 
 **File:** `packages/core/src/bond.ts:78-88`
 
@@ -216,11 +232,15 @@ const ixs = [...float(o), ...(await buy(new BN(bought.toString()))), burnIx(o.w,
 
 ### IN-01: The `canRelease` guard never fires
 
+**Status:** open.
+
 **File:** `apps/worker/src/settle.ts:48-51`, `apps/worker/src/vanity.ts:101-106`
 **Issue:** `releaseMint` always passes the literal `"failed"`, so the check that refuses a release while signed, sent or unknown can never trigger. The real protection is the `inFlight` subquery. The guard is misleading.
 **Fix:** Delete `canRelease`, or have `release` check the DB for any signed, sent, unknown or landed row of the mint.
 
 ### IN-02: The submit pause check lets launches through when the chain read fails
+
+**Status:** open. Refusing on a failed chain read trades a transient RPC error for a second signature; left for the owner to decide.
 
 **File:** `apps/worker/src/status.ts:44-47, 156`, `apps/worker/src/submit.ts:84-85`
 **Issue:** When `readChain` fails, `venue` is null, so `paused` is null. Submit then co-signs even if BONDR is in the 6107 window, and the dev pays the fee for a tx that will fail on chain. Prepare is protected by `min === null`, but submit is not.
@@ -228,11 +248,15 @@ const ixs = [...float(o), ...(await buy(new BN(bought.toString()))), burnIx(o.w,
 
 ### IN-03: The sell `solBack` fact counts every account that went from 0 to non-zero as dev-paid rent
 
+**Status:** open.
+
 **File:** `apps/worker/src/settle.ts:80-82`
 **Issue:** A fee recipient or creator vault that held 0 lamports before the tx and received SOL fees is added to `rent`, which inflates the `solBack` shown on the ledger.
 **Fix:** Only count accounts the dev funded: the writable accounts the create or ATA instructions name. Or compute from the dev's WSOL and SOL deltas only.
 
 ### IN-04: `createCost` in the preview is under-stated on the pool venue
+
+**Status:** open.
 
 **File:** `apps/worker/src/build.ts:145-150`
 **Issue:** On the pool venue the Q buy is exact-out with `maxQuoteIn = solIn` and spends less than `solIn`. `burnSpent - solIn - fee` then under-states the cost, and it is clamped to 0.
@@ -240,17 +264,23 @@ const ixs = [...float(o), ...(await buy(new BN(bought.toString()))), burnIx(o.w,
 
 ### IN-05: The HTTP error path can crash the process on a non-serializable route result
 
+**Status:** fixed (2026-10-22) in 3148e36. `send` serializes before `writeHead`, so the `catch` can still answer 500.
+
 **File:** `apps/worker/src/http.ts:63-83`
 **Issue:** `JSON.stringify` runs after `writeHead`. If it throws (a `bigint` in a future result), the catch calls `send` again and hits `ERR_HTTP_HEADERS_SENT`. That is an unhandled rejection from `void handle(...)`, and Sentry `mode: "strict"` then crashes the worker. No current route returns a `bigint`.
 **Fix:** Serialize before `writeHead`, and check `res.headersSent` in the catch.
 
 ### IN-06: No DB constraint stops two in-flight launches of the same mint
 
+**Status:** fixed (2026-10-22) in 741036c. Partial unique index `launches_inflight_mint` on `mint` where state is signed, sent or unknown (migration `0001_inflight_mint`). Applied to the Neon dev branch only; staging gets it from the web pre-deploy migrate. A second row's move to signed now fails with 23505, which submit answers as 500 `build_failed` with nothing sent.
+
 **File:** `packages/core/migrations/0000_init.sql:55`, `packages/core/src/schema.ts:81`
 **Issue:** Only `landed` is unique per mint. A wallet with burn and sell prepared rows for the same mint can have both co-signed and in flight at once. One must fail on chain at the dev's cost. AGENTS.md section 6 prefers DB constraints.
 **Fix:** `CREATE UNIQUE INDEX launches_inflight_mint ON launches(mint) WHERE state IN ('signed','sent','unknown');`. `advance(prepared→signed)` then fails cleanly for the second row.
 
 ### IN-07: One bad submit fails the prepared row, and can beat a valid concurrent submit
+
+**Status:** open.
 
 **File:** `apps/worker/src/submit.ts:35-39, 89`
 **Issue:** When co-sign is refused, `prepared` moves to `failed`. If a stale or garbage wire, for example from a double click, races a valid one, the refusal's `advance` can win, and the valid submit returns `failed` with nothing sent. A refusal costs the worker nothing, so the row does not need to change.

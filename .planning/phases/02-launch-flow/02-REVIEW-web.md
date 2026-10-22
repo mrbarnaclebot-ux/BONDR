@@ -93,6 +93,8 @@ The defects that remain are:
 
 ### WR-01: Rate-limit map grows without bound, and an over-limit IP still adds new wallet keys
 
+**Status:** fixed (2026-10-22) in a13a862. `rateLimited` charges the IP bucket first and the wallet bucket only when the IP passes. `take` caps the map at 10,000 keys and drops the oldest when a sweep frees nothing.
+
 **File:** `apps/web/lib/guard.ts:53-62`, `apps/web/lib/guard.ts:79-81`
 **Issue:** `rateLimited` calls `take()` on every key before looking at any result, so a request whose IP is already over the limit still inserts its `scope:wallet:<x>` entry. The wallet comes from the request body, so the attacker chooses it.
 **Failure scenario:** one IP loops `POST /api/launch/prepare` with a new random base58 wallet each time.
@@ -124,6 +126,8 @@ const walletWait = wallet ? take(`${scope}:wallet:${wallet}`, now, limit, window
 
 ### WR-03: The client IP comes from a spoofable header, and a missing IP turns off limiting
 
+**Status:** fixed (2026-10-22) in ae676c8. A request with no client address now shares one `unknown` bucket instead of going unlimited. X-Real-IP stays first: Railway's docs (public networking, specs and limits) list it as the client IP the edge sets, and the existing `clientIp` test pins the order. Not verified live that the edge overwrites a client-sent X-Real-IP; one curl against staging would confirm it.
+
 **File:** `apps/web/lib/guard.ts:65-68`, `apps/web/lib/guard.ts:78-79`
 **Issue:** `X-Real-IP` is trusted first and not checked. If Railway's edge passes a client-supplied `X-Real-IP` through instead of overwriting it, every request can claim a fresh IP. When neither header is present, `keys` is empty and `consent`, `quote` and `submit` (which have no wallet key) are not limited at all.
 **Failure scenario:** `curl -H 'X-Real-IP: 1.2.3.<n>'` gets around the IP limits on consent, quote (one worker RPC read each) and submit. Any deploy path that drops the proxy headers (local, preview, a future proxy change) runs with no limits.
@@ -133,6 +137,8 @@ const ip = clientIp(req) ?? "unknown"; // one shared bucket, never unlimited
 ```
 
 ### WR-04: A reload during submit drops a launch that is still in flight, which leads to a second launch
+
+**Status:** fixed (2026-10-22) in f490c4c, test follow-up 81807e8. Restore now keeps a prepared row younger than 10 minutes and polls it. `poll` ends a row that is still prepared 150 s after polling began as `expired` (Build again), because by then it can no longer land.
 
 **File:** `apps/web/components/launch-flow.tsx:138-145`
 **Issue:** `posted()` stores the id just before `/api/launch/submit`. The worker keeps the row `prepared` while it runs the pause, block-height and cosign checks (`apps/worker/src/submit.ts:83-90`), which take several RPC round trips. It only moves the row to `signed` after that. On reload, `useRestore` treats `prepared` like `failed` and clears the stored id.
@@ -144,6 +150,8 @@ const ip = clientIp(req) ?? "unknown"; // one shared bucket, never unlimited
 **Fix:** restore `prepared` rows too, and poll them until they leave `prepared` or `createdAt + signBy` has passed. Only clear the stored id when the row is `failed`, `not_found`, or still `prepared` after the expiry.
 
 ### WR-05: An error on a resend is treated as final: the restore key is cleared and the UI says "Nothing was sent"
+
+**Status:** fixed (2026-10-22) in 2af0aa5. A resend's error is swallowed, so the row decides. In the worker, `refuse()` answers the row's current state when its `advance()` lost the race, instead of throwing.
 
 **File:** `apps/web/lib/launch-run.ts:116-120`, `apps/web/lib/launch-run.ts:129`, `apps/web/components/launch-sign.tsx:54-57`, `apps/web/components/launch-sign.tsx:98-106`
 **Issue:** when the first submit is lost (`null`), `poll` resends the wire once a second while the row reads `prepared`. Any error from a resend other than `worker_unavailable` is thrown out of `poll`. `fail()` then runs `stored.set(null)` and shows a "Nothing was sent" message, even though the first submit may still be inside the worker.
@@ -158,6 +166,8 @@ if (v?.state === "prepared") await resend?.().catch(() => null);
 Also, in the worker, only throw from `refuse()` when `advance()` returned a row. Otherwise return `current(row)`.
 
 ### WR-06: "Launch another" can jump back to the old coin's step 5
+
+**Status:** fixed (2026-10-22) in 8decc7b. `useFacts` ignores a read that resolves after cleanup.
 
 **File:** `apps/web/components/launch-live.tsx:17-28`
 **Issue:** the async `setInterval` callback awaits `getView` and then calls `dispatch` without checking whether the effect has been cleaned up. `clearInterval` stops new ticks, but a request already in flight still resolves.
@@ -180,6 +190,8 @@ return () => { live = false; clearInterval(timer); };
 
 ### WR-07: `images.remotePatterns` turns `/_next/image` into a public IPFS proxy, and nothing uses it
 
+**Status:** fixed (2026-10-22) in a341162. `images.remotePatterns` is removed; an e2e test checks that `/_next/image` refuses an IPFS URL with 400.
+
 **File:** `apps/web/next.config.ts:37-47`
 **Issue:** `remotePatterns` allows `https://ipfs.io/ipfs/**` and the owner's dedicated Pinata gateway. No component sends a remote image through the optimizer: `CoinIdentity` uses a CSS background and `LaunchLive` uses `unoptimized`.
 **Failure scenario:** anyone can request `/_next/image?url=https://<PINATA_GATEWAY>/ipfs/<any CID>&w=3840&q=100`. The web server then fetches, resizes and caches arbitrary IPFS content. That uses the owner's dedicated-gateway bandwidth quota, plus web CPU and disk, with no rate limit.
@@ -189,11 +201,15 @@ return () => { live = false; clearInterval(timer); };
 
 ### IN-01: `e.code in FAULTS` matches prototype keys
 
+**Status:** fixed (2026-10-22) in 11c13a4 (`Object.hasOwn`).
+
 **File:** `apps/web/components/launch-sign.tsx:100`
 **Issue:** a passed-through error such as `"toString"` or `"constructor"` passes the `in` check. `FAULTS[code]` is then a function, so the error callout renders empty with no action.
 **Fix:** `Object.hasOwn(FAULTS, e.code)`.
 
 ### IN-02: The pin route reads the whole 4 MB multipart body before the IP limit
+
+**Status:** no_change_needed. Since 2e7bc81 the pin route runs `rateLimited` before `parse()`, so an IP over the limit is refused before the body is read.
 
 **File:** `apps/web/app/api/launch/pin/route.ts:75-80`
 **Issue:** `parse()` (`req.formData()` plus `JSON.parse`) runs before `rateLimited`, so an IP that is over the limit still costs a 4 MB upload and parse each time.
@@ -201,11 +217,15 @@ return () => { live = false; clearInterval(timer); };
 
 ### IN-03: The CSP only sets `frame-ancestors`
 
+**Status:** open.
+
 **File:** `apps/web/next.config.ts:30-35`
 **Issue:** there is no `script-src`, `object-src` or `base-uri`, and no HSTS. React escaping is currently the only XSS barrier on a page that hands a transaction to Phantom.
 **Fix:** add `default-src 'self'; object-src 'none'; base-uri 'none'; img-src 'self' blob: https://ipfs.io https://<gateway>`, plus `Strict-Transport-Security`. Add a nonce-based `script-src` when it becomes practical.
 
 ### IN-04: Picking images quickly can race, and blob URLs are never revoked on reset
+
+**Status:** open.
 
 **File:** `apps/web/components/launch-coin.tsx:116-122`, `apps/web/components/launch-flow.tsx:106-107`
 **Issue:** two quick picks each `await readImage`. If the first decode finishes last, it overwrites the newer pick, and `prev` is revoked twice. `reset` drops `state.image` without calling `URL.revokeObjectURL`.
@@ -213,17 +233,23 @@ return () => { live = false; clearInterval(timer); };
 
 ### IN-05: Public GET reads have no rate limit
 
+**Status:** open.
+
 **File:** `apps/web/app/api/launch/[id]/route.ts:10-21`, `apps/web/app/coin/[mint]/page.tsx:17`, `apps/web/app/api/status/route.ts:7-10`
 **Issue:** each request makes a Neon query or a worker call. Ids and mints that are well-formed but random still reach the DB.
 **Fix:** a generous IP limit (for example 120 a minute), or a short `s-maxage` on `/coin/[mint]` once it has landed.
 
 ### IN-06: `/api/sentry-test` is a GET with side effects
 
+**Status:** open.
+
 **File:** `apps/web/app/api/sentry-test/route.ts:9-13`
 **Issue:** when `SENTRY_TEST_ROUTE=1`, anyone, including a cross-site `<img>`, can trigger worker and web Sentry events with no limit.
 **Fix:** make it POST with `sameOrigin` plus `rateLimited`, or confirm in the deploy checklist that the variable is unset in production.
 
 ### IN-07: Accessibility gaps in step 4 rows and the copy chip
+
+**Status:** open.
 
 **File:** `apps/web/components/launch-sign.tsx:161-183`, `apps/web/components/copy-chip.tsx:16-21`
 **Issue:**

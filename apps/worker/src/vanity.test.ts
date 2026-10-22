@@ -122,4 +122,28 @@ describe.skipIf(!process.env.DATABASE_URL)("reservation", { timeout: 30_000 }, (
       expect(after?.reservedBy).toBe(null);
     });
   });
+
+  test("a repeat prepare renews the hold, and a fresh prepared tx keeps a released mint out (WR-03)", async () => {
+    await rolledBack(async (tx) => {
+      const base = -(2n ** 62n);
+      const rows = [0n, 1n].map((k) => ({ idx: base + k, pubkey: `test-${randomBytes(8).toString("hex")}` }));
+      await tx.insert(vanityMints).values(rows);
+      const [w1, w2] = [1, 2].map((k) => `test-w${k}-${randomBytes(4).toString("hex")}`);
+      expect(await reserve(tx, w1)).toEqual(rows[0]);
+      const soon = new Date(Date.now() + 30_000);
+      await tx.update(vanityMints).set({ reservedUntil: soon }).where(eq(vanityMints.idx, rows[0].idx));
+      expect(await reserve(tx, w1)).toEqual(rows[0]);
+      const [held] = await tx.select().from(vanityMints).where(eq(vanityMints.idx, rows[0].idx));
+      expect(held?.reservedUntil?.getTime()).toBeGreaterThan(Date.now() + 5 * 60_000);
+
+      // Released by an earlier row's refusal while a newer prepared tx of it can still be signed.
+      await tx.insert(wallets).values({ address: w1, consentedAt: new Date(), termsVersion: "test" });
+      await tx.insert(launches).values({
+        ...{ id: randomBytes(8).toString("hex"), wallet: w1, mint: rows[0].pubkey, w: w1, state: "prepared" },
+        ...{ name: "T", symbol: "T", uri: "ipfs://t", solIn: 1n, exit: "burn" },
+      });
+      await release(tx, rows[0].idx, "failed");
+      expect(await reserve(tx, w2)).toEqual(rows[1]);
+    });
+  });
 });

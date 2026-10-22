@@ -59,19 +59,24 @@ export function mintKeyFor(
 }
 
 const free = or(isNull(vanityMints.reservedUntil), lt(vanityMints.reservedUntil, sql`now()`));
-// An expired reservation whose launch is signed, sent, unknown or landed may still land: never hand it out.
+// An expired or released reservation whose launch is signed, sent, unknown or landed may still land, and a
+// prepared tx from the last 2 minutes may still be signed (blockhash life is 60-90 s): never hand either out.
 const inFlight = notExists(
   sql`(select 1 from ${launches} where ${launches.mint} = ${vanityMints.pubkey}
-       and ${launches.state} in ('signed','sent','unknown','landed'))`,
+       and (${launches.state} in ('signed','sent','unknown','landed')
+         or (${launches.state} = 'prepared' and ${launches.createdAt} > now() - interval '2 minutes')))`,
 );
 const ready = and(isNull(vanityMints.usedAt), free, inFlight);
 const picked = { idx: vanityMints.idx, pubkey: vanityMints.pubkey };
 
-// Same wallet inside the 10-minute window gets its mint back; otherwise one statement claims the lowest free row.
+const hold = sql`now() + interval '10 minutes'`;
+
+// Same wallet inside the 10-minute window gets its mint back with the hold renewed, so the hold always covers
+// its newest prepared tx (WR-03); otherwise one statement claims the lowest free row.
 export async function reserve(exec: Exec, wallet: string): Promise<{ idx: bigint; pubkey: string } | null> {
   const [live] = await exec
-    .select(picked)
-    .from(vanityMints)
+    .update(vanityMints)
+    .set({ reservedUntil: hold })
     .where(
       and(
         eq(vanityMints.reservedBy, wallet),
@@ -79,7 +84,7 @@ export async function reserve(exec: Exec, wallet: string): Promise<{ idx: bigint
         isNull(vanityMints.usedAt),
       ),
     )
-    .limit(1);
+    .returning(picked);
   if (live) return live;
   const next = exec
     .select({ idx: vanityMints.idx })
@@ -90,7 +95,7 @@ export async function reserve(exec: Exec, wallet: string): Promise<{ idx: bigint
     .for("update", { skipLocked: true });
   const [row] = await exec
     .update(vanityMints)
-    .set({ reservedBy: wallet, reservedUntil: sql`now() + interval '10 minutes'` })
+    .set({ reservedBy: wallet, reservedUntil: hold })
     // A scalar "= (subquery)" runs once; "IN (subquery)" was re-run per row and reserved every free mint.
     .where(sql`${vanityMints.idx} = (${next})`)
     .returning(picked);

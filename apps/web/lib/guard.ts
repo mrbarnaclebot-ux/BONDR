@@ -48,12 +48,15 @@ export const BASE58_KEY = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 // ponytail: per-instance memory while web runs one replica; move to a Postgres counter if web scales out.
 // Each entry keeps its own end time, so a sweep never cuts short a scope with a longer window.
 const hits = new Map<string, { end: number; n: number }>();
+const MAX_KEYS = 10_000;
 
 /** Fixed window. Seconds to wait when key is over limit, else null. */
 export function take(key: string, now: number, limit: number, windowMs: number): number | null {
   let h = hits.get(key);
   if (!h || now >= h.end) {
-    if (hits.size >= 10_000) for (const [k, v] of hits) if (now >= v.end) hits.delete(k);
+    if (hits.size >= MAX_KEYS) for (const [k, v] of hits) if (now >= v.end) hits.delete(k);
+    // Still full of live windows: drop the oldest (a Map keeps insertion order), so memory stays bounded.
+    if (hits.size >= MAX_KEYS) hits.delete(hits.keys().next().value as string);
     h = { end: now + windowMs, n: 0 };
     hits.set(key, h);
   }
@@ -67,7 +70,10 @@ export function clientIp(req: Request): string | null {
   return h.get("x-real-ip")?.trim() || h.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null;
 }
 
-/** Counts the request against the IP and, when given, the wallet; a 429 when either is over, else null. */
+/**
+ * Counts the request against the IP, then, only if the IP is under its limit, the wallet; a 429 when either is
+ * over, else null. An IP over its limit never adds wallet keys (web WR-01).
+ */
 export function rateLimited(
   req: Request,
   scope: string,
@@ -76,12 +82,12 @@ export function rateLimited(
   wallet?: string,
 ): Response | null {
   const ip = clientIp(req);
-  const keys = [ip && `${scope}:ip:${ip}`, wallet && `${scope}:wallet:${wallet}`].filter(Boolean) as string[];
   const now = Date.now();
-  const waits = keys.map((k) => take(k, now, limit, windowMs)).filter((w) => w !== null);
-  if (!waits.length) return null;
+  const ipWait = ip ? take(`${scope}:ip:${ip}`, now, limit, windowMs) : null;
+  const wait = ipWait ?? (wallet ? take(`${scope}:wallet:${wallet}`, now, limit, windowMs) : null);
+  if (wait === null) return null;
   return Response.json(
     { error: "rate_limited" },
-    { status: 429, headers: { "retry-after": String(Math.max(...waits)), "cache-control": "no-store" } },
+    { status: 429, headers: { "retry-after": String(wait), "cache-control": "no-store" } },
   );
 }

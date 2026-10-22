@@ -31,3 +31,18 @@ test("rateLimited limits per IP and per wallet with a 429 rate_limited", async (
   // Scopes count apart.
   expect(rateLimited(req("10.0.0.1"), "g2", 1, W)).toBeNull();
 });
+
+test("an IP over its limit adds no wallet key, so it cannot charge a wallet it names (WR-01)", () => {
+  const req = (ip: string) => new Request("https://x.test/", { headers: { "x-real-ip": ip } });
+  expect(rateLimited(req("10.1.0.1"), "g3", 1, W)).toBeNull();
+  expect(rateLimited(req("10.1.0.1"), "g3", 1, W, "walletC")?.status).toBe(429);
+  expect(rateLimited(req("10.1.0.2"), "g3", 1, W, "walletC")).toBeNull();
+});
+
+test("the map stays bounded: once full of live windows the oldest key is dropped (WR-01)", () => {
+  const t = 5_000_000;
+  take("cap:first", t, 1, W);
+  expect(take("cap:first", t, 1, W)).not.toBeNull();
+  for (let i = 0; i < 10_000; i++) take(`cap:${i}`, t, 1, W);
+  expect(take("cap:first", t, 1, W)).toBeNull(); // dropped, so it starts a fresh window
+});

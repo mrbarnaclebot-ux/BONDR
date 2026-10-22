@@ -1,7 +1,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { close, db, launches, settings, vanityMints, wallets } from "./db.ts";
 
@@ -11,6 +11,7 @@ if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFil
 
 const wallet = `test-${randomBytes(8).toString("hex")}`;
 const mint = `test-${randomBytes(8).toString("hex")}`;
+const other = `test-${randomBytes(8).toString("hex")}`;
 
 function launch(over: Partial<typeof launches.$inferInsert> = {}): typeof launches.$inferInsert {
   return {
@@ -45,7 +46,9 @@ const insert = (row: typeof launches.$inferInsert) => db().insert(launches).valu
 describe.skipIf(!process.env.DATABASE_URL)("database constraints", { timeout: 30_000 }, () => {
   afterAll(async () => {
     await db().delete(launches).where(eq(launches.wallet, wallet));
-    await db().delete(vanityMints).where(eq(vanityMints.pubkey, mint));
+    await db()
+      .delete(vanityMints)
+      .where(inArray(vanityMints.pubkey, [mint, other]));
     await db().delete(wallets).where(eq(wallets.address, wallet));
     await close();
   }, 30_000);
@@ -55,7 +58,7 @@ describe.skipIf(!process.env.DATABASE_URL)("database constraints", { timeout: 30
     // Negative idx never collides with a grinder index.
     await db()
       .insert(vanityMints)
-      .values({ idx: -BigInt(randomInt(1, 2 ** 47)), pubkey: mint });
+      .values([mint, other].map((pubkey) => ({ idx: -BigInt(randomInt(1, 2 ** 47)), pubkey })));
   }, 30_000);
 
   test("an unknown state or exit is refused", async () => {
@@ -68,6 +71,12 @@ describe.skipIf(!process.env.DATABASE_URL)("database constraints", { timeout: 30
     expect(await pgCode(insert(launch()))).toBeUndefined();
     expect(await pgCode(insert(launch({ state: "landed" })))).toBeUndefined();
     expect(await pgCode(insert(launch({ state: "landed" })))).toBe("23505");
+  });
+
+  test("a second in-flight launch for one mint is refused, a failed one is not (IN-06)", async () => {
+    expect(await pgCode(insert(launch({ mint: other, state: "failed" })))).toBeUndefined();
+    expect(await pgCode(insert(launch({ mint: other, state: "signed" })))).toBeUndefined();
+    expect(await pgCode(insert(launch({ mint: other, state: "sent" })))).toBe("23505");
   });
 
   test("settings has the one seeded row and refuses a second", async () => {

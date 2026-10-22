@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "launches_inflight_mint" ON "launches" USING btree (mint) WHERE state in ('signed','sent','unknown');

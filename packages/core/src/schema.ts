@@ -79,5 +79,7 @@ export const launches = pgTable(
     check("launches_exit", sql`exit in ('burn','sell')`),
     // A mint can be retried after a failure, but only one launch of it may ever land.
     uniqueIndex("launches_landed_mint").on(sql`mint`).where(sql`state = 'landed'`),
+    // And only one may be in flight: a second co-signed launch of it could only fail on chain at the dev's cost.
+    uniqueIndex("launches_inflight_mint").on(sql`mint`).where(sql`state in ('signed','sent','unknown')`),
   ],
 );

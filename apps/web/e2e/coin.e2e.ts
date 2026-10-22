@@ -153,3 +153,10 @@ test.describe("found", () => {
     });
   }
 });
+
+test("the image optimizer refuses IPFS URLs instead of proxying them (web WR-07)", async ({ request }) => {
+  const res = await request.get(
+    `/_next/image?url=${encodeURIComponent("https://ipfs.io/ipfs/bafkrei")}&w=64&q=75`,
+  );
+  expect(res.status()).toBe(400);
+});

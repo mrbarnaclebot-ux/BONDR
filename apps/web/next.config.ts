@@ -35,17 +35,13 @@ const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
 ];
 
-// Coin images: the owner's dedicated Pinata gateway host when set, and ipfs.io (the on-chain URI) always.
-const gateway = process.env.PINATA_GATEWAY?.trim()
-  .replace(/^https?:\/\//, "")
-  .replace(/\/.*$/, "");
-const IMAGE_HOSTS = [gateway, "ipfs.io"].filter(Boolean).map((host) => new URL(`https://${host}/ipfs/**`));
-
 const config: NextConfig = {
   transpilePackages: ["@bondr/core"], // raw .ts exports (D-15)
   poweredByHeader: false,
   allowedDevOrigins: ["127.0.0.1"], // the e2e baseURL; next dev otherwise blocks its own scripts and HMR there
-  images: { remotePatterns: IMAGE_HOSTS },
+  // No images.remotePatterns: no coin image goes through /_next/image yet (both use unoptimized or CSS), and
+  // allowing IPFS hosts would make it a public IPFS proxy on the gateway quota (web WR-07). Phase 3 adds the
+  // dedicated gateway alone, with a response size cap, when coin lists route images through it.
   agentRules: false, // next dev would otherwise write a second AGENTS.md here, shadowing the root one
   // The browser has no runtime env, so the client Sentry environment is fixed at build time.
   env: { NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT_NAME ?? "local" },

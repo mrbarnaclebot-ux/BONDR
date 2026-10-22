@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
 import { injectPhantom, newTestAccount, rootEnv, signIn } from "./phantom.ts";
@@ -152,7 +153,11 @@ test("the launch routes take the wallet from the session, never from the body", 
     uri: `https://ipfs.io/ipfs/${cid}`,
     imageCid: cid,
   };
-  const data = { ...fields, solIn: minLamports, exit: "burn", wallet: owner.address };
+  // The pin route's proof (lib/session.ts pinProof), so prepare reaches the worker without a real pin.
+  const proof = createHmac("sha256", rootEnv().SESSION_SECRET ?? "")
+    .update(JSON.stringify(["pin", fields.uri, cid]))
+    .digest("base64url");
+  const data = { ...fields, proof, solIn: minLamports, exit: "burn", wallet: owner.address };
   const prepare = () => request.post("/api/launch/prepare", { headers, data });
 
   // No session: refused before the worker, whatever wallet the body names.
@@ -164,6 +169,9 @@ test("the launch routes take the wallet from the session, never from the body", 
   expect(await submit.json()).toEqual({ error: "consent_required" });
 
   expect((await signIn(request, owner)).status()).toBe(204);
+  // Metadata the pin route did not build is refused before the worker (worker-core WR-06).
+  const unpinned = await request.post("/api/launch/prepare", { headers, data: { ...data, proof: "x" } });
+  expect(await unpinned.json()).toEqual({ error: "invalid_input" });
   // The body names an unconsented wallet, but the worker gets the session's consented one: it passes the consent
   // check and stops at the balance (a fresh key holds 0 SOL) or the pool, so nothing is spent.
   data.wallet = forged.address;

@@ -9,7 +9,7 @@ Playwright specs (`*.e2e.ts`, run with `pnpm e2e`) and their helpers. `E2E_BASE_
 - `launch-live.e2e.ts`: steps 4 and 5. The stubbed group covers every failure state and the reload restore; the devnet group (`E2E_DEVNET=1`) runs one real minimum launch and checks the 5 s success window.
 - `coin.e2e.ts`: the token page. The 404 group covers unknown, malformed, failed-only and prepared-only mints; the found group reads the newest landed devnet launch, plus a throwaway landed row with links (its fake mint has used_at set, so the pool never hands it out; both rows are deleted after).
 - `wallet.e2e.ts`: connect, disconnect and account switching.
-- `consent.e2e.ts`: the consent prompt and its server row: Accept signs once and a reload keeps the session, a rejected signature stores nothing, a bad signature is refused, and the launch routes ignore a wallet in the body.
+- `consent.e2e.ts`: the consent prompt and its server row: Accept signs once and a reload keeps the session, a rejected signature stores nothing, a bad signature is refused, the launch routes ignore a wallet in the body, and prepare refuses metadata the pin route did not build.
 - `pin.e2e.ts`: the pin route's refusals.
 - `terms.e2e.ts`: the terms page.
 - `responsive.e2e.ts`: the UI-SPEC matrix, 12 surfaces at 390, 768 and 1440: no horizontal scroll, 0 axe violations, and a full-page screenshot each in `.planning/phases/02-launch-flow/screenshots/` (`-staging` suffix when `E2E_BASE_URL` is set). Steps 4 and 5 use the launch-live stubs. `E2E_COIN_MINT` sets the coin page's mint (staging); otherwise it is the newest landed launch on the dev branch.

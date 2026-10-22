@@ -1,5 +1,5 @@
 import { json, rateLimited, sameOrigin } from "@/lib/guard";
-import { consentRequired, sessionWallet } from "@/lib/session";
+import { consentRequired, pinnedHere, sessionWallet } from "@/lib/session";
 import { workerPost } from "@/lib/worker";
 
 const MAX_BODY = 16 * 1024;
@@ -18,7 +18,9 @@ export async function POST(req: Request): Promise<Response> {
   if (limited) return limited;
   if (!wallet) return consentRequired();
   const body = (await json(req, MAX_BODY)) as Record<string, unknown> | null;
-  if (!body) return Response.json({ error: "invalid_input" }, { status: 400 });
+  // The uri and image must be the ones the pin route built, never a hand-pinned JSON (worker-core WR-06).
+  if (!body || !pinnedHere(body.proof, body.uri, body.imageCid))
+    return Response.json({ error: "invalid_input" }, { status: 400 });
   const fields = Object.fromEntries(FIELDS.map((k) => [k, body[k]]));
   const { status, body: out } = await workerPost("/prepare", { ...fields, wallet }, PREPARE_TIMEOUT_MS);
   return Response.json(out, { status, headers: { "cache-control": "no-store" } });

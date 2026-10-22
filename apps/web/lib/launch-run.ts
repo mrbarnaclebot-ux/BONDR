@@ -92,8 +92,8 @@ async function pin(run: Run): Promise<Pinned> {
 async function prepare(run: Run, pinned: Pinned): Promise<PrepareResult> {
   const solIn = parseSol(run.state.devBuy);
   if (!solIn.ok || !run.state.exit) throw new Stop("invalid_input");
-  const { uri, imageCid } = pinned;
-  const body = { ...metaOf(run.state.fields), uri, imageCid, solIn: String(solIn.value) };
+  const { uri, imageCid, proof } = pinned;
+  const body = { ...metaOf(run.state.fields), uri, imageCid, proof, solIn: String(solIn.value) };
   return call<PrepareResult>("/api/launch/prepare", { ...body, exit: run.state.exit }, run.signal);
 }
 

@@ -15,6 +15,6 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `format.test.ts`: the display formats.
 - `use-status.ts`: `useStatus()`, polls `/api/status` every 10 s.
 - `terms.ts`: `TERMS_VERSION`, stored with each consent, and `consentMessage`, the text Phantom signs at consent (browser and server share it).
-- `session.ts`: server-only consent proof (CR-01): `issueNonce`, `verifyConsent` (Ed25519 through `@bondr/core/sig`, nonce single use and expiry), `sessionCookie`, `sessionWallet` and `consentRequired`. Nonce and cookie are HMAC-sealed with `SESSION_SECRET`.
-- `session.test.ts`: nonce expiry and single use, wrong signer, tampered nonce, cookie expiry and edits.
+- `session.ts`: server-only consent proof (CR-01): `issueNonce`, `verifyConsent` (Ed25519 through `@bondr/core/sig`, nonce single use and expiry), `sessionCookie`, `sessionWallet` and `consentRequired`, plus `pinProof` and `pinnedHere`, which tie a prepare to metadata the pin route built (worker-core WR-06). Nonce, cookie and pin proof are HMACs with `SESSION_SECRET`.
+- `session.test.ts`: nonce expiry and single use, wrong signer, tampered nonce, cookie expiry and edits, pin proof scope.
 - `cn.ts`: `cn()`, clsx plus tailwind-merge.

@@ -17,7 +17,8 @@ export type Step = 1 | 2 | 3 | 4 | 5;
 export type Fields = { name: string; symbol: string; description: string } & Record<LinkKey, string>;
 export type LinkKey = "x" | "telegram" | "website";
 export type Picked = { file: File; url: string; width: number; height: number };
-export type Pinned = { uri: string; cid: string; imageCid: string };
+/** `proof` is the pin route's HMAC over uri and imageCid; prepare refuses metadata it did not pin. */
+export type Pinned = { uri: string; cid: string; imageCid: string; proof: string };
 export type Launch = {
   step: Step;
   fields: Fields;

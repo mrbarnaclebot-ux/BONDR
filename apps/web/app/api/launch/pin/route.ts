@@ -11,7 +11,7 @@ import {
 } from "@bondr/core/rules";
 import { rateLimited, sameOrigin } from "@/lib/guard";
 import { ipfsUri, type MetaFields, metadataJson, PinError, pinFile } from "@/lib/pinata";
-import { consentRequired, sessionWallet } from "@/lib/session";
+import { consentRequired, pinProof, sessionWallet } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -93,7 +93,8 @@ async function pin(meta: MetaFields, bytes: Uint8Array<ArrayBuffer>, type: strin
     const cid = await pinFile(json, `${meta.symbol}.json`, jwt);
     const uri = ipfsUri(cid);
     if (!checkUri(uri).ok) throw new PinError(200);
-    return Response.json({ uri, cid, imageCid }, { headers: { "cache-control": "no-store" } });
+    const proof = pinProof(uri, imageCid);
+    return Response.json({ uri, cid, imageCid, proof }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
     console.error("pin failed", e instanceof PinError ? e.status : "unknown");
     return fail(502, "pin_failed");

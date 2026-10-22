@@ -2,7 +2,15 @@
 import { createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import bs58 from "bs58";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { COOKIE, issueNonce, sessionCookie, sessionWallet, verifyConsent } from "./session";
+import {
+  COOKIE,
+  issueNonce,
+  pinnedHere,
+  pinProof,
+  sessionCookie,
+  sessionWallet,
+  verifyConsent,
+} from "./session";
 import { consentMessage } from "./terms";
 
 vi.mock("server-only", () => ({}));
@@ -59,4 +67,14 @@ test("the session cookie names its wallet until it expires and cannot be edited"
 test("without SESSION_SECRET nothing is issued", () => {
   vi.stubEnv("SESSION_SECRET", "");
   expect(() => issueNonce()).toThrow(/SESSION_SECRET/);
+});
+
+test("a pin proof holds only for the exact uri and image it was issued for (worker-core WR-06)", () => {
+  const [uri, cid] = [`https://ipfs.io/ipfs/${"b".repeat(59)}`, "c".repeat(59)];
+  const proof = pinProof(uri, cid);
+  expect(pinnedHere(proof, uri, cid)).toBe(true);
+  expect(pinnedHere(proof, `${uri}x`, cid)).toBe(false);
+  expect(pinnedHere(proof, uri, "d".repeat(59))).toBe(false);
+  expect(pinnedHere(undefined, uri, cid)).toBe(false);
+  expect(pinnedHere(sessionCookie("w").split(";")[0]?.split("=")[1], uri, cid)).toBe(false);
 });

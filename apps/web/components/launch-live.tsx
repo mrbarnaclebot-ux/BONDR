@@ -18,12 +18,17 @@ function useFacts(v: LaunchView, dispatch: Dispatch<Action>) {
   useEffect(() => {
     if (v.facts) return;
     let n = 0;
+    // A read still in flight after "Launch another" must not take the user back to the old coin (web WR-06).
+    let live = true;
     const timer = setInterval(async () => {
       if (++n >= FACT_POLLS) clearInterval(timer);
       const next = await getView(v.id);
-      if (next && next !== "not_found" && next.facts) dispatch({ type: "live", view: next });
+      if (live && next && next !== "not_found" && next.facts) dispatch({ type: "live", view: next });
     }, 1000);
-    return () => clearInterval(timer);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
   }, [v.id, v.facts, dispatch]);
 }
 

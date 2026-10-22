@@ -73,6 +73,21 @@ test.describe("stubbed", () => {
     expect([calls.prepare, calls.submit]).toEqual([1, 1]);
   });
 
+  test("Launch another stays on step 1 when a facts read lands after it (web WR-06)", async ({ page }) => {
+    const calls = await stub(page, {
+      view: (n) =>
+        n === 1 ? { json: view("landed") } : { json: view("landed", { facts: FACTS }), delayMs: 2500 },
+    });
+    await toSign(page, newTestAccount());
+    await expect(page.getByRole("heading", { name: "GRUB is live." })).toBeVisible({ timeout: 15_000 });
+    await expect.poll(() => calls.view).toBeGreaterThanOrEqual(2); // a facts read is in flight
+    const late = page.waitForResponse(/\/api\/launch\/[0-9a-f]{32}$/);
+    await page.getByRole("button", { name: "Launch another" }).click();
+    await late;
+    await page.waitForTimeout(500); // a render after the late read would show step 5 again
+    await expect(current(page)).toHaveText(/01\s*Coin/);
+  });
+
   test("a Phantom rejection fails row 3 with Try again and sends nothing", async ({ page }) => {
     const calls = await stub(page, {});
     await toSign(page, newTestAccount(), { reject: true });

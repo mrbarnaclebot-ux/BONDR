@@ -2,7 +2,7 @@
 // (D-15), so every one of them comes from here. Read on demand and cached 5 s: no polling loop (Pitfall 6).
 import type { PauseReason, Quote, Status } from "@bondr/core/api";
 import { db, settings } from "@bondr/core/db";
-import { AwaitingMigration, launchQuote, quoteVenue, type Venue } from "@bondr/core/launch";
+import { AwaitingMigration, creatorFeeFor, launchQuote, quoteVenue, type Venue } from "@bondr/core/launch";
 import { estimateSolBack, minLamports } from "@bondr/core/math";
 import { redact } from "@bondr/core/net";
 import {
@@ -50,14 +50,15 @@ export function pauseReason(s: { enabled: boolean; venue: Where }): PauseReason 
 export const networkFee = (microLamports: number): bigint =>
   2n * 5000n + (BigInt(microLamports) * BigInt(LAUNCH_CU_LIMIT)) / 1_000_000n;
 
-// A fresh child curve quoted in BONDR at the network's default creator fee (D-01: never a constant).
-function childFees(
+// A fresh child curve quoted in BONDR at the creator fee the launch is built with (creatorFeeFor, D-01).
+export function childFees(
   g: Global,
-  fc: FeeConfig,
+  fc: FeeConfig | null,
   Q: PublicKey,
-  pq: NonNullable<Awaited<ReturnType<Online["fetchPumpQuote"]>>>,
+  pq: Pick<NonNullable<Awaited<ReturnType<Online["fetchPumpQuote"]>>>, "curve">,
 ) {
-  const child = newBondingCurve(g, Q, pq.curve.quoteControl, undefined, false, pq.curve);
+  const creatorFeeBps = creatorFeeFor(g);
+  const child = newBondingCurve(g, Q, pq.curve.quoteControl, creatorFeeBps, false, pq.curve);
   return computeFeesBps({
     global: g,
     feeConfig: fc,
@@ -65,6 +66,7 @@ function childFees(
     virtualQuoteReserves: child.virtualQuoteReserves,
     virtualTokenReserves: child.virtualTokenReserves,
     quoteMint: child.quoteMint,
+    creatorFeeBps,
   });
 }
 

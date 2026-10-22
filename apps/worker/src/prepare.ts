@@ -167,8 +167,8 @@ async function reserveMint(ctx: PrepareCtx, wallet: string) {
   return mint;
 }
 
-async function optsFor(ctx: PrepareCtx, req: Req, mint: string): Promise<LaunchOpts> {
-  const g = await ctx.online.fetchGlobal();
+// The creator fee is not set here: buildLaunch takes it from the live Global (creatorFeeFor, D-01).
+function optsFor(ctx: PrepareCtx, req: Req, mint: string): LaunchOpts {
   return {
     ...{ name: req.name, symbol: req.symbol, uri: req.uri, online: ctx.online, Q: ctx.Q },
     mint: new PublicKey(mint),
@@ -176,8 +176,6 @@ async function optsFor(ctx: PrepareCtx, req: Req, mint: string): Promise<LaunchO
     dev: new PublicKey(req.wallet),
     solIn: new BN(req.solIn.toString()),
     exit: req.exit,
-    // D-01: BONDR's rate only where the live Global allows a per-coin rate; devnet runs pump's default.
-    creatorFeeBps: g.creatorFeeConfigurable ? new BN(150) : undefined,
     cuLimit: LAUNCH_CU_LIMIT,
     priorityFee: ctx.priorityFee,
   };
@@ -252,7 +250,7 @@ async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult
   const balance = await ctx.conn.getBalance(new PublicKey(req.wallet));
   if (BigInt(balance) < need) throw fail({ error: "insufficient_balance" });
   const mint = await reserveMint(ctx, req.wallet);
-  const o = await optsFor(ctx, req, mint.pubkey);
+  const o = optsFor(ctx, req, mint.pubkey);
   const union = await unionTableKeys(o);
   // Same mint after an expired hold: its table still fits this wallet, so look it up by mint.
   const held = prior?.mint === mint.pubkey ? prior : await tableFor(db(), req.wallet, mint.pubkey);

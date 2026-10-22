@@ -63,6 +63,11 @@ export function buildCreate(
   });
 }
 
+// D-01: BONDR's 150 bps per coin only where the live Global allows a per-coin rate; elsewhere (devnet) the
+// network default. Quotes, the status fees and the build all read it here, so they never disagree (WR-07).
+export const creatorFeeFor = (g: Global): BN | undefined =>
+  g.creatorFeeConfigurable ? new BN(150) : undefined;
+
 type Online = InstanceType<typeof OnlinePumpSdk>;
 type PumpQuote = NonNullable<Awaited<ReturnType<Online["fetchPumpQuote"]>>>;
 type FeeConfig = Awaited<ReturnType<Online["fetchFeeConfig"]>>;
@@ -147,6 +152,7 @@ async function price(online: Online, Q: PublicKey, solIn: BN, user: PublicKey, c
   const g = await online.fetchGlobal();
   const [fc, pq] = await Promise.all([online.fetchFeeConfig(), online.fetchPumpQuote(Q, { global: g })]);
   if (!pq) throw new Error(`fetchPumpQuote returned null for ${Q.toBase58()}`);
+  const fee = creatorFeeBps ?? creatorFeeFor(g);
   const f: Fees = { online, g, fc, Q };
   let pool: Pooled | undefined;
   if (venue === "pool") {
@@ -154,7 +160,7 @@ async function price(online: Online, Q: PublicKey, solIn: BN, user: PublicKey, c
     pool = { amm, ...(await poolState({ amm, mint: Q, quoteMint: NATIVE_MINT, user })) };
   }
   const qMin = pct(pool ? poolBaseFor(pool.state, solIn) : await curveQOut(f, solIn), 9900);
-  return { venue, g, pq, pool, qMin, amount: childAmount(f, pq, qMin, creatorFeeBps) };
+  return { venue, g, pq, pool, qMin, fee, amount: childAmount(f, pq, qMin, fee) };
 }
 type Priced = Awaited<ReturnType<typeof price>>;
 
@@ -206,6 +212,7 @@ export async function buildLaunch(o: LaunchOpts) {
   const p = await price(o.online, o.Q, o.solIn, o.dev, o.creatorFeeBps);
   const create = await buildCreate({
     ...o,
+    creatorFeeBps: p.fee,
     creator: o.W,
     user: o.dev,
     quoteMint: o.Q,

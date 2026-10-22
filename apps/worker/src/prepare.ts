@@ -40,7 +40,7 @@ import {
   tableFor,
 } from "./launches.ts";
 import { type Ctx, LAUNCH_CU_LIMIT, liveStatus, MAX_SOL_IN, networkFee } from "./status.ts";
-import { reserve } from "./vanity.ts";
+import { markUsed, reserve } from "./vanity.ts";
 
 export type PrepareCtx = Ctx & { env: WorkerEnv };
 type Req = Omit<PrepareRequest, "solIn"> & { solIn: bigint };
@@ -158,6 +158,12 @@ async function reserveMint(ctx: PrepareCtx, wallet: string) {
   const mint = await reserve(db(), wallet);
   void startRefill(ctx.env);
   if (!mint) throw fail({ error: "pool_empty" });
+  // Already on chain (a landed launch the DB missed): retired before ops pays a table for it (WR-04).
+  if (await ctx.conn.getAccountInfo(new PublicKey(mint.pubkey))) {
+    await markUsed(db(), mint.pubkey);
+    console.error(`prepare retired vanity ${mint.idx}: its mint already exists on chain`);
+    throw fail({ error: "build_failed" });
+  }
   return mint;
 }
 

@@ -9,6 +9,8 @@ const m = vi.hoisted(() => ({
   createTable: vi.fn(),
   union: vi.fn(),
   insertFailed: vi.fn(),
+  markUsed: vi.fn(),
+  onChain: vi.fn(),
 }));
 vi.mock("@bondr/core/db", async (orig) => ({ ...(await orig()), db: () => ({}) }));
 vi.mock("@bondr/core/alt", async (orig) => ({ ...(await orig()), createTable: m.createTable }));
@@ -26,7 +28,7 @@ vi.mock("./launches.ts", async (orig) => ({
   tableFor: async () => null,
   insertFailed: m.insertFailed,
 }));
-vi.mock("./vanity.ts", async (orig) => ({ ...(await orig()), reserve: m.reserve }));
+vi.mock("./vanity.ts", async (orig) => ({ ...(await orig()), reserve: m.reserve, markUsed: m.markUsed }));
 
 const body = {
   wallet: Keypair.generate().publicKey.toBase58(),
@@ -40,7 +42,7 @@ const body = {
 };
 
 function ctxWith(balance: number): PrepareCtx {
-  const conn = { getBalance: async () => balance };
+  const conn = { getBalance: async () => balance, getAccountInfo: m.onChain };
   const online = { fetchGlobal: async () => ({ creatorFeeConfigurable: false }) };
   const env = { seed: Buffer.alloc(32, 1), net: "devnet", lane: "local" };
   return { conn, online, Q: Keypair.generate().publicKey, priorityFee: 0, env } as unknown as PrepareCtx;
@@ -54,6 +56,7 @@ beforeEach(() => {
   m.reserve.mockResolvedValue({ idx: 1n, pubkey: MINT });
   m.union.mockResolvedValue({ keys: [PublicKey.unique()], builds: {} });
   m.insertFailed.mockResolvedValue(undefined);
+  m.onChain.mockResolvedValue(null);
 });
 
 const recorded = () =>
@@ -81,4 +84,11 @@ test("a paid table is recorded when the re-price after it throws (WR-02)", async
     .mockRejectedValueOnce(new Error("429"));
   await expect(prepare(ctxWith(1e10), body)).rejects.toThrow("429");
   recorded();
+});
+
+test("a reserved mint that already exists on chain is retired before any table is paid (WR-04)", async () => {
+  m.onChain.mockResolvedValue({ lamports: 1 });
+  await expect(prepare(ctxWith(1e10), body)).rejects.toMatchObject({ body: { error: "build_failed" } });
+  expect(m.markUsed).toHaveBeenCalledWith(expect.anything(), MINT);
+  expect(m.createTable).not.toHaveBeenCalled();
 });

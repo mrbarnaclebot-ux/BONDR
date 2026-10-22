@@ -83,8 +83,13 @@ export function launchFacts(
 }
 
 async function landed(conn: Connection, row: Row): Promise<void> {
-  if (!(await advance(db(), row.id, row.state as LaunchState, "landed", { landedAt: new Date() }))) return;
-  await markUsed(db(), row.mint);
+  // One transaction: a landed mint is never left free in the pool by a failed second write (WR-04).
+  const moved = await db().transaction(async (tx) => {
+    const r = await advance(tx, row.id, row.state as LaunchState, "landed", { landedAt: new Date() });
+    if (r) await markUsed(tx, row.mint);
+    return r;
+  });
+  if (!moved) return;
   const tx = await fetchTx(conn, row.signature ?? "");
   if (tx) await advance(db(), row.id, "landed", "landed", { facts: launchFacts(tx, row) });
 }

@@ -111,6 +111,8 @@ const walletWait = wallet ? take(`${scope}:wallet:${wallet}`, now, limit, window
 
 ### WR-02: Wallet-keyed limits and consent trust an unauthenticated wallet string, so anyone can lock out a victim's wallet
 
+**Status:** fixed (2026-10-22) in 2e7bc81, the proper fix, the same as worker-core CR-01. Consent now needs a Phantom `signMessage` over a server nonce plus `TERMS_VERSION`, verified server-side before `wallets` is written. Pin, prepare and submit read the wallet from the resulting session cookie, never from the body. So only the owner's browser can charge a wallet bucket or write a consent row.
+
 **File:** `apps/web/app/api/launch/pin/route.ts:79`, `apps/web/app/api/launch/prepare/route.ts:28`, `apps/web/app/api/consent/route.ts:13-21`
 **Issue:** the `wallet` in pin, prepare and consent is a bare string, with no signature showing the caller owns it. The per-wallet bucket is charged before the consent check (pin) or before the worker is called at all (prepare).
 **Failure scenario:**

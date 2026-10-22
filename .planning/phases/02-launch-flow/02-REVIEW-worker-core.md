@@ -68,6 +68,11 @@ The real exposure is the **ops-SOL and availability path**. Nothing proves the `
 
 ### CR-01: Anyone can make ops pay for lookup tables using a wallet they do not own, and can block every new launch
 
+**Status:** fixed (2026-10-22) in 2e7bc81 and 0efc98e. Owner decision: sign once at consent.
+- 2e7bc81: the consent dialog asks Phantom to `signMessage` a plain-English consent text. The text names BONDR, the wallet, a server nonce and an expiry. Web verifies it with node:crypto Ed25519 (`signatureOk`, moved to `core/sig.ts`). The nonce is HMAC-sealed, expires after 5 min and is single use. Web then sets a 12 h HttpOnly, SameSite=Strict session cookie (Secure in production), HMAC-sealed with `SESSION_SECRET`. `/api/launch/pin`, `/prepare` and `/submit` read the wallet from that session only. Submit also checks that the launch row belongs to it. A missing or mismatched session returns `consent_required`. The worker still checks `consented`.
+- 0efc98e: a per-wallet cap of 10 new tables per day (`newTablesToday`, next to `TABLE_CAP`), and `ensureTable` now refuses a new table below a 0.05 SOL ops floor (it used to only warn).
+- **Deferred:** the table-close scheduler (deactivate, then close after about 513 slots). Signed consent and the two caps now bound the rent at risk. Closing needs a background job with its own state, plus a check that no prepared or in-flight row still uses the table, and that is new chain code. WR-02 (record every paid table) should land first, so the scheduler has a complete list to close.
+
 **File:** `apps/worker/src/prepare.ts:105-111, 124-142, 229-239` (with `apps/web/app/api/consent/route.ts:8-28`, `apps/web/app/api/launch/prepare/route.ts:21-31`)
 
 **Issue:** `/prepare` takes `wallet` as a bare string. Neither web nor the worker asks for proof that the caller controls it:

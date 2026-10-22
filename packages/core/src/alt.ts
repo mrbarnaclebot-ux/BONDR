@@ -59,16 +59,17 @@ export async function freshSlot(conn: Connection, authority: PublicKey): Promise
   const id = authority.toBase58();
   for (let i = 0; i < 60; i++) {
     // The create checks recentSlot against the SlotHashes of the bank it runs in, which holds only slots
-    // before its own: a finalized slot equal to the confirmed tip (devnet finality can be that close) fails
-    // with "is not a recent slot", so take it only once the tip has moved past it.
-    const [slot, tip] = await Promise.all([conn.getSlot("finalized"), conn.getSlot("confirmed")]);
-    if (slot < tip && slot > (usedSlot.get(id) ?? -1)) {
+    // before its own. Devnet's finalized slot often equals the confirmed one the preflight runs at, so take
+    // the newest rooted block strictly below it (a block, not a slot number: skipped slots are not listed).
+    const tip = await conn.getSlot("finalized");
+    const slot = (await conn.getBlocks(Math.max(0, tip - 32), tip - 1, "finalized")).at(-1);
+    if (slot !== undefined && slot > (usedSlot.get(id) ?? -1)) {
       usedSlot.set(id, slot);
       return slot;
     }
     await delay(400);
   }
-  throw new Error(`no new finalized slot below the tip for lookup table authority ${id}`);
+  throw new Error(`no new finalized block for lookup table authority ${id}`);
 }
 
 export type TableResult = {

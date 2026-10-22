@@ -132,7 +132,9 @@ export async function poll(run: Run, id: string, resend?: () => Promise<unknown>
     if (v?.state === "failed")
       throw new Stop(v.error === "paused" || v.error === "cosign_refused" ? v.error : "onchain");
     if (v?.state === "prepared" && Date.now() - start > PREPARED_MS) throw new Stop("expired");
-    if (v?.state === "prepared") await resend?.();
+    // A resend's own error never ends the launch: the first submit may still be in the worker, so only the
+    // row decides (web WR-05).
+    if (v?.state === "prepared") await resend?.().catch(() => null);
     if (v) run.set({ sig: v.signature ?? undefined, unknown: v.state === "unknown" });
     await new Promise((done) => setTimeout(done, POLL_MS));
   }

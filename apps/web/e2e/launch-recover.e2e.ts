@@ -30,3 +30,20 @@ test("a row still prepared long after the submit ends as expired, not as an endl
   await page.clock.fastForward("03:00");
   await expect(page.getByRole("main").getByRole("alert")).toContainText("This transaction expired");
 });
+
+test("a resend refused by the rate limit leaves the launch to its row, which lands (web WR-05)", async ({
+  page,
+}) => {
+  await stub(page, { view: (n) => ({ json: n < 3 ? view("prepared") : view("landed", { facts: FACTS }) }) });
+  let submits = 0;
+  await page.route("**/api/launch/submit", (r) =>
+    r.fulfill(
+      ++submits === 1
+        ? { status: 503, json: { error: "worker_unavailable" } }
+        : { status: 429, json: { error: "rate_limited" } },
+    ),
+  );
+  await toSign(page, newTestAccount());
+  await expect(page.getByRole("heading", { name: "GRUB is live." })).toBeVisible({ timeout: 15_000 });
+  expect(submits).toBeGreaterThan(1);
+});

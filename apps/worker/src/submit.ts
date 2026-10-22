@@ -31,10 +31,12 @@ const current = (row: LaunchRow): SubmitResult => ({
 });
 
 // Fails a prepared row with the contract error. A refused co-sign keeps the reservation, so Try again
-// reuses the mint and its table.
-async function refuse(row: LaunchRow, body: ApiError, keepMint = false): Promise<never> {
+// reuses the mint and its table. A concurrent submit that signed the row first wins: its state is the answer,
+// never a refusal that would tell the dev nothing was sent (web WR-05).
+async function refuse(row: LaunchRow, body: ApiError, keepMint = false): Promise<SubmitResult> {
   const failed = await advance(db(), row.id, "prepared", "failed", { error: body.error });
-  if (failed && !keepMint) await releaseMint(row.mint);
+  if (!failed) return current((await getLaunch(db(), row.id)) ?? row);
+  if (!keepMint) await releaseMint(row.mint);
   throw fail(body);
 }
 

@@ -44,3 +44,15 @@ test("freshSlot never hands one authority the same finalized slot twice", async 
 test("createTable refuses an empty key list", async () => {
   await expect(createTable({} as Connection, Keypair.generate(), [])).rejects.toThrow("at least one key");
 });
+
+test("createTable returns the table address when an RPC call throws after the address exists (WR-02)", async () => {
+  const conn = {
+    getSlot: async () => 7,
+    getLatestBlockhash: async () => {
+      throw new Error("429 Too Many Requests");
+    },
+  } as unknown as Connection;
+  const r = await createTable(conn, Keypair.generate(), [a]);
+  expect(r).toMatchObject({ ok: false, err: "429 Too Many Requests" });
+  expect(r.address).toBeDefined();
+});

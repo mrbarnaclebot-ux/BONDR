@@ -62,14 +62,18 @@ async function reusable(conn: Connection, address: string, keys: PublicKey[]) {
 }
 
 // Ops pays the table rent (PROJECT.md item 9). A prior table missing a key (BONDR changed venue) is replaced.
+// A new table that is not usable is still returned with its address: ops paid for it, so the caller records
+// it before refusing (WR-02).
 export async function ensureTable(conn: Connection, ops: Keypair, keys: PublicKey[], prior: string | null) {
   const old = prior ? await reusable(conn, prior, keys) : null;
-  if (old) return { table: old, created: false };
+  if (old) return { table: old, address: old.key.toBase58(), created: false };
   const balance = await conn.getBalance(ops.publicKey);
   if (balance < OPS_FLOOR_LAMPORTS) throw buildFailed(`ops below floor: ${balance / LAMPORTS_PER_SOL} SOL`);
   const r = await createTable(conn, ops, keys, TABLE_PACE_MS);
-  if (!r.table) throw buildFailed(`lookup table ${r.address.toBase58()}: ${r.err ?? "not warm"}`);
-  return { table: r.table, created: true };
+  const address = r.address.toBase58();
+  if (!r.table)
+    console.error(`prepare build failed: ${redact(`lookup table ${address}: ${r.err ?? "not warm"}`)}`);
+  return { table: r.table, address, created: true };
 }
 
 // Payer is the dev (signature 0) and the mint is signature 1: submit relies on that order (Pattern 3). The

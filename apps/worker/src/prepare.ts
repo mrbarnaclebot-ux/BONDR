@@ -6,6 +6,7 @@ import { db } from "@bondr/core/db";
 import { derive } from "@bondr/core/keys";
 import type { LaunchOpts } from "@bondr/core/launch";
 import { applyBps } from "@bondr/core/math";
+import { redact } from "@bondr/core/net";
 import { BN } from "@bondr/core/pump";
 import {
   checkDescription,
@@ -250,17 +251,26 @@ async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult
   // Same mint after an expired hold: its table still fits this wallet, so look it up by mint.
   const held = prior?.mint === mint.pubkey ? prior : await tableFor(db(), req.wallet, mint.pubkey);
   const reuse = held?.table ?? null;
-  const { table, created } = await ensureTable(ctx.conn, ops(ctx.env.seed, ctx.env.net), union.keys, reuse);
-  // A new table took about 5 s; price again so the probes do not run on stale amounts.
-  const builds = created ? (await unionTableKeys(o)).builds : union.builds;
+  const t = await ensureTable(ctx.conn, ops(ctx.env.seed, ctx.env.net), union.keys, reuse);
   try {
-    return await finish(ctx, req, { o, builds, table }, created);
+    if (!t.table) throw fail({ error: "build_failed" }); // ensureTable logged why
+    // A new table took about 5 s; price again so the probes do not run on stale amounts.
+    const builds = t.created ? (await unionTableKeys(o)).builds : union.builds;
+    return await finish(ctx, req, { o, builds, table: t.table }, t.created);
   } catch (e) {
-    const row = rowOf(req, o, table.key.toBase58(), true);
-    const code = e instanceof Fail ? e.body.error : "build_failed";
-    if (created) await insertFailed(db(), row, code).catch(() => undefined);
+    if (t.created) await recordPaid(rowOf(req, o, t.address, true), e);
     throw e;
   }
+}
+
+// Every table ops paid for gets a row, so the caps count it and its rent can be reclaimed (WR-02).
+async function recordPaid(row: NewLaunch, e: unknown): Promise<void> {
+  const code = e instanceof Fail ? e.body.error : "build_failed";
+  await insertFailed(db(), row, code).catch((err: unknown) =>
+    console.error(
+      `prepare could not record a paid table: ${redact(err instanceof Error ? err.message : String(err))}`,
+    ),
+  );
 }
 
 // ponytail: single-flight, because Helius free allows about 10 RPS and pace() is process-wide; per-wallet

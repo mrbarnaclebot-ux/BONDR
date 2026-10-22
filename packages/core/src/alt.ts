@@ -96,23 +96,24 @@ export async function createTable(
     recentSlot,
   });
   const out: TableResult = { address: lookupTable, ok: true, bytes: 0, cu: 0, txs: 0 };
-  for (let i = 0; i < keys.length; i += CHUNK) {
-    const extend = AddressLookupTableProgram.extendLookupTable({
-      payer: authority,
-      authority,
-      lookupTable,
-      addresses: keys.slice(i, i + CHUNK),
-    });
-    const r = await sendTx({ conn, payer, ixs: i === 0 ? [create, extend] : [extend], paceMs });
-    Object.assign(out, {
-      sig: out.sig ?? r.sig,
-      bytes: Math.max(out.bytes, r.bytes),
-      cu: (out.cu ?? 0) + (r.cu ?? 0),
-    });
-    out.txs++;
-    if (!r.ok) return { ...out, ok: false, err: r.err };
-  }
+  // From the first send on, rent may be paid: an RPC throw still returns the address, never loses it.
   try {
+    for (let i = 0; i < keys.length; i += CHUNK) {
+      const extend = AddressLookupTableProgram.extendLookupTable({
+        payer: authority,
+        authority,
+        lookupTable,
+        addresses: keys.slice(i, i + CHUNK),
+      });
+      const r = await sendTx({ conn, payer, ixs: i === 0 ? [create, extend] : [extend], paceMs });
+      Object.assign(out, {
+        sig: out.sig ?? r.sig,
+        bytes: Math.max(out.bytes, r.bytes),
+        cu: (out.cu ?? 0) + (r.cu ?? 0),
+      });
+      out.txs++;
+      if (!r.ok) return { ...out, ok: false, err: r.err };
+    }
     return { ...out, table: await warm(conn, lookupTable, keys.length) };
   } catch (e) {
     return { ...out, ok: false, err: e instanceof Error ? e.message : String(e) };

@@ -64,7 +64,10 @@ export function take(key: string, now: number, limit: number, windowMs: number):
   return h.n > limit ? Math.max(1, Math.ceil((h.end - now) / 1000)) : null;
 }
 
-/** Railway's proxy sets X-Real-IP; otherwise the rightmost X-Forwarded-For entry, the one our proxy added. */
+/**
+ * Railway's edge sets X-Real-IP to the client's address (docs.railway.com, public networking specs and limits);
+ * otherwise the rightmost X-Forwarded-For entry, the one our proxy added.
+ */
 export function clientIp(req: Request): string | null {
   const h = req.headers;
   return h.get("x-real-ip")?.trim() || h.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null;
@@ -81,9 +84,10 @@ export function rateLimited(
   windowMs: number,
   wallet?: string,
 ): Response | null {
-  const ip = clientIp(req);
+  // No address (a deploy path without the proxy headers) shares one bucket: limited, never unlimited (WR-03).
+  const ip = clientIp(req) ?? "unknown";
   const now = Date.now();
-  const ipWait = ip ? take(`${scope}:ip:${ip}`, now, limit, windowMs) : null;
+  const ipWait = take(`${scope}:ip:${ip}`, now, limit, windowMs);
   const wait = ipWait ?? (wallet ? take(`${scope}:wallet:${wallet}`, now, limit, windowMs) : null);
   if (wait === null) return null;
   return Response.json(

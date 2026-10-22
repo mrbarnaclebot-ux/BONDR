@@ -46,3 +46,9 @@ test("the map stays bounded: once full of live windows the oldest key is dropped
   for (let i = 0; i < 10_000; i++) take(`cap:${i}`, t, 1, W);
   expect(take("cap:first", t, 1, W)).toBeNull(); // dropped, so it starts a fresh window
 });
+
+test("requests with no client address share one bucket instead of going unlimited (WR-03)", () => {
+  const bare = () => new Request("https://x.test/");
+  expect(rateLimited(bare(), "g4", 1, W)).toBeNull();
+  expect(rateLimited(bare(), "g4", 1, W)?.status).toBe(429);
+});

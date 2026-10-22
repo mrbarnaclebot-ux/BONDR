@@ -7,7 +7,8 @@ The shared chain library. Phase 1 spike scripts call it, and Phase 2 apps import
 - `keys.ts`: `derive(master, role, net, id)` HMAC key derivation.
 - `config.ts`: reads the live pump Global, FeeConfig and AMM FeeConfig as JSON-safe facts.
 - `send.ts`: the one send path: program allowlist (`checkMessage`), `budget`, `wireSize`, paced `sendTx`; `sendRaw` sends an already signed wire with the same landed / failed / unknown semantics, and `broadcast` is its send-only first half (the worker settles launches itself).
-- `cosign.ts`: sign order A (D-12): `sameMessage` (raw byte compare), `slot`, `signatureOk` (node:crypto Ed25519), `exitPresent` (BurnChecked or multi_hop_swap in the message), `cosign` (adds the mint signature only when all pass). Worker-only: it loads pump.ts.
+- `cosign.ts`: sign order A (D-12): `sameMessage` (raw byte compare), `slot`, `signatureOk` (re-exported from sig.ts), `exitPresent` (BurnChecked or multi_hop_swap in the message), `cosign` (adds the mint signature only when all pass). Worker-only: it loads pump.ts.
+- `sig.ts`: `signatureOk`, the node:crypto Ed25519 check. No web3.js, so web's consent route can load it.
 - `alt.ts`: per-coin lookup tables: `tableKeys`, `sharedKeys`, `createTable` with warm-up wait.
 - `math.ts`: pure bigint amount math (`applyBps`, `split90_10`, `trigger105`, `minLamports` for the D-17 dev-buy minimum, `estimateSolBack` for the fee-only insta-sell estimate), no SDK import. Web may import it.
 - `rules.ts`: the launch field rules every tier runs (`checkName` in UTF-8 bytes, `checkSymbol`, `checkDescription`, `normalizeLink`, `imageType` / `checkImage` by magic bytes, `checkUri`, `parseSol`, `checkDevBuy`). Pure and import-free; returns codes, web owns the copy. Web may import it.

@@ -230,7 +230,7 @@ test.describe("devnet", () => {
   test("a real launch shows the success screen within 5 s of confirmation", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const symbol = `E${Date.now().toString(36).slice(-5).toUpperCase()}`;
-    await toSign(page, simDevAccount(), { symbol });
+    await toSign(page, simDevAccount(), { symbol, signIn: true }); // real pin and prepare need a real session
     const heading = page.getByRole("heading", { name: `${symbol} is live.` });
     await heading.waitFor({ timeout: 150_000 });
     const seen = Date.now();

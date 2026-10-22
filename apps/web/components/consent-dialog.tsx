@@ -2,8 +2,9 @@
 import { Check, CircleAlert } from "lucide-react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { short } from "@/lib/format";
+import { consentMessage } from "@/lib/terms";
 import { Button } from "./ui-button";
-import { useWallet } from "./wallet";
+import { rejected, useWallet, type WalletApi } from "./wallet";
 import { focusButton } from "./wallet-button";
 
 const STORES = [
@@ -19,19 +20,25 @@ const DIALOG =
   "shadow-[var(--elev-2),0_0_0_1px_color-mix(in_oklch,var(--leaf)_18%,transparent)] backdrop:bg-ink/55 backdrop:backdrop-blur-[6px] " +
   "md:top-[120px] md:bottom-auto md:mx-auto md:w-[min(540px,calc(100%-32px))] md:rounded-lg md:border md:animate-[rise_620ms_var(--ease-spring)_both]";
 
-/** Opens on the first connect of an address with no stored consent; nothing is sent before Accept. */
+const FAULTS = {
+  failed: "Could not save your answer. Check your connection and try again.",
+  rejected: "Phantom rejected the request. Nothing was saved.",
+};
+type Outcome = "saved" | keyof typeof FAULTS;
+
+/** Opens when the connected address has no consent session; nothing is sent before Accept. */
 export function ConsentDialog() {
   const { status, address, consented } = useWallet();
-  if (status !== "connected" || !address || consented) return null;
+  if (status !== "connected" || !address || consented !== false) return null;
   return <ConsentPrompt key={address} address={address} />;
 }
 
 function ConsentPrompt({ address }: { address: string }) {
-  const { disconnect, markConsented } = useWallet();
+  const { disconnect, markConsented, signMessage } = useWallet();
   const dialog = useRef<HTMLDialogElement>(null);
   const box = useRef<HTMLInputElement>(null);
   const [agreed, setAgreed] = useState(false);
-  const [state, setState] = useState<"open" | "saving" | "failed">("open");
+  const [state, setState] = useState<"open" | "saving" | Outcome>("open");
   useEffect(() => {
     if (!dialog.current?.open) dialog.current?.showModal();
     box.current?.focus();
@@ -43,16 +50,9 @@ function ConsentPrompt({ address }: { address: string }) {
   };
   const accept = async () => {
     setState("saving");
-    const ok = await fetch("/api/consent", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ wallet: address }),
-    }).then(
-      (r) => r.ok,
-      () => false,
-    );
-    if (ok) markConsented();
-    else setState("failed");
+    const outcome = await saveConsent(address, signMessage);
+    if (outcome === "saved") markConsented();
+    else setState(outcome);
   };
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: the click is the backdrop; Escape (onCancel) is its keyboard twin
@@ -70,7 +70,10 @@ function ConsentPrompt({ address }: { address: string }) {
       <div className="grid gap-4 px-4 py-6 md:p-8">
         <Intro address={address} />
         <Agree box={box} agreed={agreed} onChange={setAgreed} />
-        {state === "failed" && <SaveFailed />}
+        {(state === "failed" || state === "rejected") && <Fault text={FAULTS[state]} />}
+        <p className="text-xs text-muted-foreground">
+          Accept asks Phantom to sign a short message. It is not a transaction and costs nothing.
+        </p>
         <div className="flex flex-wrap gap-3 [&>*]:flex-1">
           <Button type="button" size="lg" disabled={saving} onClick={decline}>
             Not now, disconnect
@@ -140,7 +143,27 @@ function Agree({ box, agreed, onChange }: AgreeProps) {
   );
 }
 
-function SaveFailed() {
+/** One Phantom signature over the consent message; the server checks it and sets the session cookie. */
+async function saveConsent(address: string, signMessage: WalletApi["signMessage"]): Promise<Outcome> {
+  const got = await fetch("/api/consent", { cache: "no-store" }).catch(() => null);
+  const n = (await got?.json().catch(() => null)) as { nonce?: string; expires?: string } | null;
+  if (!got?.ok || !n?.nonce || !n.expires) return "failed";
+  const message = new TextEncoder().encode(consentMessage(address, n.nonce, n.expires));
+  const signature = await signMessage(message).catch((e: unknown) => (rejected(e) ? "rejected" : "failed"));
+  if (typeof signature === "string") return signature;
+  const saved = await fetch("/api/consent", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      wallet: address,
+      nonce: n.nonce,
+      signature: btoa(String.fromCharCode(...signature)),
+    }),
+  }).catch(() => null);
+  return saved?.ok ? "saved" : "failed";
+}
+
+function Fault({ text }: { text: string }) {
   return (
     <div
       role="alert"
@@ -151,7 +174,7 @@ function SaveFailed() {
         strokeWidth={1.5}
         aria-hidden="true"
       />
-      Could not save your answer. Check your connection and try again.
+      {text}
     </div>
   );
 }

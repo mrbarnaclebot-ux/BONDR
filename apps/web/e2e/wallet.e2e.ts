@@ -32,12 +32,14 @@ test("the wallet menu copies and disconnects", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Disconnect" })).toBeHidden();
 });
 
-test("a Phantom account switch updates the header", async ({ page }) => {
+test("a Phantom account switch updates the header and asks the new account for consent", async ({ page }) => {
   await connected(page);
   const next = newTestAccount();
-  await page.evaluate((a) => localStorage.setItem(`bondr:consent:${a}`, "1"), next.address);
   await emitChange(page, next);
-  await expect(header(page).getByRole("button", { name: short(next.address) })).toBeVisible();
+  // The session belongs to the first account, so the new one gets the consent prompt (UI-SPEC wallet control).
+  const dialog = page.getByRole("dialog", { name: "Before BONDR remembers this wallet" });
+  await expect(dialog.getByText(short(next.address))).toBeVisible();
+  await expect(header(page).getByRole("button", { name: short(next.address) })).toBeAttached();
 });
 
 test("without Phantom, Connect shows the not-installed popover", async ({ page }) => {

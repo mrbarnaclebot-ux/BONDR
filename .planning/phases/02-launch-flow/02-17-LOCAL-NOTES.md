@@ -11,6 +11,8 @@ Local half of plan 02-17, run 2026-10-22 while staging (02-16) is blocked by the
 
 ### For the staging continuation
 
+- Set `SESSION_SECRET` on the staging web service before the next deploy (`openssl rand -base64 48`, a value of its own, never the local one). It keys the consent nonce and the wallet session cookie (CR-01). Without it `/api/consent` answers 500, no session is issued, and pin, prepare and submit refuse every wallet with consent_required. The worker needs nothing new.
+
 - Run the devnet group first. Then run `E2E_BASE_URL=$STAGING_URL E2E_COIN_MINT=<the staging launch's mint> pnpm exec playwright test apps/web/e2e/responsive.e2e.ts`. Without `E2E_COIN_MINT`, the coin surface reads the newest landed launch from the root .env `DATABASE_URL`, which is the dev branch, so it would probably 404 on staging.
 - The header fix below is not on staging yet. The staging shots at 390 will match only after a redeploy (02-18).
 

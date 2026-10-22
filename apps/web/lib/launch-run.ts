@@ -78,21 +78,22 @@ function metaOf(f: Fields) {
   };
 }
 
-async function pin(run: Run, wallet: string): Promise<Pinned> {
+// Pin, prepare and submit take the wallet from the consent session cookie, so none of them sends it.
+async function pin(run: Run): Promise<Pinned> {
   if (run.state.pin) return run.state.pin;
   const form = new FormData();
   form.set("image", run.state.image?.file ?? "");
-  form.set("meta", JSON.stringify({ wallet, ...metaOf(run.state.fields) }));
+  form.set("meta", JSON.stringify(metaOf(run.state.fields)));
   const pinned = await call<Pinned>("/api/launch/pin", form, run.signal);
   run.dispatch({ type: "pinned", pin: pinned });
   return pinned;
 }
 
-async function prepare(run: Run, wallet: string, pinned: Pinned): Promise<PrepareResult> {
+async function prepare(run: Run, pinned: Pinned): Promise<PrepareResult> {
   const solIn = parseSol(run.state.devBuy);
   if (!solIn.ok || !run.state.exit) throw new Stop("invalid_input");
   const { uri, imageCid } = pinned;
-  const body = { wallet, ...metaOf(run.state.fields), uri, imageCid, solIn: String(solIn.value) };
+  const body = { ...metaOf(run.state.fields), uri, imageCid, solIn: String(solIn.value) };
   return call<PrepareResult>("/api/launch/prepare", { ...body, exit: run.state.exit }, run.signal);
 }
 
@@ -133,11 +134,10 @@ export async function poll(run: Run, id: string, resend?: () => Promise<unknown>
 }
 
 export async function launch(run: Run): Promise<void> {
-  const wallet = run.wallet.address;
-  if (!wallet) throw new Stop("switched");
-  const pinned = await pin(run, wallet);
+  if (!run.wallet.address) throw new Stop("switched");
+  const pinned = await pin(run);
   run.set({ row: 2, cid: pinned.cid });
-  const prep = await prepare(run, wallet, pinned);
+  const prep = await prepare(run, pinned);
   run.dispatch({ type: "prepared", launchId: prep.launchId, mint: prep.mint });
   run.set({ row: 3, bytes: prep.bytes });
   const signed = await signWithin(run, prep);

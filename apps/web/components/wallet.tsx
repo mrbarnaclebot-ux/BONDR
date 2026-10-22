@@ -1,16 +1,7 @@
 "use client";
 // Phantom through Wallet Standard. Bytes in and out only: no Solana library in the browser (D-15).
 import { getWallets } from "@wallet-standard/app";
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 type W = ReturnType<ReturnType<typeof getWallets>["get"]>[number];
 type Account = W["accounts"][number];
@@ -24,6 +15,11 @@ type SignFeature = {
     ...inputs: { account: Account; transaction: Uint8Array; chain?: string }[]
   ): Promise<readonly { signedTransaction: Uint8Array }[]>;
 };
+type SignMessageFeature = {
+  signMessage(
+    ...inputs: { account: Account; message: Uint8Array }[]
+  ): Promise<readonly { signature: Uint8Array }[]>;
+};
 type PhantomInjected = { on?(e: string, cb: () => void): void; off?(e: string, cb: () => void): void };
 
 /** "loading" covers hydration and the grace period, so the control never flashes "not installed". */
@@ -32,15 +28,18 @@ export type WalletStatus = "loading" | "idle" | "connecting" | "connected" | "mi
 export type WalletApi = {
   status: WalletStatus;
   address: string | null;
-  consented: boolean;
+  /** This browser holds a consent session for the address; null while the session is being read. */
+  consented: boolean | null;
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   /** solana:signTransaction only, never signAndSend: the worker adds the mint signature after Phantom. */
   signTransaction(transaction: Uint8Array): Promise<Uint8Array>;
+  /** solana:signMessage, used once at consent; the signature proves the wallet to the server. */
+  signMessage(message: Uint8Array): Promise<Uint8Array>;
   /** Fires when Phantom switches from one connected account to another. Returns the unsubscribe. */
   onAccountChange(cb: (address: string) => void): () => void;
   markConsented(): void;
-  /** The server has no consent row (consent_required): forget the local mark so the prompt opens again. */
+  /** The server has no session for this wallet (consent_required): the prompt opens again. */
   forgetConsent(): void;
 };
 
@@ -66,14 +65,20 @@ export const rejected = (e: unknown): boolean =>
   (e as { code?: unknown })?.code === 4001 ||
   /reject|cancel|declin|denied/i.test(String((e as Error)?.message ?? e));
 
-// Consent is checked locally first, so nothing about the wallet reaches the server before Accept (PLAT-02).
-const consentKey = (address: string) => `bondr:consent:${address}`;
-function hasConsent(address: string): boolean {
-  try {
-    return localStorage.getItem(consentKey(address)) !== null;
-  } catch {
-    return false; // storage blocked: ask again, which is the safe side
-  }
+// The session cookie names the wallet that signed consent. Reading it sends nothing about the wallet, so
+// nothing about it reaches the server before Accept (PLAT-02). undefined: not read yet.
+function useSession(address: string | null) {
+  const [session, setSession] = useState<string | null>();
+  useEffect(() => {
+    if (!address || session !== undefined) return;
+    fetch("/api/consent", { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ wallet: string | null }>) : null))
+      .then(
+        (b) => setSession(b?.wallet ?? null),
+        () => setSession(null),
+      );
+  }, [address, session]);
+  return [session, setSession] as const;
 }
 
 function usePhantom(chain: Chain): { wallet: W | undefined; graceOver: boolean } {
@@ -150,10 +155,8 @@ function useConnection(wallet: W | undefined, chain: Chain) {
 function useWalletApi(chain: Chain): WalletApi {
   const { wallet, graceOver } = usePhantom(chain);
   const { account, setAccount, connecting, setConnecting } = useConnection(wallet, chain);
-  const [accepted, setAccepted] = useState<string | null>(null);
-  // Consent read from storage alone leaves `accepted` null, so forgetting it needs its own re-render.
-  const [, rerender] = useReducer((n: number) => n + 1, 0);
   const address = account?.address ?? null;
+  const [session, setSession] = useSession(address);
   const onAccountChange = useAccountListeners(address);
   const status: WalletStatus = account
     ? "connected"
@@ -164,7 +167,8 @@ function useWalletApi(chain: Chain): WalletApi {
         : graceOver
           ? "missing"
           : "loading";
-  const consented = address !== null && (accepted === address || hasConsent(address));
+  let consented: boolean | null = address !== null && session === address;
+  if (address && session === undefined) consented = null; // still reading: no prompt flash for a returning wallet
   return {
     status,
     address,
@@ -178,26 +182,11 @@ function useWalletApi(chain: Chain): WalletApi {
           .catch(() => {});
     },
     signTransaction: (bytes) => sign(wallet, account, chain, bytes),
+    signMessage: (bytes) => signMessage(wallet, account, bytes),
     onAccountChange,
-    markConsented: () => {
-      if (!address) return;
-      try {
-        localStorage.setItem(consentKey(address), new Date().toISOString());
-      } catch {} // the server row is the record; storage only saves asking twice
-      setAccepted(address);
-    },
-    forgetConsent: () => {
-      if (address) forget(address);
-      setAccepted(null);
-      rerender();
-    },
+    markConsented: () => setSession(address),
+    forgetConsent: () => setSession(null),
   };
-}
-
-function forget(address: string) {
-  try {
-    localStorage.removeItem(consentKey(address));
-  } catch {} // storage blocked: hasConsent already reads false
 }
 
 async function connectTo(
@@ -225,6 +214,14 @@ async function sign(wallet: W | undefined, account: Account | null, chain: Chain
   const [out] = await signer.signTransaction({ account, transaction, chain });
   if (!out) throw new Error("Phantom returned no signed transaction");
   return out.signedTransaction;
+}
+
+async function signMessage(wallet: W | undefined, account: Account | null, message: Uint8Array) {
+  const signer = wallet && feature<SignMessageFeature>(wallet, "solana:signMessage");
+  if (!signer || !account) throw new Error("Phantom cannot sign messages");
+  const [out] = await signer.signMessage({ account, message });
+  if (!out) throw new Error("Phantom returned no signature");
+  return out.signature;
 }
 
 const WalletContext = createContext<WalletApi | null>(null);

@@ -1,8 +1,8 @@
 // Stubbed launch routes and the walk to step 4, for launch-live.e2e.ts. page.route answers pin, prepare,
 // submit and the launch read in the browser, so nothing reaches the worker or the chain.
-import type { Page, Route } from "@playwright/test";
+import { expect, type Page, type Route } from "@playwright/test";
 import { liveStatus, toStep2, toStep3 } from "./coin.ts";
-import { injectPhantom, preConsent, type TestAccount } from "./phantom.ts";
+import { injectPhantom, preConsent, signIn, type TestAccount } from "./phantom.ts";
 
 export const ID = "a".repeat(32);
 export const MINT = "Mint111111111111111111111111111111111bndr";
@@ -63,15 +63,19 @@ export const signRow = (page: Page, n: number) =>
   page.locator('ol[aria-label="Launch progress"] > li').nth(n - 1);
 export const back = (page: Page) => page.getByRole("button", { name: "Back to review" });
 
-/** Steps 1-3 with the given wallet, then Sign in Phantom. Some faults leave step 4 at once, so no wait here. */
+/**
+ * Steps 1-3 with the given wallet, then Sign in Phantom. Some faults leave step 4 at once, so no wait here.
+ * `signIn` gets a real consent session, for runs whose launch routes are not stubbed.
+ */
 export async function toSign(
   page: Page,
   account: TestAccount,
-  o: { reject?: boolean; symbol?: string } = {},
+  o: { reject?: boolean; symbol?: string; signIn?: boolean } = {},
 ) {
   const { minLamports } = await liveStatus(page);
   await injectPhantom(page, account, { reject: o.reject });
-  await preConsent(page, account.address);
+  if (o.signIn) expect((await signIn(page.request, account)).status()).toBe(204);
+  else await preConsent(page, account.address);
   await page.goto("/launch");
   await toStep2(page, o.symbol ? `BONDR e2e ${o.symbol}` : undefined, o.symbol);
   await toStep3(page, minLamports as string);

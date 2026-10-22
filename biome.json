@@ -40,7 +40,8 @@
                       "!@bondr/core/db",
                       "!@bondr/core/schema",
                       "!@bondr/core/api",
-                      "!@bondr/core/scrub"
+                      "!@bondr/core/scrub",
+                      "!@bondr/core/sig"
                     ],
                     "message": "D-15: web imports only pure core modules; chain work goes through the worker."
                   },

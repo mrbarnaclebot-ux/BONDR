@@ -1,7 +1,7 @@
 // Sign order A co-sign (D-12, RESEARCH Pattern 3, port of agencybook sign.ts and completeLaunch). The mint
 // signature is the only thing that makes a launch valid, so it is added only to the exact message the worker
 // built and stored, signed by the dev, with the stored exit inside. Worker-only: it loads pump.ts.
-import { createHash, createPublicKey, verify } from "node:crypto";
+import { createHash } from "node:crypto";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
 import {
   type AddressLookupTableAccount,
@@ -12,6 +12,7 @@ import {
 } from "@solana/web3.js";
 import bs58 from "bs58";
 import { PUMP_AMM_PROGRAM_ID } from "./pump.ts";
+import { signatureOk } from "./sig.ts";
 
 const SIG = 64;
 const BURN_CHECKED = 15; // Token-2022 instruction tag
@@ -32,16 +33,7 @@ export function sameMessage(stored: Uint8Array, wire: Uint8Array, signers: numbe
 export const slot = (wire: Uint8Array, index: number): Uint8Array =>
   wire.subarray(1 + SIG * index, 1 + SIG * (index + 1));
 
-export function signatureOk(message: Uint8Array, sig: Uint8Array, signer: Addr): boolean {
-  if (sig.length !== SIG) return false;
-  try {
-    const x = Buffer.from(new PublicKey(signer).toBytes()).toString("base64url");
-    const key = createPublicKey({ key: { kty: "OKP", crv: "Ed25519", x }, format: "jwk" });
-    return verify(null, message, key, sig);
-  } catch {
-    return false;
-  }
-}
+export { signatureOk };
 
 // Burn: a Token-2022 BurnChecked of the dev's child ATA, the mint, the dev as owner. Sell: multi_hop_swap
 // with the dev and the mint among its accounts.

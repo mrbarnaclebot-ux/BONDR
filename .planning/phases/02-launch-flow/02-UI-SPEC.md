@@ -348,16 +348,17 @@ Not added: shadcn Dialog, DropdownMenu, Checkbox, RadioGroup, Sonner, Tooltip. N
 | Phantom not installed (mobile browser) | Same popover | Primary "Open BONDR in Phantom" (Phantom browse deep link to the current URL) and secondary "Get Phantom" |
 | Account switched in Phantom | Connected button shows the new address | Consent is re-checked for the new address. A launch in step 4 before submit is cancelled with the account-switch error |
 
-Connect then consent: after the first `connect()` for an address with no stored consent, the consent dialog opens. Nothing about the wallet is sent to the server before Accept.
+Connect then consent: after `connect()`, the browser reads its consent session (a cookie; the request carries no address). If the session is not for this address, the consent dialog opens. Nothing about the wallet is sent to the server before Accept. (Owner decision 2026-10-22, CR-01: sign once at consent.)
 
 ### Consent dialog
 
 | State | Behaviour |
 |-------|-----------|
 | Open | Modal; focus starts on the checkbox; "Accept and continue" disabled until the checkbox is ticked |
-| Accepting | Accept button shows "Saving…" and is disabled |
-| Accepted | Dialog closes; focus returns to the wallet button; consent is stored server-side with wallet and time |
+| Accepting | Accept button shows "Saving…" and is disabled; Phantom asks to sign the consent message (signMessage: no transaction, no fee) |
+| Accepted | Dialog closes; focus returns to the wallet button; the signature is verified, consent is stored server-side with wallet and time, and a 12-hour session cookie binds this browser to the wallet. A returning wallet with a live session sees no prompt |
 | Save failed | Error callout inside the dialog; buttons re-enable |
+| Signature rejected | Error callout "Phantom rejected the request. Nothing was saved."; buttons re-enable; nothing is stored |
 | Declined | "Not now, disconnect", Escape, or the backdrop disconnect Phantom and close the dialog. Browsing continues. The next connect shows the prompt again |
 
 ### Launch step 1: Coin
@@ -605,6 +606,7 @@ Every error says what happened and what to do.
 | Failed on-chain | "Your launch failed on-chain. Only the network fee left your wallet. Try again." + tx link |
 | Unknown | "Still confirming. Do not launch again until this finishes; it can take up to a minute." + tx link |
 | Consent save failed | "Could not save your answer. Check your connection and try again." |
+| Consent signature rejected | "Phantom rejected the request. Nothing was saved." |
 
 ### Paused copy
 
@@ -634,7 +636,9 @@ Every error says what happened and what to do.
 | List | 1. "Your wallet address and the time you accepted these terms" 2. "Coins you launch and trades you make through BONDR, which are public on Solana anyway" 3. "Error reports when something breaks, without wallet data" |
 | Reassurance | "BONDR never sees your private key or seed phrase and cannot move your funds. Every transaction is signed by you in Phantom." |
 | Checkbox | "I have read the terms and I am 18 or older." ("terms" links to `/terms`, new tab so the dialog state survives) |
+| Signing note | "Accept asks Phantom to sign a short message. It is not a transaction and costs nothing." (above the buttons) |
 | Buttons | "Not now, disconnect" · "Accept and continue" · busy "Saving…" |
+| Signed message | "BONDR consent" / "I have read the BONDR terms (version {TERMS_VERSION}) and I am 18 or older. I agree that BONDR stores this wallet address and the time I accepted." / "Signing this message is not a transaction and costs nothing." / "Wallet: {address}" / "Nonce: {nonce}" / "Expires: {ISO time}" (lib/terms.ts `consentMessage`) |
 
 Copy contract: list item 3 is a promise. Sentry on web and worker must be configured so wallet addresses are not sent (`sendDefaultPii: false` and a `beforeSend` scrub of request bodies and wallet-shaped strings).
 

@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { injectPhantom, newTestAccount, rootEnv, type TestAccount } from "./phantom.ts";
+import { injectPhantom, newTestAccount, rootEnv, signIn } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
 // idle_timeout instead of end() in afterAll: a fullyParallel worker runs afterAll when it leaves this file
@@ -22,22 +22,27 @@ test.afterAll(async () => {
   if (sql && used.length) await sql`delete from wallets where address in ${sql(used)}`;
 });
 
-async function connectFresh(page: Page): Promise<{ account: TestAccount; leaks: string[] }> {
+async function connectFresh(page: Page, o: { reject?: boolean } = {}) {
   const account = newTestAccount();
   used.push(account.address);
   const leaks: string[] = [];
   page.on("request", (r) => {
     if (`${r.url()} ${r.postData() ?? ""}`.includes(account.address)) leaks.push(r.url());
   });
-  await injectPhantom(page, account);
+  const { messages } = await injectPhantom(page, account, o);
   await page.goto("/terms");
-  await page.getByRole("banner").getByRole("button", { name: "Connect Phantom" }).click();
+  await connect(page);
   await expect(page.getByRole("dialog", { name: HEADING })).toBeVisible();
-  return { account, leaks };
+  return { account, leaks, messages };
 }
 
-test("nothing carries the address before Accept, and Accept stores one row", async ({ page }) => {
-  const { account, leaks } = await connectFresh(page);
+const connect = (page: Page) =>
+  page.getByRole("banner").getByRole("button", { name: "Connect Phantom" }).click();
+
+test("nothing carries the address before Accept; Accept signs once and a reload keeps the session", async ({
+  page,
+}) => {
+  const { account, leaks, messages } = await connectFresh(page);
   const dialog = page.getByRole("dialog", { name: HEADING });
   const accept = dialog.getByRole("button", { name: "Accept and continue" });
   await expect(dialog.getByRole("checkbox")).toBeFocused();
@@ -52,12 +57,32 @@ test("nothing carries the address before Accept, and Accept stores one row", asy
   const wallet = page.getByRole("banner").getByRole("button", { name: short(account.address) });
   await expect(wallet).toBeFocused();
   expect(await rows(account.address)).toBe(1);
+  expect(messages).toHaveLength(1);
+  expect(messages[0]).toContain("BONDR consent");
+  expect(messages[0]).toContain(`Wallet: ${account.address}`);
 
   await wallet.click();
   await page.getByRole("button", { name: "Disconnect" }).click();
-  await page.getByRole("banner").getByRole("button", { name: "Connect Phantom" }).click();
+  await connect(page);
   await expect(wallet).toBeVisible();
   await expect(dialog).toBeHidden();
+
+  await page.reload();
+  await connect(page);
+  await expect(wallet).toBeVisible();
+  await page.waitForLoadState("networkidle"); // the session read has answered
+  await expect(dialog).toBeHidden();
+  expect(messages).toHaveLength(1);
+});
+
+test("rejecting the signature in Phantom records nothing and keeps the dialog open", async ({ page }) => {
+  const { account } = await connectFresh(page, { reject: true });
+  const dialog = page.getByRole("dialog", { name: HEADING });
+  await dialog.getByRole("checkbox").check();
+  await dialog.getByRole("button", { name: "Accept and continue" }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("Phantom rejected the request. Nothing was saved.");
+  await expect(dialog.getByRole("button", { name: "Accept and continue" })).toBeEnabled();
+  expect(await rows(account.address)).toBe(0);
 });
 
 for (const how of ["Not now", "Escape", "backdrop"] as const) {
@@ -106,5 +131,43 @@ test("POST /api/consent refuses cross-site, malformed and oversized bodies", asy
   expect((await post({ origin, "content-type": "text/plain" }, JSON.stringify({ wallet }))).status()).toBe(
     400,
   );
+  expect((await post({ origin }, { wallet })).status()).toBe(400); // no signature
+  const { nonce } = await (await request.get("/api/consent")).json();
+  const unsigned = await post({ origin }, { wallet, nonce, signature: Buffer.alloc(64).toString("base64") });
+  expect(unsigned.status()).toBe(403);
+  expect(await unsigned.json()).toEqual({ error: "consent_required" });
   expect(await rows(wallet)).toBe(0);
+});
+
+test("the launch routes take the wallet from the session, never from the body", async ({ request }) => {
+  const [owner, forged] = [newTestAccount(), newTestAccount()];
+  used.push(owner.address);
+  const headers = { origin: new URL(test.info().project.use.baseURL as string).origin };
+  const { minLamports } = await (await request.get("/api/status")).json();
+  const cid = "b".repeat(59);
+  const fields = {
+    name: "Forged",
+    symbol: "FRG",
+    links: {},
+    uri: `https://ipfs.io/ipfs/${cid}`,
+    imageCid: cid,
+  };
+  const data = { ...fields, solIn: minLamports, exit: "burn", wallet: owner.address };
+  const prepare = () => request.post("/api/launch/prepare", { headers, data });
+
+  // No session: refused before the worker, whatever wallet the body names.
+  expect(await (await prepare()).json()).toEqual({ error: "consent_required" });
+  const submit = await request.post("/api/launch/submit", {
+    headers,
+    data: { launchId: "a".repeat(32), signed: "x" },
+  });
+  expect(await submit.json()).toEqual({ error: "consent_required" });
+
+  expect((await signIn(request, owner)).status()).toBe(204);
+  // The body names an unconsented wallet, but the worker gets the session's consented one: it passes the consent
+  // check and stops at the balance (a fresh key holds 0 SOL) or the pool, so nothing is spent.
+  data.wallet = forged.address;
+  const res = await prepare();
+  expect(["insufficient_balance", "pool_empty"]).toContain((await res.json()).error);
+  expect(await rows(forged.address)).toBe(0);
 });

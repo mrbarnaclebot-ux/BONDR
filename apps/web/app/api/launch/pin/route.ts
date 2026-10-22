@@ -9,10 +9,9 @@ import {
   MAX_IMAGE_BYTES,
   normalizeLink,
 } from "@bondr/core/rules";
-import { eq } from "drizzle-orm";
-import { db, wallets } from "@/lib/db";
-import { BASE58_KEY, rateLimited, sameOrigin } from "@/lib/guard";
+import { rateLimited, sameOrigin } from "@/lib/guard";
 import { ipfsUri, type MetaFields, metadataJson, PinError, pinFile } from "@/lib/pinata";
+import { consentRequired, sessionWallet } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -24,9 +23,9 @@ const WINDOW_MS = 10 * 60_000;
 const fail = (status: number, error?: string) =>
   error ? Response.json({ error }, { status }) : new Response(null, { status });
 
-type Parsed = { wallet: string; image: File; raw: Record<string, unknown> };
+type Parsed = { image: File; raw: Record<string, unknown> };
 
-// Multipart: `image` (File) and `meta` (JSON: wallet, name, symbol, description, links).
+// Multipart: `image` (File) and `meta` (JSON: name, symbol, description, links). The wallet is the session's.
 async function parse(req: Request): Promise<Parsed | null> {
   const form = await req.formData().catch(() => null);
   const image = form?.get("image");
@@ -38,9 +37,8 @@ async function parse(req: Request): Promise<Parsed | null> {
   } catch {
     return null;
   }
-  const wallet = (raw as { wallet?: unknown } | null)?.wallet;
-  if (typeof wallet !== "string" || !BASE58_KEY.test(wallet)) return null;
-  return { wallet, image, raw: raw as Record<string, unknown> };
+  if (!raw || typeof raw !== "object") return null;
+  return { image, raw: raw as Record<string, unknown> };
 }
 
 // Server-side rerun of the browser's checks (rules.ts); null when any field is invalid.
@@ -60,30 +58,18 @@ function fields(raw: Record<string, unknown>): MetaFields | null {
   return { name: name.value, symbol: symbol.value, description: description.value, links };
 }
 
-async function consented(wallet: string): Promise<boolean> {
-  const rows = await db()
-    .select({ address: wallets.address })
-    .from(wallets)
-    .where(eq(wallets.address, wallet))
-    .limit(1);
-  return rows.length > 0;
-}
-
 /** Pins the image, then the metadata JSON pointing at it (LAUNCH-07). Nothing is signed before this. */
 export async function POST(req: Request): Promise<Response> {
   if (!sameOrigin(req)) return fail(403);
   const length = Number(req.headers.get("content-length"));
   if (!(length > 0 && length <= MAX_BODY)) return fail(413); // a missing length could stream without end
+  // A session exists only after a signed consent was stored, so it stands in for the consent row.
+  const wallet = sessionWallet(req);
+  const limited = rateLimited(req, "pin", LIMIT, WINDOW_MS, wallet ?? undefined);
+  if (limited) return limited;
+  if (!wallet) return consentRequired();
   const parsed = await parse(req);
   if (!parsed) return fail(400, "invalid_input");
-  const limited = rateLimited(req, "pin", LIMIT, WINDOW_MS, parsed.wallet);
-  if (limited) return limited;
-  try {
-    if (!(await consented(parsed.wallet))) return fail(403, "consent_required");
-  } catch (e) {
-    console.error("pin consent read failed", (e as { cause?: { code?: string } }).cause?.code ?? "unknown");
-    return fail(503);
-  }
   const meta = fields(parsed.raw);
   const bytes = new Uint8Array(await parsed.image.arrayBuffer());
   const image = checkImage(bytes.subarray(0, 12), bytes.length);

@@ -63,3 +63,13 @@ export const launchView = (id: string): Promise<LaunchView | null> => one(eq(lau
 /** The landed launch of a mint: retries of a mint can fail, but only one may land (launches_landed_mint). */
 export const launchByMint = (mint: string): Promise<LaunchView | null> =>
   one(and(eq(launches.mint, mint), eq(launches.state, "landed")));
+
+/** The wallet that prepared a launch, or null when there is no such row (the worker then answers not_found). */
+export async function launchWallet(id: string): Promise<string | null> {
+  const [row] = await db()
+    .select({ wallet: launches.wallet })
+    .from(launches)
+    .where(eq(launches.id, id))
+    .limit(1);
+  return row?.wallet ?? null;
+}

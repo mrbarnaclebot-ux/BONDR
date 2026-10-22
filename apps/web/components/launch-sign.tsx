@@ -97,7 +97,8 @@ function leave(run: Run, code: Code): boolean {
 
 function fail(run: Run, e: unknown) {
   if (run.signal.aborted) return;
-  const code = e instanceof Stop && e.code in FAULTS ? e.code : "build_failed";
+  // hasOwn, not `in`: a passed-through "toString" must not match a prototype key (web IN-01).
+  const code = e instanceof Stop && Object.hasOwn(FAULTS, e.code) ? e.code : "build_failed";
   stored.set(null); // every fault means nothing is in flight: refused, never sent, or settled as failed
   if (leave(run, code)) return;
   if (code === "paused") run.live.refresh();

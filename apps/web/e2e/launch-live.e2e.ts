@@ -133,6 +133,7 @@ test.describe("stubbed", () => {
       action: "Try again",
     },
     { code: "invalid_input", at: "prepare", status: 400, row: 2, copy: BUILD_FAILED, action: "Try again" },
+    { code: "toString", at: "prepare", status: 500, row: 2, copy: BUILD_FAILED, action: "Try again" },
     {
       code: "pool_empty",
       at: "prepare",

@@ -50,11 +50,17 @@ export function signWire(b64: string, key: KeyObject): string {
  * playwright.config.ts deliberately keeps the root .env out of the runner (02-02), so specs that check the
  * database read it here. Never copy these values into process.env: the dev server inherits that.
  */
-export function rootEnv(): { DATABASE_URL?: string; MASTER_SEED_FILE?: string; SESSION_SECRET?: string } {
+export function rootEnv(): {
+  DATABASE_URL?: string;
+  MASTER_SEED_FILE?: string;
+  SESSION_SECRET?: string;
+  WORKER_URL?: string;
+  WORKER_TOKEN?: string;
+} {
   const file = fileURLToPath(new URL("../../../.env", import.meta.url));
   const all = existsSync(file) ? parseEnv(readFileSync(file, "utf8")) : {};
-  const { DATABASE_URL, MASTER_SEED_FILE, SESSION_SECRET } = all;
-  return { DATABASE_URL, MASTER_SEED_FILE, SESSION_SECRET };
+  const { DATABASE_URL, MASTER_SEED_FILE, SESSION_SECRET, WORKER_URL, WORKER_TOKEN } = all;
+  return { DATABASE_URL, MASTER_SEED_FILE, SESSION_SECRET, WORKER_URL, WORKER_TOKEN };
 }
 
 /**

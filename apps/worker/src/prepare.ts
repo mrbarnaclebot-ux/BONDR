@@ -138,7 +138,10 @@ async function admit(ctx: PrepareCtx, body: unknown) {
         tableFor(db(), wallet),
       ])
     : Promise.resolve([false, 0, 0, null] as const);
-  const [status, [ok, tablesLastHour, walletTablesToday, prior]] = await Promise.all([liveStatus(ctx), rows]);
+  const [status, [ok, tablesLastHour, walletTablesToday, prior]] = await Promise.all([
+    liveStatus(ctx, true),
+    rows,
+  ]);
   const min = status.minLamports === null ? null : BigInt(status.minLamports);
   const refused = prepareGuard({
     paused: status.paused,

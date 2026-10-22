@@ -2,7 +2,7 @@ import { BN, type Global } from "@bondr/core/pump";
 import { PublicKey } from "@solana/web3.js";
 import { expect, test } from "vitest";
 import { launchNet } from "./env.ts";
-import { childFees, networkFee, pauseReason } from "./status.ts";
+import { childFees, networkFee, parseSwitch, pauseReason } from "./status.ts";
 
 test("pauseReason: kill switch first, awaiting migration pauses, a migrated BONDR does not (D-18)", () => {
   expect(pauseReason({ enabled: false, venue: "curve" })).toBe("kill_switch");
@@ -45,4 +45,11 @@ test("the status fees use BONDR's 150 bps creator fee exactly where the build do
   const pq = { curve: { quoteControl: null } } as unknown as Parameters<typeof childFees>[3];
   expect(childFees(g(true), null, Q, pq).creatorFeeBps.toNumber()).toBe(150);
   expect(childFees(g(false), null, Q, pq).creatorFeeBps.toNumber()).toBe(30);
+});
+
+test("the kill switch route takes only a boolean", () => {
+  expect(parseSwitch({ enabled: false })).toBe(false);
+  expect(parseSwitch({ enabled: true })).toBe(true);
+  for (const bad of [undefined, null, {}, { enabled: "false" }, { enabled: 0 }])
+    expect(() => parseSwitch(bad)).toThrow("invalid_input");
 });

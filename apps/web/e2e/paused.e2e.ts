@@ -1,26 +1,28 @@
 import { expect, test } from "@playwright/test";
-import postgres from "postgres";
 import { current, liveStatus, toStep2, toStep3 } from "./coin.ts";
 import { injectPhantom, newTestAccount, rootEnv } from "./phantom.ts";
 
-// Flips the real kill switch on the Neon dev branch. The "paused" project runs this file after every other
-// spec, so no parallel test sees the pause; finally and afterAll make sure launches end up enabled.
-const url = rootEnv().DATABASE_URL;
-const sql = url ? postgres(url, { max: 1, onnotice: () => {} }) : undefined;
-const enable = (on: boolean) =>
-  (sql as postgres.Sql)`update settings set launches_enabled = ${on} where id = 1`;
+// Flips the real kill switch through the worker's route, which writes the Neon dev branch and the worker's
+// memory. The "paused" project runs this file after every other spec, so no parallel test sees the pause;
+// finally and afterAll make sure launches end up enabled.
+const { WORKER_URL, WORKER_TOKEN } = rootEnv();
+async function enable(on: boolean) {
+  const r = await fetch(`${WORKER_URL}/kill-switch`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${WORKER_TOKEN}`, "content-type": "application/json" },
+    body: JSON.stringify({ enabled: on }),
+  });
+  expect(await r.json()).toEqual({ enabled: on });
+}
 const PAUSED =
   "The BONDR owner has paused new launches. You can fill this in now; the Launch button unlocks automatically when launches resume.";
-// Worker cache 5 s plus the page's 10 s poll, with room for a request in flight.
+// The page's 10 s poll, with room for a request in flight.
 const WITHIN = { timeout: 20_000 };
 
 test.describe.configure({ timeout: 120_000 });
-test.skip(!sql, "needs DATABASE_URL in the root .env");
+test.skip(!WORKER_URL || !WORKER_TOKEN, "needs WORKER_URL and WORKER_TOKEN in the root .env");
 test.afterAll(async () => {
-  if (!sql) return;
-  const [settings] = await sql`select launches_enabled from settings where id = 1`;
-  expect(settings?.launches_enabled).toBe(true);
-  await sql.end({ timeout: 5 });
+  if (WORKER_URL && WORKER_TOKEN) await enable(true);
 });
 
 test("the kill switch pauses the form without a reload and clears when lifted", async ({ page }) => {

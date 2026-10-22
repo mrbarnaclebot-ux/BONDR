@@ -12,7 +12,7 @@ import { start } from "./http.ts";
 import { type PrepareCtx, prepare } from "./prepare.ts";
 import { flush } from "./sentry.ts";
 import { resumeLaunches } from "./settle.ts";
-import { type Ctx, liveStatus, quote } from "./status.ts";
+import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
 import { submit } from "./submit.ts";
 
 const SAMPLE_ADDR = "9wRtPq3yq1ZJ8yQd2ynVfUKAnx3bK2SMQkkjD8Kq4e3F";
@@ -28,6 +28,7 @@ async function main() {
       "POST /quote": (body) => quote(ctx, body),
       "POST /prepare": (body) => prepare(pctx, body),
       "POST /submit": (body) => submit(pctx, body),
+      "POST /kill-switch": (body) => setSwitch(body),
       // OPS-01 check: the 500 path logs this through redact and Sentry must show [addr], not the address.
       "POST /sentry-test": async () => {
         throw new Error(`sentry test from worker: wallet ${SAMPLE_ADDR}`);

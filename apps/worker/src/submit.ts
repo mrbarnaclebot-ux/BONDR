@@ -83,7 +83,7 @@ export async function submit(ctx: PrepareCtx, body: unknown): Promise<SubmitResu
   const row = await getLaunch(db(), launchId);
   if (!row) throw fail({ error: "not_found" });
   if (row.state !== "prepared") return current(row);
-  const { paused } = await liveStatus(ctx);
+  const { paused } = await liveStatus(ctx, true);
   if (paused) return refuse(row, { error: "paused", paused });
   if ((await ctx.conn.getBlockHeight()) > Number(row.lastValidBlockHeight))
     return refuse(row, { error: "expired" });

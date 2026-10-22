@@ -101,11 +101,12 @@ async function conclude(conn: Connection, row: Row, next: Next): Promise<void> {
     if (await advance(db(), row.id, from, "failed", { error: next.error })) await releaseMint(row.mint);
     return;
   }
-  // RPC down past expiry: left unknown for the next boot's recheck, never resent.
+  // RPC down past expiry: left unknown and rechecked by settleLaunch, never resent.
   if (from !== "unknown") await advance(db(), row.id, from, "unknown", { error: "status unknown" });
 }
 
-export async function settleLaunch(conn: Connection, row: Row): Promise<void> {
+// Polls until the row has an outcome: landed, failed, or unknown when the RPC fails past expiry.
+async function watch(conn: Connection, row: Row): Promise<Next> {
   const lastValid = Number(row.lastValidBlockHeight);
   let [height, rechecks] = [0, 0];
   for (let i = 0; ; i++) {
@@ -117,8 +118,21 @@ export async function settleLaunch(conn: Connection, row: Row): Promise<void> {
     else if (next.to === "recheck") {
       rechecks += 1;
       await delay(RECHECK_MS);
-    } else return conclude(conn, row, next);
+    } else return next;
   }
+}
+
+// An unknown row is checked again after each wait, so a launch that landed during an RPC outage still
+// settles without a restart (WR-05). The boot resume picks up a row still unknown after the last one.
+const UNKNOWN_RETRY_MS = [30_000, 120_000, 600_000];
+
+export async function settleLaunch(conn: Connection, row: Row, retries = UNKNOWN_RETRY_MS): Promise<void> {
+  const next = await watch(conn, row);
+  await conclude(conn, row, next);
+  const [wait, ...rest] = retries;
+  if (next.to !== "unknown" || wait === undefined) return;
+  await delay(wait);
+  return settleLaunch(conn, { ...row, state: "unknown" }, rest);
 }
 
 const logged = (id: string) => (e: unknown) =>

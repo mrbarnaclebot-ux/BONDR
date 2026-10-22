@@ -14,6 +14,9 @@ import type { Action, Fields, Launch, Live, Pinned } from "@/components/launch-f
 import type { WalletApi } from "@/components/wallet";
 
 const POLL_MS = 1000;
+// A row still prepared this long after polling began was never co-signed, and its blockhash (60-90 s) is
+// dead, so nothing can land: the launch is over (web WR-04).
+const PREPARED_MS = 150_000;
 
 export type Row = 1 | 2 | 3 | 4 | 5;
 export type Code = LaunchErrorCode | "rejected" | "switched" | "onchain";
@@ -121,12 +124,14 @@ async function submit(id: string, signed: string, signal: AbortSignal): Promise<
 }
 
 export async function poll(run: Run, id: string, resend?: () => Promise<unknown>): Promise<void> {
+  const start = Date.now();
   while (!run.signal.aborted) {
     const v = await getView(id);
     if (v === "not_found") throw new Stop("not_found");
     if (v?.state === "landed") return run.dispatch({ type: "live", view: v });
     if (v?.state === "failed")
       throw new Stop(v.error === "paused" || v.error === "cosign_refused" ? v.error : "onchain");
+    if (v?.state === "prepared" && Date.now() - start > PREPARED_MS) throw new Stop("expired");
     if (v?.state === "prepared") await resend?.();
     if (v) run.set({ sig: v.signature ?? undefined, unknown: v.state === "unknown" });
     await new Promise((done) => setTimeout(done, POLL_MS));

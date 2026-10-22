@@ -131,6 +131,13 @@ function useLive(devBuy: string): Live {
   return { status, statusError: error, refresh, buy, quote };
 }
 
+// A prepared row older than this can never be sent: its blockhash died long ago.
+const STALE_MS = 10 * 60_000;
+
+// Prepared counts as in flight: the worker keeps the row prepared while it checks a submit (web WR-04).
+const inFlight = (v: LaunchView): boolean =>
+  v.state !== "failed" && (v.state !== "prepared" || Date.now() - Date.parse(v.createdAt) < STALE_MS);
+
 /** A launch posted before a reload: step 4 keeps polling it, step 5 shows it; it is never signed again. */
 function useRestore(dispatch: Dispatch<Action>) {
   useEffect(() => {
@@ -141,7 +148,7 @@ function useRestore(dispatch: Dispatch<Action>) {
         stored.set(null);
         dispatch({ type: "reset", notice: NOT_FOUND });
       } else if (v?.state === "landed") dispatch({ type: "live", view: v });
-      else if (v && v.state !== "failed" && v.state !== "prepared") dispatch({ type: "restore", view: v });
+      else if (v && inFlight(v)) dispatch({ type: "restore", view: v });
       else if (v) stored.set(null);
     });
   }, [dispatch]);

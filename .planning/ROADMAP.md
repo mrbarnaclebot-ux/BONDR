@@ -77,7 +77,7 @@ Plans:
 - [x] 02-13-PLAN.md - Step 4 sign and step 5 success screen with copy CA and the error-code mapping; launch e2e on devnet
 - [x] 02-14-PLAN.md - Sentry on web and worker with address scrub, web boot guard, client bundle gate
 - [x] 02-15-PLAN.md - Bare token page /coin/[mint] with the proof and contract address
-- [ ] 02-16-PLAN.md - Owner checkpoint: Railway staging deploy (web public, worker private), seed copy, staging smoke
+- [x] 02-16-PLAN.md - Owner checkpoint: Railway staging deploy (web public, worker private), seed copy, staging smoke
 - [ ] 02-17-PLAN.md - Responsive and axe matrix (36 screenshots per target), staging launch, Designer critique and audit with blockers fixed
 - [ ] 02-18-PLAN.md - Owner-approved staging redeploy, staging rerun, owner sign-off with a real Phantom launch
 **UI hint**: yes
@@ -156,7 +156,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
-| 2. Launch Flow | 15/18 | In Progress|  |
+| 2. Launch Flow | 16/18 | In Progress|  |
 | 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
 | 4. Trading | 0/TBD | Not started | - |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |

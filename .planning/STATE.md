@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-15-PLAN.md
-last_updated: "2026-10-21T18:54:23.000Z"
+stopped_at: Completed 02-16-PLAN.md
+last_updated: "2026-10-22T16:40:00.000Z"
 last_activity: 2026-10-22
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 25
+  completed_plans: 26
   percent: 14
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Launch Flow) — EXECUTING
-Plan: 16 of 18
+Plan: 17 of 18
 Status: Ready to execute
 Last activity: 2026-10-22
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Progress: [█████████░] 89%
 | Phase 02 P13 | 21 min | 2 tasks | - |
 | Phase 02 P14 | 14 min | 2 tasks | - |
 | Phase 02 P15 | 13 min | 2 tasks | - |
+| Phase 02 P16 | 67 min | 3 tasks | - |
 
 ## Accumulated Context
 
@@ -150,6 +151,7 @@ Recent decisions affecting current work:
 - [Phase 02]: Review CR-01: the wallet is proved once by a Phantom signMessage at consent and then read from an HMAC-signed session cookie in every launch route; staging web needs SESSION_SECRET
 - [Phase 02]: Neon has a hard 500 CU-h/month quota (compute_time_seconds 1800000); hitting it suspends dev and staging until the 1st. Computes stay at 0.25 CU and nothing polls the database
 - [Phase 02]: The kill switch lives in worker memory (loaded on first status read); flip it with the bearer-protected worker POST /kill-switch {enabled}, which writes the DB too. Prepare and submit re-read the DB, so a pause set in raw SQL still stops launches, but open pages show it only after the next launch attempt or a worker restart
+- [Phase 02]: 02-16: staging is Railway project bondr, env staging, web public at web-staging-72bad.up.railway.app, worker private, both in US East next to Neon. railway.json is deprecated for new services, so it was deleted and the settings live on the services (IaC .railway/railway.ts deferred to Phase 7). Railway's edge overwrites a forged X-Real-IP (12 forged requests, 429 from the 11th), so web WR-03 holds
 - [Phase 02]: Coin page reads are cached per process: a landed coin with facts for an hour, a miss or a coin without facts for a minute
 
 ### Pending Todos
@@ -182,6 +184,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-21T18:54:23.000Z
-Stopped at: Completed 02-15-PLAN.md
+Last session: 2026-10-22T16:40:00.000Z
+Stopped at: Completed 02-16-PLAN.md
 Resume file: None

@@ -13,8 +13,24 @@ export const dynamic = "force-dynamic";
 // Base58, 32-44 characters: anything else cannot be a mint, so it never reaches the query (T-02-15-01).
 const MINT = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
-// Metadata and the page share one read per request.
-const landed = cache(async (mint: string) => (MINT.test(mint) ? launchByMint(mint) : null));
+// A landed coin with its facts never changes, so it is kept an hour; a miss or a coin still waiting on facts
+// for a minute. Repeat views and crawlers then do not wake Neon (500 CU-h budget).
+// ponytail: per-process map cleared at 1000 entries; move to a shared cache if web runs more than one instance.
+const HOUR = 3_600_000;
+const MINUTE = 60_000;
+const seen = new Map<string, { at: number; ttl: number; v: LaunchView | null }>();
+
+async function read(mint: string): Promise<LaunchView | null> {
+  const hit = seen.get(mint);
+  if (hit && Date.now() - hit.at < hit.ttl) return hit.v;
+  const v = await launchByMint(mint);
+  if (seen.size >= 1000) seen.clear();
+  seen.set(mint, { at: Date.now(), ttl: v?.facts ? HOUR : MINUTE, v });
+  return v;
+}
+
+// Metadata and the page share one lookup per request.
+const landed = cache(async (mint: string) => (MINT.test(mint) ? read(mint) : null));
 
 type Props = { params: Promise<{ mint: string }> };
 

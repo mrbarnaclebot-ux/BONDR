@@ -11,7 +11,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 - `submit.ts`: `POST /submit`. Pause and expiry re-checked, then `cosign` (core) against the stored message, exit and mint; only then `signed` is stored and the wire is sent.
 - `settle.ts`: the state machine. Pure `nextState` and `resumeAction`; `settleLaunch` polls the signature, marks `landed` at confirmation (then facts), rechecks with history 3 times past expiry before `failed expired`; `resumeLaunches` on boot.
 - `build.ts`: `unionTableKeys` (both exits in one table), `ensureTable` (reuse or ops-paid create), `compileLaunch` and `buildMessage` (v0, dev pays, mint second signer, allowlist, exit present, 1232 bytes), `simulateLaunch`, pure `simError` and `previewCosts`.
-- `launches.ts`: launch rows. `insertPrepared`, `insertFailed`, `advance` (guarded `UPDATE ... WHERE state = from`), `getLaunch`, `unsettled`, `tableFor`, `newTablesLastHour`, `consented`.
+- `launches.ts`: launch rows. `insertPrepared`, `insertFailed`, `advance` (guarded `UPDATE ... WHERE state = from`), `getLaunch`, `unsettled`, `tableFor`, `newTablesLastHour`, `newTablesToday` (the per-wallet daily table cap), `consented`.
 - `status.ts`: `liveStatus` (`GET /status`, cached 5 s) and `quote` (`POST /quote`); `pauseReason` and `networkFee` are pure.
 - `vanity.ts`: the bndr mint pool. `mintKey`, `isBndr` (grinder fast path), `mintKeyFor` (re-derives and checks before signing), `reserve`, `release` (only when `canRelease`), `markUsed`, `vanityRow`, `poolSize`.
 - `grind.ts`: worker_threads grinder, `startRefill` and the pre-fill CLI.

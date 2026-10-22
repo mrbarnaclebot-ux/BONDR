@@ -5,9 +5,25 @@ import { close, db, vanityMints, wallets } from "@bondr/core/db";
 import { Keypair } from "@solana/web3.js";
 import { eq, sql, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, test } from "vitest";
-import { previewCosts, simError } from "./build.ts";
-import { advance, type Exec, getLaunch, insertPrepared, newTablesLastHour, tableFor } from "./launches.ts";
-import { type GuardInput, parseRequest, prepareGuard, sellFloor, signBy, TABLE_CAP } from "./prepare.ts";
+import { ensureTable, previewCosts, simError } from "./build.ts";
+import {
+  advance,
+  type Exec,
+  getLaunch,
+  insertPrepared,
+  newTablesLastHour,
+  newTablesToday,
+  tableFor,
+} from "./launches.ts";
+import {
+  type GuardInput,
+  parseRequest,
+  prepareGuard,
+  sellFloor,
+  signBy,
+  TABLE_CAP,
+  WALLET_TABLE_CAP,
+} from "./prepare.ts";
 
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
 if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFile);
@@ -24,11 +40,19 @@ const body = {
   solIn: String(MIN),
   exit: "burn",
 };
-const ok: GuardInput = { paused: null, min: MIN, consented: true, body, tablesLastHour: 0, reusable: false };
+const ok: GuardInput = {
+  paused: null,
+  min: MIN,
+  consented: true,
+  body,
+  tablesLastHour: 0,
+  walletTablesToday: 0,
+  reusable: false,
+};
 const guard = (over: Partial<GuardInput>, b: Record<string, unknown> = {}) =>
   prepareGuard({ ...ok, ...over, body: { ...body, ...b } });
 
-test("prepareGuard refuses paused, unconsented, invalid fields, below-minimum buys and the table cap", () => {
+test("prepareGuard refuses paused, unconsented, invalid fields, below-minimum buys and both table caps", () => {
   expect(guard({ paused: "kill_switch" })).toEqual({ error: "paused", paused: "kill_switch" });
   expect(guard({ consented: false })).toEqual({ error: "consent_required" });
   expect(guard({}, { name: "N".repeat(33) })).toEqual({ error: "invalid_input" });
@@ -39,6 +63,8 @@ test("prepareGuard refuses paused, unconsented, invalid fields, below-minimum bu
   expect(guard({ min: null })).toEqual({ error: "build_failed" });
   expect(guard({ tablesLastHour: TABLE_CAP })).toEqual({ error: "rate_limited" });
   expect(guard({ tablesLastHour: TABLE_CAP, reusable: true })).toBe(null);
+  expect(guard({ walletTablesToday: WALLET_TABLE_CAP })).toEqual({ error: "rate_limited" });
+  expect(guard({ walletTablesToday: WALLET_TABLE_CAP, reusable: true })).toBe(null);
   expect(guard({})).toBe(null);
 });
 
@@ -72,6 +98,12 @@ test("simError maps 6107 to paused, low funds to insufficient_balance, the rest 
   });
   expect(simError("AccountNotFound", null)).toEqual({ error: "insufficient_balance" });
   expect(simError(custom(6003), ["slippage"])).toEqual({ error: "build_failed" });
+});
+
+test("ensureTable refuses a new table when ops is under the floor, before sending anything", async () => {
+  const conn = { getBalance: async () => 0.049 * 1e9 } as unknown as Parameters<typeof ensureTable>[0];
+  const ops = Keypair.generate();
+  await expect(ensureTable(conn, ops, [], null)).rejects.toMatchObject({ body: { error: "build_failed" } });
 });
 
 test("previewCosts: rent from the burn spend, solBack from burn minus sell", () => {
@@ -108,6 +140,8 @@ describe.skipIf(!process.env.DATABASE_URL)("launch rows", { timeout: 30_000 }, (
       const row = { wallet, mint, w: wallet, name: "T", symbol: "T", uri: "u", solIn: 1n, exit: "burn" };
       await insertPrepared(tx, "test-launch", { ...row, lookupTable: "TABLE1", newTable: true });
       expect(await newTablesLastHour(tx)).toBe(before + 1);
+      expect(await newTablesToday(tx, wallet)).toBe(1);
+      expect(await newTablesToday(tx, "test-other-wallet")).toBe(0);
       expect(await tableFor(tx, wallet)).toEqual({ mint, table: "TABLE1" });
 
       expect((await advance(tx, "test-launch", "prepared", "signed"))?.state).toBe("signed");

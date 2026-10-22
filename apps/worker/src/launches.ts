@@ -75,6 +75,16 @@ export const newTablesLastHour = (exec: Exec): Promise<number> =>
     and(eq(launches.newTable, true), sql`${launches.createdAt} > now() - interval '1 hour'`),
   );
 
+export const newTablesToday = (exec: Exec, wallet: string): Promise<number> =>
+  exec.$count(
+    launches,
+    and(
+      eq(launches.newTable, true),
+      eq(launches.wallet, wallet),
+      sql`${launches.createdAt} > now() - interval '1 day'`,
+    ),
+  );
+
 // Rows a restart must pick up: signed (maybe never sent), sent and unknown (maybe landed).
 export const unsettled = (exec: Exec): Promise<LaunchRow[]> =>
   exec

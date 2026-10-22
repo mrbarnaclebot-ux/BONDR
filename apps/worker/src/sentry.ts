@@ -17,7 +17,7 @@ if (dsn) {
     integrations: [
       // Keep Node's crash on an unhandled rejection (Sentry defaults to warn), so Railway restarts us.
       Sentry.onUnhandledRejectionIntegration({ mode: "strict" }),
-      // The worker already reports through console (ops low, vanity pool low, route and settle failures).
+      // The worker already reports through console (ops below floor, vanity pool low, route and settle failures).
       Sentry.captureConsoleIntegration({ levels: ["warn", "error"] }),
     ],
     // D-19: no wallet address leaves in an event or a breadcrumb.

@@ -35,6 +35,7 @@ import {
   type NewLaunch,
   newId,
   newTablesLastHour,
+  newTablesToday,
   tableFor,
 } from "./launches.ts";
 import { type Ctx, LAUNCH_CU_LIMIT, liveStatus, MAX_SOL_IN, networkFee } from "./status.ts";
@@ -45,6 +46,9 @@ type Req = Omit<PrepareRequest, "solIn"> & { solIn: bigint };
 
 // New per-coin tables per hour, worker-wide: at about 0.006 SOL each, a cap on how fast prepare spam drains ops.
 export const TABLE_CAP = 30;
+// New tables per wallet per day: each coin needs its own table, so this is also a launch cap per wallet. It
+// stops one proven wallet from spending the whole hourly cap (CR-01).
+export const WALLET_TABLE_CAP = 10;
 const SELL_SLIPPAGE_BPS = 300;
 const CID = /^[A-Za-z0-9]{1,100}$/;
 const LINK_KINDS = ["x", "telegram", "website"] as const;
@@ -99,6 +103,7 @@ export type GuardInput = {
   consented: boolean;
   body: unknown;
   tablesLastHour: number;
+  walletTablesToday: number;
   reusable: boolean; // the wallet's live reservation already has a table
 };
 
@@ -107,7 +112,8 @@ export function prepareGuard(i: GuardInput): ApiError | null {
   if (i.min === null) return { error: "build_failed" };
   if (!parseRequest(i.body, i.min)) return { error: "invalid_input" };
   if (!i.consented) return { error: "consent_required" };
-  if (i.tablesLastHour >= TABLE_CAP && !i.reusable) return { error: "rate_limited" };
+  const capped = i.tablesLastHour >= TABLE_CAP || i.walletTablesToday >= WALLET_TABLE_CAP;
+  if (capped && !i.reusable) return { error: "rate_limited" };
   return null;
 }
 
@@ -124,9 +130,14 @@ export function sellFloor(solBack: bigint): bigint {
 async function admit(ctx: PrepareCtx, body: unknown) {
   const wallet = walletOf((body as { wallet?: unknown } | null)?.wallet);
   const rows = wallet
-    ? Promise.all([consented(db(), wallet), newTablesLastHour(db()), tableFor(db(), wallet)])
-    : Promise.resolve([false, 0, null] as const);
-  const [status, [ok, tablesLastHour, prior]] = await Promise.all([liveStatus(ctx), rows]);
+    ? Promise.all([
+        consented(db(), wallet),
+        newTablesLastHour(db()),
+        newTablesToday(db(), wallet),
+        tableFor(db(), wallet),
+      ])
+    : Promise.resolve([false, 0, 0, null] as const);
+  const [status, [ok, tablesLastHour, walletTablesToday, prior]] = await Promise.all([liveStatus(ctx), rows]);
   const min = status.minLamports === null ? null : BigInt(status.minLamports);
   const refused = prepareGuard({
     paused: status.paused,
@@ -134,6 +145,7 @@ async function admit(ctx: PrepareCtx, body: unknown) {
     consented: ok,
     body,
     tablesLastHour,
+    walletTablesToday,
     reusable: !!prior,
   });
   if (refused) throw fail(refused);

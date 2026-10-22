@@ -25,8 +25,9 @@ export type Builds = { burn: Built; sell: Built };
 
 // Helius free allows about one send per second (Pitfall 8).
 const TABLE_PACE_MS = 1100;
-// 02-14 routes the warning to Sentry; the owner tops ops up by hand (01-10).
-const LOW_OPS_LAMPORTS = 0.05 * LAMPORTS_PER_SOL;
+// Below this ops pays for no new table: what is left stays for fee and recovery txs. buildFailed logs it, so
+// Sentry tells the owner to top ops up by hand (01-10).
+const OPS_FLOOR_LAMPORTS = 0.05 * LAMPORTS_PER_SOL;
 // pump: a child create on a complete, unmigrated BONDR (the 6107 window, 01-05).
 const AWAITING_CODE = 6107;
 
@@ -65,7 +66,7 @@ export async function ensureTable(conn: Connection, ops: Keypair, keys: PublicKe
   const old = prior ? await reusable(conn, prior, keys) : null;
   if (old) return { table: old, created: false };
   const balance = await conn.getBalance(ops.publicKey);
-  if (balance < LOW_OPS_LAMPORTS) console.warn(`ops low: ${balance / LAMPORTS_PER_SOL} SOL`);
+  if (balance < OPS_FLOOR_LAMPORTS) throw buildFailed(`ops below floor: ${balance / LAMPORTS_PER_SOL} SOL`);
   const r = await createTable(conn, ops, keys, TABLE_PACE_MS);
   if (!r.table) throw buildFailed(`lookup table ${r.address.toBase58()}: ${r.err ?? "not warm"}`);
   return { table: r.table, created: true };

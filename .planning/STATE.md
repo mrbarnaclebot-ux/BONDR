@@ -147,6 +147,10 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-14: Sentry projects bondr-web and bondr-worker in org mrbarnacle; one shared restrictive privacy config; web DSN must be a Railway build variable
 - [Phase 02]: 02-14: open check: confirm the next real browser event carries no geo data (IP storage prevention switched on, not re-tested)
 - [Phase 02]: 02-15: coin image is a CSS background (ipfs.io 429s the server); switch back to next/image once PINATA_GATEWAY is set
+- [Phase 02]: Review CR-01: the wallet is proved once by a Phantom signMessage at consent and then read from an HMAC-signed session cookie in every launch route; staging web needs SESSION_SECRET
+- [Phase 02]: Neon has a hard 500 CU-h/month quota (compute_time_seconds 1800000); hitting it suspends dev and staging until the 1st. Computes stay at 0.25 CU and nothing polls the database
+- [Phase 02]: The kill switch lives in worker memory (loaded on first status read); flip it with the bearer-protected worker POST /kill-switch {enabled}, which writes the DB too. Prepare and submit re-read the DB, so a pause set in raw SQL still stops launches, but open pages show it only after the next launch attempt or a worker restart
+- [Phase 02]: Coin page reads are cached per process: a landed coin with facts for an hour, a miss or a coin without facts for a minute
 
 ### Pending Todos
 

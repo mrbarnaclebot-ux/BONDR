@@ -9,6 +9,7 @@ const server = start(
   {
     "GET /status": async () => ({ ok: "status" }),
     "POST /quote": async (body) => ({ echo: body }),
+    "GET /bigint": async () => ({ n: 1n }),
     "GET /boom": async () => {
       throw new Error("secret stack detail at /Users/x/file.ts:1");
     },
@@ -65,5 +66,13 @@ test("a throwing handler answers 500 build_failed with no stack text", async () 
   expect(JSON.parse(text)).toEqual({ error: "build_failed" });
   expect(text).not.toContain("secret");
   expect(log).toHaveBeenCalledOnce();
+  log.mockRestore();
+});
+
+test("a result that cannot serialize answers 500, not a half-sent 200 (IN-05)", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  const res = await get("/bigint", token);
+  expect(res.status).toBe(500);
+  expect(await res.json()).toEqual({ error: "build_failed" });
   log.mockRestore();
 });

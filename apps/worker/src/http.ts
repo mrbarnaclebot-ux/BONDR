@@ -61,10 +61,12 @@ export async function readJson(req: IncomingMessage, max = MAX_BODY): Promise<un
 }
 
 function send(res: ServerResponse, status: number, body: unknown): void {
+  // Before writeHead: a body that cannot serialize (a bigint) throws while the catch can still answer 500.
+  const text = JSON.stringify(body);
   // An unread request body (413) would otherwise keep the socket busy; close it after the answer.
   if (status === 413) res.setHeader("connection", "close");
   res.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" });
-  res.end(JSON.stringify(body));
+  res.end(text);
 }
 
 async function handle(routes: Routes, token: string, req: IncomingMessage, res: ServerResponse) {

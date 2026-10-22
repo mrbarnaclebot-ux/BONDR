@@ -56,12 +56,13 @@ test("mintKeyFor refuses a row from another lane or seed", () => {
 });
 
 // Everything runs in one transaction that is rolled back, so the dev pool is untouched. The table lock makes
-// db.test.ts (run in parallel) wait with its pool row, so the poolSize counts here cannot shift.
+// db.test.ts (run in parallel) wait with its pool row, so the poolSize counts here cannot shift. A test that
+// counts nothing skips it, so db.test.ts does not wait out its timeout behind both.
 type Tx = Exec & Pick<ReturnType<typeof db>, "insert" | "execute">;
-async function rolledBack(fn: (tx: Tx) => Promise<void>) {
+async function rolledBack(fn: (tx: Tx) => Promise<void>, lock = true) {
   try {
     await db().transaction(async (tx) => {
-      await tx.execute(sql`lock table vanity_mints in exclusive mode`);
+      if (lock) await tx.execute(sql`lock table vanity_mints in exclusive mode`);
       await fn(tx);
       tx.rollback();
     });
@@ -144,6 +145,6 @@ describe.skipIf(!process.env.DATABASE_URL)("reservation", { timeout: 30_000 }, (
       });
       await release(tx, rows[0].idx, "failed");
       expect(await reserve(tx, w2)).toEqual(rows[1]);
-    });
+    }, false);
   });
 });

@@ -34,11 +34,13 @@ test("sharedKeys returns only keys present in both lists", () => {
   expect(sharedKeys(one, two).map(String)).toEqual([String(b)]);
 });
 
-test("freshSlot never hands one authority the same finalized slot twice", async () => {
-  const slots = [10, 10, 11];
-  const conn = { getSlot: async () => slots.shift() } as unknown as Connection;
+test("freshSlot never hands one authority the same finalized slot twice, nor one at the tip", async () => {
+  // [finalized, confirmed] per poll: 10 below tip, 10 again, 11 at the tip, 11 below tip.
+  const polls = [10, 12, 10, 12, 11, 11, 11, 13];
+  const conn = { getSlot: async () => polls.shift() } as unknown as Connection;
   expect(await freshSlot(conn, signer)).toBe(10);
   expect(await freshSlot(conn, signer)).toBe(11);
+  expect(polls).toEqual([]);
 });
 
 test("createTable refuses an empty key list", async () => {
@@ -47,7 +49,7 @@ test("createTable refuses an empty key list", async () => {
 
 test("createTable returns the table address when an RPC call throws after the address exists (WR-02)", async () => {
   const conn = {
-    getSlot: async () => 7,
+    getSlot: async (c: string) => (c === "finalized" ? 7 : 8),
     getLatestBlockhash: async () => {
       throw new Error("429 Too Many Requests");
     },

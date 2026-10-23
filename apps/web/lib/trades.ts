@@ -1,9 +1,9 @@
 // The token page trade feed, newest first, paged by (slot, seq) keyset so a page never skips or repeats a row
 // while new trades land on top.
 import "server-only";
-import type { TradeRow } from "@bondr/core/api";
+import type { Candle, TradeRow } from "@bondr/core/api";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, trades } from "./db";
+import { coins, db, trades } from "./db";
 
 export const PAGE = 50;
 const INT8_MAX = 2n ** 63n - 1n;
@@ -56,4 +56,55 @@ export async function tradesPage(
       seq: String(r.seq),
     })),
   };
+}
+
+const INTERVALS: Record<string, number> = { "1m": 60, "5m": 300, "1h": 3600, "1d": 86_400 };
+
+/** Candle seconds for the chart's interval buttons, or null for anything else. */
+export const parseInterval = (s: string): number | null =>
+  Object.hasOwn(INTERVALS, s) ? INTERVALS[s] : null;
+
+type CandleSql = { time: string; open: number; high: number; low: number; close: number; volume: number };
+
+/**
+ * Market cap candles in SOL, computed on read (RESEARCH Pattern 6). Each candle opens at the previous trade's
+ * market cap, so candles are continuous and the first opens at the launch price (D-16). Burns are not prices.
+ */
+async function read(mint: string, seconds: number): Promise<Candle[]> {
+  const rows = await db().execute<CandleSql>(sql`
+    with t as (
+      select at, slot, seq, mcap_sol, coalesce(sol, 0) as sol,
+        coalesce(lag(mcap_sol) over (order by slot, seq),
+          (select launch_mcap_sol from coins where mint = ${mint})) as prev
+      from trades where mint = ${mint} and side <> 'burn' and mcap_sol is not null
+    )
+    select (floor(extract(epoch from at) / ${seconds}) * ${seconds})::float8 as time,
+      (array_agg(prev order by slot, seq))[1] as open,
+      greatest(max(mcap_sol), max(prev)) as high,
+      least(min(mcap_sol), min(prev)) as low,
+      (array_agg(mcap_sol order by slot desc, seq desc))[1] as close,
+      (sum(sol) / 1e9)::float8 as volume
+    from t group by 1 order by 1`);
+  return rows.map((r) => ({ ...r, time: Number(r.time) }));
+}
+
+// ponytail: scans every trade of the coin per (mint, interval) every 10 s; store rollups past about 100k trades
+// per coin. The per-process map is cleared at 1000 entries.
+const kept = new Map<string, { at: number; v: Promise<Candle[]> }>();
+
+export async function candles(mint: string, seconds: number): Promise<Candle[]> {
+  const key = `${mint}:${seconds}`;
+  const hit = kept.get(key);
+  if (hit && Date.now() - hit.at < 10_000) return hit.v;
+  const v = read(mint, seconds);
+  if (kept.size >= 1000) kept.clear();
+  kept.set(key, { at: Date.now(), v });
+  v.catch(() => kept.delete(key)); // a failed read is not kept
+  return v;
+}
+
+/** The bond time in UTC seconds for the chart's Bonded marker, or null on the curve or before indexing. */
+export async function bondTime(mint: string): Promise<number | null> {
+  const [r] = await db().select({ at: coins.bondedAt }).from(coins).where(eq(coins.mint, mint)).limit(1);
+  return r?.at ? Math.floor(r.at.getTime() / 1000) : null;
 }

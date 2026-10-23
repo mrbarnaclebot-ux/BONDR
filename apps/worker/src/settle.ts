@@ -8,6 +8,7 @@ import { innerEvents } from "@bondr/core/events";
 import { redact } from "@bondr/core/net";
 import { broadcast, fetchTx } from "@bondr/core/send";
 import type { Connection } from "@solana/web3.js";
+import { ingestLaunch } from "./ingest.ts";
 import { advance, type LaunchRow, unsettled } from "./launches.ts";
 import { markUsed, release, vanityRow } from "./vanity.ts";
 
@@ -91,7 +92,10 @@ async function landed(conn: Connection, row: Row): Promise<void> {
   });
   if (!moved) return;
   const tx = await fetchTx(conn, row.signature ?? "");
-  if (tx) await advance(db(), row.id, "landed", "landed", { facts: launchFacts(tx, row) });
+  if (!tx) return;
+  await advance(db(), row.id, "landed", "landed", { facts: launchFacts(tx, row) });
+  // The coin and its Launch rows, from the same tx. A failure never undoes landed; the boot backfill retries it.
+  await ingestLaunch(row, tx).catch(logged(row.id));
 }
 
 async function conclude(conn: Connection, row: Row, next: Next): Promise<void> {

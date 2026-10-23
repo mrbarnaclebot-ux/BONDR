@@ -3,17 +3,29 @@
 // flight, and the vanity refill runs only on boot and on demand.
 // First (a side-effect import, so import sorting keeps it first): Sentry is up before other modules log.
 import "./sentry.ts";
-import { close } from "@bondr/core/db";
+import { close, db } from "@bondr/core/db";
 import { connect, redact } from "@bondr/core/net";
 import { OnlinePumpSdk } from "@bondr/core/pump";
+import { seedBondrPrice } from "./bondr-price.ts";
 import { loadEnv } from "./env.ts";
 import { startRefill } from "./grind.ts";
 import { start } from "./http.ts";
+import { backfillLaunches, loadCoins } from "./ingest.ts";
 import { type PrepareCtx, prepare } from "./prepare.ts";
 import { flush } from "./sentry.ts";
 import { resumeLaunches } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
 import { submit } from "./submit.ts";
+
+const failed = (what: string) => (e: unknown) =>
+  console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
+
+// The coin registry and BONDR's price in memory, then a one-time pass over launches not indexed yet.
+async function bootIndex(ctx: Ctx): Promise<void> {
+  await seedBondrPrice(ctx);
+  await loadCoins(db());
+  console.log(`backfilled ${await backfillLaunches(ctx.conn)} launches`);
+}
 
 const SAMPLE_ADDR = "9wRtPq3yq1ZJ8yQd2ynVfUKAnx3bK2SMQkkjD8Kq4e3F";
 
@@ -39,9 +51,8 @@ async function main() {
   server.on("listening", () => {
     console.log(`worker listening on ${env.net}`);
     void startRefill(env);
-    resumeLaunches(conn).catch((e: unknown) =>
-      console.error(`resume failed: ${redact(e instanceof Error ? e.message : String(e))}`),
-    );
+    bootIndex(ctx).catch(failed("index boot"));
+    resumeLaunches(conn).catch(failed("resume"));
   });
   process.once("SIGTERM", () => {
     server.close(() => void close().finally(() => process.exit(0)));

@@ -4,7 +4,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## src
 
-- `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
+- `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`, then the index boot: `seedBondrPrice`, `loadCoins`, `backfillLaunches`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
 - `env.ts`: `loadEnv` and `launchNet` (refuses mainnet in Phase 2, D-02); `ops` and `treasury` keys with the Phase 1 ids.
 - `http.ts`: node:http server, `authorized` (timingSafeEqual), `readJson` (16 KB cap), `Fail` for contract errors.
 - `prepare.ts`: `POST /prepare`. Guards (pause, consent, rules, hourly table cap, balance) run before any spend, then reserve, W, table, build, simulate, store `prepared`. `prepareGuard`, `parseRequest`, `signBy` and `sellFloor` are pure.
@@ -12,6 +12,8 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 - `settle.ts`: the state machine. Pure `nextState` and `resumeAction`; `settleLaunch` polls the signature, marks `landed` at confirmation (then facts), rechecks with history 3 times past expiry before `failed expired`; `resumeLaunches` on boot.
 - `build.ts`: `unionTableKeys` (both exits in one table), `ensureTable` (reuse or ops-paid create), `compileLaunch` and `buildMessage` (v0, dev pays, mint second signer, allowlist, exit present, 1232 bytes), `simulateLaunch`, pure `simError` and `previewCosts`.
 - `launches.ts`: launch rows. `insertPrepared`, `insertFailed`, `advance` (guarded `UPDATE ... WHERE state = from`), `getLaunch`, `unsettled`, `tableFor`, `newTablesLastHour`, `newTablesToday` (the per-wallet daily table cap), `consented`.
+- `ingest.ts`: the one write path for the indexer. `writeParsed` writes a `parseTx` result in the caller's transaction: the new coin (on conflict do nothing), trades with `on conflict (signature, ix) do nothing returning`, and coin patches only for a mint that got a new trade. `ingestTx(conn, sig)` fetches, parses and writes one tx; `ingestLaunch(row, tx)` writes a landed launch's coin and Launch rows and adds it to `knownCoins`; `loadCoins` fills `knownCoins` at boot; `backfillLaunches` indexes every landed launch without a coin row, once per boot, paced.
+- `bondr-price.ts`: BONDR's SOL price in memory only (never stored, D-04). `seedBondrPrice` reads BONDR's curve, or its BONDR/SOL pool once migrated; every BONDR event the ingest sees moves it.
 - `status.ts`: `liveStatus` (`GET /status`, cached 5 s) and `quote` (`POST /quote`); `pauseReason` and `networkFee` are pure.
 - `vanity.ts`: the bndr mint pool. `mintKey`, `isBndr` (grinder fast path), `mintKeyFor` (re-derives and checks before signing), `reserve`, `release` (only when `canRelease`), `markUsed`, `vanityRow`, `poolSize`.
 - `grind.ts`: worker_threads grinder, `startRefill` and the pre-fill CLI.
@@ -34,6 +36,12 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 ## Launch states
 
 `prepared -> signed -> sent -> landed | failed | unknown`, and `unknown -> landed | failed`. `prepared -> failed` on pause, expiry or a refused co-sign. Every change is one guarded UPDATE. `signed` holds the fully signed wire before the send, so a restart resends it while the blockhash is valid (same signature, Solana dedupes). `sent` and `unknown` are never resent (D-16): past the blockhash they are rechecked with history, 3 times 10 s apart, then `failed` with `expired`. `landed` marks the mint used; `failed` releases it. Facts on a landed row: `tokens` (bought), `devChildAfter` (expected "0"), and for sell `solBack`.
+
+## Index tables
+
+`coins` holds one row per landed launch: curve reserves, `venue` (`curve`, `complete`, `pool`), `mcap_sol`, `launch_mcap_sol`, `progress`, `bondr_at_bond`, `bond_sol`, `last_sig`, `last_trade_at`, holders and bond facts. `trades` holds every trade of a known coin, keyed by `(signature, ix)`, with `seq` ordering trades inside a slot. A launch writes its dev buy and its exit (`sell`, or a synthetic `burn` row at ix 1000), both `launch = true`. Postgres enforces the venue and side enums, `sol is null` exactly for burns, `bonded_at` set exactly off the curve, and `progress` in 0..1.
+
+`settle.ts` calls `ingestLaunch` with the tx it already fetched for the facts; a failure there is logged and never undoes `landed`, and the next boot's backfill picks the launch up.
 
 ## Env
 

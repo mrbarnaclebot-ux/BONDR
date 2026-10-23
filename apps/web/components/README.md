@@ -30,3 +30,7 @@
 - `ui-seg.tsx`: Seg, the segmented control (native group of aria-pressed buttons, CSS-only sliding indicator); chart intervals and sort tabs.
 - `token-chart.tsx`: McapChart, the token page market cap chart (interval Seg, OHLC readout, states, live candle); loads lightweight-charts by dynamic import.
 - `token-chart-draw.ts`: the lightweight-charts options, series, data, Bonded marker and `liveBar` (tested in `token-chart-draw.test.ts`).
+- `launch-link.tsx`: LaunchLink, the header's quiet "Launch a coin" link ("Launch" below 768px, an icon below 360px), `aria-current` on /launch.
+- `home-hero.tsx`: HomeHero, the home hero (headline, lede, Launch a coin or Launches paused, See all coins, the D-09 pulse line) and its art: the looping video with motes, or the still under reduced motion.
+- `coin-card.tsx`: CoinCard, one coin as a single link (art bleed and avatar, name, symbol, market cap in SOL, 1h change pill, bond glyph); `grid` (age chip, horizontal below 560px) and `trending` (rank and volume chips) variants; `data-field` marks the numbers a trade flashes.
+- `home-coins.tsx`: HomeCoins, All coins: the Top / Latest / Oldest Seg (?sort= by replaceState), the card grid with the 60% hold while a tab loads, Show more, and the empty and error states.

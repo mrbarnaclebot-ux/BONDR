@@ -51,6 +51,7 @@ test.describe("hero", () => {
 
 test.describe("grid", () => {
   test.skip(!sql, "needs DATABASE_URL in the root .env");
+  test.describe.configure({ mode: "serial" }); // one worker, one seeded coin: parallel workers would each seed one
   let coin: Seeded;
   test.beforeAll(async () => {
     const at = new Date(Date.now() + 60_000); // newest launch, even next to a launch that lands mid-run

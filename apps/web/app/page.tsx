@@ -2,8 +2,9 @@ import type { PauseReason, Status } from "@bondr/core/api";
 import { Pause } from "lucide-react";
 import type { Metadata } from "next";
 import { Callout } from "@/components/callout";
+import { HomeCoins } from "@/components/home-coins";
 import { HomeHero } from "@/components/home-hero";
-import { heroCounts } from "@/lib/coins";
+import { heroCounts, listCoins, parseSort } from "@/lib/coins";
 import { workerGet } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +26,17 @@ async function pauseReason(): Promise<PauseReason | null> {
   return status === 200 && "paused" in body ? (body.paused ?? null) : null;
 }
 
+type Props = { searchParams: Promise<{ sort?: string | string[] }> };
+
 /** Home: paused banner, hero with the D-09 counts, and All coins. No closest-to-bond rail (D-08), no USD (D-01). */
-export default async function Home() {
-  const [counts, paused] = await Promise.all([heroCounts().catch(() => null), pauseReason()]);
+export default async function Home({ searchParams }: Props) {
+  const raw = (await searchParams).sort;
+  const sort = parseSort(typeof raw === "string" ? raw : undefined) ?? "top";
+  const [counts, paused, list] = await Promise.all([
+    heroCounts().catch(() => null),
+    pauseReason(),
+    listCoins({ sort, page: 0 }).catch(() => null),
+  ]);
   return (
     <div className="overflow-x-clip">
       {paused && (
@@ -49,6 +58,7 @@ export default async function Home() {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">Only coins launched on BONDR.</p>
         </div>
+        <HomeCoins initial={list} sort={sort} />
       </section>
     </div>
   );

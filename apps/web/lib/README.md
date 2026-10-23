@@ -13,8 +13,8 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `pinata.test.ts`: metadata shape, URI length, upload request and JWT redaction; a live pin with `PINATA_LIVE=1`.
 - `format.ts`: display formats `sol`, `pct`, `compact`, `short`, `explorer`, `age`, and the Phase 3 `mcapSol`, `tradeSol`, `signedPct`, `curvePct`, `relTime`, `thousands`.
 - `trades.ts`: server-only `tradesPage(mint, before?)`, the trade feed paged by (slot, seq) keyset, and `parseCursor`.
-- `coins.ts`: server-only `coinByMint(mint)`, the indexed coin row with 1h and 24h volume and 1h change computed at read (burns excluded); the query is `coinRow` in `@bondr/core/coin-row`, shared with the worker's live events.
-- `coins.test.ts`: windowed volume, 1h change from the last trade before the hour or the launch price, unknown mint (Neon dev; skips without DATABASE_URL).
+- `coins.ts`: server-only `coinByMint(mint)`, the indexed coin row with 1h and 24h volume and 1h change computed at read (burns excluded); the query is `coinRow` in `@bondr/core/coin-row`, shared with the worker's live events. `listCoins({ sort, page })` (Top, Latest, Oldest; 50 a page through `coinRows`) and `heroCounts()` (launched, bonded) are kept 10 s per key; `parseSort` and `parsePage` check the route's params.
+- `coins.test.ts`: windowed volume, 1h change from the last trade before the hour or the launch price, unknown mint, list orders with ties, paging and hero counts (Neon dev; skips without DATABASE_URL).
 - `trades.test.ts`: cursor parsing, and pages with no overlap and no gap down to the launch rows (Neon dev; skips without DATABASE_URL).
 - `format.test.ts`: the display formats.
 - `use-status.ts`: `useStatus()`, polls `/api/status` every 10 s.

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: 02-18 awaiting owner sign-off
+stopped_at: Completed 02-18-PLAN.md
 last_updated: "2026-10-22T16:40:00.000Z"
 last_activity: 2026-10-22
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 28
-  completed_plans: 27
+  completed_plans: 28
   percent: 14
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 
 Phase: 2 (Launch Flow) — EXECUTING
 Plan: 18 of 18
-Status: Awaiting owner sign-off (02-18)
+Status: Plans complete, phase verification next
 Last activity: 2026-10-22
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -158,6 +158,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
+- Pick the IPFS gateway for coin images and metadata (recommended: Pinata dedicated gateway via PINATA_GATEWAY), then redeploy staging with approval
+- Replace the placeholder contact handle in the terms page
 - Phase 5: worker-core review WR-08, `forcedBondIxs` sets minOut to W's whole child balance, so any leftover in W reverts every later forced bond (`packages/core/src/bond.ts:78-88`).
 
 ### Blockers/Concerns
@@ -187,5 +189,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-10-22T16:40:00.000Z
-Stopped at: 02-18 awaiting owner sign-off
+Stopped at: Completed 02-18-PLAN.md
 Resume file: None

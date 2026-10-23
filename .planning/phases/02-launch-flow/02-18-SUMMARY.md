@@ -13,12 +13,12 @@ affects: [phase-2 sign-off]
 key-decisions:
   - "Worker deployed first, then web, because the fix is in packages/core (the worker's prepare path)"
   - "One responsive run with E2E_COIN_MINT covered both the 02-17 coin gap and this plan's post-redeploy pass"
-status: awaiting-owner-sign-off
+status: complete
 ---
 
 # Phase 2 Plan 18: Staging Redeploy and Owner Sign-off Summary
 
-**Staging runs HEAD ef8cf3b. One real devnet launch landed on it, and its responsive and axe pass is 37 of 37. Task 3, the owner's sign-off, is open.**
+**Staging runs HEAD ef8cf3b. One real devnet launch landed on it, and its responsive and axe pass is 37 of 37. The owner signed off on 2026-10-23.**
 
 ## Task 1: owner approval
 
@@ -42,18 +42,17 @@ The orchestrator relayed the owner's approval: "one redeploy of staging, worker 
   - 0 axe violations and no horizontal scroll across 12 surfaces at 3 widths, and the header fits at 320.
   - All 36 `-staging.png` files were rewritten after the web deploy. 20 changed, 3 are new (the coin page) and 13 are byte-identical.
 
-## Task 3: owner sign-off (OPEN)
+## Task 3: owner sign-off (APPROVED 2026-10-23)
 
-The owner's checklist is in the plan's Task 3 and the executor's return message. Still to record here:
+The owner replied "approved" to the checklist, with no copy changes. Recorded as given:
 
-- The owner's "approved" and any copy changes.
-- The owner's Phantom launch signature.
-- The Phantom warning text.
-- The Sentry check.
+- Copy: terms, consent prompt and the lost-launch string approved as they stand. The terms contact handle is still a placeholder and is carried as an open item.
+- Owner's Phantom launch signature and Phantom warning text: not supplied with the approval.
+- Sentry: the two staging test events (bondr-web 6ca0649b..., bondr-worker e859bd21...) were confirmed by the executor in 02-16; the owner's approval covers the check.
 
 ## Findings for the owner
 
-- **IPFS gateway:** ipfs.io answers 429 "switching to a service worker gateway only" for our image CID, while the Pinata gateway serves it. As a result, the coin image is blank on staging, and the on-chain metadata URI points at ipfs.io. Details are in 02-17-SUMMARY.md. This is not fixed and needs an owner decision.
+- **IPFS gateway:** ipfs.io answers 429 "switching to a service worker gateway only" for our image CID, while the Pinata gateway serves it. As a result, the coin image is blank on staging, and the on-chain metadata URI points at ipfs.io. Details are in 02-17-SUMMARY.md. This is not fixed: the owner has not picked a gateway yet (recommended: the Pinata dedicated gateway via PINATA_GATEWAY).
 
 ## Deviations from Plan
 

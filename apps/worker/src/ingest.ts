@@ -12,6 +12,7 @@ import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } fr
 import { type Connection, PublicKey } from "@solana/web3.js";
 import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { bondr, bondrPrice } from "./bondr-price.ts";
+import { touch } from "./holders.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
 
 export const knownCoins = new Map<string, KnownCoin>();
@@ -102,12 +103,21 @@ function parse(tx: TradeTx, launch?: { mint: string; exit: "burn" | "sell" }): P
   return parsed;
 }
 
+// Every coin with a new trade gets a (throttled) holder recount, after the write has committed.
+function arm(conn: Connection, inserted: Inserted[]): Inserted[] {
+  for (const mint of new Set(inserted.map((t) => t.mint))) {
+    const coin = knownCoins.get(mint);
+    if (coin) touch(conn, coin);
+  }
+  return inserted;
+}
+
 export async function ingestTx(conn: Connection, sig: string): Promise<Inserted[]> {
   const tx = await fetchTx(conn, sig);
   if (!tx) return [];
   const parsed = parse(tx);
   if (!parsed.trades.length && !parsed.patches.length) return [];
-  return db().transaction((t) => writeParsed(t, parsed));
+  return arm(conn, await db().transaction((t) => writeParsed(t, parsed)));
 }
 
 // The launch tx the settle already fetched: the coin row, its Launch rows, then the coin joins the registry
@@ -127,6 +137,7 @@ export async function ingestLaunch(
   if (!init) return inserted;
   const bondingCurve = bondingCurvePda(mint).toBase58();
   knownCoins.set(row.mint, { mint: row.mint, bondingCurve, pool, initialRealTokenReserves: init });
+  arm(conn, inserted);
   await gapFill(conn, row.mint, tx.transaction.signatures[0]);
   return inserted;
 }

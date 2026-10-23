@@ -231,3 +231,147 @@
     /* biome-ignore-end lint/complexity/noImportantStyles: end of the reduced-motion override */
   }
 }
+
+/* Home hero (UI-SPEC Hero, Motion, Breakpoints). The art sits behind the copy under two masks; below 1080px it
+   is a 560px box on the right, below 560px a 420px box above the copy. */
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  align-items: center;
+}
+.hero-art {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: -1;
+  height: 560px;
+  opacity: 0.75;
+  mask-image:
+    linear-gradient(90deg, transparent 35%, #000 90%), linear-gradient(0deg, transparent 2%, #000 40%);
+  mask-composite: intersect;
+}
+.hero-art img,
+.hero-art video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 86% 50%;
+  animation: breathe 14s ease-in-out infinite alternate;
+}
+.motes {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.motes i {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 10px var(--leaf);
+  opacity: 0;
+  animation: mote var(--d) linear infinite;
+  animation-delay: var(--dl);
+}
+.hero-in {
+  display: grid;
+  gap: 32px;
+  padding-block: 64px 64px;
+}
+.hero-h1 {
+  font-size: clamp(4.25rem, 10vw, 9.5rem);
+  line-height: 0.82;
+  letter-spacing: -0.005em;
+  text-shadow: 0 10px 50px color-mix(in oklch, var(--background) 80%, transparent);
+}
+.hero-h1 em {
+  font-style: normal;
+  color: var(--leaf);
+  text-shadow: 0 0 60px color-mix(in oklch, var(--leaf) 45%, transparent);
+}
+@media (width >= 1080px) {
+  .hero-art {
+    inset: 0;
+    height: auto;
+    opacity: 1;
+    mask-image:
+      linear-gradient(90deg, transparent 12%, #000 52%), linear-gradient(0deg, transparent 2%, #000 34%);
+  }
+  /* the right column stays empty in Phase 3 so the art shows through (D-08) */
+  .hero-in {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 48px;
+    align-items: end;
+    padding-block: 96px 64px;
+  }
+}
+@media (width >= 1200px) {
+  .hero {
+    min-height: 660px;
+  }
+}
+@media (width < 560px) {
+  .hero-art {
+    inset: 0 -40% auto 0;
+    height: 420px;
+    opacity: 0.7;
+    mask-image: linear-gradient(0deg, transparent 8%, #000 70%);
+  }
+  .hero-art img,
+  .hero-art video {
+    object-position: 64% 40%;
+  }
+  .hero-in {
+    padding-block: 128px 48px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .motes {
+    display: none;
+  }
+  .hero-art img,
+  .hero-art video {
+    animation: none;
+  }
+}
+@keyframes breathe {
+  from {
+    transform: scale(1.02) translateX(0);
+  }
+  to {
+    transform: scale(1.08) translateX(-1.5%);
+  }
+}
+@keyframes mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), -120px);
+  }
+}
+
+/* Section heads fade and rise as they scroll in; fully visible without support or with reduced motion. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+  }
+}
+@keyframes reveal {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+}

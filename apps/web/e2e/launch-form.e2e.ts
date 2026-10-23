@@ -6,9 +6,8 @@ import { injectPhantom, newTestAccount, preConsent, rootEnv } from "./phantom.ts
 const SVG = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>');
 const cont = (page: Page) => page.getByRole("button", { name: "Continue to dev buy" });
 
-test("/ redirects to /launch, which shows the title, the lede and step 1 current", async ({ page }) => {
-  await page.goto("/");
-  await expect(page).toHaveURL(/\/launch$/);
+test("/launch shows the title, the lede and step 1 current", async ({ page }) => {
+  await page.goto("/launch");
   await expect(page.getByRole("heading", { level: 1, name: "Launch a coin" })).toBeVisible();
   await expect(page.getByText("One Phantom signature creates your coin")).toBeVisible();
   await expect(page.locator("ol li")).toHaveCount(5);

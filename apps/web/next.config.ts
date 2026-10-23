@@ -67,10 +67,6 @@ const config: NextConfig = {
     NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT_NAME ?? "local",
     PINATA_GATEWAY: process.env.PINATA_GATEWAY ?? "",
   },
-  async redirects() {
-    // ponytail: Phase 3 replaces / with the home lists
-    return [{ source: "/", destination: "/launch", permanent: false }];
-  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

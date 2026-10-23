@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LaunchLink } from "./launch-link";
 import { WalletButton } from "./wallet-button";
 
 // Server component only: no chain id ships in a client bundle (D-15), so the pump id lives here.
@@ -51,13 +52,14 @@ export function Header() {
             className="group flex items-center gap-2.5 text-foreground no-underline"
           >
             <BrandMark />
-            <span className="font-display text-[1.6rem] leading-none font-extrabold tracking-[0.04em] max-[359px]:hidden">
+            <span className="font-display text-[1.6rem] leading-none font-extrabold tracking-[0.04em] max-[440px]:hidden">
               BONDR
             </span>
           </Link>
           {isDevnet() && <DevnetBadge />}
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 md:gap-3">
+          <LaunchLink />
           <WalletButton />
         </div>
       </div>

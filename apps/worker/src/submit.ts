@@ -83,8 +83,11 @@ export async function submit(ctx: PrepareCtx, body: unknown): Promise<SubmitResu
   const row = await getLaunch(db(), launchId);
   if (!row) throw fail({ error: "not_found" });
   if (row.state !== "prepared") return current(row);
-  const { paused } = await liveStatus(ctx, true);
+  const { paused, minLamports } = await liveStatus(ctx, true);
   if (paused) return refuse(row, { error: "paused", paused });
+  // No chain read means the awaiting-migration pause could not be checked: refuse, never co-sign blind (IN-02).
+  // The mint is kept, so Try again reuses it once the RPC answers.
+  if (minLamports === null) return refuse(row, { error: "build_failed" }, true);
   if ((await ctx.conn.getBlockHeight()) > Number(row.lastValidBlockHeight))
     return refuse(row, { error: "expired" });
   const cosigned = await cosignRow(ctx, row, wire);

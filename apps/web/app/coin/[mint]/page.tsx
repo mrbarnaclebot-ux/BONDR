@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { CaRow } from "@/components/ca-row";
 import { CoinIdentity } from "@/components/coin-identity";
 import { ProofStamp } from "@/components/proof-stamp";
+import { BondPanel } from "@/components/token-bond";
+import { TokenStats } from "@/components/token-stats";
 import { TradeFeed } from "@/components/token-trades";
+import { coinByMint } from "@/lib/coins";
 import { compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
 import { tradesPage } from "@/lib/trades";
@@ -24,20 +27,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// The first feed page is kept 10 s, so a burst of views of one coin (a shared link) is one Neon read; Load
-// more and the live stream (03-07) bring anything newer or older.
+// The first feed page and the coin row are kept 10 s, so a burst of views of one coin (a shared link) is one
+// Neon read each; Load more and the live stream bring anything newer or older.
 // ponytail: per-process map cleared at 1000 entries; move to a shared cache if web runs more than one instance.
-const FEED_TTL = 10_000;
-const feeds = new Map<string, { at: number; v: Awaited<ReturnType<typeof tradesPage>> }>();
+const TTL = 10_000;
 
-async function firstPage(mint: string) {
-  const hit = feeds.get(mint);
-  if (hit && Date.now() - hit.at < FEED_TTL) return hit.v;
-  const v = await tradesPage(mint);
-  if (feeds.size >= 1000) feeds.clear();
-  feeds.set(mint, { at: Date.now(), v });
-  return v;
+function kept<T>(read: (mint: string) => Promise<T>) {
+  const seen = new Map<string, { at: number; v: T }>();
+  return async (mint: string): Promise<T> => {
+    const hit = seen.get(mint);
+    if (hit && Date.now() - hit.at < TTL) return hit.v;
+    const v = await read(mint);
+    if (seen.size >= 1000) seen.clear();
+    seen.set(mint, { at: Date.now(), v });
+    return v;
+  };
 }
+
+const firstPage = kept((mint) => tradesPage(mint));
+const coinRow = kept(coinByMint);
 
 /** UI-SPEC token page proof sentence; the token count is left out until the facts are written. */
 function sentence(v: LaunchView): string {
@@ -51,11 +59,11 @@ export default async function CoinPage({ params }: Props) {
   const v = await landedCoin((await params).mint);
   if (!v) notFound();
   const net: Net = process.env.SOLANA_NET === "mainnet" ? "mainnet" : "devnet";
-  const feed = await firstPage(v.mint);
+  const [feed, coin] = await Promise.all([firstPage(v.mint), coinRow(v.mint)]);
   return (
     <div className="overflow-x-clip">
       <div className="mx-auto grid w-full max-w-[1440px] gap-4 px-(--gutter) pb-12">
-        <CoinIdentity v={v}>
+        <CoinIdentity v={v} venue={coin?.venue} stats={<TokenStats c={coin} />}>
           {v.signature && (
             <ProofStamp signature={v.signature} net={net}>
               {sentence(v)}
@@ -63,8 +71,12 @@ export default async function CoinPage({ params }: Props) {
           )}
         </CoinIdentity>
         <CaRow mint={v.mint} />
-        {/* Trades take the wide column; the 380px right column is Bond and burn (03-06), sticky under the header. */}
+        {/* One column puts Bond and burn above Trades; at 1100px Trades take the wide column and Bond and burn
+            the 380px right column, sticky under the header (UI-SPEC Token page layout). */}
         <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:gap-8">
+          <div className="min-[1100px]:sticky min-[1100px]:top-22 min-[1100px]:col-start-2 min-[1100px]:row-start-1 min-[1100px]:self-start">
+            <BondPanel coin={coin} symbol={v.symbol} net={net} />
+          </div>
           <TradeFeed
             initial={feed.trades}
             more={feed.more}
@@ -74,7 +86,6 @@ export default async function CoinPage({ params }: Props) {
             solIn={v.solIn}
             exit={v.exit}
           />
-          <div className="min-[1100px]:sticky min-[1100px]:top-22 min-[1100px]:self-start" />
         </div>
         <p className="text-[13px] text-muted-foreground">
           Trading and the public fee ledger for {v.symbol} arrive in a later BONDR update.

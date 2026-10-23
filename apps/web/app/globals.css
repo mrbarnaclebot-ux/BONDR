@@ -85,6 +85,31 @@
       box-shadow: 0 0 0 7px transparent;
     }
   }
+  /* bond glyph (UI-SPEC Motion): the fill draws in once, node B pulses from 90%, a ring leaves it once bonded */
+  --animate-bond-draw: bond-draw 1400ms var(--ease-spring) both;
+  @keyframes bond-draw {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  --animate-near: near 1.8s var(--ease-out) infinite;
+  @keyframes near {
+    50% {
+      stroke: var(--leaf);
+      filter: drop-shadow(0 0 6px var(--leaf));
+    }
+  }
+  --animate-ring: ring 2.4s var(--ease-out) infinite;
+  @keyframes ring {
+    from {
+      opacity: 0.8;
+      transform: scale(0.6);
+    }
+    to {
+      opacity: 0;
+      transform: scale(2.4);
+    }
+  }
   /* consent bottom sheet below 768px; ease-out, because a spring overshoot would lift it off the edge */
   --animate-sheet: sheet 620ms var(--ease-out) both;
   @keyframes sheet {

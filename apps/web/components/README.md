@@ -16,7 +16,11 @@
 - `launch-live.tsx`: step 5 Live, the success art, the proof and the contract address.
 - `proof-stamp.tsx`: the "Dev holds 0 launch supply" stamp (step 5 and the token page).
 - `ca-row.tsx`: the contract address with Copy and the manual-copy fallback; exports `useCopy`, shared with the copy chip.
-- `coin-identity.tsx`: the token page identity bar (avatar bleed, name, symbol, meta row with tag, age and links).
+- `coin-identity.tsx`: the token page identity bar (avatar bleed, name, symbol, meta row with venue tag, age and links, stats slot).
+- `tag.tsx`: Tag, the pill label with mint, leaf and warn tones and an optional live dot.
+- `token-stats.tsx`: TokenStats, the identity bar's Mcap, 1h, 1h volume and Holders row.
+- `bond-glyph.tsx`: BondGlyph, the two-node curve progress SVG with a per-instance gradient id.
+- `token-bond.tsx`: BondPanel, the Bond and burn panel (curve progress only, D-10) in its three venue states.
 - `copy-chip.tsx`: the token page short-mint copy chip.
 - `tx-link.tsx`: the Solscan transaction link (cluster param on devnet); `label` makes it icon-only (trade feed).
 - `token-trades.tsx`: TradeFeed, the token page trade table with the launch caption and rows, and Load more by keyset.

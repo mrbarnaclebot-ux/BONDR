@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { close, db, launches, settings, vanityMints, wallets } from "./db.ts";
+import { close, coins, db, launches, settings, trades, vanityMints, wallets } from "./db.ts";
 
 // Vitest does not read .env; load it so a local run hits the Neon dev branch. CI has no .env and skips.
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
@@ -40,11 +40,51 @@ async function pgCode(insert: Promise<unknown>): Promise<string | undefined> {
   return undefined;
 }
 
+const coinOf = (
+  launchId: string,
+  over: Partial<typeof coins.$inferInsert> = {},
+): typeof coins.$inferInsert => ({
+  mint: other,
+  launchId,
+  launchedAt: new Date(),
+  bondingCurve: "curve",
+  pool: "pool",
+  initialRealTokenReserves: "793100000000000",
+  realTokenReserves: "793100000000000",
+  realQuoteReserves: "0",
+  virtualTokenReserves: "1073000000000000",
+  virtualQuoteReserves: "30000000000",
+  mcapSol: 1,
+  launchMcapSol: 1,
+  ...over,
+});
+const sig = randomBytes(16).toString("hex");
+const tradeOf = (over: Partial<typeof trades.$inferInsert> = {}): typeof trades.$inferInsert => ({
+  signature: sig,
+  ix: 0,
+  mint: other,
+  slot: "1",
+  at: new Date(),
+  side: "buy",
+  venue: "curve",
+  trader: "t",
+  tokenAmount: "1",
+  quoteAmount: "1",
+  sol: "1",
+  ...over,
+});
+
 const insert = (row: typeof launches.$inferInsert) => db().insert(launches).values(row).execute();
 
 // 30 s: the first query may wake a suspended Neon compute.
 describe.skipIf(!process.env.DATABASE_URL)("database constraints", { timeout: 30_000 }, () => {
   afterAll(async () => {
+    await db()
+      .delete(trades)
+      .where(inArray(trades.mint, [mint, other]));
+    await db()
+      .delete(coins)
+      .where(inArray(coins.mint, [mint, other]));
     await db().delete(launches).where(eq(launches.wallet, wallet));
     await db()
       .delete(vanityMints)
@@ -83,5 +123,27 @@ describe.skipIf(!process.env.DATABASE_URL)("database constraints", { timeout: 30
     const rows = await db().select().from(settings).where(eq(settings.id, 1));
     expect(rows).toEqual([{ id: 1, launchesEnabled: true }]);
     expect(await pgCode(db().insert(settings).values({ id: 2 }).execute())).toBe("23514");
+  });
+  test("coins refuses an unknown venue and a venue that disagrees with bonded_at", async () => {
+    const l = launch({ mint: other, state: "failed" });
+    await insert(l);
+    const coin = (over: Partial<typeof coins.$inferInsert>) =>
+      db().insert(coins).values(coinOf(l.id, over)).execute();
+    expect(await pgCode(coin({ venue: "other" }))).toBe("23514");
+    expect(await pgCode(coin({ venue: "curve", bondedAt: new Date() }))).toBe("23514");
+    expect(await pgCode(coin({ venue: "pool" }))).toBe("23514");
+    expect(await pgCode(coin({ progress: 1.5 }))).toBe("23514");
+    expect(await pgCode(coin({}))).toBeUndefined();
+  });
+
+  test("trades enforce side and sol, a coin, and one row per (signature, ix)", async () => {
+    const trade = (over: Partial<typeof trades.$inferInsert>) =>
+      db().insert(trades).values(tradeOf(over)).onConflictDoNothing().returning();
+    expect(await pgCode(trade({ side: "burn" }))).toBe("23514");
+    expect(await pgCode(trade({ sol: null }))).toBe("23514");
+    expect(await pgCode(trade({ mint }))).toBe("23503");
+    expect(await trade({})).toHaveLength(1);
+    expect(await trade({})).toHaveLength(0);
+    expect(await db().$count(trades, eq(trades.signature, sig))).toBe(1);
   });
 });

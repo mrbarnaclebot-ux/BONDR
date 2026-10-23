@@ -54,6 +54,9 @@ Not in Phase 3: the buy and sell panel (Phase 4), burn budget, 24h window, fee l
 - **D-20:** The OG card shows identity and proof only: coin image, name, ticker, "on BONDR", and the proof line ("Dev holds 0 launch supply, insta burned" or "sold"). No market cap or other number that goes stale in X's and Telegram's image caches.
 - **D-21:** The card uses the site style: the token page's dark theme and fonts, coin image large on the left, text on the right.
 
+### Market cap (owner, after research)
+- **D-22:** Market cap = price x fixed 1,000,000,000 supply, the pump.fun convention, so BONDR numbers match other trackers. Burns (Phase 5) do not lower it; the burned share is shown separately as "Supply burned" (Phase 5 totals).
+
 ### Claude's Discretion
 - Indexer design: websocket subscription vs polling vs Helius webhooks, the backfill from each coin's launch signature, reorg and missed-slot handling, and how post-bond PumpSwap trades are caught. Must meet D-04 and D-05.
 - Event decoding: reuse `@bondr/core/events` (emit_cpi inner instructions, never "Program data" logs).

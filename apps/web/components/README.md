@@ -1,0 +1,23 @@
+# apps/web/components
+
+- `chrome.tsx`: Header (brand, DEVNET badge, wallet control) and Footer, server components on every page.
+- `wallet.tsx`: WalletProvider and useWallet, Phantom through Wallet Standard, plus local consent state.
+- `wallet-button.tsx`: the header wallet control, its Copy address / Disconnect menu and the not-installed popover.
+- `consent-dialog.tsx`: the first-connect consent prompt (native dialog, bottom sheet on phones).
+- `ui-button.tsx`: Button and buttonVariants, hand-ported shadcn 4.21.2 with the UI-SPEC variants.
+- `ui-field.tsx`: Input, Textarea, Label (optional marker) and FieldError, hand-ported shadcn 4.21.2.
+- `launch-flow.tsx`: the /launch state machine (steps 1-5) and the step panel with its focus target.
+- `launch-stepper.tsx`: the five-node bond-chain stepper.
+- `launch-coin.tsx`: step 1 Coin, every field checked with `@bondr/core/rules` and the UI-SPEC copy.
+- `launch-drop.tsx`: the step 1 image drop zone.
+- `launch-buy.tsx`: step 2 Dev buy and exit, the live-minimum check, presets and the debounced quote hook.
+- `launch-review.tsx`: step 3 Review, the fee callout and the connect / paused / sign button.
+- `launch-sign.tsx`: step 4 Sign, the five rows, the failure table, and the stored launch id that restores a posted launch after a reload.
+- `launch-live.tsx`: step 5 Live, the success art, the proof and the contract address.
+- `proof-stamp.tsx`: the "Dev holds 0 launch supply" stamp (step 5 and the token page).
+- `ca-row.tsx`: the contract address with Copy and the manual-copy fallback; exports `useCopy`, shared with the copy chip.
+- `coin-identity.tsx`: the token page identity bar (avatar bleed, name, symbol, meta row with tag, age and links).
+- `copy-chip.tsx`: the token page short-mint copy chip.
+- `tx-link.tsx`: the Solscan transaction link (cluster param on devnet).
+- `launch-receipt.tsx`: the receipt aside, every fee and cost from the live worker status.
+- `callout.tsx`: info, warn and error callouts (status or alert role).

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["**", "!.planning", "!**/results/*.json", "!**/results/*.html", "!.cache", "!**/fixtures"]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 110 },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "linter": {
+    "rules": {
+      "security": { "noDangerouslySetInnerHtml": "error" },
+      "complexity": {
+        "noExcessiveLinesPerFunction": {
+          "level": "error",
+          "options": { "maxLines": 40, "skipBlankLines": true }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.test.ts", "**/*.e2e.ts"],
+      "linter": { "rules": { "complexity": { "noExcessiveLinesPerFunction": "off" } } }
+    },
+    {
+      "includes": ["apps/web/**", "!apps/web/e2e/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@bondr/core/*",
+                      "!@bondr/core/math",
+                      "!@bondr/core/rules",
+                      "!@bondr/core/db",
+                      "!@bondr/core/schema",
+                      "!@bondr/core/api",
+                      "!@bondr/core/scrub",
+                      "!@bondr/core/sig"
+                    ],
+                    "message": "D-15: web imports only pure core modules; chain work goes through the worker."
+                  },
+                  {
+                    "group": ["@solana/*", "@pump-fun/*", "bn.js"],
+                    "message": "D-15: no Solana library in web; chain work goes through the worker."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

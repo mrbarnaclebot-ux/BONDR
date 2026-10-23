@@ -1,0 +1,62 @@
+/* BONDR tokens, ported unchanged from .planning/mockups/tokens.css. The palette is fixed by the owner;
+   everything else derives from it. Names follow the UI-SPEC mapping: shadcn semantic names for the shadcn
+   layer, brand names (leaf, mint, forest) for the palette. "accent" never means the brand green here. */
+:root {
+  /* owner palette */
+  --background: #1a1a1a;
+  --foreground: #ebf3ea;
+  --leaf: #56c44a;
+  --mint: #a2d59c;
+  --forest: #32712a;
+  --destructive: #f0705e; /* 5.9:1 on background; sells and errors only */
+  --warn: #e2c56b;
+
+  /* derived: neutrals tinted toward the brand green */
+  --ink: color-mix(in oklch, var(--background), #000 45%);
+  --surface: color-mix(in oklch, var(--background), var(--forest) 9%);
+  --surface-2: color-mix(in oklch, var(--background), var(--forest) 16%);
+  --surface-3: color-mix(in oklch, var(--background), var(--forest) 28%);
+  --line: color-mix(in oklch, var(--foreground) 11%, transparent);
+  --line-strong: color-mix(in oklch, var(--foreground) 22%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--foreground) 68%, var(--background)); /* 6.6:1 */
+  --leaf-wash: color-mix(in oklch, var(--leaf) 15%, transparent);
+  --mint-wash: color-mix(in oklch, var(--mint) 11%, transparent);
+  --danger-wash: color-mix(in oklch, var(--destructive) 14%, transparent);
+  --warn-wash: color-mix(in oklch, var(--warn) 12%, transparent);
+
+  /* shadcn semantic layer */
+  --primary: var(--leaf);
+  --primary-foreground: var(--ink);
+  --secondary: var(--surface-2);
+  --muted: var(--surface);
+  --accent: var(--surface-3);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--leaf);
+
+  /* elevation: shadows tinted toward the green, never neutral gray */
+  --shade: color-mix(in oklch, var(--forest) 30%, #040604);
+  --hi: inset 0 1px 0 color-mix(in oklch, var(--foreground) 9%, transparent);
+  --elev-1:
+    var(--hi), 0 1px 2px color-mix(in oklch, var(--shade) 80%, transparent), 0 8px 24px -12px var(--shade);
+  --elev-2:
+    var(--hi), 0 2px 4px color-mix(in oklch, var(--shade) 70%, transparent), 0 24px 48px -20px var(--shade),
+    0 48px 96px -48px color-mix(in oklch, var(--forest) 55%, transparent);
+  --glow:
+    0 0 0 1px color-mix(in oklch, var(--leaf) 45%, transparent),
+    0 10px 40px -8px color-mix(in oklch, var(--leaf) 45%, transparent);
+
+  /* shape and layout */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --gutter: clamp(16px, 3vw, 40px);
+
+  /* motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* gentle spring: one small overshoot, no bounce */
+  --ease-spring: linear(0, 0.08 4%, 0.3 10%, 0.64 20%, 0.88 30%, 1.01 40%, 1.035 48%, 1.02 60%, 1.004 75%, 1);
+  --dur: 220ms;
+
+  color-scheme: dark;
+}

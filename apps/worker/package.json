@@ -1,0 +1,20 @@
+{
+  "name": "@bondr/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts",
+    "dev": "node --env-file=../../.env src/main.ts",
+    "grind": "node --env-file=../../.env src/grind.ts"
+  },
+  "dependencies": {
+    "@bondr/core": "workspace:*",
+    "@sentry/node": "11.4.0",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "1.99.0",
+    "bn.js": "5.2.5",
+    "bs58": "6.0.0",
+    "drizzle-orm": "0.45.3",
+    "postgres": "3.4.9"
+  }
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BONDR Mockups</title>
+<meta name="description" content="Gallery of BONDR v1 UI mockups with links to every screen and state.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Martian+Mono:wdth,wght@75..112.5,400..600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .head { position: relative; isolation: isolate; padding-block: var(--space-4xl) var(--space-3xl); display: grid; gap: var(--space-md); }
+  .head::before { content: ""; position: absolute; z-index: -1; inset: 0 calc(var(--gutter) * -1) 0 30%; background: url(assets/hero-bond.jpg) 70% 50% / cover; -webkit-mask-image: linear-gradient(90deg, transparent, #000 55%), linear-gradient(0deg, transparent, #000 40%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 55%), linear-gradient(0deg, transparent, #000 40%); mask-composite: intersect; opacity: 0.8; }
+  .head h1 { font-size: clamp(3.5rem, 9vw, 8rem); line-height: 0.85; }
+  .head h1 em { font-style: normal; color: var(--accent); }
+  .head p { color: var(--muted); max-width: 62ch; }
+  .swatches { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-sm); }
+  .swatches > span { display: grid; grid-template-columns: 22px auto; gap: 8px; align-items: center; font-size: var(--fs-xs); }
+  .swatches i { width: 22px; height: 22px; border: 1px solid var(--line-strong); }
+  .screens { list-style: none; margin: 0; padding: 0; counter-reset: s; perspective: 1200px; }
+  .screens li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 360px; gap: var(--space-xl); padding: var(--space-xl) var(--space-lg); margin-top: var(--space-md); border-radius: var(--radius-lg); border: 1px solid var(--line); background: linear-gradient(180deg, color-mix(in oklch, var(--surface-2) 80%, transparent), color-mix(in oklch, var(--surface) 90%, transparent)); box-shadow: var(--elev-1); align-items: center; }
+  .screens li::before { counter-increment: s; content: "0" counter(s); font-family: var(--font-num); color: var(--primary); font-size: var(--fs-sm); padding-top: 6px; }
+  .screens h2 { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: var(--fs-2xl); line-height: 1; }
+  .screens h2 a { color: var(--text); text-decoration: none; transition: color var(--dur); }
+  .screens li:hover h2 a { color: var(--accent); }
+  .screens p { color: var(--muted); margin-top: var(--space-xs); max-width: 60ch; }
+  .states { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: var(--space-sm); font-size: var(--fs-sm); }
+  .thumbs { perspective: 1200px; }
+  .thumb { display: block; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; aspect-ratio: 16 / 10; background: var(--surface); box-shadow: var(--elev-2); transform: rotateY(-8deg) rotateX(3deg); transition: transform 700ms var(--ease-spring), box-shadow 500ms var(--ease-out); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  .screens li:hover .thumb { transform: none; box-shadow: var(--elev-2), var(--glow); }
+  @media (max-width: 900px) { .screens li { grid-template-columns: 40px minmax(0, 1fr); padding: var(--space-lg) var(--space-md); } .thumb { grid-column: 2; transform: none; } }
+</style>
+</head>
+<body>
+<div id="header"></div>
+<main class="wrap">
+  <header class="head">
+    <h1 class="display">BONDR<br><em>screens.</em></h1>
+    <p>Static mockups for review before any app code. Every coin is built to bond; these screens show how. Each page has a striped Mockup bar at the top for switching states. Values tick with fake data. Screenshots at 390, 768 and 1440 live in <span class="num">screenshots/</span>; the brief is <span class="num">.planning/design/DESIGN-BRIEF.md</span>.</p>
+    <div class="swatches" aria-label="Palette">
+      <span><i style="background:var(--text)"></i><span class="num">text #ebf3ea</span></span>
+      <span><i style="background:var(--background)"></i><span class="num">background #1a1a1a</span></span>
+      <span><i style="background:var(--primary)"></i><span class="num">primary #a2d59c</span></span>
+      <span><i style="background:var(--secondary)"></i><span class="num">secondary #32712a</span></span>
+      <span><i style="background:var(--accent)"></i><span class="num">accent #56c44a</span></span>
+      <span><i style="background:var(--danger)"></i><span class="num">sell, error #f0705e</span></span>
+    </div>
+  </header>
+  <ol class="screens">
+    <li><div><h2><a href="home.html">Home</a></h2><p>Trending, Top, Latest and Oldest lists with search and live rows, a burn tape of ledger events, and the coins closest to a forced bond.</p>
+      <div class="states"><a href="home.html">Default</a><a href="home.html?paused">Launches paused banner</a></div></div>
+      <a class="thumb" href="home.html" tabindex="-1" aria-hidden="true"><img src="screenshots/home-1440.png" alt="" loading="lazy"></a></li>
+    <li><div><h2><a href="token.html">Token page</a></h2><p>Chart, trade panel with quote and fees, trade feed, the dev-holds-0 proof, bond progress, burn budget vs cost with the 105% trigger, the 24h window and the public fee ledger.</p>
+      <div class="states"><a href="token.html">Pre-bond</a><a href="token.html?bonded">Post-bond finalized</a><a href="token.html?sheet">Mobile trade sheet</a></div></div>
+      <a class="thumb" href="token.html" tabindex="-1" aria-hidden="true"><img src="screenshots/token-1440.png" alt="" loading="lazy"></a></li>
+    <li><div><h2><a href="launch.html">Launch flow</a></h2><p>Coin details, dev buy with the 0.25 SOL minimum, the mandatory insta sell or insta burn exit, review, Phantom signing and the live state, with a running receipt of where fees go.</p>
+      <div class="states"><a href="launch.html">Coin</a><a href="launch.html?step=2&amp;errors">Dev buy with errors</a><a href="launch.html?step=3">Review</a><a href="launch.html?step=4">Signing</a><a href="launch.html?step=4&amp;rejected">Rejected</a><a href="launch.html?step=5">Live</a><a href="launch.html?paused">Paused</a></div></div>
+      <a class="thumb" href="launch.html" tabindex="-1" aria-hidden="true"><img src="screenshots/launch-1440.png" alt="" loading="lazy"></a></li>
+    <li><div><h2><a href="consent.html">Consent and terms</a></h2><p>The first-connect consent prompt over the home page, then the short terms page it links to.</p>
+      <div class="states"><a href="consent.html">Prompt</a><a href="consent.html#terms">Terms</a></div></div>
+      <a class="thumb" href="consent.html" tabindex="-1" aria-hidden="true"><img src="screenshots/consent-1440.png" alt="" loading="lazy"></a></li>
+    <li><div><h2><a href="admin.html">Owner console</a></h2><p>Wallet balances, kill switches, health, the W wallet table, a coin timeline with a stuck step, recovery actions with simulation, inspector, moderation, audit log and EVACUATE.</p>
+      <div class="states"><a href="admin.html">Default</a><a href="admin.html?modal">Simulation modal</a><a href="admin.html?armed">EVACUATE armed</a></div></div>
+      <a class="thumb" href="admin.html" tabindex="-1" aria-hidden="true"><img src="screenshots/admin-1440.png" alt="" loading="lazy"></a></li>
+  </ol>
+</main>
+<div id="footer"></div>
+<script src="mock.js"></script>
+<script>renderHeader(""); renderFooter();</script>
+</body>
+</html>

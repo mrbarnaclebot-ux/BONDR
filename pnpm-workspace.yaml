@@ -1,0 +1,12 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+# agencybook D-153: refuse any package version younger than a day (supply-chain buffer).
+# D-14 wants 14 days (20160), but pnpm then re-checks locked transitive deps of the pump SDKs
+# (rollup natives via @pump-fun/agent-payments-sdk) and fails. Kept at 1440; each new direct pin
+# is checked by hand with `npm view <pkg> time --json` against the 14-day cutoff.
+minimumReleaseAge: 1440
+ignoredBuiltDependencies:
+  - bigint-buffer
+  - bufferutil
+  - utf-8-validate

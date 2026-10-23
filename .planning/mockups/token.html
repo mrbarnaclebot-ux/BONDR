@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grubworm (GRUB) on BONDR</title>
+<meta name="description" content="GRUB token page: chart, trade, bond and burn progress, public fee ledger.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Martian+Mono:wdth,wght@75..112.5,400..600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-areas: "id id" "chart trade" "bond feed" "ledger feed"; gap: 0 var(--space-xl); align-items: start; }
+  .idbar { grid-area: id; position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-lg); align-items: center; padding-block: var(--space-2xl) var(--space-xl); }
+  .id-bleed { position: absolute; z-index: -1; left: -6%; top: -30%; width: 46%; height: 150%; filter: blur(70px) saturate(1.4); opacity: 0.42; pointer-events: none; animation: drift 18s ease-in-out infinite alternate; }
+  .id-bleed svg { width: 100%; height: 100%; }
+  @keyframes drift { to { transform: translate(4%, 6%) scale(1.08); } }
+  .ident .ava { box-shadow: 0 0 0 1px color-mix(in oklch, var(--text) 18%, transparent), 0 18px 40px -12px var(--ink); border-radius: 18px; }
+  .ident { display: flex; gap: var(--space-md); align-items: center; min-width: 0; }
+  .ident .ava { width: 64px; height: 64px; }
+  .ident h1 { font-size: var(--fs-2xl); }
+  .ident-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: var(--fs-sm); color: var(--muted); margin-top: 6px; }
+  .copy { display: inline-flex; gap: 6px; align-items: center; background: none; border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 8px; cursor: pointer; color: var(--muted); min-height: 28px; }
+  .meta-link { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 28px; }
+  .copy svg { width: 12px; height: 12px; }
+  .copy:hover { color: var(--text); border-color: var(--line-strong); }
+  .stats { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-xl); margin-top: var(--space-md); }
+  .stat .num { font-size: var(--fs-lg); display: block; padding: 0 4px; margin: 0 -4px; border-radius: var(--radius); }
+  .stat .label { display: block; }
+
+  .proof { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 0 var(--space-md); align-items: center; padding: var(--space-md) var(--space-lg) var(--space-md) var(--space-md); border-radius: var(--radius-lg); border: 1px solid color-mix(in oklch, var(--accent) 60%, transparent); outline: 1px solid color-mix(in oklch, var(--accent) 22%, transparent); outline-offset: 4px; max-width: 420px; background: radial-gradient(120% 140% at 0% 50%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 60%), color-mix(in oklch, var(--surface) 85%, transparent); box-shadow: 0 18px 50px -24px color-mix(in oklch, var(--accent) 60%, transparent); }
+  .proof .zero { font-family: var(--font-display); font-weight: 900; font-size: var(--fs-3xl); line-height: 0.8; color: var(--accent); text-shadow: 0 0 30px color-mix(in oklch, var(--accent) 55%, transparent); grid-row: span 3; padding-right: var(--space-sm); border-right: 1px solid color-mix(in oklch, var(--accent) 40%, transparent); }
+  .proof strong { font-size: var(--fs-md); }
+  .proof p { font-size: var(--fs-xs); color: var(--muted); }
+  .proof .label { color: var(--accent); }
+
+  section.blk { margin-top: var(--space-lg); padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid var(--line); background: linear-gradient(180deg, color-mix(in oklch, var(--surface-2) 80%, transparent), color-mix(in oklch, var(--surface) 90%, transparent)); box-shadow: var(--elev-1); }
+  .blk-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-xs) var(--space-md); margin-bottom: var(--space-md); }
+  .blk-head h2 { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: var(--fs-xl); letter-spacing: 0.01em; }
+
+  .chart-area { grid-area: chart; margin-top: var(--space-lg); padding: var(--space-md) var(--space-md) var(--space-sm); border-radius: var(--radius-lg); border: 1px solid var(--line); background: radial-gradient(90% 70% at 85% 0%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 70%), linear-gradient(180deg, var(--surface-2), var(--surface)); box-shadow: var(--elev-2); }
+  .chart-bar { display: flex; flex-wrap: wrap; gap: var(--space-sm); justify-content: space-between; align-items: center; margin-bottom: var(--space-sm); }
+  .ohlc { display: flex; gap: 12px; font-size: var(--fs-xs); color: var(--muted); }
+  .ohlc .num { color: var(--text); }
+  #chart { width: 100%; height: 380px; position: relative; cursor: crosshair; touch-action: pan-y; }
+  #chart svg { width: 100%; height: 100%; }
+  #chart text { font-family: var(--font-num); font-size: 11px; fill: var(--muted); font-stretch: 87.5%; }
+
+  .bondsec { grid-area: bond; }
+  .gauge .glyph { margin-block: 14px 8px; }
+  .moment { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-xl); align-items: center; padding: var(--space-lg); margin-bottom: var(--space-xl); border-radius: var(--radius); background: radial-gradient(70% 120% at 30% 50%, color-mix(in oklch, var(--accent) 22%, transparent), transparent 70%), color-mix(in oklch, var(--ink) 40%, var(--surface)); border: 1px solid color-mix(in oklch, var(--accent) 35%, transparent); }
+  .moment-glyph { position: relative; min-height: 200px; display: grid; place-items: center; border-radius: var(--radius); overflow: hidden; background: url(assets/hero-bond-960.jpg) 62% 50% / cover; }
+  .moment-glyph::before { content: ""; position: absolute; inset: 0; background: radial-gradient(closest-side, transparent 30%, color-mix(in oklch, var(--ink) 70%, transparent)); }
+  .moment-glyph .orb { left: 9%; }
+  .orb { position: relative; display: grid; place-items: center; }
+  .orb .ava { position: relative; z-index: 1; width: 84px; height: 84px; border-radius: 22px; box-shadow: 0 0 0 2px var(--accent), 0 0 40px color-mix(in oklch, var(--accent) 70%, transparent); }
+  .orb i { position: absolute; width: 84px; height: 84px; border-radius: 26px; border: 1.5px solid var(--accent); opacity: 0; animation: orbRing 2.8s var(--ease-out) infinite; }
+  .orb i:nth-child(2) { animation-delay: 0.9s; } .orb i:nth-child(3) { animation-delay: 1.8s; }
+  @keyframes orbRing { 0% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: scale(2.6); } }
+  .moment-glyph .bond { position: relative; width: 46%; filter: drop-shadow(0 0 24px color-mix(in oklch, var(--accent) 60%, transparent)); }
+  .moment-h { font-size: clamp(2.25rem, 4vw, 3.5rem); margin-top: 6px; }
+  .gauges { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xl); }
+  .gauge h3 { font-size: var(--fs-sm); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .gauge .big { font-family: var(--font-num); font-stretch: 87.5%; font-size: var(--fs-xl); line-height: 1; }
+  .gauge .bar { height: 12px; margin-block: 12px 8px; }
+  .gauge .of { display: block; margin-top: 6px; }
+  .gauge p { font-size: var(--fs-xs); color: var(--muted); }
+  .budget-track { position: relative; height: 14px; border-radius: 999px; background: var(--surface-3); box-shadow: inset 0 1px 3px var(--ink); margin-block: 30px 10px; }
+  .budget-track > i { position: absolute; inset: 0 auto 0 0; width: var(--v); border-radius: inherit; background: linear-gradient(90deg, var(--secondary), var(--accent)); box-shadow: 0 0 18px -2px color-mix(in oklch, var(--accent) 60%, transparent); transition: width 900ms var(--ease-spring); }
+  .budget-track > b { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--text); }
+  .budget-track > b span { position: absolute; top: -19px; transform: translateX(-50%); font-size: 11px; font-family: var(--font-num); color: var(--muted); white-space: nowrap; }
+  .budget-track > b.cost { background: var(--line-strong); }
+  .budget-track > b.cost span { transform: translateX(-100%); padding-right: 4px; }
+  .budget-track > b:not(.cost) span { transform: none; padding-left: 4px; color: var(--text); }
+  .window { display: grid; grid-template-columns: auto 1fr; gap: var(--space-lg); align-items: center; margin-top: var(--space-xl); padding: var(--space-lg); border-radius: var(--radius); background: radial-gradient(60% 120% at 0% 50%, color-mix(in oklch, var(--secondary) 35%, transparent), transparent 70%), color-mix(in oklch, var(--ink) 40%, var(--surface)); border: 1px solid var(--line); }
+  .window .clock { font-family: var(--font-num); font-stretch: 87.5%; font-size: var(--fs-2xl); line-height: 1; letter-spacing: -0.03em; }
+  .window p { font-size: var(--fs-sm); color: var(--muted); max-width: 60ch; }
+  .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: var(--space-xl); counter-reset: f; }
+  .flow li { list-style: none; position: relative; padding: 30px var(--space-md) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+  .flow li::before { content: ""; position: absolute; top: 9px; left: 8px; right: -8px; height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--secondary), var(--surface-3)); }
+  .flow li:last-child::before { display: none; }
+  .flow li::after { content: ""; position: absolute; top: 2px; left: 0; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); border: 2px solid var(--primary); }
+  .flow li.now::after { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 6px color-mix(in oklch, var(--accent) 18%, transparent), 0 0 20px var(--accent); }
+  .flow li b { display: block; color: var(--text); font-size: var(--fs-sm); margin-bottom: 2px; }
+  .flow { padding: 0; margin-bottom: 0; }
+
+  .ledger { grid-area: ledger; }
+  .receipt { background: color-mix(in oklch, var(--ink) 35%, var(--surface)); position: relative; border-radius: 0 0 var(--radius) var(--radius); padding: var(--space-lg); padding-top: calc(var(--space-lg) + 6px); box-shadow: inset 0 1px 0 var(--line); }
+  .receipt::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 8px; background: radial-gradient(circle at 6px -1px, var(--background) 5px, transparent 5.5px) 0 0 / 12px 8px repeat-x; }
+  .totals { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-md); padding-bottom: var(--space-lg); border-bottom: 1px dashed var(--line-strong); }
+  .totals .num { font-size: var(--fs-lg); display: block; line-height: 1.2; }
+  .totals small { display: block; font-size: var(--fs-xs); color: var(--muted); }
+  .entries { list-style: none; margin: 0; padding: 0; }
+  .entry { display: grid; grid-template-columns: 76px 128px minmax(0, 1fr) auto; gap: 4px var(--space-md); align-items: baseline; padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+  .entry:last-child { border-bottom: 0; }
+  .entry time { font-family: var(--font-num); font-stretch: 87.5%; font-size: var(--fs-xs); color: var(--muted); }
+  .entry .amt { text-align: right; font-family: var(--font-num); font-stretch: 87.5%; font-size: var(--fs-xs); white-space: nowrap; }
+  .entry .amt .tx { display: flex; justify-content: flex-end; margin-top: 2px; }
+  .entry .tag { justify-self: start; }
+
+  .trade { grid-area: trade; position: relative; margin-top: var(--space-lg); border-radius: var(--radius-lg); border: 1px solid var(--line-strong); background: radial-gradient(100% 50% at 50% 0%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 70%), linear-gradient(180deg, var(--surface-2), var(--surface)); box-shadow: var(--elev-2); padding: var(--space-lg); display: grid; gap: var(--space-md); }
+  .trade .seg { width: 100%; }
+  .trade.sell .seg-ind { background: var(--danger); }
+  .amount { position: relative; }
+  .amount .input { font-family: var(--font-num); font-stretch: 87.5%; font-size: var(--fs-lg); min-height: 56px; padding-right: 72px; }
+  .amount .unit { position: absolute; right: 12px; top: 50%; translate: 0 -50%; font-weight: 700; font-size: var(--fs-sm); color: var(--muted); }
+  .chips { display: flex; gap: 6px; }
+  .chips button { flex: 1; min-height: 32px; background: transparent; border: 1px solid var(--line); border-radius: var(--radius); font-family: var(--font-num); font-stretch: 87.5%; font-size: var(--fs-xs); cursor: pointer; transition: border-color var(--dur), color var(--dur); }
+  .chips button:hover, .chips button[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); }
+  .quote { display: grid; gap: 8px; font-size: var(--fs-xs); margin: 0; }
+  .quote > div { display: flex; justify-content: space-between; gap: 12px; }
+  .quote dt { color: var(--muted); }
+  .quote dd { margin: 0; font-family: var(--font-num); font-stretch: 87.5%; text-align: right; }
+  .quote .recv dd { font-size: var(--fs-md); color: var(--text); }
+  .quote .sub { padding-left: 12px; }
+  .fees summary { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fs-xs); cursor: pointer; padding: 8px 0; border-top: 1px dashed var(--line-strong); list-style: none; }
+  .fees summary::-webkit-details-marker { display: none; }
+  .fees summary::after { content: "+"; font-family: var(--font-num); color: var(--muted); }
+  .fees[open] summary::after { content: "\2212"; }
+  .fees summary > span:first-child { color: var(--text); font-weight: 600; }
+  .fees summary .num { font-weight: 400; margin-left: 6px; }
+  .fees .quote { padding-top: 4px; }
+  .route { display: flex; align-items: center; gap: 6px; }
+  .route i { width: 14px; height: 1px; background: var(--muted); display: inline-block; }
+  .trade .btn-lg { width: 100%; }
+  .trade.sell .btn-primary { background: var(--danger); }
+  .fine { font-size: var(--fs-xs); color: var(--muted); }
+  .sheet-close, .sheet-handle { display: none; }
+
+  .feed { grid-area: feed; }
+  .feed-list { list-style: none; margin: 0; padding: 0; font-size: var(--fs-xs); }
+  .feed-list li { display: grid; grid-template-columns: 36px 40px 1fr 1fr auto; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-family: var(--font-num); font-stretch: 87.5%; }
+  .feed-list li.rise { background: var(--surface); }
+  .feed-list .side { font-family: var(--font-ui); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .feed-list .r { text-align: right; white-space: nowrap; }
+
+  .mbar { display: none; }
+  body:not(.bonded) .post, body.bonded .pre { display: none !important; }
+
+  @media (max-width: 1100px) {
+    .page { grid-template-columns: minmax(0, 1fr); grid-template-areas: "id" "chart" "trade" "bond" "feed" "ledger"; }
+    .trade { position: static; }
+    .idbar { grid-template-columns: 1fr; }
+    .totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 680px) {
+    section.blk { padding: var(--space-md); }
+    .moment { grid-template-columns: 1fr; gap: var(--space-md); }
+    .chart-area { padding: var(--space-sm); }
+    .idbar { padding-top: var(--space-xl); }
+    .id-bleed { width: 90%; }
+    .ident h1 { font-size: var(--fs-xl); }
+    .ident .ava { width: 52px; height: 52px; }
+    #chart { height: 280px; }
+    .gauges { grid-template-columns: 1fr; gap: var(--space-xl); }
+    .window { grid-template-columns: 1fr; gap: var(--space-xs); padding: var(--space-md); }
+    .window .clock { font-size: var(--fs-xl); }
+    .flow { grid-template-columns: 1fr 1fr; row-gap: var(--space-md); }
+    .totals { grid-template-columns: 1fr 1fr; }
+    .receipt { padding-inline: var(--space-md); }
+    .entry { grid-template-columns: minmax(0, 1fr) auto; }
+    .entry time { grid-column: 1; }
+    .entry .tag { grid-column: 1; grid-row: 2; }
+    .entry .desc { grid-column: 1 / 3; }
+    .entry .amt { grid-column: 2; grid-row: 1 / 3; }
+    .proof { max-width: none; }
+    .feed-list li { grid-template-columns: 30px 34px 1fr 1fr; }
+    .feed-list .wallet { display: none; }
+    /* trade panel becomes a bottom sheet */
+    .trade { position: fixed; left: 0; right: 0; bottom: 0; top: auto; margin: 0; z-index: 50; max-height: 88vh; overflow: auto; border-width: 1px 0 0; padding: var(--space-sm) var(--space-md) var(--space-lg); transform: translateY(105%); visibility: hidden; transition: transform 520ms var(--ease-spring), visibility 0s 520ms; border-radius: 24px 24px 0 0; }
+    .trade.open { transform: none; visibility: visible; transition: transform 520ms var(--ease-spring); }
+    .sheet-handle { display: block; width: 40px; height: 4px; background: var(--line-strong); margin: 0 auto; border-radius: 2px; }
+    .sheet-close { display: inline-flex; position: absolute; right: 8px; top: 8px; background: none; border: 0; width: 40px; height: 40px; align-items: center; justify-content: center; color: var(--muted); cursor: pointer; }
+    .sheet-close svg { width: 18px; height: 18px; }
+    .scrim { position: fixed; inset: 0; z-index: 45; backdrop-filter: blur(4px); background: color-mix(in oklch, var(--ink) 60%, transparent); opacity: 0; pointer-events: none; transition: opacity 300ms; }
+    .scrim.on { opacity: 1; pointer-events: auto; }
+    .mbar { display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-xs); align-items: center; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: color-mix(in oklch, var(--background) 85%, transparent); backdrop-filter: blur(14px); border-top: 1px solid var(--line-strong); }
+    .mbar .btn { min-width: 84px; }
+    .site-footer { padding-bottom: 72px; }
+  }
+</style>
+</head>
+<body>
+<div id="mockbar"></div>
+<div id="header"></div>
+
+<main class="wrap page">
+  <div class="idbar"><div class="id-bleed" id="id-bleed" aria-hidden="true"></div>
+    <div>
+      <div class="ident">
+        <div class="ava" id="ava"></div>
+        <div style="min-width:0">
+          <h1 class="display">Grubworm <span class="muted" style="font-size:0.6em">GRUB</span></h1>
+          <div class="ident-meta">
+            <button class="copy" type="button" id="copy" aria-label="Copy mint address"><span class="addr" id="mint"></span><span id="copy-ico"></span></button>
+            <span class="tag tag-bond pre"><span class="dot dot-live"></span>On curve</span>
+            <span class="tag tag-burn post">Bonded, PumpSwap</span>
+            <span>3d 7h old</span><a href="#" class="meta-link" aria-label="GRUB on X">X</a><a href="#" class="meta-link">Telegram</a><a href="#" class="meta-link">grubworm.fun</a>
+          </div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="label">Mcap</span><span class="num" id="s-mcap">61.40 SOL</span></div>
+        <div class="stat"><span class="label">1h</span><span class="num up" id="s-ch">+18.2%</span></div>
+        <div class="stat"><span class="label">1h volume</span><span class="num">212.6 SOL</span></div>
+        <div class="stat"><span class="label">Holders</span><span class="num" id="s-hold">1,284</span></div>
+        <div class="stat"><span class="label">Supply burned</span><span class="num up"><span class="pre">3.42%</span><span class="post">13.03%</span></span></div>
+      </div>
+    </div>
+    <aside class="proof" aria-label="Launch supply proof">
+      <span class="zero" aria-hidden="true">0</span>
+      <span class="label">Proof, checked on-chain</span>
+      <strong>Dev holds 0 launch supply</strong>
+      <p>Deployer <span class="num">9wRt&hellip;e3Fk</span> chose insta burn: the 0.50 SOL dev buy (12.4M GRUB) was burned in the launch transaction. <span id="proof-tx"></span></p>
+    </aside>
+  </div>
+
+  <section class="chart-area" aria-labelledby="chart-h">
+    <h2 id="chart-h" class="sr-only">Market cap chart</h2>
+    <div class="chart-bar">
+      <div class="seg" id="tf" aria-label="Candle interval">
+        <button aria-pressed="false">1m</button><button aria-pressed="true">5m</button><button aria-pressed="false">1h</button><button aria-pressed="false">1d</button>
+      </div>
+      <div class="ohlc" id="ohlc" aria-live="off"></div>
+    </div>
+    <div id="chart" role="img" aria-label="Candlestick chart of GRUB market cap in SOL, 5 minute candles"></div>
+  </section>
+
+  <section class="blk bondsec" aria-labelledby="bond-h">
+    <div class="blk-head"><h2 id="bond-h">Bond and burn</h2>
+      <span class="fine pre">Pre-bond: creator fees can only force the bond or be swept to the BONDR buyback.</span>
+      <span class="fine post">Bonded <span class="num">2026-10-18 21:14 UTC</span>, forced by its own fees.</span></div>
+    <div class="gauges pre">
+      <div class="gauge">
+        <h3><span>Curve filled</span><span class="muted">bonds at 100%</span></h3>
+        <span class="big" id="g-bond">64.2%</span>
+        <div class="glyph" id="g-bond-glyph"></div>
+        <p><span class="num">2,940,180</span> of <span class="num">4,580,000</span> BONDR in the curve. Bonds at about 84.3 SOL.</p>
+      </div>
+      <div class="gauge">
+        <h3><span>Burn budget ready <span class="muted" style="font-weight:400">budget vs cost to finish the curve</span></span><span class="up num" id="g-ratio">73.8%</span></h3>
+        <span class="big"><span id="g-budget">1,184,220</span> <span class="muted of" style="font-size:0.5em">/ 1,604,900 BONDR</span></span>
+        <div class="budget-track" role="img" aria-label="Burn budget is 73.8 percent of the cost to complete the curve. Forced bond fires at 105 percent.">
+          <i id="g-budget-bar" style="--v:61.5%"></i>
+          <b class="cost" style="left:83.3%"><span>100%</span></b><b style="left:87.5%"><span>105%</span></b>
+        </div>
+        <p>Budget is 90% of GRUB's creator fees (about 21.8 SOL). At 105% of the cost, the worker buys the rest of the curve with the full budget and burns the tokens in the same transaction.</p>
+      </div>
+    </div>
+    <div class="window pre">
+      <div><span class="label">Window 4 closes in</span><div class="clock" id="clock">16:18:42</div></div>
+      <p>If GRUB has not bonded when this 24h window closes, its burn budget goes to the BONDR buyback wallet and that BONDR is burned. Fees then start filling a fresh budget.</p>
+    </div>
+    <ol class="flow pre" aria-label="How GRUB's creator fees move">
+      <li><b>Collect</b>1.5% creator fee on every trade</li>
+      <li class="now"><b>Split 90/10</b>90% burn budget, 10% treasury</li>
+      <li><b>Force bond</b>Budget at 105% of cost buys and burns</li>
+      <li><b>Or sweep</b>Window ends: budget to BONDR buyback burn</li>
+    </ol>
+    <div class="moment post"><div class="moment-glyph" id="moment-glyph" aria-hidden="true"></div><div><span class="label up">Bonded 21h ago</span><p class="moment-h display">Forced by its<br>own fees.</p><p class="muted" style="font-size:var(--fs-sm);margin-top:8px">GRUB's burn budget bought the last of its curve and burned it. It now trades on PumpSwap.</p></div></div>
+    <div class="gauges post">
+      <div class="gauge">
+        <h3><span>Forced-bond buy</span><span class="tag tag-burn">Bought and burned</span></h3>
+        <span class="big">96.1M GRUB</span>
+        <p style="margin-top:8px">1,702,300 BONDR (31.3 SOL) bought the rest of the curve and burned it in one transaction. <span id="fb-tx"></span></p>
+      </div>
+      <div class="gauge">
+        <h3><span>Fee shares, permanent</span><span class="tag tag-bond">Finalized</span></h3>
+        <span class="big">80 <span class="muted" style="font-size:0.5em">deployer</span> / 20 <span class="muted" style="font-size:0.5em">treasury</span></span>
+        <p style="margin-top:8px">Set once with update_fee_shares_v2 and locked by pump. Distribution is permissionless. <span id="fin-tx"></span></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="blk ledger" aria-labelledby="ledger-h">
+    <div class="blk-head"><h2 id="ledger-h">Fee ledger</h2><span class="fine">Every movement of GRUB's fees, with its transaction. Fee wallet W <span class="num">Gm4k&hellip;Wz2P</span></span></div>
+    <div class="receipt">
+      <div class="totals" id="totals"></div>
+      <ol class="entries" id="entries"></ol>
+    </div>
+  </section>
+
+  <section class="trade" id="trade" aria-label="Trade GRUB">
+    <span class="sheet-handle" aria-hidden="true"></span>
+    <button class="sheet-close" type="button" id="sheet-close" aria-label="Close trade panel"></button>
+    <div class="seg" id="side" role="group" aria-label="Trade side">
+      <button type="button" aria-pressed="true" data-side="buy">Buy</button><button type="button" aria-pressed="false" data-side="sell">Sell</button>
+    </div>
+    <div class="field">
+      <div class="label-row"><label for="amt" id="amt-label">You pay</label><span class="hint">Balance <span class="num" id="bal">4.82 SOL</span></span></div>
+      <div class="amount"><input class="input" id="amt" inputmode="decimal" value="1.00" autocomplete="off"><span class="unit" id="unit">SOL</span></div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <dl class="quote">
+      <div class="recv"><dt>You receive about</dt><dd id="q-out"></dd></div>
+      <div><dt>Route</dt><dd class="route" id="route"></dd></div>
+      <div><dt>Price impact</dt><dd id="q-impact"></dd></div>
+      <div><dt>Slippage</dt><dd><div class="chips" id="slip" style="width:150px"><button aria-pressed="false">0.5%</button><button aria-pressed="true">1%</button><button aria-pressed="false">3%</button></div></dd></div>
+      <div><dt>Minimum received</dt><dd id="q-min"></dd></div>
+    </dl>
+    <details class="fees"><summary><span>Fees <span class="num" id="q-fee"></span></span><span class="muted">no BONDR platform fee</span></summary>
+    <dl class="quote">
+      <div><dt id="fee-title">Fees on the GRUB curve, 2.45%</dt><dd id="q-fee2"></dd></div>
+      <div class="sub pre"><dt>Pump protocol 0.95%</dt><dd id="q-f1"></dd></div>
+      <div class="sub pre"><dt>Creator 1.5%, to GRUB burn budget</dt><dd id="q-f2"></dd></div>
+      <div class="sub post"><dt>LP 0.20% + protocol 0.05%</dt><dd id="q-f1b"></dd></div>
+      <div class="sub post"><dt>Creator 1.5%, split 80 deployer / 20 treasury</dt><dd id="q-f2b"></dd></div>
+      <div class="sub"><dt>Swap SOL to BONDR, pool fee</dt><dd id="q-f3"></dd></div>
+      <div class="sub"><dt>BONDR platform fee</dt><dd class="up">0</dd></div>
+    </dl></details>
+    <button class="btn btn-primary btn-lg" id="go" type="button"></button>
+    <p class="fine">One Phantom signature. Quote refreshes every 2 seconds.</p>
+  </section>
+  <div class="scrim" id="scrim"></div>
+
+  <section class="blk feed" aria-labelledby="feed-h">
+    <div class="blk-head"><h2 id="feed-h">Trades</h2><span class="fine"><span class="dot dot-live up" style="display:inline-block;margin-right:6px"></span>Live</span></div>
+    <ol class="feed-list" id="feed" aria-live="off"></ol>
+  </section>
+</main>
+<div id="footer"></div>
+<div class="mbar" id="mbar" role="region" aria-label="Quick trade">
+  <div><span class="label">Mcap</span><div class="num" id="m-mcap">61.40 SOL</div></div>
+  <button class="btn btn-primary" data-open="buy">Buy</button><button class="btn btn-quiet" data-open="sell">Sell</button>
+</div>
+
+<script src="mock.js"></script>
+<script>
+  renderHeader("token"); renderFooter();
+  const MINT = mintOf("GRUB");
+  document.getElementById("ava").innerHTML = avatar("GRUB");
+  document.getElementById("id-bleed").innerHTML = avatar("GRUB");
+  document.getElementById("g-bond-glyph").innerHTML = bondGlyph(64.2, 560, 52, "Curve filled 64.2 percent");
+  document.getElementById("moment-glyph").innerHTML = `<div class="orb"><i></i><i></i><i></i><span class="ava">${avatar("GRUB")}</span></div>`;
+  document.getElementById("mint").textContent = short(MINT, 6, 4);
+  document.getElementById("copy-ico").outerHTML = ICON.copy;
+  document.getElementById("copy").onclick = (e) => { navigator.clipboard?.writeText(MINT); e.currentTarget.querySelector(".addr").textContent = "Copied"; setTimeout(() => (document.getElementById("mint").textContent = short(MINT, 6, 4)), 1200); };
+  document.getElementById("proof-tx").innerHTML = txLink("launch-grub", "Launch tx " + short(sigOf("launch-grub")));
+  document.getElementById("fb-tx").innerHTML = txLink("fb-grub");
+  document.getElementById("fin-tx").innerHTML = txLink("fin-grub");
+  document.getElementById("sheet-close").innerHTML = ICON.x;
+  let bonded = false;
+
+  /* ---------- chart ---------- */
+  const r = rng("grub-candles");
+  let candles = [], p = 22;
+  for (let i = 0; i < 160; i++) {
+    const drift = i < 40 ? 0.004 : i < 90 ? 0.012 : i < 120 ? -0.006 : 0.009;
+    const o = p, c = Math.max(4, o * (1 + drift + (r() - 0.5) * 0.06));
+    candles.push({ o, c, h: Math.max(o, c) * (1 + r() * 0.025), l: Math.min(o, c) * (1 - r() * 0.025), v: 2 + r() * 10 + Math.abs(c - o) * 6 });
+    p = c;
+  }
+  const k = 61.4 / p; candles.forEach((d) => { d.o *= k; d.c *= k; d.h *= k; d.l *= k; });
+  const chartEl = document.getElementById("chart"), ohlcEl = document.getElementById("ohlc");
+  let hover = -1;
+  function drawChart() {
+    const W = chartEl.clientWidth, H = chartEl.clientHeight, axis = 58, volH = H * 0.16, padT = 12, padB = 22;
+    const step = W < 500 ? 6 : 8, n = Math.min(candles.length, Math.floor((W - axis) / step));
+    const data = candles.slice(-n);
+    const hi = Math.max(...data.map((d) => d.h)), lo = Math.min(...data.map((d) => d.l));
+    const plotH = H - volH - padT - padB;
+    const y = (v) => padT + (1 - (v - lo) / (hi - lo)) * plotH;
+    const vmax = Math.max(...data.map((d) => d.v));
+    let s = "";
+    for (let g = 0; g <= 4; g++) {
+      const v = lo + ((hi - lo) * g) / 4, yy = y(v);
+      s += `<line x1="0" x2="${W - axis}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-dasharray="2 4"/><text x="${W - axis + 8}" y="${yy + 3}">${v.toFixed(1)}</text>`;
+    }
+    data.forEach((d, i) => {
+      const x = i * step + step / 2, up = d.c >= d.o, col = up ? "var(--accent)" : "var(--danger)";
+      const bw = Math.max(2, step * 0.62);
+      s += `<line x1="${x}" x2="${x}" y1="${y(d.h)}" y2="${y(d.l)}" stroke="${col}"/>`;
+      s += `<rect x="${x - bw / 2}" y="${y(Math.max(d.o, d.c))}" width="${bw}" height="${Math.max(1, Math.abs(y(d.o) - y(d.c)))}" fill="${col}"/>`;
+      s += `<rect x="${x - bw / 2}" y="${H - padB - (d.v / vmax) * volH}" width="${bw}" height="${(d.v / vmax) * volH}" fill="${col}" opacity="0.28"/>`;
+    });
+    for (let t = 0; t < n; t += Math.round(80 / step) * 2) s += `<text x="${t * step}" y="${H - 6}">${String(9 + Math.floor((t * 5) / 60)).padStart(2, "0")}:${String((t * 5) % 60).padStart(2, "0")}</text>`;
+    if (bonded) { const bx = (n - 22) * step; s += `<line x1="${bx}" x2="${bx}" y1="${padT}" y2="${H - padB}" stroke="var(--primary)" stroke-dasharray="3 3"/><text x="${bx + 6}" y="${padT + 10}" style="fill:var(--primary)">BONDED, FORCED</text>`; }
+    const last = data[data.length - 1], ly = y(last.c);
+    s += `<line x1="0" x2="${W - axis}" y1="${ly}" y2="${ly}" stroke="var(--primary)" stroke-dasharray="1 3"/><rect x="${W - axis + 2}" y="${ly - 9}" width="${axis - 4}" height="18" fill="var(--primary)"/><text x="${W - axis + 8}" y="${ly + 3}" style="fill:var(--background)">${last.c.toFixed(2)}</text>`;
+    const hd = data[hover >= 0 && hover < n ? hover : n - 1];
+    if (hover >= 0 && hover < n) { const hx = hover * step + step / 2; s += `<line x1="${hx}" x2="${hx}" y1="${padT}" y2="${H - padB}" stroke="var(--line-strong)"/>`; }
+    chartEl.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${s}</svg>`;
+    ohlcEl.innerHTML = ["O", "H", "L", "C"].map((k) => `<span>${k} <span class="num">${hd[k.toLowerCase()].toFixed(2)}</span></span>`).join("") + '<span>SOL mcap</span>';
+    chartEl._step = step; chartEl._n = n;
+  }
+  chartEl.addEventListener("pointermove", (e) => { hover = Math.floor((e.clientX - chartEl.getBoundingClientRect().left) / chartEl._step); drawChart(); });
+  chartEl.addEventListener("pointerleave", () => { hover = -1; drawChart(); });
+  addEventListener("resize", drawChart);
+  initSeg(document.getElementById("tf"));
+  drawChart();
+
+  /* ---------- live mcap ---------- */
+  let budget = 1184220;
+  setInterval(() => {
+    const last = candles[candles.length - 1], d = (Math.random() - 0.46) * 0.012;
+    last.c *= 1 + d; last.h = Math.max(last.h, last.c); last.l = Math.min(last.l, last.c); last.v += Math.random();
+    drawChart();
+    const m = document.getElementById("s-mcap"); m.textContent = fmt.sol(last.c) + " SOL"; flash(m, d);
+    document.getElementById("m-mcap").textContent = m.textContent;
+    if (!bonded) {
+      budget += Math.random() * 900;
+      const ratio = (budget / 1604900) * 100;
+      document.getElementById("g-budget").textContent = fmt.int(budget);
+      document.getElementById("g-ratio").textContent = ratio.toFixed(1) + "%";
+      document.getElementById("g-budget-bar").style.setProperty("--v", (ratio / 120) * 100 + "%");
+    }
+  }, 1500);
+  setInterval(() => { const o = candles[candles.length - 1].c; candles.push({ o, c: o, h: o, l: o, v: 1 }); drawChart(); }, 12000);
+
+  /* ---------- countdown ---------- */
+  let left = 16 * 3600 + 18 * 60 + 42;
+  setInterval(() => { left--; const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), s = left % 60; document.getElementById("clock").textContent = [h, m, s].map((x) => String(x).padStart(2, "0")).join(":"); }, 1000);
+
+  /* ---------- ledger ---------- */
+  const PRE = [
+    ["2m ago", "tag-bond", "Split 90/10", "84,210 BONDR collected: 75,789 to burn budget, 8,421 to treasury", "84,210 BONDR"],
+    ["2m ago", "", "Collect", "Creator fees claimed from pump into W", "84,210 BONDR"],
+    ["17m ago", "tag-bond", "Split 90/10", "61,300 BONDR collected: 55,170 to burn budget, 6,130 to treasury", "61,300 BONDR"],
+    ["17m ago", "", "Collect", "Creator fees claimed from pump into W", "61,300 BONDR"],
+    ["7h 41m ago", "tag-burn", "Buyback burn", "Swept BONDR burned from the buyback wallet", "1,012,400 BONDR"],
+    ["7h 42m ago", "tag-warn", "Sweep", "Window 3 closed unbonded: burn budget to BONDR buyback", "1,012,400 BONDR"],
+    ["3d 7h ago", "tag-burn", "Launch burn", "Dev buy of 0.50 SOL burned in the launch transaction (insta burn)", "12.4M GRUB"],
+  ];
+  const POST = [
+    ["4m ago", "tag-bond", "Distribute", "Post-bond creator fees paid: 0.328 SOL deployer, 0.082 SOL treasury", "0.410 SOL"],
+    ["21h ago", "tag-bond", "Finalize 80/20", "create_fee_sharing_config, then update_fee_shares_v2: deployer 8000, treasury 2000. Permanent.", "8000 / 2000 bps"],
+    ["21h ago", "", "Migrate", "Curve complete; pool created on PumpSwap", "84.3 SOL"],
+    ["21h ago", "tag-burn", "Forced bond", "Burn budget bought the rest of the curve and burned it in the same transaction", "96.1M GRUB"],
+    ["21h ago", "tag-bond", "Split 90/10", "Final pre-bond collection: 31,900 to burn budget, 3,544 to treasury", "35,444 BONDR"],
+    ...PRE.slice(4),
+  ];
+  const TOT = {
+    pre: [["3.42%", "Supply burned", "12.4M GRUB at launch"], ["1,184,220", "To burn budget", "BONDR, current window"], ["1,012,400", "To buyback", "BONDR, swept and burned"], ["244,066", "To treasury", "BONDR, the 10% share"], ["After bond", "Deployer share", "80% once finalized"]],
+    post: [["13.03%", "Supply burned", "108.5M GRUB in total"], ["1,702,300", "Forced-bond buy", "BONDR spent on the curve"], ["1,012,400", "To buyback", "BONDR, swept and burned"], ["247,610", "To treasury", "BONDR pre-bond, plus 20% after"], ["0.328 SOL", "Deployer earned", "80% of post-bond fees"]],
+  };
+  function renderLedger() {
+    document.getElementById("totals").innerHTML = TOT[bonded ? "post" : "pre"].map(([v, l, s]) => `<div><span class="label">${l}</span><span class="num">${v}</span><small>${s}</small></div>`).join("");
+    document.getElementById("entries").innerHTML = (bonded ? POST : PRE).map(([t, cls, tag, d, a], i) =>
+      `<li class="entry"><time>${t}</time><span class="tag ${cls}">${tag}</span><span class="desc">${d}</span><span class="amt">${a}${txLink("led" + bonded + i)}</span></li>`).join("");
+  }
+  renderLedger();
+
+  /* ---------- trade panel ---------- */
+  const trade = document.getElementById("trade"), amt = document.getElementById("amt");
+  let side = "buy";
+  function quote() {
+    const v = parseFloat(amt.value) || 0;
+    const feeRate = bonded ? 0.0175 : 0.0245, hop = 0.003;
+    const impact = side === "buy" ? v * 0.84 * (bonded ? 0.4 : 1) : (v / 15.9e6) * 0.84;
+    const solIn = side === "buy" ? v : v / 15.9e6 * 0.985;
+    const out = side === "buy" ? v * 15.9e6 * (1 - feeRate - hop) * (1 - impact / 100) : solIn * (1 - feeRate - hop) * (1 - impact / 100);
+    const unitOut = side === "buy" ? " GRUB" : " SOL";
+    const f = (x) => (side === "buy" ? x.toFixed(4) : x.toFixed(4)) + " SOL";
+    document.getElementById("q-out").textContent = (side === "buy" ? fmt.int(out) : out.toFixed(4)) + unitOut;
+    const slip = parseFloat(document.querySelector('#slip [aria-pressed="true"]').textContent);
+    document.getElementById("q-min").textContent = (side === "buy" ? fmt.int(out * (1 - slip / 100)) : (out * (1 - slip / 100)).toFixed(4)) + unitOut;
+    const imp = document.getElementById("q-impact");
+    imp.textContent = impact.toFixed(2) + "%"; imp.className = impact > 5 ? "down" : impact > 2 ? "" : "up";
+    document.getElementById("q-fee").textContent = f(solIn * (feeRate + hop));
+    document.getElementById("q-fee2").textContent = f(solIn * feeRate);
+    document.getElementById("q-f1").textContent = f(solIn * 0.0095);
+    document.getElementById("q-f2").textContent = f(solIn * 0.015);
+    document.getElementById("q-f1b").textContent = f(solIn * 0.0025);
+    document.getElementById("q-f2b").textContent = f(solIn * 0.015);
+    document.getElementById("q-f3").textContent = f(solIn * hop);
+    document.getElementById("fee-title").textContent = bonded ? "Fees on PumpSwap, 1.75%" : "Fees on the GRUB curve, 2.45%";
+    const go = document.getElementById("go");
+    const tooMuch = side === "buy" ? v > 4.82 : v > 15.9e6;
+    go.disabled = !v || tooMuch;
+    go.textContent = !v ? "Enter an amount" : tooMuch ? "Not enough " + (side === "buy" ? "SOL" : "GRUB") : side === "buy" ? `Buy GRUB with ${v.toFixed(2)} SOL` : `Sell ${fmt.int(v)} GRUB`;
+    document.getElementById("route").innerHTML = side === "buy" ? "SOL<i></i>BONDR<i></i>GRUB" : "GRUB<i></i>BONDR<i></i>SOL";
+  }
+  function setSide(s) {
+    side = s; trade.classList.toggle("sell", s === "sell");
+    document.getElementById("amt-label").textContent = "You pay";
+    document.getElementById("unit").textContent = s === "buy" ? "SOL" : "GRUB";
+    document.getElementById("bal").textContent = s === "buy" ? "4.82 SOL" : "15,900,000 GRUB";
+    amt.value = s === "buy" ? "1.00" : "7950000";
+    document.getElementById("chips").innerHTML = (s === "buy" ? ["0.1", "0.5", "1", "5"] : ["25%", "50%", "100%"]).map((c) => `<button type="button" aria-pressed="false">${c}</button>`).join("");
+    quote();
+  }
+  initSeg(document.getElementById("side"), (b) => setSide(b.dataset.side));
+  document.getElementById("chips").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    document.querySelectorAll("#chips button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    amt.value = side === "buy" ? parseFloat(b.textContent).toFixed(2) : String(Math.round(15.9e6 * parseFloat(b.textContent) / 100));
+    quote();
+  });
+  document.getElementById("slip").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; document.querySelectorAll("#slip button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); quote(); });
+  amt.addEventListener("input", quote);
+  document.getElementById("go").addEventListener("click", (e) => { const b = e.currentTarget, t = b.textContent; b.textContent = "Waiting for Phantom…"; b.disabled = true; setTimeout(() => { b.textContent = "Confirmed"; setTimeout(() => { b.disabled = false; b.textContent = t; }, 1400); }, 1600); });
+  setSide("buy");
+
+  // mobile sheet
+  const scrim = document.getElementById("scrim");
+  let opener = null;
+  const openSheet = (s) => { opener = document.activeElement; if (s !== side) document.querySelector(`#side [data-side="${s}"]`).click(); trade.classList.add("open"); scrim.classList.add("on"); if (matchMedia("(max-width: 680px)").matches) { trade.setAttribute("role", "dialog"); trade.setAttribute("aria-modal", "true"); setTimeout(() => amt.focus(), 50); } };
+  const closeSheet = () => { if (!trade.classList.contains("open")) return; trade.classList.remove("open"); scrim.classList.remove("on"); trade.removeAttribute("role"); trade.removeAttribute("aria-modal"); opener && opener.focus && opener.focus(); };
+  document.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => openSheet(b.dataset.open)));
+  scrim.onclick = closeSheet; document.getElementById("sheet-close").onclick = closeSheet;
+  addEventListener("keydown", (e) => e.key === "Escape" && closeSheet());
+
+  /* ---------- trade feed ---------- */
+  const feed = document.getElementById("feed");
+  const tradeRow = (i, ago, isNew) => {
+    const buy = Math.random() > 0.42, sol = (Math.random() ** 2) * 3 + 0.05;
+    return `<li class="${isNew ? "rise" : ""}"><span class="muted">${ago}</span><span class="side ${buy ? "up" : "down"}">${buy ? "Buy" : "Sell"}</span><span class="r">${sol.toFixed(3)} SOL</span><span class="r">${fmt.int(sol * 15.9e6 / 1e3)}K</span><span class="wallet">${txLink("f" + i + Math.random(), short(b58("w" + i + Math.random(), 44), 4, 3))}</span></li>`;
+  };
+  feed.innerHTML = Array.from({ length: 12 }, (_, i) => tradeRow(i, i * 7 + 2 + "s")).join("");
+  let fi = 100;
+  setInterval(() => { feed.insertAdjacentHTML("afterbegin", tradeRow(fi++, "now", true)); feed.lastElementChild.remove(); }, 2200);
+
+  mockbar("Token page", [{ key: "bonded", label: "Post-bond finalized state", on() { bonded = true; document.body.classList.add("bonded"); renderLedger(); quote(); drawChart(); }, off() { bonded = false; document.body.classList.remove("bonded"); renderLedger(); quote(); drawChart(); } },
+    { key: "sheet", label: "Open mobile trade sheet", on() { openSheet("buy"); }, off: closeSheet }]);
+</script>
+</body>
+</html>

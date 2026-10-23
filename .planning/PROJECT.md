@@ -1,0 +1,200 @@
+# BONDR
+
+## What This Is
+
+BONDR is a Solana memecoin launchpad built on pump.fun through the official pump SDK. Positioning: every token is meant to bond. Until a coin bonds, its creator fees are locked away from the dev. They force the coin to bond and burn supply. After bonding, the dev earns a permanent share of trading fees. BONDR also lists, charts and trades every coin launched on it.
+
+## Core Value
+
+A holder can verify on the token page that the dev holds no launch supply, and see that pre-bond fees went to forcing the bond and burning supply, never to the dev.
+
+## Who It Is For
+
+- **For:** memecoin devs who want a launch buyers trust, and traders who want coins without dev bags or pre-bond fee farming. Starts with the owner and friends; open to the public later.
+- **Not for:** devs who want to keep their launch supply or take fees before bonding. Not multi-chain.
+
+## Fee Mechanic (source of truth)
+
+Verified against pump-fun/pump-public-docs @ 639b87f and live mainnet accounts on 2026-10-18 (see research/FINDINGS.md). Proven on chain by the Phase 1 spike on devnet and a Surfpool mainnet fork on 2026-10-19. Each item cites its evidence row in scripts/spike/results/ (open index.html).
+
+1. **BONDR token first.** BONDR launches on BONDR paired with SOL; its creator is the treasury, at the standard pump schedule. Every other coin pairs with BONDR as its quote (pump coin quote, depth 1; current `max_curve_depth` is 2). A child create on BONDR's curve is 1,064 bytes. Once BONDR has migrated, the create needs 3 more pool accounts and is 1,163 bytes before any dev buy (Phase 1 spike, row migrated.child.create, fork; row aux.child.create.migratedQ, devnet).
+2. **Launch, one atomic transaction:**
+   - `create_v2` with the `bndr` vanity mint, `creator` = that coin's BONDR token wallet W, quote = BONDR, `creator_fee_bps` = 150.
+   - Mandatory dev buy of at least 0.25 SOL. SOL buys BONDR (exact SOL in), then `buy_v3` buys an exact coin amount, so the exit knows the exact amount. The exact-out buy always leaves the dev a small BONDR remainder, which is not launch supply. On a 0.25 SOL buy it was 140,041 BONDR (burn exit) and 277,783 BONDR (sell exit), about 0.004 and 0.009 SOL at the stand-in's early price. The dev holds 0 child tokens after either exit (Phase 1 spike, rows launch.burn and launch.sell, fork, facts devQLeft and devChildAfter).
+   - The dev's chosen exit, **insta sell** (back to SOL) or **insta burn** (Streamflow lock deferred).
+   - The launch uses a v0 transaction with a per-coin address lookup table. The server creates it while preparing the launch (2 transactions of 1,072 bytes each), ops pays the rent, and the table is closed later to reclaim the rent. The rent is 0.0052-0.0060 SOL on devnet for 26-31 keys, which is about 0.007-0.008 SOL at mainnet rent, not the 0.003 SOL first estimated (Phase 1 spike, rows launch.table.burn and launch.table.sell, devnet).
+   - Measured with the per-coin table, the same on devnet and the fork: insta burn 780 bytes and 316,738 CU, insta sell to SOL 881 bytes and 448,775 CU, both against a 600,000 CU limit. Without a table they are 1,552 and 1,808 bytes. With only a shared table (sharedOnlyBytes) they are 1,059 and 1,191 bytes. That fits today, but adding the 99 bytes of a migrated-BONDR create pushes insta sell to about 1,290. So the per-coin table is mandatory once BONDR has migrated (Phase 1 spike, rows launch.burn, launch.sell and migrated.child.create, fork and devnet).
+   - The server co-signs with the mint key only if that exit is present.
+3. **Fees per trade.** Bonding curve: 0.95% protocol + 1.5% creator = 2.45%. PumpSwap after bond: 0.20% LP + 0.05% protocol + 1.5% creator = 1.75%. The fork's live Global and FeeConfig matched this with no drift. The collected creator fee measured exactly 150.00 bps of gross quote volume (Phase 1 spike, rows config and prebond.collect, fork). Devnet's Global has `creator_fee_configurable` false and refuses 150 bps with 6077, so 150 bps paths can only be tested on a fork (Phase 1 spike, row child.create150.refused, devnet).
+4. **Pre-bond split.** The worker collects W's creator fees: 90% stays in W as the burn budget, 10% goes to the treasury. The collect needs no W signature. The 10% is floor(collected / 10), sized from the collect transaction's own balance delta and never from W's balance; the split measured exact (Phase 1 spike, rows prebond.collect and prebond.split, fork).
+5. **Forced bond.** When W's burn budget covers the quote needed to complete the curve plus a buffer, the worker buys with the full budget (`buy_exact_quote_in_v3`). It burns the tokens bought in the same transaction. If another buyer crosses first, pump's synthetic migration fills the rest at the pool price.
+   - The burn amount is W's child balance after the transaction, read from `simulateTransaction` with the accounts option, and the landed buy matched the simulation exactly. A budget above the completion cost also buys from the pool-to-be, so the burn can exceed the curve's remaining supply: 804.8M burned against 793.1M left on the curve. W ends with 0 child tokens and 0 BONDR. 926 bytes and 127,506 CU, no lookup table (Phase 1 spike, row bond.forced, fork).
+   - The `buy_v3` exact variant burns exactly the remaining 793.1M but leaves the unspent buffer in W as BONDR (7.37M on a 106% budget). It stays as evidence only (Phase 1 spike, row bond.exact, fork).
+   - Chosen burn mode (owner, 2026-10-19): spend the full budget. `buy_exact_quote_in_v3` takes the whole burn budget, may continue past completion at the pool price, and everything bought is burned in the same transaction. Nothing remains in W.
+   - The burn is atomic with completion. On devnet, pump's keeper migrated a completed curve about 10 slots after completion, so anything that must happen before migration goes in the completing transaction (Phase 1 spike, row bond.forced, fork; row aux.child.create.migratedQ, devnet).
+6. **Fallback burn.** If traders bond the coin first, W buys on PumpSwap right after migration and burns in the same transaction. Supply fell by exactly the bought amount (Phase 1 spike, row bond.pool.burn, fork). The PumpSwap SDK picks the buyback recipient at random and does not create its quote ATA, so the buy pins the first listed recipient and ops creates that ATA in the same transaction (Phase 1 spike, row bond.pool.burn, fork).
+7. **Rolling 24h sweep.** For every 24h window a coin spends unbonded, W's burn budget goes to the BONDR buyback wallet and that BONDR is burned. W stays the fee recipient until the coin bonds.
+8. **Finalize after bond.** W runs `create_fee_sharing_config`, then the single allowed `update_fee_shares_v2`: deployer 8000 bps / treasury 2000 bps. This is permanent and distribution is permissionless.
+   - After bond it takes 2 transactions: the whole finalize measured 1,351 bytes. The first is the sweeps plus the config (1,076 bytes). The second repeats the pool sweep, then runs the update (1,126 bytes) (Phase 1 spike, rows finalize.config and finalize.update, fork).
+   - A second update is rejected with pump-fees 6009 SharingConfigAdminRevoked on both nets (Phase 1 spike, rows sharing.update2.rejected, devnet, and finalize.update2.rejected, fork).
+   - Distribution paid exactly 80:20 with no W signature, so ops can crank it: 966 bytes and 123,329 CU (Phase 1 spike, row finalize.distribute, fork).
+9. **Ops wallet.** It pays transaction fees for every worker transaction, the per-coin launch lookup table rent (about 0.0075 SOL per launch, reclaimable) and W's rent floats (about 0.03 SOL per bonded coin in total). W still needs a small SOL float for rent, and ops tops W up inside the same transaction that needs it. The treasury tops up ops: the owner moves SOL from the treasury to ops by hand when the admin dashboard's low-ops alert fires (owner, 2026-10-19). Measured floats: 0.018 SOL for the finalize (8,017,920 lamports of sharing-config rent plus a 0.01 SOL buffer, against the 0.006 SOL first estimated), 0.0069 SOL for the forced bond, 0.0039 SOL for the fallback burn and 0.0009 SOL for the split (Phase 1 spike, rows finalize.config, bond.forced, bond.pool.burn and prebond.split, fork, facts wFloatLamports).
+
+## Requirements
+
+### Validated
+
+(None yet. Ship to validate.)
+
+### Active
+
+- [ ] Dev launches a coin with the full fee mechanic in one transaction and never holds launch supply
+- [ ] Every coin page shows a public fee ledger: collections, splits, sweeps, forced-bond buy, burns, finalize, each with a transaction link
+- [ ] Worker runs the fee mechanic (split, forced bond, fallback burn, rolling sweep, finalize, buyback burn) without manual help
+- [ ] Home lists: trending, top market cap, latest, oldest (BONDR coins only)
+- [ ] Trading on BONDR (buy and sell through `multi_hop_swap`) with live chart and trade feed, no platform fee
+- [ ] Admin dashboard with recovery actions, kill switches, health, moderation, timeline, transaction inspector, audit log and EVACUATE
+- [ ] Phantom-only wallet connect, terms page, consent prompt before collecting any data
+
+### Out of Scope
+
+- Dexscreener auto-enhance: no official order API ($299, web checkout). Revisit with a manual queue.
+- Streamflow dev-supply lock: Token-2022 support unproven; costs 0.16 SOL + 0.5% of tokens. Add after a devnet test passes.
+- Comments, chat, social feeds: not core to the trust mechanic.
+- User profiles beyond a wallet address, notifications, limit orders: not needed for v1 success.
+- Mobile app: the site is responsive instead.
+- Multi-chain, multisig: Solana only, sole dev.
+- Platform trading fee: owner decision. Trading on BONDR costs the same as anywhere.
+- Wallets other than Phantom: owner decision.
+
+## Success Criteria
+
+- **Week 1 after go-live:**
+  - BONDR token live.
+  - 5-10 launches with zero failed launch transactions.
+  - At least one coin force-bonded by its own fees, with the burn on its ledger.
+- **Month 1:**
+  - 50+ launches.
+  - 1,500 SOL of total volume across BONDR coins.
+  - About 3 SOL to the treasury.
+  - Every daily sweep and finalize runs with no manual help.
+- **Done for v1:** a stranger launches, trades and verifies their burns without asking the owner anything.
+
+## Context
+
+- Reference implementation: the owner's scrapped agencybook project at /Users/uzi/agencybook-phase-15. It has a one-tx launch with fee sharing (packages/core/src/launch/build.ts), HMAC-derived keypairs (launch/sign.ts), a program allowlist on sends (chain/send.ts), a worker with a Postgres leader lock and job leases (apps/worker/src/main.ts), and PUMPFUN.md notes.
+- Pump ships breaking program changes on short notice: 2025-11-11, 2026-03-19, 2026-09-01.
+- agencybook's launch was sniped within the same second. Launch and forced-bond sends need a private path.
+
+## Constraints
+
+- **Budget:** about $100/month: Helius Developer $49, Railway ~$20-30, Neon free tier or $19, Sentry and Pinata free tiers.
+- **Team:** one owner, who is the sole dev and sole admin.
+- **Legal:** a short terms page and a consent prompt only (AGENTS.md).
+- **Security:** wallet secrets live in the worker only, never in web. The master seed sits in the worker environment.
+- **Pump coupling:** pin `@pump-fun/pump-sdk` 4.1.0 and `@pump-fun/pump-swap-sdk` 2.1.0. Read fee tiers from the live FeeConfig, never hardcode them.
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Coins pair with BONDR as quote at `creator_fee_bps` 150 | Custom pairs allow up to 3% creator fee: about 5x the burn budget of a 0.30% SOL pair, and demand for BONDR | Validated (Phase 1): 150 bps measured exactly (Phase 1 spike, rows child.create and prebond.collect, fork) |
+| Creator = per-token wallet W, not the deployer | `set_creator` is pump-admin only and fee shares update once, so the revert must be the single final update | Validated (Phase 1) (Phase 1 spike, row child.create, fork and devnet) |
+| Pre-bond split 90 W / 10 treasury off-chain; post-bond split 80 deployer / 20 treasury on-chain | Owner decision; only one on-chain update is allowed | Validated (Phase 1): both splits exact (Phase 1 spike, rows prebond.split and finalize.distribute, fork) |
+| Forced-bond buy and burn in the same transaction | Tokens never sit in W, so RugCheck and Bubblemaps do not flag a dev-like holder | Validated (Phase 1): W holds 0 child tokens after the tx (Phase 1 spike, row bond.forced, fork) |
+| Forced-bond burn mode: spend the full budget with `buy_exact_quote_in_v3`, past completion at the pool price if needed, and burn everything bought; the exact `buy_v3` variant is evidence only | Nothing remains in W and the whole budget becomes burn (owner, 2026-10-19) | Validated (Phase 1) (Phase 1 spike, row bond.forced, fork) |
+| Rolling 24h sweep to BONDR buyback; 90% buyback, 10% treasury | Owner decision; dead coins never accumulate fees | Pending |
+| Dev must insta sell or insta burn the launch buy; server co-signs only if present | Dev never holds supply; the vanity mint key is the enforcement point | Validated (Phase 1) for the one-tx exit, dev holds 0 child tokens (Phase 1 spike, rows launch.burn and launch.sell, fork and devnet). The co-sign check ships in Phase 2 |
+| No platform trading fee | Owner decision | Pending |
+| Phantom only | Owner decision; matches agencybook | Pending |
+| pnpm monorepo: apps/web (Next.js 16), apps/worker, packages/core | Ports agencybook code directly | Pending |
+| Neon Postgres + Drizzle; Railway (web + worker); Sentry | Owner choice; agencybook stack | Pending |
+| Helius Developer RPC; Helius Sender with MEV protection for launches and forced bonds | The free tier gets rate-limited (429) during launch bursts; snipers | Pending |
+| Own indexer: worker ingests pump program logs for BONDR mints into Postgres | Lists, charts and the ledger need our data; pump's API is undocumented | Pending |
+| SSE for live updates; TradingView lightweight-charts | Simplest one-way push; standard trader chart | Pending |
+| Pinata IPFS for metadata and images | Images survive if BONDR is down | Pending |
+| All W keys HMAC-derived from one master seed in worker env | Nothing per token to store; EVACUATE covers a leak | Pending |
+| Ops wallet pays all worker transaction fees | W holds only quote tokens; no gas top-ups per token | Validated (Phase 1): ops paid every fee; W's rent floats ride in the same tx (Phase 1 spike, row finalize.config, fork; see Fee Mechanic 9) |
+| The treasury tops up ops by hand when the admin dashboard's low-ops alert fires; ops pays lookup table rent (about 0.0075 SOL per launch, reclaimable) and W floats (about 0.03 SOL per bonded coin) | Sole owner; a manual top-up on an alert is simpler than an automatic transfer (owner, 2026-10-19) | Decided (owner, 2026-10-19) |
+| No multisig; EVACUATE break-glass with typed phrase + wallet signature, treasury only | Sole dev; one fast response to a seed leak | Pending |
+| Test on devnet, plus a Surfpool mainnet fork for pump flows | pump devnet can lag mainnet | Validated (Phase 1): devnet refuses 150 bps, so the fork is required (Phase 1 spike, row child.create150.refused, devnet) |
+
+## Defaults Chosen Without Explicit Owner Confirmation
+
+Review these at spec approval:
+
+1. **Dev buy minimum:** 0.25 SOL on mainnet, measured on the SOL input before the BONDR hop. It scales with live curve reserves on other networks: about 0.0025 SOL on devnet (owner decision 2026-10-19, Phase 2 D-17).
+2. **Forced-bond trigger:** burn budget at least 105% of the quote needed to complete the curve.
+3. **Trending:** ranked by quote volume in the last 1h. Top = market cap. Latest and oldest = launch time.
+4. **BONDR's own launch:** goes through the same flow with insta burn.
+5. **BONDR curve completion:** launches pause automatically while BONDR's curve is complete but not yet migrated (pump error 6107). 6107 confirmed on both nets. Pump's keeper migrated within about 10 slots on devnet, so the pause should last seconds (Phase 1 spike, row child.create.6107, devnet and fork; keeper timing row aux.child.create.migratedQ, devnet).
+6. **Lists and pages:** only coins launched through BONDR.
+7. **Vanity mint:** suffix is case-sensitive `bndr`, from a pool pre-ground by the worker.
+
+## Build Steps (vertical slices, in order)
+
+1. **Chain spike on a mainnet fork.**
+   - Prove every pump assumption with scripts and a bare page:
+     - create_v2 with creator = W, BONDR-style pump-coin quote, creator_fee_bps 150
+     - atomic create + dev buy + sell or burn, under the transaction size limit
+     - collect and split
+     - forced-bond `buy_exact_quote_in_v3` + burn
+     - migrate
+     - fallback PumpSwap buy + burn
+     - create_fee_sharing_config + single update_fee_shares_v2
+     - multi_hop_swap
+   - Decisions: Surfpool fork, stand-in quote coin, measured transaction sizes.
+   - Exit: every step has a transaction signature, or the spec changes.
+2. **Launch flow.**
+   - Phantom connect, consent prompt, launch form (name, symbol, image, description, links, dev buy amount, exit choice), Pinata upload, vanity mint pool, server co-sign rule.
+   - A bare token page.
+   - Decisions: agencybook sign order A (wallet signs, server verifies the message is unchanged, then adds the mint signature).
+3. **Indexer, lists and token page.**
+   - Trade ingestion, candles, market cap and volume rollups.
+   - Home lists, token page with chart, trade feed and SSE live updates.
+4. **Trading.** Buy and sell panel on the token page via multi_hop_swap, slippage control, quote preview.
+5. **Fee engine and public ledger.**
+   - Worker jobs: collect and split, forced bond, fallback burn, rolling sweep, finalize, buyback burn, ops-wallet fee payer, reconciliation.
+   - Ledger section on the token page.
+6. **Admin dashboard.** The 13 recovery actions, kill switches, health, moderation, timeline, transaction inspector, audit log, EVACUATE, simulate-first and fixed destinations.
+7. **Go-live.**
+   - Terms page, Sentry, mainnet config, weekly pump contract check, CI with a Playwright smoke test, BONDR token launch.
+   - Child launches enabled only after BONDR exists.
+
+Each UI step ends with Playwright screenshots at mobile, tablet and desktop widths, and a Designer critique (AGENTS.md section 7).
+
+## Risks and What Would Change Course
+
+| Risk | Signal | Response |
+|------|--------|----------|
+| Pump disables `creator_fee_configurable` or pump-coin quotes | Global flag flips, or the contract check fails | Fall back to SOL pairs at 0.30% creator fee; the burn shrinks about 5x |
+| The single fee-share update fails or is misused | Spike step fails, or a wrong deployer is locked in | Pre-flight hold in admin. Only pump CTO admin can reset; show the runbook |
+| Master seed leak | Unexpected outflow from any W | EVACUATE, rotate the seed for new launches |
+| BONDR price volatility drags every coin | Large BONDR drawdown | Accept; show SOL-equivalent values everywhere |
+| BONDR curve awaiting migration blocks launches | Pump error 6107 | Auto-pause launches with a banner. The window is seconds, not minutes: pump's keeper migrated about 10 slots after completion on devnet (Phase 1 spike, row child.create.6107, devnet and fork; keeper timing row aux.child.create.migratedQ, devnet) |
+| While BONDR's curve is complete but unmigrated, SOL-routed child trades also stall, and each child's ~85 SOL-equivalent raise pushes BONDR's own curve (research 2026-10-19) | Phase 1 spike results | Decide at Phase 7 whether BONDR must bond before child launches open. Softened by the spike: the stall lasts seconds (keeper, devnet), and after migration SOL routes through BONDR's pool (Phase 1 spike, row migrated.multihop.buy, fork). A child raise at BONDR about 90% complete measured 122.8M BONDR, against the 115M estimate (Phase 1 spike, row bond.create, fork) |
+| Forced bond rarely triggers (thin volume in 24h windows) | Under 10% of coins reach the trigger in month 1 | Revisit the 90/10 split or the 24h window |
+| Pump breaking change | Weekly contract check, or a send fails with a program error | Kill switch, update the pinned SDK, re-run the spike suite |
+| RPC cost above budget | Helius credits over 80% | Reduce subscriptions, poll inactive coins less often |
+| Snipers front-run the forced-bond buy | Buy fills mostly at the pool price | Acceptable: the budget is still fully spent and burned |
+| Streamflow never supports Token-2022 | Devnet test fails | Keep only sell and burn exits |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? Move to Out of Scope with the reason.
+2. Requirements validated? Move to Validated with the phase reference.
+3. New requirements emerged? Add to Active.
+4. Decisions to log? Add to Key Decisions.
+5. "What This Is" still accurate? Update if it has drifted.
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections.
+2. Core Value check: still the right priority?
+3. Audit Out of Scope: are the reasons still valid?
+4. Update Context with the current state.
+
+---
+*Last updated: 2026-10-19 after Phase 1 chain spike*

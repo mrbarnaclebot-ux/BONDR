@@ -36,6 +36,7 @@ Not in Phase 3: the buy and sell panel (Phase 4), burn budget, 24h window, fee l
 - **D-09:** The hero line shows launched and bonded counts from the indexer ("N coins launched, M bonded"). Phase 5 changes it to the "bonded by their own fees" wording.
 - **D-10:** The token page "Bond and burn" panel shows curve progress only: curve fill %, the BONDR in the curve, "bonds at about X SOL", and the Bonded / PumpSwap state once migrated. Burn budget, the 24h window, the forced-bond story and the ledger come in Phase 5.
 - **D-11:** No trade panel placeholder before Phase 4; the chart and trade feed take the full width.
+- **D-11a (owner, at UI-SPEC review):** On wide screens the chart is full width; below it the trade feed takes the wide left column and the 380px Bond and burn panel sits right (Phase 4 puts the trade panel in that column). The hero second button is "See all coins". The header gets a "Launch a coin" link on every page.
 
 ### Live list behavior
 - **D-12:** Card numbers (market cap, 1h change, bond progress) update the moment a trade lands. Card positions re-rank at most once a minute, so nothing jumps under the cursor.

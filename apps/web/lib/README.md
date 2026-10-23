@@ -13,7 +13,7 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `pinata.test.ts`: metadata shape, URI length, upload request and JWT redaction; a live pin with `PINATA_LIVE=1`.
 - `format.ts`: display formats `sol`, `pct`, `compact`, `short`, `explorer`, `age`, and the Phase 3 `mcapSol`, `tradeSol`, `signedPct`, `curvePct`, `relTime`, `thousands`.
 - `trades.ts`: server-only `tradesPage(mint, before?)`, the trade feed paged by (slot, seq) keyset, and `parseCursor`.
-- `coins.ts`: server-only `coinByMint(mint)`, the indexed coin row with 1h and 24h volume and 1h change computed at read (burns excluded).
+- `coins.ts`: server-only `coinByMint(mint)`, the indexed coin row with 1h and 24h volume and 1h change computed at read (burns excluded); the query is `coinRow` in `@bondr/core/coin-row`, shared with the worker's live events.
 - `coins.test.ts`: windowed volume, 1h change from the last trade before the hour or the launch price, unknown mint (Neon dev; skips without DATABASE_URL).
 - `trades.test.ts`: cursor parsing, and pages with no overlap and no gap down to the launch rows (Neon dev; skips without DATABASE_URL).
 - `format.test.ts`: the display formats.

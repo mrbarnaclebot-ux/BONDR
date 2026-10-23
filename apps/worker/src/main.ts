@@ -9,6 +9,7 @@ import { connect, redact } from "@bondr/core/net";
 import { OnlinePumpSdk } from "@bondr/core/pump";
 import { seedBondrPrice } from "./bondr-price.ts";
 import { loadEnv } from "./env.ts";
+import { endStreams, eventsHandler } from "./events-route.ts";
 import { startRefill } from "./grind.ts";
 import { start } from "./http.ts";
 import { backfillLaunches, loadCoins } from "./ingest.ts";
@@ -51,6 +52,8 @@ async function main() {
       },
     },
     env.token,
+    undefined,
+    { "GET /events": eventsHandler },
   );
   server.on("listening", () => {
     console.log(`worker listening on ${env.net}`);
@@ -60,6 +63,7 @@ async function main() {
   });
   process.once("SIGTERM", () => {
     server.close(() => void close().finally(() => process.exit(0)));
+    endStreams();
   });
 }
 

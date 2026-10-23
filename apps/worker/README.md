@@ -6,7 +6,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 - `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`, then the index boot: `seedBondrPrice`, `loadCoins`, `backfillLaunches`, `startStream`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
 - `env.ts`: `loadEnv` and `launchNet` (refuses mainnet in Phase 2, D-02); `ops` and `treasury` keys with the Phase 1 ids.
-- `http.ts`: node:http server, `authorized` (timingSafeEqual), `readJson` (16 KB cap), `Fail` for contract errors.
+- `http.ts`: node:http server, `authorized` (timingSafeEqual), `readJson` (16 KB cap), `Fail` for contract errors; `Streams` are long-lived handlers behind the same bearer check.
 - `prepare.ts`: `POST /prepare`. Guards (pause, consent, rules, hourly table cap, balance) run before any spend, then reserve, W, table, build, simulate, store `prepared`. `prepareGuard`, `parseRequest`, `signBy` and `sellFloor` are pure.
 - `submit.ts`: `POST /submit`. Pause and expiry re-checked, then `cosign` (core) against the stored message, exit and mint; only then `signed` is stored and the wire is sent.
 - `settle.ts`: the state machine. Pure `nextState` and `resumeAction`; `settleLaunch` polls the signature, marks `landed` at confirmation (then facts), rechecks with history 3 times past expiry before `failed expired`; `resumeLaunches` on boot.
@@ -14,7 +14,8 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 - `launches.ts`: launch rows. `insertPrepared`, `insertFailed`, `advance` (guarded `UPDATE ... WHERE state = from`), `getLaunch`, `unsettled`, `tableFor`, `newTablesLastHour`, `newTablesToday` (the per-wallet daily table cap), `consented`.
 - `ingest.ts`: the one write path for the indexer. `writeParsed` writes a `parseTx` result in the caller's transaction: the new coin (on conflict do nothing), trades with `on conflict (signature, ix) do nothing returning`, and coin patches only for a mint that got a new trade. `ingestTx(conn, sig)` fetches, parses and writes one tx; `ingestLaunch(conn, row, tx)` writes a landed launch's coin and Launch rows, adds it to `knownCoins` and gap fills it; `gapFill`/`gapFillAll` ingest every signature after a coin's `last_sig`; `loadCoins` fills `knownCoins` at boot; `backfillLaunches` indexes every landed launch without a coin row, once per boot, paced.
 - `stream.ts`: the live indexer. One websocket, one log subscription on the BONDR mint; pure `isPumpInvoke`, `shouldIngest`, `backoff`.
-- `holders.ts`: `countHolders` (pure) and `touch`, the throttled holder recount.
+- `holders.ts`: `countHolders` (pure) and `touch`, the throttled holder recount; publishes a `holders` event after each recount write.
+- `events-route.ts`: `GET /events`, the live NDJSON stream web's hub holds (one per web process). `publish` stamps ids `<epoch>-<seq>` (epoch is boot time); a `{"type":"ping","id":<current id>}` line opens the stream and repeats every 15 s, so a reconnecting hub knows whether it missed anything. `ingest.ts` publishes `launch`, `trade` (with the coin's `coinRow` numbers from `@bondr/core/coin-row`, one read per coin per write and none when nobody listens) and `bond` (a venue move) after each commit that inserted rows.
 - `bondr-price.ts`: BONDR's SOL price in memory only (never stored, D-04). `seedBondrPrice` reads BONDR's curve, or its BONDR/SOL pool once migrated; every BONDR event the ingest sees moves it.
 - `status.ts`: `liveStatus` (`GET /status`, cached 5 s) and `quote` (`POST /quote`); `pauseReason` and `networkFee` are pure.
 - `vanity.ts`: the bndr mint pool. `mintKey`, `isBndr` (grinder fast path), `mintKeyFor` (re-derives and checks before signing), `reserve`, `release` (only when `canRelease`), `markUsed`, `vanityRow`, `poolSize`.
@@ -30,6 +31,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 | `POST /quote` | bearer WORKER_TOKEN |
 | `POST /prepare` | bearer WORKER_TOKEN |
 | `POST /submit` | bearer WORKER_TOKEN |
+| `GET /events` | bearer WORKER_TOKEN |
 
 `POST /prepare` takes a `PrepareRequest` and returns a `PrepareResult` (see `@bondr/core/api`). Errors: 409 `paused`, 403 `consent_required`, 400 `invalid_input`, 503 `pool_empty`, 429 `rate_limited` (30 new tables an hour, worker-wide), 402 `insufficient_balance`, 500 `build_failed`. One prepare runs at a time.
 

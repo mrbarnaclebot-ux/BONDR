@@ -4,6 +4,8 @@
 // lands: nothing here runs on a timer (D-04, Neon budget).
 // ponytail: no rollback handling for a confirmed block that never finalizes (Pitfall 5); the idempotent keys
 // make a re-ingest safe. Finalized commitment would add about 13 s to every live update.
+import type { TradeRow } from "@bondr/core/api";
+import { coinRow } from "@bondr/core/coin-row";
 import { coins, db, launches, trades } from "@bondr/core/db";
 import { redact } from "@bondr/core/net";
 import { bondingCurvePda, canonicalPumpPoolPdaWithQuote } from "@bondr/core/pump";
@@ -12,6 +14,7 @@ import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } fr
 import { type Connection, PublicKey } from "@solana/web3.js";
 import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { bondr, bondrPrice } from "./bondr-price.ts";
+import { listening, publish } from "./events-route.ts";
 import { touch } from "./holders.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
 
@@ -57,7 +60,8 @@ async function insertCoin(exec: Exec, created: NonNullable<Parsed["created"]>, l
 // Curve state moves only forward in slots, so a gap fill writing an older trade after a newer one inserts
 // its row and leaves the coin alone (Pitfall 4). Same-slot txs have no known order: the later write wins.
 // Venue only advances (curve, complete, pool); the coins_bonded check refuses pool before complete.
-async function applyPatch(exec: Exec, p: CoinPatch, fresh: Inserted | undefined): Promise<void> {
+// True when this patch moved the venue.
+async function applyPatch(exec: Exec, p: CoinPatch, fresh: Inserted | undefined): Promise<boolean> {
   const { mint, venue, bondSig, bondedAt, ...state } = p;
   if (fresh) {
     const seen = { lastSig: fresh.signature, lastTradeAt: fresh.at, lastSlot: fresh.slot };
@@ -67,17 +71,25 @@ async function applyPatch(exec: Exec, p: CoinPatch, fresh: Inserted | undefined)
       .set({ ...state, ...seen })
       .where(and(eq(coins.mint, mint), newer));
   }
-  if (!venue) return;
+  if (!venue) return false;
   const from = venue === "pool" ? ["curve", "complete"] : ["curve"];
-  await exec
+  const moved = await exec
     .update(coins)
     .set({ venue, bondSig, ...(bondedAt && { bondedAt: new Date(bondedAt) }) })
-    .where(and(eq(coins.mint, mint), inArray(coins.venue, from)));
+    .where(and(eq(coins.mint, mint), inArray(coins.venue, from)))
+    .returning({ mint: coins.mint });
+  return moved.length > 0;
 }
 
 // Runs in the caller's transaction. A patch applies when its mint got a new trade, or when the tx has no trade
-// of that mint at all (a migration's CreatePoolEvent), which only ever advances the venue.
-export async function writeParsed(exec: Exec, parsed: Parsed, launch?: LaunchRef): Promise<Inserted[]> {
+// of that mint at all (a migration's CreatePoolEvent), which only ever advances the venue. Mints whose venue
+// moved are added to `bonded`.
+export async function writeParsed(
+  exec: Exec,
+  parsed: Parsed,
+  launch?: LaunchRef,
+  bonded = new Set<string>(),
+): Promise<Inserted[]> {
   if (parsed.created && launch) await insertCoin(exec, parsed.created, launch);
   const rows = parsed.trades.map((t) => ({ ...t, at: new Date(t.at) }));
   const inserted = rows.length
@@ -86,7 +98,7 @@ export async function writeParsed(exec: Exec, parsed: Parsed, launch?: LaunchRef
   for (const p of parsed.patches) {
     const fresh = inserted.filter((t) => t.mint === p.mint).at(-1);
     if (!fresh && parsed.trades.some((t) => t.mint === p.mint)) continue;
-    await applyPatch(exec, p, fresh);
+    if (await applyPatch(exec, p, fresh)) bonded.add(p.mint);
   }
   return inserted;
 }
@@ -103,12 +115,34 @@ function parse(tx: TradeTx, launch?: { mint: string; exit: "burn" | "sell" }): P
   return parsed;
 }
 
-// Every coin with a new trade gets a (throttled) holder recount, after the write has committed.
-function arm(conn: Connection, inserted: Inserted[]): Inserted[] {
+const tradeRow = (t: Inserted): TradeRow & { mint: string } => ({
+  ...{ signature: t.signature, ix: t.ix, launch: t.launch, trader: t.trader, tokenAmount: t.tokenAmount },
+  ...{ side: t.side as TradeRow["side"], venue: t.venue as TradeRow["venue"], mint: t.mint },
+  ...{ sol: t.sol, mcapSol: t.mcapSol, at: t.at.toISOString(), slot: t.slot, seq: String(t.seq) },
+});
+
+// After the commit, to whoever listens on GET /events: the coin's new numbers (one read per coin, the
+// database is awake from the write), then launch, trade and bond events. Nobody listening: no read.
+async function announce(inserted: Inserted[], bonded: ReadonlySet<string>, launched?: string) {
+  if (!listening()) return;
+  for (const mint of new Set([...inserted.map((t) => t.mint), ...bonded])) {
+    const coin = await coinRow(db(), mint);
+    if (!coin) continue;
+    if (mint === launched) publish({ type: "launch", data: coin });
+    for (const t of inserted.filter((t) => t.mint === mint))
+      publish({ type: "trade", data: { trade: tradeRow(t), coin } });
+    const { venue, bondSig, bondedAt } = coin;
+    if (bonded.has(mint)) publish({ type: "bond", data: { mint, venue, bondSig, bondedAt } });
+  }
+}
+
+// Every coin with a new trade gets a (throttled) holder recount and its events, after the write has committed.
+async function arm(conn: Connection, inserted: Inserted[], bonded: Set<string>, launched?: string) {
   for (const mint of new Set(inserted.map((t) => t.mint))) {
     const coin = knownCoins.get(mint);
     if (coin) touch(conn, coin);
   }
+  await announce(inserted, bonded, launched).catch(logged("publish"));
   return inserted;
 }
 
@@ -117,7 +151,8 @@ export async function ingestTx(conn: Connection, sig: string): Promise<Inserted[
   if (!tx) return [];
   const parsed = parse(tx);
   if (!parsed.trades.length && !parsed.patches.length) return [];
-  return arm(conn, await db().transaction((t) => writeParsed(t, parsed)));
+  const bonded = new Set<string>();
+  return arm(conn, await db().transaction((t) => writeParsed(t, parsed, undefined, bonded)), bonded);
 }
 
 // The launch tx the settle already fetched: the coin row, its Launch rows, then the coin joins the registry
@@ -132,12 +167,13 @@ export async function ingestLaunch(
   const mint = new PublicKey(row.mint);
   const pool = canonicalPumpPoolPdaWithQuote(mint, new PublicKey(b.mint)).toBase58();
   const parsed = parse(tx, { mint: row.mint, exit: row.exit as "burn" | "sell" });
-  const inserted = await db().transaction((t) => writeParsed(t, parsed, { id: row.id, pool }));
+  const bonded = new Set<string>();
+  const inserted = await db().transaction((t) => writeParsed(t, parsed, { id: row.id, pool }, bonded));
   const init = parsed.created?.initialRealTokenReserves;
   if (!init) return inserted;
   const bondingCurve = bondingCurvePda(mint).toBase58();
   knownCoins.set(row.mint, { mint: row.mint, bondingCurve, pool, initialRealTokenReserves: init });
-  arm(conn, inserted);
+  await arm(conn, inserted, bonded, row.mint);
   await gapFill(conn, row.mint, tx.transaction.signatures[0]);
   return inserted;
 }

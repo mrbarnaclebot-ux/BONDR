@@ -9,6 +9,7 @@ import type { KnownCoin } from "@bondr/core/trades";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { type Connection, PublicKey } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
+import { publish } from "./events-route.ts";
 
 export const INCINERATOR = "1nc1nerator11111111111111111111111111111111";
 const EVERY_MS = 5 * 60_000;
@@ -41,6 +42,7 @@ async function recount(conn: Connection, coin: KnownCoin): Promise<void> {
   }));
   const holders = countHolders(held, new Set([coin.bondingCurve, coin.pool, INCINERATOR]));
   await db().update(coins).set({ holders, holdersAt: new Date() }).where(eq(coins.mint, coin.mint));
+  publish({ type: "holders", data: { mint: coin.mint, holders } });
 }
 
 export function touch(conn: Connection, coin: KnownCoin): void {

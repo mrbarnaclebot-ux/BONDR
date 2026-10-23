@@ -21,7 +21,10 @@ async function lines(res: Response, n: number): Promise<Record<string, unknown>[
   let text = "";
   while (text.split("\n").length <= n) text += dec.decode((await reader.read()).value, { stream: true });
   reader.releaseLock();
-  return text.split("\n").slice(0, n).map((l) => JSON.parse(l));
+  return text
+    .split("\n")
+    .slice(0, n)
+    .map((l) => JSON.parse(l));
 }
 
 const holders = (n: number) => ({ type: "holders", data: { mint: "M", holders: n } }) as const;

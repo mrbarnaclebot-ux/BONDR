@@ -20,7 +20,9 @@ The shared chain library. Phase 1 spike scripts call it, and Phase 2 apps import
 - `sharing.ts`: `finalizeIxs` (sweep, config, the one 80/20 update), `updateIxs`, `readSharing`, `distributeIxs` (the SDK's sweeps, consolidation and distribute_creator_fees_v2, order untouched).
 - `curve.ts`: `readCurve` and `costToComplete` (SDK v3 quote for the rest of a curve).
 - `bond.ts`: `forcedBondIxs` (simulated buy then BurnChecked), `exactBondIxs`, `migrateIxs`, `poolBuyBurnIxs`, `poolBaseOut`.
-- `events.ts`: `innerEvents` and `completeEvents` from emit_cpi inner instructions, never from logs.
+- `events.ts`: `innerEvents` (pump and PumpSwap events, each with its program and running `ix`) and `completeEvents`, from emit_cpi inner instructions under each program's event authority, never from logs.
+- `price.ts`: pure indexer math: `SUPPLY` (fixed 1B, D-22), `curvePrice`, `poolPrice`, `toSol`, `mcapSol`, `progress`, `bondrAtBond`. No SDK import. Worker-only for now; web reads the stored values.
+- `trades.ts`: `parseTx(tx, coins, bondr, launch?)`, the pure parser every indexer path shares: one fetched tx to trade rows (launch rows and the synthetic burn row, D-16), coin patches, the new coin in launch mode, BONDR's same-tx price, and unused event names. Only known coins or the launch mint produce rows (D-03). Worker-only.
 - `scrub.ts`: `scrub` (every 32-44 char base58 run becomes `[addr]` in a Sentry event or breadcrumb, D-19) and `forbiddenEnv` (the seed, Helius key, Sentry token and staging URL names web refuses to boot with, FEE-10) and `dataCollection` (the restrictive Sentry v11 options all three SDK inits share). Pure and import-free. Web may import it.
 - `schema.ts`: the Postgres tables (wallets, settings, vanity_mints, launches) with their CHECK constraints and the landed-mint unique index. Web may import it.
 - `db.ts`: `db()` lazy drizzle singleton over postgres.js (idle_timeout so Neon scales to zero) and `close()`; re-exports the schema. Web may import it.

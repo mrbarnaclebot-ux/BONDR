@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-10-23T13:46:53.362Z"
-last_activity: 2026-10-23 -- Phase 3 planning complete
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-10-23T13:58:34.105Z"
+last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 28
+  completed_plans: 29
   percent: 29
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** A holder can verify on the token page that the dev holds no launch supply, and see that pre-bond fees went to forcing the bond and burning supply, never to the dev.
-**Current focus:** Phase 2 — Launch Flow
+**Current focus:** Phase 3 — Indexer, Lists and Token Page
 
 ## Current Position
 
-Phase: 2 (Launch Flow) — EXECUTING
-Plan: 18 of 18
+Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
+Plan: 2 of 15
 Status: Ready to execute
-Last activity: 2026-10-23 -- Phase 3 planning complete
+Last activity: 2026-10-23
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Progress: [██████████] 100%
 | Phase 02 P14 | 14 min | 2 tasks | - |
 | Phase 02 P15 | 13 min | 2 tasks | - |
 | Phase 02 P16 | 67 min | 3 tasks | - |
+| Phase 03 P01 | 12 min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,9 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-17: staging launch CyR56jVf...bndr landed; staging matrix 37/37. ipfs.io now 429s our images (service-worker-only gateway), so coin images and on-chain metadata image links need a new gateway
 - [Phase 02]: Coin images and on-chain metadata links use the owner's Pinata dedicated gateway (PINATA_GATEWAY, set on staging web 2026-10-23, inlined into the client at build); ipfs.io is the fallback. Links die with the Pinata account. Coins launched before (CyR56jVf...bndr) keep ipfs.io links
 - [Phase 02]: Coin page reads are cached per process: a landed coin with facts for an hour, a miss or a coin without facts for a minute
+- [Phase 03]: 03-01: A1 and A2 hold on devnet: Helius logsSubscribe mentions [BONDR] notified launches (BONDR loaded from the per-coin table), curve, multi-hop and BONDR-only trades, and getSignaturesForAddress(mint) listed them all; the 03-07 stream design stands
+- [Phase 03]: 03-01: A8 fails on devnet: a child needs about 752M BONDR to complete, more than BONDR's curve holds (723M), so pool-trade and migration fixtures come from the Surfpool fork and devnet pool trades are fixture-only
+- [Phase 03]: 03-01: devnet-trades --complete is a refuse-only gate (exit 2); the buy-out and pool path is not built because it cannot run on devnet
 
 ### Pending Todos
 
@@ -188,6 +192,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T09:54:12.634Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-indexer-lists-and-token-page/03-UI-SPEC.md
+Last session: 2026-10-23T13:58:29.679Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None

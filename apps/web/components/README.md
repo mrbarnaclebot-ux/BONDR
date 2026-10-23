@@ -18,6 +18,7 @@
 - `ca-row.tsx`: the contract address with Copy and the manual-copy fallback; exports `useCopy`, shared with the copy chip.
 - `coin-identity.tsx`: the token page identity bar (avatar bleed, name, symbol, meta row with tag, age and links).
 - `copy-chip.tsx`: the token page short-mint copy chip.
-- `tx-link.tsx`: the Solscan transaction link (cluster param on devnet).
+- `tx-link.tsx`: the Solscan transaction link (cluster param on devnet); `label` makes it icon-only (trade feed).
+- `token-trades.tsx`: TradeFeed, the token page trade table with the launch caption and rows, and Load more by keyset.
 - `launch-receipt.tsx`: the receipt aside, every fee and cost from the live worker status.
 - `callout.tsx`: info, warn and error callouts (status or alert role).

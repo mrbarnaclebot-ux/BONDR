@@ -100,9 +100,7 @@ test.describe("found", () => {
     await expect(page.getByRole("button", { name: "Copy contract address" })).toBeVisible();
     await expect(page.getByText("On curve")).toBeVisible();
     await expect(
-      page.getByText(
-        `Chart, trading and the public fee ledger for ${c.symbol} arrive in a later BONDR update.`,
-      ),
+      page.getByText(`Trading and the public fee ledger for ${c.symbol} arrive in a later BONDR update.`),
     ).toBeVisible();
     for (const name of [`${c.symbol} on X`, "Telegram"]) {
       const link = page.getByRole("link", { name, exact: true });
@@ -183,7 +181,8 @@ test.describe("trades", () => {
     for (const href of hrefs) expect(href).toContain("cluster=devnet");
 
     await page.getByRole("button", { name: "Load 50 older trades" }).click();
-    await expect(page.getByText("That is every trade since launch.")).toBeVisible();
+    // 20 s: a dev server compiles the route on its first request, and Neon may be waking.
+    await expect(page.getByText("That is every trade since launch.")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("button", { name: "Load 50 older trades" })).toHaveCount(0);
     await expect(table.getByText("Launch", { exact: true })).toHaveCount(2);
     await expect(table).toContainText(

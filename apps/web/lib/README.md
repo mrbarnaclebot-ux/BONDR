@@ -11,7 +11,9 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `launch-run.ts`: the step 4 network sequence (pin, prepare, sign, submit, poll) and `getView`.
 - `pinata.ts`: `metadataJson`, `ipfsUri` and `pinFile` (Pinata v3 uploads). The pin route supplies the JWT.
 - `pinata.test.ts`: metadata shape, URI length, upload request and JWT redaction; a live pin with `PINATA_LIVE=1`.
-- `format.ts`: display formats `sol`, `pct`, `compact`, `short`, `explorer`.
+- `format.ts`: display formats `sol`, `pct`, `compact`, `short`, `explorer`, `age`, and the Phase 3 `mcapSol`, `tradeSol`, `signedPct`, `curvePct`, `relTime`, `thousands`.
+- `trades.ts`: server-only `tradesPage(mint, before?)`, the trade feed paged by (slot, seq) keyset, and `parseCursor`.
+- `trades.test.ts`: cursor parsing, and pages with no overlap and no gap down to the launch rows (Neon dev; skips without DATABASE_URL).
 - `format.test.ts`: the display formats.
 - `use-status.ts`: `useStatus()`, polls `/api/status` every 10 s.
 - `terms.ts`: `TERMS_VERSION`, stored with each consent, and `consentMessage`, the text Phantom signs at consent (browser and server share it).

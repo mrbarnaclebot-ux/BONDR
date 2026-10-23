@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { CaRow } from "@/components/ca-row";
 import { CoinIdentity } from "@/components/coin-identity";
 import { ProofStamp } from "@/components/proof-stamp";
+import { TradeFeed } from "@/components/token-trades";
 import { compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
+import { tradesPage } from "@/lib/trades";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+// The first feed page is kept 10 s, so a burst of views of one coin (a shared link) is one Neon read; Load
+// more and the live stream (03-07) bring anything newer or older.
+// ponytail: per-process map cleared at 1000 entries; move to a shared cache if web runs more than one instance.
+const FEED_TTL = 10_000;
+const feeds = new Map<string, { at: number; v: Awaited<ReturnType<typeof tradesPage>> }>();
+
+async function firstPage(mint: string) {
+  const hit = feeds.get(mint);
+  if (hit && Date.now() - hit.at < FEED_TTL) return hit.v;
+  const v = await tradesPage(mint);
+  if (feeds.size >= 1000) feeds.clear();
+  feeds.set(mint, { at: Date.now(), v });
+  return v;
+}
+
 /** UI-SPEC token page proof sentence; the token count is left out until the facts are written. */
 function sentence(v: LaunchView): string {
   const tokens = v.facts?.tokens ? ` (${compact(v.facts.tokens)} ${v.symbol})` : "";
@@ -34,6 +51,7 @@ export default async function CoinPage({ params }: Props) {
   const v = await landedCoin((await params).mint);
   if (!v) notFound();
   const net: Net = process.env.SOLANA_NET === "mainnet" ? "mainnet" : "devnet";
+  const feed = await firstPage(v.mint);
   return (
     <div className="overflow-x-clip">
       <div className="mx-auto grid w-full max-w-[1440px] gap-4 px-(--gutter) pb-12">
@@ -45,8 +63,21 @@ export default async function CoinPage({ params }: Props) {
           )}
         </CoinIdentity>
         <CaRow mint={v.mint} />
+        {/* Trades take the wide column; the 380px right column is Bond and burn (03-06), sticky under the header. */}
+        <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:gap-8">
+          <TradeFeed
+            initial={feed.trades}
+            more={feed.more}
+            mint={v.mint}
+            symbol={v.symbol}
+            net={net}
+            solIn={v.solIn}
+            exit={v.exit}
+          />
+          <div className="min-[1100px]:sticky min-[1100px]:top-22 min-[1100px]:self-start" />
+        </div>
         <p className="text-[13px] text-muted-foreground">
-          Chart, trading and the public fee ledger for {v.symbol} arrive in a later BONDR update.
+          Trading and the public fee ledger for {v.symbol} arrive in a later BONDR update.
         </p>
       </div>
     </div>

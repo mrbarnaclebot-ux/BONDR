@@ -151,16 +151,17 @@ test.describe("search", () => {
   test("2+ characters search by symbol in any case, one character does nothing, Escape clears", async ({
     page,
   }) => {
+    // Other specs seed and drop coins in parallel, so "the tab list" is checked as no query: no URL, no count.
+    const count = page.getByText(/^(\d+ coins match|1 coin matches|No coins match)$/);
     await page.goto("/");
-    const first = await grid(page).getByRole("listitem").first().textContent();
     await box(page).fill("z");
     await page.waitForTimeout(600);
     await expect(page).toHaveURL(/\/$/);
-    await expect(grid(page).getByRole("listitem").first()).toHaveText(first ?? "");
+    await expect(count).toHaveCount(0);
 
     await box(page).fill(coin.symbol.toLowerCase());
     await expect(card(page)).toBeVisible();
-    await expect(page.getByText(/^(\d+ coins match|1 coin matches)$/)).toBeAttached();
+    await expect(count).not.toHaveText("No coins match");
     await expect(page).toHaveURL(new RegExp(`\\?q=${coin.symbol.toLowerCase()}$`));
     await page.reload();
     await expect(box(page)).toHaveValue(coin.symbol.toLowerCase());
@@ -170,7 +171,8 @@ test.describe("search", () => {
     await expect(box(page)).toHaveValue("");
     await expect(box(page)).toBeFocused();
     await expect(page).toHaveURL(/\/$/);
-    await expect(grid(page).getByRole("listitem").first()).toHaveText(first ?? "");
+    await expect(count).toHaveCount(0);
+    await expect.poll(() => grid(page).getByRole("listitem").count()).toBeGreaterThan(1);
   });
 
   test("a mint prefix finds the coin; a full BONDR mint opens it", async ({ page }) => {
@@ -179,7 +181,7 @@ test.describe("search", () => {
     await expect(card(page)).toBeVisible();
     await expect(page.getByText("1 coin matches")).toBeAttached();
     await box(page).fill(coin.mint);
-    await expect(page).toHaveURL(new RegExp(`/coin/${coin.mint}$`));
+    await expect(page).toHaveURL(new RegExp(`/coin/${coin.mint}$`), { timeout: 20_000 }); // dev compiles the route
   });
 
   test("a mint not on BONDR and a miss show their empty states with Clear search", async ({ page }) => {

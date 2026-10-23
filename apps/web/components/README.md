@@ -33,4 +33,5 @@
 - `launch-link.tsx`: LaunchLink, the header's quiet "Launch a coin" link ("Launch" below 768px, an icon below 360px), `aria-current` on /launch.
 - `home-hero.tsx`: HomeHero, the home hero (headline, lede, Launch a coin or Launches paused, See all coins, the D-09 pulse line) and its art: the looping video with motes, or the still under reduced motion.
 - `coin-card.tsx`: CoinCard, one coin as a single link (art bleed and avatar, name, symbol, market cap in SOL, 1h change pill, bond glyph); `grid` (age chip, horizontal below 560px) and `trending` (rank and volume chips) variants; `data-field` marks the numbers a trade flashes.
-- `home-coins.tsx`: HomeCoins, All coins: the Top / Latest / Oldest Seg (?sort= by replaceState), the card grid with the 60% hold while a tab loads, Show more, and the empty and error states.
+- `home-coins.tsx`: HomeCoins, All coins: the Top / Latest / Oldest Seg and search (?sort= and ?q= by replaceState, a full BONDR mint opens its coin), the card grid with the 60% hold while a tab loads, Show more, and the empty and error states.
+- `home-search.tsx`: the search box (300 ms debounce, Escape and X clear), the sr-only match count and the no-match and mint-not-on-BONDR empty states.

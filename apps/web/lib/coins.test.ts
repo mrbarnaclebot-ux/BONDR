@@ -151,4 +151,3 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     expect(await find("G")).toEqual(await find(""));
   });
 });
-

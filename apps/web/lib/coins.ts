@@ -4,7 +4,7 @@ import "server-only";
 import type { CoinRow } from "@bondr/core/api";
 import { coinRow, coinRows } from "@bondr/core/coin-row";
 import { asc, desc, sql } from "drizzle-orm";
-import { coins, db } from "./db";
+import { coins, db, launches } from "./db";
 
 export const coinByMint = (mint: string) => coinRow(db(), mint);
 
@@ -19,6 +19,23 @@ export const parseSort = (s: string | null | undefined): Sort | null =>
 /** "0".."99" from the client, 0 when absent, null for anything else. */
 export const parsePage = (s: string | null): number | null =>
   s === null ? 0 : /^\d{1,2}$/.test(s) ? Number(s) : null;
+
+/** Search text from the client: trimmed; "" under 2 characters (too broad); null over 64. */
+export const parseQ = (s: string | null | undefined): string | null => {
+  const q = s?.trim() ?? "";
+  return q.length > 64 ? null : q.length < 2 ? "" : q;
+};
+
+/** LIKE pattern text matching `s` literally: the escape character, % and _ get a backslash. */
+export const escapeLike = (s: string): string => s.replace(/[\\%_]/g, "\\$&");
+
+// Name or symbol contains q (any case), or the mint starts with it (base58 is case-sensitive). Values are bound
+// parameters; escapeLike keeps a user's % and _ literal.
+const matches = (q: string) => {
+  const e = escapeLike(q);
+  return sql`(${launches.name} ilike ${`%${e}%`} escape '\\' or ${launches.symbol} ilike ${`%${e}%`} escape '\\'
+    or ${coins.mint} like ${`${e}%`} escape '\\')`;
+};
 
 // D-03 orders; ties break by newest launch, then mint so offset pages never repeat or skip a coin.
 const ORDER = {
@@ -44,14 +61,19 @@ function kept<T>(key: string, read: () => Promise<T>): Promise<T> {
 export type CoinPage = { coins: CoinRow[]; more: boolean };
 
 /**
- * One page of BONDR coins (only coins rows, so only launches through BONDR) with the windowed columns.
- * ponytail: offset pages capped at 100; switch to keyset when lists pass 5,000 coins.
+ * One page of BONDR coins (only coins rows, so only launches through BONDR) with the windowed columns, filtered
+ * by the search text `q` when it has 2 or more characters (LIST-05). A full mint matches only that coin.
+ * ponytail: offset pages capped at 100; switch to keyset when lists pass 5,000 coins. Search is a sequential
+ * scan; add pg_trgm when coins pass tens of thousands.
  */
-export const listCoins = ({ sort, page }: { sort: Sort; page: number }): Promise<CoinPage> =>
-  kept(`${sort}:${page}`, async () => {
-    const rows = await coinRows(db(), ORDER[sort], LIST_PAGE + 1, page * LIST_PAGE);
+export const listCoins = ({ sort, page, q }: { sort: Sort; page: number; q?: string }): Promise<CoinPage> => {
+  const term = parseQ(q) ?? "";
+  return kept(`${sort}:${page}:${term}`, async () => {
+    const where = term ? matches(term) : undefined;
+    const rows = await coinRows(db(), ORDER[sort], LIST_PAGE + 1, page * LIST_PAGE, where);
     return { coins: rows.slice(0, LIST_PAGE), more: rows.length > LIST_PAGE };
   });
+};
 
 /** The hero's pulse line (D-09): coins launched and bonded (curve complete or on PumpSwap). */
 export const heroCounts = (): Promise<{ launched: number; bonded: number }> =>

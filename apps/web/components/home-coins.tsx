@@ -2,10 +2,13 @@
 
 import type { CoinRow } from "@bondr/core/api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { BASE58_KEY } from "@/lib/guard";
 import { Callout } from "./callout";
 import { CoinCard } from "./coin-card";
+import { MatchCount, SearchBox, SearchEmpty, useSearch } from "./home-search";
 import { Button, buttonVariants } from "./ui-button";
 import { Seg } from "./ui-seg";
 
@@ -14,8 +17,8 @@ const OPTIONS = Object.values(LABELS);
 export type Sort = keyof typeof LABELS;
 export type CoinPage = { coins: CoinRow[]; more: boolean };
 
-async function fetchPage(sort: Sort, page: number, signal: AbortSignal): Promise<CoinPage> {
-  const res = await fetch(`/api/coins?sort=${sort}&page=${page}`, { signal });
+async function fetchPage(sort: Sort, page: number, q: string, signal: AbortSignal): Promise<CoinPage> {
+  const res = await fetch(`/api/coins?${new URLSearchParams({ sort, page: String(page), q })}`, { signal });
   if (!res.ok) throw new Error(`coins ${res.status}`);
   return res.json();
 }
@@ -53,6 +56,14 @@ function Failed({ retry, busy }: { retry(): void; busy: boolean }) {
 
 type Busy = "swap" | "more" | null;
 
+/** Sort and search live in the URL by replaceState (Back leaves the page); top and no search are omitted. */
+function syncUrl(sort: Sort, q: string) {
+  const p = new URLSearchParams();
+  if (sort !== "top") p.set("sort", sort);
+  if (q) p.set("q", q);
+  window.history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
+}
+
 /** The list state: page 0 of a sort replaces the list, a later page appends; a newer load aborts the last. */
 function useCoinList(initial: CoinPage | null) {
   const [list, setList] = useState(initial);
@@ -60,21 +71,24 @@ function useCoinList(initial: CoinPage | null) {
   const [busy, setBusy] = useState<Busy>(null);
   const ctl = useRef<AbortController>(null);
 
-  async function load(sort: Sort, page: number) {
+  async function load(sort: Sort, page: number, q: string): Promise<CoinPage | null> {
     ctl.current?.abort();
     const c = new AbortController();
     ctl.current = c;
     setBusy(page ? "more" : "swap");
     try {
-      const got = await fetchPage(sort, page, c.signal);
-      if (c.signal.aborted) return;
+      const got = await fetchPage(sort, page, q, c.signal);
+      if (c.signal.aborted) return null;
       setList((old) => (page && old ? append(old, got) : got));
       setPages(page + 1);
+      setBusy(null);
+      return got;
     } catch {
-      if (c.signal.aborted) return;
+      if (c.signal.aborted) return null;
       setList(null); // UI-SPEC Home states: the error replaces the grid
     }
     setBusy(null);
+    return null;
   }
   return { list, pages, busy, load };
 }
@@ -98,32 +112,57 @@ function Grid({ coins, busy }: { coins: CoinRow[]; busy: boolean }) {
   );
 }
 
+type Props = { initial: CoinPage | null; sort: Sort; q: string };
+
 /**
- * All coins (LIST-02, LIST-03): Top / Latest / Oldest, 50 cards a page with Show more. A tab switch keeps the
- * old cards at 60% with aria-busy until the new page arrives; the sort lives in ?sort= by replaceState, so Back
- * leaves the page. `initial` is the server render; null when that read failed.
+ * All coins (LIST-02, LIST-03, LIST-05): Top / Latest / Oldest and search, 50 cards a page with Show more. A tab
+ * switch or search keeps the old cards at 60% with aria-busy until the new page arrives. A full BONDR mint opens
+ * its coin. `initial` is the server render; null when that read failed. `q` is the active search, so live
+ * updates (03-13) can skip inserting new launches while it is set.
  */
-export function HomeCoins({ initial, sort: first }: { initial: CoinPage | null; sort: Sort }) {
+export function HomeCoins({ initial, sort: first, q: firstQ }: Props) {
+  const router = useRouter();
   const [sort, setSort] = useState(first);
+  const [q, setQ] = useState(firstQ);
+  const input = useRef<HTMLInputElement>(null);
   const { list, pages, busy, load } = useCoinList(initial);
+  const search = useSearch(firstQ, find);
+
+  async function find(next: string) {
+    setQ(next);
+    syncUrl(sort, next);
+    const got = await load(sort, 0, next);
+    if (BASE58_KEY.test(next) && got?.coins.some((c) => c.mint === next)) router.push(`/coin/${next}`);
+  }
+
+  function clear() {
+    search.clear();
+    input.current?.focus();
+  }
 
   function pick(label: string) {
     const next = label.toLowerCase() as Sort;
     if (next === sort && list) return;
     setSort(next);
-    window.history.replaceState(null, "", next === "top" ? location.pathname : `?sort=${next}`);
-    void load(next, 0);
+    syncUrl(next, q);
+    void load(next, 0, q);
   }
 
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 max-[560px]:*:w-full">
         <Seg label="Sort coins" options={OPTIONS} value={LABELS[sort]} onChange={pick} />
+        <SearchBox {...search} clear={clear} ref={input} />
       </div>
+      <MatchCount n={q && list && busy === null ? list.coins.length : null} />
       {!list ? (
-        <Failed retry={() => void load(sort, 0)} busy={busy !== null} />
+        <Failed retry={() => void load(sort, 0, q)} busy={busy !== null} />
       ) : list.coins.length === 0 ? (
-        <Empty />
+        q ? (
+          <SearchEmpty q={q} clear={clear} />
+        ) : (
+          <Empty />
+        )
       ) : (
         <Grid coins={list.coins} busy={busy === "swap"} />
       )}
@@ -132,7 +171,7 @@ export function HomeCoins({ initial, sort: first }: { initial: CoinPage | null; 
           <Button
             className="max-[560px]:w-full"
             disabled={busy !== null}
-            onClick={() => void load(sort, pages)}
+            onClick={() => void load(sort, pages, q)}
           >
             {busy === "more" ? "Loading…" : "Show more coins"}
           </Button>

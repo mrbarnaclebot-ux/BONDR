@@ -7,7 +7,7 @@ import type { CoinRow, Exit, Venue } from "./api.ts";
 import type { Db } from "./db.ts";
 import { coins, launches } from "./schema.ts";
 
-const vol = (window: "1 hour" | "24 hours") =>
+export const vol = (window: "1 hour" | "24 hours") =>
   sql<string>`(select coalesce(sum(t.sol), 0) from trades t
     where t.mint = ${coins.mint} and t.side <> 'burn' and t.at > now() - ${window}::interval)`;
 
@@ -72,14 +72,16 @@ export async function coinRow(exec: Pick<Db, "select">, mint: string): Promise<C
   return r ? toRow(r) : null;
 }
 
-/** A page of indexed coins in `order` (fixed column orders from the caller, never user text). */
+/** A page of indexed coins in `order` (fixed column orders from the caller, never user text), optionally filtered. */
 export async function coinRows(
   exec: Pick<Db, "select">,
   order: SQL[],
   limit: number,
   offset: number,
+  where?: SQL,
 ): Promise<CoinRow[]> {
   const rows = await select(exec)
+    .where(where)
     .orderBy(...order)
     .limit(limit)
     .offset(offset);

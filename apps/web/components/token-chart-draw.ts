@@ -80,7 +80,7 @@ export function chartOptions(c: Colors, font: string, lib: Lib): DeepPartial<Cha
       textColor: c.text,
       fontFamily: font,
       fontSize: 12,
-      attributionLogo: true,
+      attributionLogo: false, // the footer's "Charts by TradingView" link meets the license link requirement
     },
     grid: { vertLines: { visible: false }, horzLines: { color: c.line, style: lib.LineStyle.Dashed } },
     crosshair: { vertLine: cross, horzLine: cross },

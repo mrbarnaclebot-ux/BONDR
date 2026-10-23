@@ -132,8 +132,8 @@ export function McapChart(props: {
             data && !last && "invisible",
           )}
         />
-        {/* The text summary sits over the canvas instead of around it: the library's attribution link lives
-          inside the chart, and an img role may not contain a link (axe nested-interactive). */}
+        {/* The text summary sits over the canvas instead of around it, so the library's DOM stays outside the
+          img role (axe nested-interactive if it ever renders a link). */}
         <div
           role="img"
           aria-label={label}

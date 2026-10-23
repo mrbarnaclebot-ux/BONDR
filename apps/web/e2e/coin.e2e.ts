@@ -318,7 +318,7 @@ test.describe("chart", () => {
       name: new RegExp(`^${coin.symbol} market cap in SOL, 1 minute candles\\. Last`),
     });
     await expect(chart).toBeVisible();
-    // The text summary overlays the canvas (an img role may not contain the attribution link).
+    // The text summary overlays the canvas; the license link is the footer credit, not an in-chart logo.
     const panel = page.getByRole("region", { name: "Market cap chart" });
     await expect(panel.locator("canvas").first()).toBeAttached({ timeout: 20_000 });
     await expect(page.getByText(/^O [\d,.]+ H [\d,.]+ L [\d,.]+ C [\d,.]+ SOL mcap$/)).toBeVisible();
@@ -332,6 +332,7 @@ test.describe("chart", () => {
         name: new RegExp(`^${coin.symbol} market cap in SOL, 1 hour candles\\. Last`),
       }),
     ).toBeVisible();
+    await expect(panel.getByRole("link")).toHaveCount(0);
     await expect(page.getByRole("link", { name: /Charts by TradingView/ })).toHaveAttribute(
       "href",
       "https://www.tradingview.com/",

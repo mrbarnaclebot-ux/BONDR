@@ -63,6 +63,7 @@ const SURFACES: Record<string, (page: Page) => Promise<void>> = {
   "home-nomatch": async (page) => {
     await page.goto("/?q=zzzzqq");
     await heading(page, 'No BONDR coin matches "zzzzqq"');
+    await expect(page.getByText("zzzzqq", { exact: true })).toHaveCSS("text-transform", "none"); // as typed
   },
   "home-mint": async (page) => {
     await page.goto("/");

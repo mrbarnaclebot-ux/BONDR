@@ -227,7 +227,7 @@ Departure from `token.html`: the mockup puts Bond and burn left and Trades in th
 | `/coin/[mint]` | Token page: identity bar with stats, proof, CA row, chart, Bond and burn, Trades | Extends the Phase 2 page |
 | `/coin/[mint]/opengraph-image` | 1200x630 PNG share card | `next/og` file convention, so Next adds `og:image` and `twitter:image` |
 | `/coin/[mint]` not found | Existing Phase 2 404 | Unchanged |
-| every page | Header, footer | Header gains a quiet sm "Launch a coin" link left of Connect Phantom (label "Launch" below 768px; `aria-current="page"` on `/launch`). Footer gains one credit link (see copy) |
+| every page | Header, footer | Header gains a quiet sm "Launch a coin" link left of Connect Phantom (label "Launch" below 768px, a rocket icon with the same accessible name below 360px where the label does not fit (03-11, accepted 03-14); `aria-current="page"` on `/launch`). Footer gains one credit link (see copy) |
 
 Not built in Phase 3: Next to bond rail (D-08), the live ledger tape (fee events are Phase 5), the BONDR price chip (not needed to find coins), trade panel and mobile Buy / Sell bar (Phase 4, D-11), burn budget, window clock, fee flow and ledger (Phase 5, D-10), "Supply burned" stat (Phase 5 totals), USD values (D-01).
 
@@ -303,7 +303,7 @@ Card accessible name: the link text in reading order (name, symbol, market cap, 
 |-------|-------|----------|
 | Trade on a listed coin | Market cap, 1h change and curve % update at once on every card for that coin, with the buy or sell flash | Same, plus the volume chip |
 | Re-rank | At most once a minute (60s client tick). The tick re-sorts Top (and Trending) and refreshes ages. If the pointer is over the grid or scroller, or focus is inside it, the re-rank waits until the pointer leaves and focus moves out | Same; the Trending mode and caption can change on the tick |
-| New launch | Latest with no query: card inserted at the front with rise and the 3s glow (D-14). The last card is not removed (the list grows). Top and Oldest pick it up on the next re-rank or reload | Enters on a re-rank if it ranks |
+| New launch | Latest with no query: card inserted at the front with rise and the 3s glow (D-14). The last card is not removed (the list grows). Top and Oldest pick it up on reload or a resync catch-up (accepted 03-14: a new coin ranks near the end of both, past the first 50 cards once the list is longer) | Enters on a re-rank if it ranks |
 | Bond (curve complete) | Bond row turns to the "Bonded" tag | Same |
 | Connection lost | `EventSource` reconnects on its own; values stay as last shown; on reconnect the page refetches the visible list once to catch up. No indicator on home | Same |
 
@@ -352,7 +352,7 @@ Phase 2 identity bar, proof stamp and CA row stay. Changes:
 | `layout.textColor` | resolved `--muted-foreground` |
 | `layout.fontFamily` | the resolved value of `--font-martian` (`getComputedStyle(document.documentElement)`), so the hashed next/font family is used |
 | `layout.fontSize` | 12 |
-| `layout.attributionLogo` | `true` (license link requirement; inline SVG, no external fetch) |
+| `layout.attributionLogo` | `false` (03-14: the footer "Charts by TradingView" link meets the license link requirement, which the library docs allow; no in-chart third-party link) |
 | `grid.vertLines.visible` | `false` |
 | `grid.horzLines` | color resolved `--line`, style dashed |
 | `crosshair` | lines `--line-strong`, label background `surface-3` |
@@ -567,7 +567,7 @@ Plain, specific, no hype, no emoji. Sentence case; display headings are uppercas
 
 ### Footer (all pages)
 
-Adds one link after "Program: pump …": "Charts by TradingView" linking to `https://www.tradingview.com/` (new tab, sr-only "(opens TradingView)"). It carries the lightweight-charts attribution notice; the chart's own `attributionLogo` stays on.
+Adds one link after "Program: pump …": "Charts by TradingView" linking to `https://www.tradingview.com/` (new tab, sr-only "(opens TradingView)"). It carries the lightweight-charts attribution notice and meets its link requirement, so the chart's own `attributionLogo` is off (03-14).
 
 ---
 

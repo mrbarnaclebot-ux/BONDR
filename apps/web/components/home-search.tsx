@@ -100,7 +100,14 @@ export function SearchEmpty({ q, clear }: { q: string; clear(): void }) {
   return (
     <div className="rounded-lg border border-dashed border-line-strong px-6 py-16">
       <h3 className="display text-[28px] leading-none">
-        {mint ? "No BONDR coin at this address" : `No BONDR coin matches "${shown}"`}
+        {mint ? (
+          "No BONDR coin at this address"
+        ) : (
+          // The query keeps its case: the display face uppercases headings, and a mint prefix is case-sensitive.
+          <>
+            No BONDR coin matches "<span className="normal-case">{shown}</span>"
+          </>
+        )}
       </h3>
       <p className="mt-2 mb-6 text-muted-foreground">
         {mint

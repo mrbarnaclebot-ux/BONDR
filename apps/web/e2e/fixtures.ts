@@ -6,17 +6,22 @@ import type postgres from "postgres";
 
 const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 export const fakeMint = () => Array.from({ length: 44 }, () => B58[randomInt(58)]).join("");
-const fakeSig = () => Array.from({ length: 88 }, () => B58[randomInt(58)]).join("");
+export const fakeSig = () => Array.from({ length: 88 }, () => B58[randomInt(58)]).join("");
 
 export type Seeded = { mint: string; symbol: string; wallet: string; solIn: string; sigs: string[] };
 
 /**
- * A coin with `trades` rows (at least 2): the launch transaction's buy and exit first, then buys and sells at
- * increasing slots up to now. `sigs` follows insert order, so the last one is the newest trade.
+ * A coin with `trades` rows (0, or at least 2): the launch transaction's buy and exit first, then buys and sells
+ * at increasing slots up to now. `sigs` follows insert order, so the last one is the newest trade. `coin`
+ * overrides coins columns by their SQL names (venue, holders, bond_sig, ...).
  */
 export async function seedCoin(
   sql: postgres.Sql,
-  { trades = 60, exit = "burn" }: { trades?: number; exit?: "burn" | "sell" } = {},
+  {
+    trades = 60,
+    exit = "burn",
+    coin = {},
+  }: { trades?: number; exit?: "burn" | "sell"; coin?: Record<string, string | number | Date | null> } = {},
 ): Promise<Seeded> {
   const [mint, wallet, launchSig] = [fakeMint(), fakeMint(), fakeSig()];
   const symbol = `E${randomInt(100_000)}`;
@@ -29,10 +34,22 @@ export async function seedCoin(
     values (${id}, ${wallet}, ${mint}, 'e2e', 'landed', ${`E2E ${symbol}`}, ${symbol}, 'https://ipfs.io/ipfs/x',
       ${solIn}, ${exit}, ${launchSig}, ${sql.json({ tokens: "31120363129478" })}, now() - interval '1 year')`;
   const start = Date.now() - trades * 60_000;
-  await sql`insert into coins (mint, launch_id, launched_at, bonding_curve, pool, initial_real_token_reserves,
-      real_token_reserves, real_quote_reserves, virtual_token_reserves, virtual_quote_reserves, mcap_sol, launch_mcap_sol)
-    values (${mint}, ${id}, ${new Date(start)}, 'curve', 'pool', 793100000000000, 793100000000000, 0,
-      1073000000000000, 30000000000, 28, 28)`;
+  const row = {
+    mint,
+    launch_id: id,
+    launched_at: new Date(start),
+    bonding_curve: "curve",
+    pool: "pool",
+    initial_real_token_reserves: "793100000000000",
+    real_token_reserves: "793100000000000",
+    real_quote_reserves: "0",
+    virtual_token_reserves: "1073000000000000",
+    virtual_quote_reserves: "30000000000",
+    mcap_sol: 28,
+    launch_mcap_sol: 28,
+    ...coin,
+  };
+  await sql`insert into coins ${sql(row)}`;
   const rows = Array.from({ length: trades }, (_, i) => {
     const launch = i < 2;
     const side = launch ? (i === 0 ? "buy" : exit) : i % 3 ? "buy" : "sell";
@@ -51,7 +68,7 @@ export async function seedCoin(
       mcap_sol: 28 + i,
     };
   });
-  await sql`insert into trades ${sql(rows)}`; // identity assigns seq in VALUES order (trades.test.ts checks it)
+  if (rows.length) await sql`insert into trades ${sql(rows)}`; // identity assigns seq in VALUES order (trades.test.ts checks it)
   return { mint, symbol, wallet, solIn, sigs: rows.map((r) => r.signature) };
 }
 

@@ -3,7 +3,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { dropCoin, fakeMint, type Seeded, seedCoin } from "./fixtures.ts";
+import { dropCoin, fakeMint, fakeSig, type Seeded, seedCoin } from "./fixtures.ts";
 import { rootEnv } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
@@ -136,6 +136,9 @@ test.describe("found", () => {
       await expect(link).toHaveAttribute("href", href);
       await expect(link).toHaveAttribute("rel", /noopener/);
     }
+    // No coins row yet: the panel shows the curve at 0 and the stats wait.
+    await expect(page.getByRole("img", { name: "Curve 0.0 percent filled" })).toBeVisible();
+    await expect(page.locator('dt:text-is("Holders") + dd')).toHaveText("–not counted yet");
   });
 
   for (const width of [390, 768, 1440]) {
@@ -209,6 +212,80 @@ test.describe("trades", () => {
     await expect(page.getByRole("heading", { name: "Trades", exact: true })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Trader" })).toBeHidden();
     await expect(page.getByRole("columnheader", { name: "Tx" })).toBeVisible();
+  });
+});
+
+const stat = (page: Page, label: string) => page.locator(`dt:text-is("${label}") + dd`);
+const bondPanel = (page: Page) => page.getByRole("region", { name: "Bond and burn" });
+
+test.describe("stats and bond", () => {
+  const coins: Seeded[] = [];
+  const seed = async (coin: Record<string, string | number | Date | null>) => {
+    const c = await seedCoin(db(), { trades: 3, coin });
+    coins.push(c);
+    return c;
+  };
+  test.afterAll(async () => {
+    for (const c of coins) await dropCoin(db(), c.mint);
+  });
+
+  test("a curve coin shows its four stats, the On curve tag and curve progress only", async ({ page }) => {
+    const c = await seed({
+      mcap_sol: 61.4,
+      progress: 0.642,
+      real_quote_reserves: "2940180000000",
+      bondr_at_bond: "4580000000000",
+      bond_sol: 84.3,
+    });
+    await page.goto(`/coin/${c.mint}`);
+    await expect(page.getByText("On curve", { exact: true })).toBeVisible();
+    await expect(stat(page, "Mcap")).toHaveText("61.40 SOL");
+    await expect(stat(page, "1h")).toHaveText(/^[+−]\d+\.\d%$/);
+    await expect(stat(page, "1h volume")).toHaveText(/^[\d,.]+ SOL$/);
+    await expect(stat(page, "Holders")).toHaveText("–not counted yet");
+    const panel = bondPanel(page);
+    await expect(panel).toContainText("Read from the pump curve on-chain.");
+    await expect(panel).toContainText("Curve filled");
+    await expect(panel).toContainText("64.2%");
+    await expect(panel.getByRole("img", { name: "Curve 64.2 percent filled" })).toBeVisible();
+    await expect(panel).toContainText("2,940,180 of 4,580,000 BONDR in the curve. Bonds at about 84.30 SOL.");
+    await expect(panel).not.toContainText(/budget|window|ledger/i); // D-10
+  });
+
+  test("a bonded coin shows Bonded, PumpSwap, 100% and the bond tx", async ({ page }) => {
+    const sig = fakeSig();
+    const c = await seed({
+      venue: "pool",
+      progress: 1,
+      holders: 1284,
+      bond_sig: sig,
+      bonded_at: new Date(Date.now() - 2 * 3_600_000),
+    });
+    await page.goto(`/coin/${c.mint}`);
+    await expect(page.getByText("Bonded, PumpSwap", { exact: true })).toBeVisible();
+    await expect(stat(page, "Holders")).toHaveText("1,284");
+    const panel = bondPanel(page);
+    await expect(panel).toContainText("100%");
+    await expect(panel.getByText("Bonded", { exact: true })).toBeVisible();
+    await expect(panel.getByRole("img", { name: "Bonded" })).toBeVisible();
+    await expect(panel).toContainText(new RegExp(`Bonded 2h \\d+m ago\\. ${c.symbol} now trades on PumpSwap\\.`));
+    await expect(panel.getByRole("link", { name: new RegExp(`^Bond tx ${short(sig)}`) })).toHaveAttribute(
+      "href",
+      new RegExp(`/tx/${sig}\\?cluster=devnet$`),
+    );
+    await expect(panel).not.toContainText(/budget|window|ledger/i);
+  });
+
+  test("a complete curve waits for PumpSwap", async ({ page }) => {
+    const c = await seed({ venue: "complete", progress: 1, bonded_at: new Date() });
+    await page.goto(`/coin/${c.mint}`);
+    await expect(page.getByText("Curve complete", { exact: true })).toBeVisible();
+    const panel = bondPanel(page);
+    await expect(panel).toContainText("100%");
+    await expect(panel).toContainText(
+      `The curve is complete. ${c.symbol} moves to PumpSwap automatically, usually within a minute.`,
+    );
+    await expect(panel.getByRole("link")).toHaveCount(0);
   });
 });
 

@@ -18,11 +18,12 @@
 - `ca-row.tsx`: the contract address with Copy and the manual-copy fallback; exports `useCopy`, shared with the copy chip.
 - `coin-identity.tsx`: the token page identity bar (avatar bleed, name, symbol, meta row with venue tag, age and links, stats slot).
 - `tag.tsx`: Tag, the pill label with mint, leaf and warn tones and an optional live dot.
-- `token-stats.tsx`: TokenStats, the identity bar's Mcap, 1h, 1h volume and Holders row.
+- `token-stats.tsx`: TokenStats, the identity bar's Mcap, 1h, 1h volume and Holders row, live from CoinLiveProvider (Mcap and 1h flash).
 - `bond-glyph.tsx`: BondGlyph, the two-node curve progress SVG with a per-instance gradient id.
 - `token-bond.tsx`: BondPanel, the Bond and burn panel (curve progress only, D-10) in its three venue states.
 - `copy-chip.tsx`: the token page short-mint copy chip.
 - `tx-link.tsx`: the Solscan transaction link (cluster param on devnet); `label` makes it icon-only (trade feed).
-- `token-trades.tsx`: TradeFeed, the token page trade table with the launch caption and rows, and Load more by keyset.
+- `token-trades.tsx`: TradeFeed, the token page trade table with the launch caption and rows, Load more by keyset, live rows on top (batched per frame) and the Live indicator.
+- `coin-live.tsx`: CoinLiveProvider, the token page's one `useLive` stream shared through context (coin numbers, last trade side for the flash, stream state, a trade and resync subscription), and the live VenueTag.
 - `launch-receipt.tsx`: the receipt aside, every fee and cost from the live worker status.
 - `callout.tsx`: info, warn and error callouts (status or alert role).

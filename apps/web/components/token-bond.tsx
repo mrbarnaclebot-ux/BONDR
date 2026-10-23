@@ -1,7 +1,11 @@
+"use client";
 import type { CoinRow, Net } from "@bondr/core/api";
 import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { flashClass } from "@/lib/flash";
 import { age, curvePct, mcapSol, short, thousands } from "@/lib/format";
 import { BondGlyph } from "./bond-glyph";
+import { useCoinLive } from "./coin-live";
 import { Tag } from "./tag";
 import { TxLink } from "./tx-link";
 
@@ -58,9 +62,14 @@ const CURVE_START: BondCoin = {
   bondedAt: null,
 };
 
-/** UI-SPEC Bond and burn: on curve, complete and waiting, or bonded. `coin` is null before it is indexed. */
-export function BondPanel({ coin, symbol, net }: { coin: BondCoin | null; symbol: string; net: Net }) {
-  const c = coin ?? CURVE_START;
+/**
+ * UI-SPEC Bond and burn: on curve, complete and waiting, or bonded, live from CoinLiveProvider (a bond event
+ * switches the state). The coin is null before it is indexed.
+ */
+export function BondPanel({ symbol, net }: { symbol: string; net: Net }) {
+  const live = useCoinLive();
+  const c = live?.coin ?? CURVE_START;
+  const flash = live?.flash;
   const pct = curvePct(c.venue === "curve" ? c.progress : 1);
   return (
     <section
@@ -78,7 +87,12 @@ export function BondPanel({ coin, symbol, net }: { coin: BondCoin | null; symbol
         {c.venue === "curve" && <span className="text-xs text-muted-foreground">bonds at 100%</span>}
       </div>
       <div className="flex items-center gap-3">
-        <span className="num text-[28px] leading-none">{pct}</span>
+        <span
+          key={flash?.n}
+          className={cn("num rounded-sm text-[28px] leading-none", flash && flashClass(flash.side))}
+        >
+          {pct}
+        </span>
         {c.venue === "pool" && <Tag tone="leaf">Bonded</Tag>}
       </div>
       <div className="mt-3 mb-2">

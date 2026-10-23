@@ -26,7 +26,9 @@ test.afterAll(async () => {
 async function landed(): Promise<string> {
   const mint = fakeMint();
   fixtures.push(mint);
-  const [{ wallet }] = await db()<{ wallet: string }[]>`select wallet from launches limit 1`;
+  // Not a seeded "E2E" coin's wallet: dropCoin deletes that wallet, and this row would block it.
+  const [{ wallet }] = await db()<{ wallet: string }[]>`select wallet from launches
+    where name not like 'E2E %' limit 1`;
   const idx = -(2n ** 61n) - BigInt(randomInt(1_000_000));
   await db()`insert into vanity_mints (idx, pubkey, used_at) values (${idx.toString()}, ${mint}, now())`;
   await db()`insert into launches (id, wallet, mint, w, state, name, symbol, links, uri, sol_in, exit, signature)

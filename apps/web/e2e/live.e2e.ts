@@ -1,9 +1,11 @@
 // The live token page (TOKEN-02, D-15, D-18). The stubbed group answers /api/live with page.route and a fixed
 // SSE body (retry 60 s, so the closed stub does not replay itself); the Live indicator test uses the real stream.
 // The devnet group (E2E_DEVNET=1) buys 0.01 SOL of a real coin and waits for it on the open page.
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { dropCoin, fakeMint, fakeSig, type Seeded, seedCoin } from "./fixtures.ts";
+import { blockTime, dropCoin, fakeMint, fakeSig, type Seeded, seedCoin } from "./fixtures.ts";
 import { rootEnv } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
@@ -95,7 +97,7 @@ test.describe("stubbed", () => {
     ]);
     await page.goto(`/coin/${coin.mint}`);
     await expect(page.getByText("Bonded, PumpSwap")).toBeVisible();
-    await expect(page.getByRole("region", { name: "Bond and burn" })).toContainText("100.0%");
+    await expect(page.getByRole("region", { name: "Bond and burn" })).toContainText("now trades on PumpSwap");
     await expect(stat(page, "Holders")).toHaveText("1,284");
   });
 
@@ -137,5 +139,44 @@ test.describe("stubbed", () => {
       await expect(stat(page, "Mcap")).not.toHaveClass(/animate-/);
       await expect(rows(page).first()).not.toHaveClass(/animate-/);
     });
+  });
+});
+
+test.describe("devnet", () => {
+  test.skip(process.env.E2E_DEVNET !== "1", "one real 0.01 SOL buy: set E2E_DEVNET=1");
+  test.describe.configure({ timeout: 180_000 });
+
+  test("a real buy shows on the open page within 15 s, without a reload", async ({ page }) => {
+    const [c] = await db()<{ mint: string }[]>`select c.mint from coins c join launches l on l.mint = c.mint
+      where l.state = 'landed' and c.venue = 'curve' and l.name not like 'E2E %'
+      order by l.created_at desc limit 1`;
+    expect(c, "an indexed curve coin on the dev branch").toBeTruthy();
+    await page.goto(`/coin/${c.mint}`);
+    await expect(head(page).getByText("Live", { exact: true })).toBeVisible({ timeout: 30_000 });
+    const mcap = await stat(page, "Mcap").textContent();
+    let navigated = false;
+    page.on("framenavigated", (f) => {
+      if (f === page.mainFrame()) navigated = true;
+    });
+    const out = execFileSync(
+      "node",
+      ["--env-file=.env", "scripts/devnet-trades.ts", "--mint", c.mint, "--buy", "0.01", "--json"],
+      { cwd: fileURLToPath(new URL("../../../", import.meta.url)), encoding: "utf8" },
+    );
+    const buy = out
+      .split("\n")
+      .filter((l) => l.startsWith("{"))
+      .map((l) => JSON.parse(l) as { kind: string; sig: string })
+      .find((l) => l.kind.endsWith("buy"));
+    expect(buy, out).toBeTruthy();
+    const sig = (buy as { sig: string }).sig;
+    await expect(rows(page).first().getByRole("link")).toHaveAttribute("href", new RegExp(sig), {
+      timeout: 15_000,
+    });
+    const lag = Date.now() - (await blockTime(sig)) * 1000;
+    console.log(`devnet buy ${sig}: on the page ${lag} ms after blockTime`);
+    expect(lag).toBeLessThanOrEqual(15_000);
+    await expect(stat(page, "Mcap")).not.toHaveText(mcap as string);
+    expect(navigated).toBe(false);
   });
 });

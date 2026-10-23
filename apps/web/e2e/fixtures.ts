@@ -79,3 +79,22 @@ export async function dropCoin(sql: postgres.Sql, mint: string): Promise<void> {
   await sql`delete from vanity_mints where pubkey = ${mint}`;
   if (gone.length) await sql`delete from wallets where address in ${sql(gone.map((g) => g.wallet))}`;
 }
+
+// The public devnet RPC, so the e2e process needs no Helius key; blockTime has 1 s resolution.
+export async function blockTime(signature: string): Promise<number> {
+  for (let i = 0; i < 15; i++) {
+    const res = await fetch("https://api.devnet.solana.com", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTransaction",
+        params: [signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
+      }),
+    }).then((r) => r.json() as Promise<{ result?: { blockTime?: number } | null }>);
+    if (res.result?.blockTime) return res.result.blockTime;
+    await new Promise((done) => setTimeout(done, 1000));
+  }
+  throw new Error(`no blockTime for ${signature}`);
+}

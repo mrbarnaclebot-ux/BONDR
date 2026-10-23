@@ -2,8 +2,8 @@ import type { LaunchView, Links, Venue } from "@bondr/core/api";
 import type { ReactNode } from "react";
 import { age } from "@/lib/format";
 import { imageUrl } from "@/lib/pinata";
+import { VenueTag } from "./coin-live";
 import { CopyChip } from "./copy-chip";
-import { Tag } from "./tag";
 
 // The coin image is the gateway the on-chain URI uses (pinata.ts imageUrl). A CSS background, not
 // next/image: a failed load (ipfs.io answers 429 under load) leaves the surface block instead of a broken
@@ -20,11 +20,6 @@ function linkList(symbol: string, links: Links): MetaLink[] {
   if (links.website && URL.canParse(links.website))
     out.push({ href: links.website, text: new URL(links.website).host });
   return out.filter((l) => l.href.startsWith("https://"));
-}
-
-function VenueTag({ venue }: { venue: Venue }) {
-  if (venue === "pool") return <Tag tone="leaf">Bonded, PumpSwap</Tag>;
-  return venue === "complete" ? <Tag>Curve complete</Tag> : <Tag live>On curve</Tag>;
 }
 
 function Meta({ v, venue }: { v: LaunchView; venue: Venue }) {

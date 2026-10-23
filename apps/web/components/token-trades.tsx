@@ -1,10 +1,14 @@
 "use client";
 
 // The token page trade feed (UI-SPEC Trades, D-16, D-18): the 50 newest trades, Load more by keyset back to
-// the launch transaction, whose two rows prove the dev's exit. Live inserts arrive with the stream (03-07).
+// the launch transaction, whose two rows prove the dev's exit. Live trades from CoinLiveProvider are inserted on
+// top, batched per animation frame; loaded rows are never removed and overflow-anchor stays at its default, so
+// a reader further down is not pushed. No aria-live on the table: a hot coin trades several times a second.
 import type { Exit, Net, TradeRow } from "@bondr/core/api";
-import { Fragment, useEffect, useState } from "react";
+import { type Dispatch, Fragment, type SetStateAction, useEffect, useState } from "react";
+import { flashClass, type Side } from "@/lib/flash";
 import { compact, relTime, short, sol, tradeSol } from "@/lib/format";
+import { useCoinLive } from "./coin-live";
 import { TxLink } from "./tx-link";
 import { Button } from "./ui-button";
 
@@ -23,10 +27,26 @@ const TH = "py-2 font-semibold tracking-[0.05em] uppercase";
 const TD = "border-t border-line py-2";
 const TRADER = "max-md:hidden";
 
-function Row({ t, net, now }: { t: TradeRow; net: Net; now: number }) {
+/** `fresh` marks a row that arrived live: it rises with its side's flash once, on mount. */
+type Shown = TradeRow & { fresh?: Side };
+const keyOf = (t: TradeRow) => `${t.signature}:${t.ix}`;
+
+/** Puts the unseen rows of `add` (newest first) above `rows`; a signature plus ix is shown once. */
+function prepend(rows: Shown[], add: Shown[]): Shown[] {
+  const seen = new Set(rows.map(keyOf));
+  const out: Shown[] = [];
+  for (const t of add) {
+    if (seen.has(keyOf(t))) continue;
+    seen.add(keyOf(t));
+    out.push(t);
+  }
+  return out.length ? [...out, ...rows] : rows;
+}
+
+function Row({ t, net, now }: { t: Shown; net: Net; now: number }) {
   const [label, tone] = t.launch ? ["Launch", "text-mint"] : SIDE[t.side === "sell" ? "sell" : "buy"];
   return (
-    <tr>
+    <tr className={t.fresh && flashClass(t.fresh, "row")}>
       <td className={`${TD} num`}>
         <time dateTime={t.at} title={new Date(t.at).toLocaleString()} suppressHydrationWarning>
           {relTime(t.at, now)}
@@ -47,7 +67,7 @@ function Row({ t, net, now }: { t: TradeRow; net: Net; now: number }) {
 
 /** Appends the next older page; `more` turns false once the launch rows are in. */
 function useOlder(mint: string, initial: TradeRow[], initialMore: boolean) {
-  const [rows, setRows] = useState(initial);
+  const [rows, setRows] = useState<Shown[]>(initial);
   const [more, setMore] = useState(initialMore);
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
   async function load() {
@@ -65,10 +85,51 @@ function useOlder(mint: string, initial: TradeRow[], initialMore: boolean) {
       setState("error");
     }
   }
-  return { rows, more, state, load };
+  return { rows, setRows, more, state, load };
 }
 
-type TableProps = { rows: TradeRow[]; symbol: string; net: Net; solIn: string; exit: Exit };
+/** Live trades batched per frame (a burst is one render); a resync merges the refetched first page. */
+function useLiveRows(setRows: Dispatch<SetStateAction<Shown[]>>) {
+  const subscribe = useCoinLive()?.subscribe;
+  useEffect(() => {
+    if (!subscribe) return;
+    let pending: Shown[] = [];
+    let frame = 0;
+    const flush = () => {
+      frame = 0;
+      const add = pending.reverse(); // arrival order is oldest first
+      pending = [];
+      setRows((r) => prepend(r, add));
+    };
+    const off = subscribe((e) => {
+      if ("trades" in e) return setRows((r) => prepend(r, e.trades));
+      pending.push({ ...e.trade, fresh: e.side });
+      frame ||= requestAnimationFrame(flush);
+    });
+    return () => {
+      off();
+      cancelAnimationFrame(frame);
+    };
+  }, [subscribe, setRows]);
+}
+
+/** UI-SPEC Live indicator; the polite span announces a state change once. Empty until the stream first opens. */
+function LiveIndicator() {
+  const state = useCoinLive()?.state;
+  const dot = state === "live" ? "animate-live bg-leaf text-leaf" : "bg-muted-foreground";
+  return (
+    <span aria-live="polite" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      {state && (
+        <>
+          <span aria-hidden="true" className={`size-[7px] rounded-full ${dot}`} />
+          {state === "live" ? "Live" : "Reconnecting"}
+        </>
+      )}
+    </span>
+  );
+}
+
+type TableProps = { rows: Shown[]; symbol: string; net: Net; solIn: string; exit: Exit };
 
 function FeedTable({ rows, symbol, net, solIn, exit }: TableProps) {
   const [now, setNow] = useState(() => Date.now());
@@ -123,15 +184,19 @@ function FeedTable({ rows, symbol, net, solIn, exit }: TableProps) {
 }
 
 export function TradeFeed({ initial, more: initialMore, mint, ...table }: Props) {
-  const { rows, more, state, load } = useOlder(mint, initial, initialMore);
+  const { rows, setRows, more, state, load } = useOlder(mint, initial, initialMore);
+  useLiveRows(setRows);
   return (
     <section
       aria-labelledby="trades-h"
       className="min-w-0 rounded-lg border border-line bg-[linear-gradient(180deg,var(--surface-2),color-mix(in_oklch,var(--surface)_60%,transparent))] p-4 shadow-elev-1 md:p-8"
     >
-      <h2 id="trades-h" className="display mb-4 text-[28px] leading-none">
-        Trades
-      </h2>
+      <div className="mb-4 flex items-baseline justify-between gap-4">
+        <h2 id="trades-h" className="display text-[28px] leading-none">
+          Trades
+        </h2>
+        <LiveIndicator />
+      </div>
       {rows.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">
           No trades yet. New trades show up here as they land.

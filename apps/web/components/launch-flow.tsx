@@ -124,7 +124,7 @@ const PAUSED: Record<PauseReason, string> = {
     "BONDR's own curve is complete and migrating to PumpSwap. You can fill this in now; the Launch button unlocks automatically when the pool is live.",
 };
 
-function useLive(devBuy: string): Live {
+function useLaunchStatus(devBuy: string): Live {
   const { status, error, refresh } = useStatus();
   const buy = checkBuy(devBuy, minOf(status));
   const quote = useQuote(buy.ok ? buy.lamports : null);
@@ -168,7 +168,7 @@ function useStepFocus(step: Step, focus: string | null) {
 /** `children` is the server-rendered title and lede, so they stay out of the client bundle. */
 export function LaunchFlow({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reduce, INITIAL);
-  const live = useLive(state.devBuy);
+  const live = useLaunchStatus(state.devBuy);
   const paused = live.status?.paused;
   const heading = useStepFocus(state.step, state.focus);
   useRestore(dispatch);

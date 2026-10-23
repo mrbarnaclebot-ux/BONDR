@@ -1,7 +1,9 @@
-import type { CoinLive } from "@bondr/core/api";
+"use client";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { flashClass } from "@/lib/flash";
 import { mcapSol, signedPct, thousands } from "@/lib/format";
+import { useCoinLive } from "./coin-live";
 
 const MUTED = "text-muted-foreground";
 
@@ -9,11 +11,19 @@ const MUTED = "text-muted-foreground";
 const changeTone = (f: number) =>
   signedPct(f) === "0.0%" ? MUTED : f > 0 ? "text-leaf" : "text-destructive";
 
-function Stat({ label, tone, children }: { label: string; tone?: string; children: ReactNode }) {
+type Flash = { side: "buy" | "sell"; n: number } | null | undefined;
+
+/** `flash` remounts the value per trade (its key), so the tint replays on every trade, not only the first. */
+function Stat(p: { label: string; tone?: string; flash?: Flash; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-semibold tracking-[0.09em] text-muted-foreground uppercase">{label}</dt>
-      <dd className={cn("num text-lg", tone)}>{children}</dd>
+      <dt className="text-xs font-semibold tracking-[0.09em] text-muted-foreground uppercase">{p.label}</dt>
+      <dd
+        key={p.flash?.n}
+        className={cn("num rounded-sm text-lg", p.tone, p.flash && flashClass(p.flash.side))}
+      >
+        {p.children}
+      </dd>
     </div>
   );
 }
@@ -25,15 +35,20 @@ const NOT_COUNTED = (
   </>
 );
 
-/** The identity bar stats row (UI-SPEC Identity bar); `c` is null until the indexer has the coin's row. */
-export function TokenStats({ c }: { c: CoinLive | null }) {
+/**
+ * The identity bar stats row (UI-SPEC Identity bar), live from CoinLiveProvider; the coin is null until the
+ * indexer has its row. Mcap and 1h flash by the trade side (D-15); volume and holders just update.
+ */
+export function TokenStats() {
+  const live = useCoinLive();
+  const c = live?.coin ?? null;
   const change = c?.change1h ?? null;
   return (
     <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
-      <Stat label="Mcap" tone={c ? undefined : MUTED}>
+      <Stat label="Mcap" tone={c ? undefined : MUTED} flash={live?.flash}>
         {c ? `${mcapSol(c.mcapSol)} SOL` : "–"}
       </Stat>
-      <Stat label="1h" tone={change === null ? MUTED : changeTone(change)}>
+      <Stat label="1h" tone={change === null ? MUTED : changeTone(change)} flash={live?.flash}>
         {change === null ? "–" : signedPct(change)}
       </Stat>
       <Stat label="1h volume" tone={c ? undefined : MUTED}>

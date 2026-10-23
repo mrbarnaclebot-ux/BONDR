@@ -154,11 +154,12 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-16: staging is Railway project bondr, env staging, web public at web-staging-72bad.up.railway.app, worker private, both in US East next to Neon. railway.json is deprecated for new services, so it was deleted and the settings live on the services (IaC .railway/railway.ts deferred to Phase 7). Railway's edge overwrites a forged X-Real-IP (12 forged requests, 429 from the 11th), so web WR-03 holds
 - [Phase 02]: Lookup table recentSlot is the newest rooted block below finalized: Helius devnet reports finalized equal to confirmed, so the finalized slot failed the create with "is not a recent slot"
 - [Phase 02]: 02-17: staging launch CyR56jVf...bndr landed; staging matrix 37/37. ipfs.io now 429s our images (service-worker-only gateway), so coin images and on-chain metadata image links need a new gateway
+- [Phase 02]: Coin images and on-chain metadata links use the owner's Pinata dedicated gateway (PINATA_GATEWAY, set on staging web 2026-10-23, inlined into the client at build); ipfs.io is the fallback. Links die with the Pinata account. Coins launched before (CyR56jVf...bndr) keep ipfs.io links
 - [Phase 02]: Coin page reads are cached per process: a landed coin with facts for an hour, a miss or a coin without facts for a minute
 
 ### Pending Todos
 
-- Pick the IPFS gateway for coin images and metadata (recommended: Pinata dedicated gateway via PINATA_GATEWAY), then redeploy staging with approval
+- Owner: one real Phantom launch on staging; record its signature and any Phantom warning text in 02-18-SUMMARY.md (closes 02-VERIFICATION human_needed)
 - Replace the placeholder contact handle in the terms page
 - Phase 5: worker-core review WR-08, `forcedBondIxs` sets minOut to W's whole child balance, so any leftover in W reverts every later forced bond (`packages/core/src/bond.ts:78-88`).
 

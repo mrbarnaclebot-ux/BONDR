@@ -193,6 +193,17 @@ test.describe("trades", () => {
     await expect(table.locator("tbody tr")).toHaveCount(61); // 60 trades and the launch caption row
   });
 
+  test("the older-trades route checks the mint and the cursor", async ({ request }) => {
+    expect((await request.get("/api/coin/not-a-mint/trades")).status()).toBe(404);
+    expect((await request.get(`/api/coin/${coin.mint}/trades?before=garbage`)).status()).toBe(400);
+    const res = await request.get(`/api/coin/${coin.mint}/trades`);
+    expect(res.status()).toBe(200);
+    expect(res.headers()["cache-control"]).toBe("no-store");
+    const body = (await res.json()) as { trades: { signature: string }[]; more: boolean };
+    expect(body.trades).toHaveLength(50);
+    expect(body.more).toBe(true);
+  });
+
   test("the Trader column is hidden at 390", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto(`/coin/${coin.mint}`);

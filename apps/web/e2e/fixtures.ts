@@ -51,7 +51,7 @@ export async function seedCoin(
       mcap_sol: 28 + i,
     };
   });
-  for (const r of rows) await sql`insert into trades ${sql(r)}`; // one by one, so seq follows insert order
+  await sql`insert into trades ${sql(rows)}`; // identity assigns seq in VALUES order (trades.test.ts checks it)
   return { mint, symbol, wallet, solIn, sigs: rows.map((r) => r.signature) };
 }
 

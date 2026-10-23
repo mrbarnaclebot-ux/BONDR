@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-10-23T14:39:53.322Z"
+stopped_at: Completed 03-07-PLAN.md
+last_updated: "2026-10-23T14:56:59.922Z"
 last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 33
+  completed_plans: 34
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 6 of 15
+Plan: 7 of 15
 Status: Ready to execute
 Last activity: 2026-10-23
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
@@ -82,6 +82,7 @@ Progress: [████████░░] 77%
 | Phase 03 P03 | 14 min | 2 tasks | 18 files |
 | Phase 03 P04 | 12 min | 3 tasks | 13 files |
 | Phase 03 P05 | 11 min | 3 tasks | 14 files |
+| Phase 03 P07 | 16 min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,9 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-05: the feed cursor is the last row's slot.seq; parseCursor refuses values past int8 max so a bad cursor is a 400
 - [Phase 03]: 03-05: Load more ends on more=false from the server (limit 51), not on spotting the launch rows client-side
 - [Phase 03]: 03-05: seeded e2e coins (e2e/fixtures.ts) have launches.created_at a year back so newest-landed-launch specs never pick one
+- [Phase 03]: 03-07: coin state applies only when the trade's slot >= coins.last_slot (migration 0004); same-slot ties apply in arrival order; venue only advances
+- [Phase 03]: 03-07: ingestLaunch(conn, row, tx) gap fills each new coin; the stream gap fills every coin on each websocket open
+- [Phase 03]: 03-07: holder recount armed only by inserted trades, at most once per coin every 5 min; last count time in memory
 
 ### Pending Todos
 
@@ -203,6 +207,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T14:39:49.137Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-10-23T14:56:59.811Z
+Stopped at: Completed 03-07-PLAN.md
 Resume file: None

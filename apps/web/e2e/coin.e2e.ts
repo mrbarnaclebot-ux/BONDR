@@ -317,7 +317,10 @@ test.describe("chart", () => {
     const chart = page.getByRole("img", {
       name: new RegExp(`^${coin.symbol} market cap in SOL, 1 minute candles\\. Last`),
     });
-    await expect(chart.locator("canvas").first()).toBeAttached({ timeout: 20_000 });
+    await expect(chart).toBeVisible();
+    // The text summary overlays the canvas (an img role may not contain the attribution link).
+    const panel = page.getByRole("region", { name: "Market cap chart" });
+    await expect(panel.locator("canvas").first()).toBeAttached({ timeout: 20_000 });
     await expect(page.getByText(/^O [\d,.]+ H [\d,.]+ L [\d,.]+ C [\d,.]+ SOL mcap$/)).toBeVisible();
 
     const req = page.waitForRequest((r) => r.url().includes("candles?interval=1h"));

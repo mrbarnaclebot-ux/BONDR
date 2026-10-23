@@ -84,6 +84,10 @@ export function Footer() {
           Program: pump <span className="num">{short(PUMP_PROGRAM)}</span>
           <span className="sr-only"> (opens Solscan)</span>
         </a>
+        {/* The lightweight-charts license notice (Apache-2.0 NOTICE asks for a TradingView link). */}
+        <a href="https://www.tradingview.com/" target="_blank" rel="noopener" className={link}>
+          Charts by TradingView<span className="sr-only"> (opens TradingView)</span>
+        </a>
       </div>
     </footer>
   );

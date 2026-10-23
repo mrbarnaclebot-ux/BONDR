@@ -6,10 +6,11 @@ import { CoinIdentity } from "@/components/coin-identity";
 import { CoinLiveProvider } from "@/components/coin-live";
 import { ProofStamp } from "@/components/proof-stamp";
 import { BondPanel } from "@/components/token-bond";
+import { McapChart } from "@/components/token-chart";
 import { TokenStats } from "@/components/token-stats";
 import { TradeFeed } from "@/components/token-trades";
 import { coinByMint } from "@/lib/coins";
-import { compact, short, sol } from "@/lib/format";
+import { chartInterval, compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
 import { tradesPage } from "@/lib/trades";
 
@@ -74,6 +75,12 @@ export default async function CoinPage({ params }: Props) {
             )}
           </CoinIdentity>
           <CaRow mint={v.mint} />
+          <McapChart
+            mint={v.mint}
+            symbol={v.symbol}
+            initial={chartInterval(coin?.launchedAt ?? v.createdAt)}
+            launchMcap={coin?.launchMcapSol ?? null}
+          />
           {/* One column puts Bond and burn above Trades; at 1100px Trades take the wide column and Bond and burn
             the 380px right column, sticky under the header (UI-SPEC Token page layout). */}
           <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:gap-8">

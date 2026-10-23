@@ -72,3 +72,11 @@ export function relTime(iso: string, now = Date.now()): string {
 
 /** Integer with a thousands separator: "2,940,180". */
 export const thousands = (n: number | bigint): string => fixed(Number(n), 0);
+
+export type Interval = "1m" | "5m" | "1h" | "1d";
+
+/** The chart's default candle (D-17), from coin age at page load: 1m under 6 hours, 5m under 3 days, else 1h. */
+export function chartInterval(launchedAt: string, now = Date.now()): Interval {
+  const hours = (now - Date.parse(launchedAt)) / 3_600_000;
+  return hours < 6 ? "1m" : hours < 72 ? "5m" : "1h";
+}

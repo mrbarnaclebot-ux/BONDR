@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   age,
+  chartInterval,
   compact,
   curvePct,
   explorer,
@@ -82,4 +83,17 @@ test("relTime reads now, seconds, minutes, hours or days", () => {
   expect(ago(240)).toBe("4m");
   expect(ago(3 * 3600)).toBe("3h");
   expect(ago(2 * 86_400)).toBe("2d");
+});
+
+test("chartInterval follows coin age (D-17)", () => {
+  const now = Date.parse("2026-10-23T12:00:00Z");
+  const ago = (h: number) => new Date(now - h * 3_600_000).toISOString();
+  expect([0, 5.9, 6, 71.9, 72, 400].map((h) => chartInterval(ago(h), now))).toEqual([
+    "1m",
+    "1m",
+    "5m",
+    "5m",
+    "1h",
+    "1h",
+  ]);
 });

@@ -27,3 +27,6 @@
 - `coin-live.tsx`: CoinLiveProvider, the token page's one `useLive` stream shared through context (coin numbers, last trade side for the flash, stream state, a trade and resync subscription), and the live VenueTag.
 - `launch-receipt.tsx`: the receipt aside, every fee and cost from the live worker status.
 - `callout.tsx`: info, warn and error callouts (status or alert role).
+- `ui-seg.tsx`: Seg, the segmented control (native group of aria-pressed buttons, CSS-only sliding indicator); chart intervals and sort tabs.
+- `token-chart.tsx`: McapChart, the token page market cap chart (interval Seg, OHLC readout, states, live candle); loads lightweight-charts by dynamic import.
+- `token-chart-draw.ts`: the lightweight-charts options, series, data, Bonded marker and `liveBar` (tested in `token-chart-draw.test.ts`).

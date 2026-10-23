@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-12-PLAN.md
-last_updated: "2026-10-23T19:31:59.166Z"
+stopped_at: Completed 03-13-PLAN.md
+last_updated: "2026-10-23T19:47:44.314Z"
 last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 40
+  completed_plans: 41
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 13 of 15
+Plan: 14 of 15
 Status: Ready to execute
 Last activity: 2026-10-23
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -86,6 +86,7 @@ Progress: [█████████░] 93%
 | Phase 03 P10 | 19min | 2 tasks | 15 files |
 | Phase 03 P11 | 18min | 3 tasks | 21 files |
 | Phase 03 P12 | 27min | 2 tasks | 11 files |
+| Phase 03 P13 | 15min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -184,6 +185,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-11: header Launch link is an icon below 360px and the wordmark hides below 440px so the devnet header fits at 320 and 390
 - [Phase 03]: 03-12: a full mint searches through listCoins q; the client opens /coin/{mint} only on an exact mint in the result (no searchByMint)
 - [Phase 03]: 03-12: trending is one query ordered by 1h volume, 24h volume, newest launch; mode read from the first row; list not filtered (up to 10 cards)
+- [Phase 03]: 03-13: the re-rank hold is a CSS :hover/:focus-within check on data-hold regions at tick time, re-checked after pointerleave and blur
+- [Phase 03]: 03-13: home resync is one GET /api/coins?trending=1; page 0 merges in front of loaded coins, Trending is replaced
 
 ### Pending Todos
 
@@ -216,6 +219,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T19:31:55.840Z
-Stopped at: Completed 03-12-PLAN.md
+Last session: 2026-10-23T19:47:40.297Z
+Stopped at: Completed 03-13-PLAN.md
 Resume file: None

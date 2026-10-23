@@ -32,10 +32,10 @@
 
 ### Discovery
 
-- [ ] **LIST-01**: User sees a separate Trending section on the home page: a horizontal side-scroller of coin cards ranked by quote volume in the last hour
+- [x] **LIST-01**: User sees a separate Trending section on the home page: a horizontal side-scroller of coin cards ranked by quote volume in the last hour
 - [x] **LIST-02**: User sees a Top list ranked by market cap
 - [x] **LIST-03**: User sees Latest (newest launches first) and Oldest, in tabs alongside Top, each shown as a card grid of at most 5 cards per row
-- [ ] **LIST-04**: Each coin card shows image, name, symbol, market cap, 1h change, bond progress and age, and updates live without a reload
+- [x] **LIST-04**: Each coin card shows image, name, symbol, market cap, 1h change, bond progress and age, and updates live without a reload
 - [x] **LIST-05**: User can search BONDR coins by name, symbol or mint
 
 ### Token page
@@ -128,10 +128,10 @@
 | LAUNCH-05 | Phase 2 | Complete |
 | LAUNCH-06 | Phase 2 | Complete |
 | LAUNCH-07 | Phase 2 | Complete |
-| LIST-01 | Phase 3 | Pending |
+| LIST-01 | Phase 3 | Complete |
 | LIST-02 | Phase 3 | Complete |
 | LIST-03 | Phase 3 | Complete |
-| LIST-04 | Phase 3 | Pending |
+| LIST-04 | Phase 3 | Complete |
 | LIST-05 | Phase 3 | Complete |
 | TOKEN-01 | Phase 3 | Complete |
 | TOKEN-02 | Phase 3 | Complete |

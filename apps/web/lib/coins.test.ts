@@ -1,11 +1,11 @@
-// coinByMint's windowed values against the Neon dev branch (seeded coins, removed after); CI has no .env and
-// skips.
+// coinByMint's windowed values, listCoins orders and heroCounts against the Neon dev branch (seeded coins,
+// removed after); CI has no .env and skips.
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { afterAll, describe, expect, test, vi } from "vitest";
 import { dropCoin, fakeMint, fakeSig, seedCoin } from "../e2e/fixtures.ts";
-import { coinByMint } from "./coins";
+import { coinByMint, heroCounts, listCoins } from "./coins";
 import { close } from "./db";
 
 vi.mock("server-only", () => ({}));
@@ -78,5 +78,42 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
 
   test("an unknown mint is null", async () => {
     expect(await coinByMint(fakeMint())).toBeNull();
+  });
+
+  // Market caps no real coin reaches and launch times outside any real launch, so the seeded coins lead each
+  // order: top A, B, C (B and C tie on mcap, newer first); latest B; oldest C, A.
+  test("listCoins orders Top, Latest and Oldest with ties by newest launch", async () => {
+    const seed = async (launched: string, mcap: number) => {
+      const coin = { launched_at: new Date(launched), mcap_sol: mcap, launch_mcap_sol: mcap };
+      const { mint } = await seedCoin(sql, { trades: 0, coin });
+      mints.push(mint);
+      return mint;
+    };
+    const a = await seed("1990-01-02T00:00:00Z", 3e7);
+    const b = await seed("2099-01-01T00:00:00Z", 2e7);
+    const c = await seed("1990-01-01T00:00:00Z", 2e7);
+    const head = async (sort: "top" | "latest" | "oldest", n: number) =>
+      (await listCoins({ sort, page: 0 })).coins.slice(0, n).map((r) => r.mint);
+    expect(await head("top", 3)).toEqual([a, b, c]);
+    expect(await head("latest", 1)).toEqual([b]);
+    expect(await head("oldest", 2)).toEqual([c, a]);
+    const top = (await listCoins({ sort: "top", page: 0 })).coins[0];
+    expect(top.symbol).toMatch(/^E\d+$/);
+    expect(top.launchedAt).toBe("1990-01-02T00:00:00.000Z");
+  });
+
+  test("pages hold 50 coins and say whether another exists; heroCounts counts coins and bonds", async () => {
+    const coin = { venue: "pool", bonded_at: new Date(), bond_sig: fakeSig(), progress: 1 };
+    mints.push((await seedCoin(sql, { trades: 0, coin })).mint);
+    const [n] = await sql<{ all: number; bonded: number }[]>`select count(*)::int as all,
+      count(*) filter (where venue in ('complete', 'pool'))::int as bonded from coins`;
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 20_000 }); // past the 10 s list cache of the last test
+    expect(await heroCounts()).toEqual({ launched: n.all, bonded: n.bonded });
+    const [p0, p1] = await Promise.all([0, 1].map((page) => listCoins({ sort: "latest", page })));
+    expect(p0.coins.length).toBe(Math.min(50, n.all));
+    expect(p0.more).toBe(n.all > 50);
+    expect(p1.coins.length).toBe(Math.max(0, Math.min(50, n.all - 50)));
+    expect(p1.coins.some((c) => p0.coins.some((d) => d.mint === c.mint))).toBe(false);
+    vi.useRealTimers();
   });
 });

@@ -18,6 +18,10 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `trades.test.ts`: cursor parsing, and pages with no overlap and no gap down to the launch rows (Neon dev; skips without DATABASE_URL).
 - `format.test.ts`: the display formats.
 - `use-status.ts`: `useStatus()`, polls `/api/status` every 10 s.
+- `live-hub.ts`: server-only `hub`, the process's one upstream to the worker's `/events` NDJSON stream, with a 2,000-event replay ring and `resync` on a gap; `createHub`, `splitLines` and `Ring` are its pure parts.
+- `live-hub.test.ts`: line splitting, ring replay bounds, mint filter, client replay or resync, upstream gap resync, a failing subscriber dropped.
+- `use-live.ts`: `useLive({ mint?, onTrade, onLaunch, onBond, onHolders, onResync })`, one EventSource on `/api/live`; returns `"live"`, `"reconnecting"` or null before the first open.
+- `flash.ts`: `flashClass(side, kind)`, the buy or sell flash (value) or rise-and-flash (row) class, empty under prefers-reduced-motion.
 - `terms.ts`: `TERMS_VERSION`, stored with each consent, and `consentMessage`, the text Phantom signs at consent (browser and server share it).
 - `session.ts`: server-only consent proof (CR-01): `issueNonce`, `verifyConsent` (Ed25519 through `@bondr/core/sig` and nonce expiry; the consent route spends each nonce once as a `consent_nonces` row), `sessionCookie`, `sessionWallet` and `consentRequired`, plus `pinProof` and `pinnedHere`, which tie a prepare to metadata the pin route built (worker-core WR-06). Nonce, cookie and pin proof are HMACs with `SESSION_SECRET`.
 - `session.test.ts`: nonce expiry, wrong signer, tampered nonce, cookie expiry and edits, pin proof scope.

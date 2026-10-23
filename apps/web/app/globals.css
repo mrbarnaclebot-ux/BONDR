@@ -110,6 +110,22 @@
       transform: scale(2.4);
     }
   }
+  /* live values (UI-SPEC Motion, D-15): the trade side's 32% tint fades out; flash.ts skips it under reduced
+     motion. A new feed row (D-18) rises with the same tint. */
+  --animate-flash-up: flash-up 800ms var(--ease-out);
+  --animate-flash-down: flash-down 800ms var(--ease-out);
+  --animate-row-up: rise 640ms var(--ease-spring) both, flash-up 800ms var(--ease-out);
+  --animate-row-down: rise 640ms var(--ease-spring) both, flash-down 800ms var(--ease-out);
+  @keyframes flash-up {
+    from {
+      background-color: color-mix(in oklch, var(--leaf) 32%, transparent);
+    }
+  }
+  @keyframes flash-down {
+    from {
+      background-color: color-mix(in oklch, var(--destructive) 32%, transparent);
+    }
+  }
   /* consent bottom sheet below 768px; ease-out, because a spring overshoot would lift it off the edge */
   --animate-sheet: sheet 620ms var(--ease-out) both;
   @keyframes sheet {

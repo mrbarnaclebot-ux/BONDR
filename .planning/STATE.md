@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-13-PLAN.md
-last_updated: "2026-10-23T19:47:44.314Z"
+stopped_at: Completed 03-14-PLAN.md
+last_updated: "2026-10-23T20:02:27.852Z"
 last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 14 of 15
+Plan: 15 of 15
 Status: Ready to execute
 Last activity: 2026-10-23
 
-Progress: [██████████] 95%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -87,6 +87,7 @@ Progress: [██████████] 95%
 | Phase 03 P11 | 18min | 3 tasks | 21 files |
 | Phase 03 P12 | 27min | 2 tasks | 11 files |
 | Phase 03 P13 | 15min | 2 tasks | 15 files |
+| Phase 03 P14 | 35min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,9 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-12: trending is one query ordered by 1h volume, 24h volume, newest launch; mode read from the first row; list not filtered (up to 10 cards)
 - [Phase 03]: 03-13: the re-rank hold is a CSS :hover/:focus-within check on data-hold regions at tick time, re-checked after pointerleave and blur
 - [Phase 03]: 03-13: home resync is one GET /api/coins?trending=1; page 0 merges in front of loaded coins, Trending is replaced
+- [Phase 03]: 03-14: chart attributionLogo off; the footer "Charts by TradingView" link meets the license link requirement
+- [Phase 03]: 03-14: header Launch link stays an icon with the accessible name below 360px (label does not fit at 320)
+- [Phase 03]: 03-14: Top and Oldest pick up a new launch on reload or resync catch-up; Latest stays live (D-14)
 
 ### Pending Todos
 
@@ -219,6 +223,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T19:47:40.297Z
-Stopped at: Completed 03-13-PLAN.md
+Last session: 2026-10-23T20:02:27.847Z
+Stopped at: Completed 03-14-PLAN.md
 Resume file: None

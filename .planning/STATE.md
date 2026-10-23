@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-10-23T14:29:55.835Z"
+last_updated: "2026-10-23T14:39:53.322Z"
 last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 32
+  completed_plans: 33
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 5 of 15
+Plan: 6 of 15
 Status: Ready to execute
 Last activity: 2026-10-23
 
-Progress: [███████░░░] 74%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Progress: [███████░░░] 74%
 | Phase 03 P01 | 12 min | 3 tasks | 18 files |
 | Phase 03 P03 | 14 min | 2 tasks | 18 files |
 | Phase 03 P04 | 12 min | 3 tasks | 13 files |
+| Phase 03 P05 | 11 min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,9 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-04: int8 amount columns are a string customType (drizzle 0.45 bigint has no string mode)
 - [Phase 03]: 03-04: BONDR identity (mint, pool) lives in worker bondr-price.ts; seedBondrPrice sets it before its first await and ingest reads bondr()
 - [Phase 03]: 03-04: a coin patch applies when its mint got a newly inserted trade, or when the tx has no trade of that mint (CreatePoolEvent); no slot-order guard yet
+- [Phase 03]: 03-05: the feed cursor is the last row's slot.seq; parseCursor refuses values past int8 max so a bad cursor is a 400
+- [Phase 03]: 03-05: Load more ends on more=false from the server (limit 51), not on spotting the launch rows client-side
+- [Phase 03]: 03-05: seeded e2e coins (e2e/fixtures.ts) have launches.created_at a year back so newest-landed-launch specs never pick one
 
 ### Pending Todos
 
@@ -199,6 +203,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T14:29:40.108Z
+Last session: 2026-10-23T14:39:49.137Z
 Stopped at: Completed 03-04-PLAN.md
 Resume file: None

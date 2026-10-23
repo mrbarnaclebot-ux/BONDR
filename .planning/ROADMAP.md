@@ -106,7 +106,7 @@ Plans:
   4. User sees a lightweight-charts price chart with 1m, 5m, 1h and 1d candles, a live trade feed and the holder count on the token page
   5. A token link shared on X or Telegram renders a preview card with the coin's OG image
 
-**Plans:** 10/15 plans executed
+**Plans:** 11/15 plans executed
 
 Plans:
 **Wave 1**
@@ -142,7 +142,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 03-11-PLAN.md - Home: hero with counts, All coins grid with Top / Latest / Oldest, header Launch link
+- [x] 03-11-PLAN.md - Home: hero with counts, All coins grid with Top / Latest / Oldest, header Launch link
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
@@ -235,7 +235,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 |-------|----------------|--------|-----------|
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
 | 2. Launch Flow | 18/18 | Complete | 2026-10-23 |
-| 3. Indexer, Lists and Token Page | 10/15 | In Progress|  |
+| 3. Indexer, Lists and Token Page | 11/15 | In Progress|  |
 | 4. Trading | 0/TBD | Not started | - |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |
 | 6. Admin Dashboard | 0/TBD | Not started | - |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-10-PLAN.md
-last_updated: "2026-10-23T15:53:51.019Z"
+stopped_at: Completed 03-11-PLAN.md
+last_updated: "2026-10-23T19:01:35.663Z"
 last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 38
+  completed_plans: 39
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 11 of 15
+Plan: 12 of 15
 Status: Ready to execute
 Last activity: 2026-10-23
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Progress: [█████████░] 88%
 | Phase 03 P05 | 11 min | 3 tasks | 14 files |
 | Phase 03 P07 | 16 min | 3 tasks | 15 files |
 | Phase 03 P10 | 19min | 2 tasks | 15 files |
+| Phase 03 P11 | 18min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-07: holder recount armed only by inserted trades, at most once per coin every 5 min; last count time in memory
 - [Phase 03]: 03-10: the chart's role=img summary overlays the canvas (attribution link inside the chart breaks axe nested-interactive)
 - [Phase 03]: 03-10: default candle interval is computed on the server from coins.launched_at; oklch CSS tokens go to rgba through a 1px canvas for lightweight-charts
+- [Phase 03]: 03-11: list rows reuse core coinRow's select and mapping (coinRows), so cards, the token page and live events read the same numbers
+- [Phase 03]: 03-11: header Launch link is an icon below 360px and the wordmark hides below 440px so the devnet header fits at 320 and 390
 
 ### Pending Todos
 
@@ -210,6 +213,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T15:53:51.008Z
-Stopped at: Completed 03-10-PLAN.md
+Last session: 2026-10-23T19:01:35.658Z
+Stopped at: Completed 03-11-PLAN.md
 Resume file: None

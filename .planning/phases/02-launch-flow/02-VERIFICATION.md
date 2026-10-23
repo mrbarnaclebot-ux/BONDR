@@ -1,8 +1,8 @@
 ---
 phase: 02-launch-flow
 verified: 2026-10-23T04:05:00Z
-status: human_needed
-score: 5/6 success criteria verified (1 uncertain, 0 failed)
+status: passed
+score: 6/6 success criteria verified (criterion 3 closed by the owner's real Phantom launch, 2026-10-23)
 verified_commit: d3cec5e63b9a69300d25e098c4934dff0d6488cf
 overrides_applied: 0
 deferred:
@@ -201,3 +201,7 @@ Everything else is either an accepted deferral (WR-08 to Phase 5, the owner-appr
 
 _Verified: 2026-10-23_
 _Verifier: Claude (gsd-verifier)_
+
+## Human verification result (2026-10-23)
+
+The owner launched one coin on staging with the real Phantom extension: signature `3khSgMFGcYXdQfLFxuvt9BG5rDTtbcWqVXVb98xjbFdcwFiUvZiv7L4qZa1x8VdjBsvyXhbAHBzE7XEKLKeAHQCT`, finalized on devnet with no error, mint `HHNKkxQxFXTzcmRnuTPJmaNuSe34Cxyemspf1Wofbndr`. Phantom showed only the new-domain warning. The worker co-signed (no cosign_refused), so the message bytes held through the real extension. The metadata URI and image use the Pinata dedicated gateway and load, which also closes the ipfs.io gap for new coins. Criterion 3 is verified; status moves from human_needed to passed.

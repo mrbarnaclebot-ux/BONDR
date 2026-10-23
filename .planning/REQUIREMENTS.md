@@ -15,20 +15,20 @@
 
 ### Wallet and platform
 
-- [ ] **PLAT-01**: User can connect with Phantom (the only wallet offered) and disconnect from any page
-- [ ] **PLAT-02**: User sees a consent prompt and must accept the terms before BONDR stores anything about their wallet
-- [ ] **PLAT-03**: User can read a short terms page linked from the footer and the consent prompt
-- [ ] **PLAT-04**: The site works at mobile, tablet and desktop widths
+- [x] **PLAT-01**: User can connect with Phantom (the only wallet offered) and disconnect from any page
+- [x] **PLAT-02**: User sees a consent prompt and must accept the terms before BONDR stores anything about their wallet
+- [x] **PLAT-03**: User can read a short terms page linked from the footer and the consent prompt
+- [x] **PLAT-04**: The site works at mobile, tablet and desktop widths
 
 ### Launch
 
-- [ ] **LAUNCH-01**: Dev can fill the launch form: name (32 chars or fewer), symbol (13 or fewer), image, description, optional X, Telegram and website links
-- [ ] **LAUNCH-02**: Dev must enter a dev buy of at least the live minimum (0.25 SOL on mainnet, scaled by curve reserves on devnet) and choose insta sell or insta burn before the launch button enables
-- [ ] **LAUNCH-03**: Dev signs one transaction in Phantom that creates the coin (mint ending in `bndr`), buys, and sells or burns the dev buy
-- [ ] **LAUNCH-04**: Server co-signs with the mint key only when the signed message matches the one it built and contains the chosen exit
-- [ ] **LAUNCH-05**: Dev sees a success screen within 5 seconds of confirmation with "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy-to-clipboard button, and a button to open the coin page
-- [ ] **LAUNCH-06**: Dev sees a clear paused state when launches are paused (kill switch, or BONDR awaiting migration)
-- [ ] **LAUNCH-07**: Coin metadata and image are pinned to IPFS (Pinata) before signing
+- [x] **LAUNCH-01**: Dev can fill the launch form: name (32 chars or fewer), symbol (13 or fewer), image, description, optional X, Telegram and website links
+- [x] **LAUNCH-02**: Dev must enter a dev buy of at least the live minimum (0.25 SOL on mainnet, scaled by curve reserves on devnet) and choose insta sell or insta burn before the launch button enables
+- [x] **LAUNCH-03**: Dev signs one transaction in Phantom that creates the coin (mint ending in `bndr`), buys, and sells or burns the dev buy
+- [x] **LAUNCH-04**: Server co-signs with the mint key only when the signed message matches the one it built and contains the chosen exit
+- [x] **LAUNCH-05**: Dev sees a success screen within 5 seconds of confirmation with "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy-to-clipboard button, and a button to open the coin page
+- [x] **LAUNCH-06**: Dev sees a clear paused state when launches are paused (kill switch, or BONDR awaiting migration)
+- [x] **LAUNCH-07**: Coin metadata and image are pinned to IPFS (Pinata) before signing
 
 ### Discovery
 
@@ -65,7 +65,7 @@
 - [ ] **FEE-07**: Worker cranks distribution of post-bond fees to the deployer and treasury on a schedule
 - [ ] **FEE-08**: The ops wallet pays every worker transaction fee; worker alerts when it drops below the threshold
 - [ ] **FEE-09**: A nightly reconciliation compares ledger balances to on-chain balances and records discrepancies
-- [ ] **FEE-10**: Each W key is derived from the master seed and is used only inside the worker; web never holds wallet secrets
+- [x] **FEE-10**: Each W key is derived from the master seed and is used only inside the worker; web never holds wallet secrets
 
 ### Admin
 
@@ -83,7 +83,7 @@
 
 ### Operations
 
-- [ ] **OPS-01**: Sentry captures errors from web and worker
+- [x] **OPS-01**: Sentry captures errors from web and worker
 - [ ] **OPS-02**: A weekly contract check verifies the pump program IDs, the IDL account layouts and the Global flags BONDR depends on, and pauses jobs on a mismatch
 - [ ] **OPS-03**: CI runs lint, tests and a Playwright smoke test on every push
 - [ ] **OPS-04**: `scripts/` has one-command setup, dev, test and deploy
@@ -117,17 +117,17 @@
 | SPIKE-03 | Phase 1 | Complete |
 | SPIKE-04 | Phase 1 | Complete |
 | SPIKE-05 | Phase 1 | Complete |
-| PLAT-01 | Phase 2 | Pending |
-| PLAT-02 | Phase 2 | Pending |
-| PLAT-03 | Phase 2 | Pending |
-| PLAT-04 | Phase 2 | Pending |
-| LAUNCH-01 | Phase 2 | Pending |
-| LAUNCH-02 | Phase 2 | Pending |
-| LAUNCH-03 | Phase 2 | Pending |
-| LAUNCH-04 | Phase 2 | Pending |
-| LAUNCH-05 | Phase 2 | Pending |
-| LAUNCH-06 | Phase 2 | Pending |
-| LAUNCH-07 | Phase 2 | Pending |
+| PLAT-01 | Phase 2 | Complete |
+| PLAT-02 | Phase 2 | Complete |
+| PLAT-03 | Phase 2 | Complete |
+| PLAT-04 | Phase 2 | Complete |
+| LAUNCH-01 | Phase 2 | Complete |
+| LAUNCH-02 | Phase 2 | Complete |
+| LAUNCH-03 | Phase 2 | Complete |
+| LAUNCH-04 | Phase 2 | Complete |
+| LAUNCH-05 | Phase 2 | Complete |
+| LAUNCH-06 | Phase 2 | Complete |
+| LAUNCH-07 | Phase 2 | Complete |
 | LIST-01 | Phase 3 | Pending |
 | LIST-02 | Phase 3 | Pending |
 | LIST-03 | Phase 3 | Pending |
@@ -152,7 +152,7 @@
 | FEE-07 | Phase 5 | Pending |
 | FEE-08 | Phase 5 | Pending |
 | FEE-09 | Phase 5 | Pending |
-| FEE-10 | Phase 2 | Pending |
+| FEE-10 | Phase 2 | Complete |
 | ADMIN-01 | Phase 6 | Pending |
 | ADMIN-02 | Phase 6 | Pending |
 | ADMIN-03 | Phase 6 | Pending |
@@ -164,7 +164,7 @@
 | ADMIN-09 | Phase 6 | Pending |
 | ADMIN-10 | Phase 6 | Pending |
 | ADMIN-11 | Phase 6 | Pending |
-| OPS-01 | Phase 2 | Pending |
+| OPS-01 | Phase 2 | Complete |
 | OPS-02 | Phase 7 | Pending |
 | OPS-03 | Phase 7 | Pending |
 | OPS-04 | Phase 7 | Pending |

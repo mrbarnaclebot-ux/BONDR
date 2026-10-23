@@ -13,7 +13,7 @@ BONDR goes from proof to production in seven vertical slices. First, a mainnet-f
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Chain Spike** - Prove every pump assumption on a Surfpool mainnet fork, each step with a signature (completed 2026-10-19)
-- [ ] **Phase 2: Launch Flow** - Phantom connect, consent, launch form, one-tx launch with server co-sign, bare token page
+- [x] **Phase 2: Launch Flow** - Phantom connect, consent, launch form, one-tx launch with server co-sign, bare token page (completed 2026-10-23)
 - [ ] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards
 - [ ] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond
 - [ ] **Phase 5: Fee Engine and Public Ledger** - Worker runs split, forced bond, fallback burn, sweeps, finalize; ledger on the token page
@@ -156,7 +156,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
-| 2. Launch Flow | 18/18 | In Progress|  |
+| 2. Launch Flow | 18/18 | Complete | 2026-10-23 |
 | 3. Indexer, Lists and Token Page | 0/TBD | Not started | - |
 | 4. Trading | 0/TBD | Not started | - |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |

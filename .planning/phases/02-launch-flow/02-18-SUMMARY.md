@@ -47,12 +47,13 @@ The orchestrator relayed the owner's approval: "one redeploy of staging, worker 
 The owner replied "approved" to the checklist, with no copy changes. Recorded as given:
 
 - Copy: terms, consent prompt and the lost-launch string approved as they stand. The terms contact handle is still a placeholder and is carried as an open item.
-- Owner's Phantom launch signature and Phantom warning text: not supplied with the approval.
+- Owner's real Phantom launch (2026-10-23, after the gateway redeploy): signature `3khSgMFGcYXdQfLFxuvt9BG5rDTtbcWqVXVb98xjbFdcwFiUvZiv7L4qZa1x8VdjBsvyXhbAHBzE7XEKLKeAHQCT`, finalized on devnet with no error, 2 signers (dev and mint). Mint `HHNKkxQxFXTzcmRnuTPJmaNuSe34Cxyemspf1Wofbndr` ends in `bndr`; exit sell, 0.02 SOL dev buy, facts show devChildAfter 0. The metadata URI and its image are on the Pinata gateway and load (200); the coin page shows "Dev holds 0 launch supply".
+- Phantom warning text: only the new-domain warning ("this is a new domain"), as expected.
 - Sentry: the two staging test events (bondr-web 6ca0649b..., bondr-worker e859bd21...) were confirmed by the executor in 02-16; the owner's approval covers the check.
 
 ## Findings for the owner
 
-- **IPFS gateway:** ipfs.io answers 429 "switching to a service worker gateway only" for our image CID, while the Pinata gateway serves it. As a result, the coin image is blank on staging, and the on-chain metadata URI points at ipfs.io. Details are in 02-17-SUMMARY.md. This is not fixed: the owner has not picked a gateway yet (recommended: the Pinata dedicated gateway via PINATA_GATEWAY).
+- **IPFS gateway:** ipfs.io answers 429 "switching to a service worker gateway only" for our image CID, while the Pinata gateway serves it. As a result, the coin image is blank on staging, and the on-chain metadata URI points at ipfs.io. Details are in 02-17-SUMMARY.md. Fixed after sign-off: the owner's Pinata dedicated gateway (PINATA_GATEWAY) serves images and metadata links; staging redeployed 2026-10-23.
 
 ## Deviations from Plan
 

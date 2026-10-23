@@ -8,7 +8,7 @@ last_updated: "2026-10-22T16:40:00.000Z"
 last_activity: 2026-10-22
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 28
   completed_plans: 28
   percent: 14
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 
 Phase: 2 (Launch Flow) — EXECUTING
 Plan: 18 of 18
-Status: Plans complete, phase verification next
+Status: Phase 2 complete (verified), PR next
 Last activity: 2026-10-22
 
 Progress: [██████████] 100%
@@ -159,7 +159,6 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Owner: one real Phantom launch on staging; record its signature and any Phantom warning text in 02-18-SUMMARY.md (closes 02-VERIFICATION human_needed)
 - Replace the placeholder contact handle in the terms page
 - Phase 5: worker-core review WR-08, `forcedBondIxs` sets minOut to W's whole child balance, so any leftover in W reverts every later forced bond (`packages/core/src/bond.ts:78-88`).
 

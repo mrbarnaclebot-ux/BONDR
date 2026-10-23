@@ -217,7 +217,7 @@ return () => { live = false; clearInterval(timer); };
 
 ### IN-03: The CSP only sets `frame-ancestors`
 
-**Status:** open.
+**Status:** fixed (baa810b). Full CSP plus HSTS; `script-src` keeps `unsafe-inline` until a nonce is worth dynamic rendering.
 
 **File:** `apps/web/next.config.ts:30-35`
 **Issue:** there is no `script-src`, `object-src` or `base-uri`, and no HSTS. React escaping is currently the only XSS barrier on a page that hands a transaction to Phantom.
@@ -233,7 +233,7 @@ return () => { live = false; clearInterval(timer); };
 
 ### IN-05: Public GET reads have no rate limit
 
-**Status:** open.
+**Status:** fixed (5489529). `proxy.ts` limits the three public reads to 300 a minute per IP.
 
 **File:** `apps/web/app/api/launch/[id]/route.ts:10-21`, `apps/web/app/coin/[mint]/page.tsx:17`, `apps/web/app/api/status/route.ts:7-10`
 **Issue:** each request makes a Neon query or a worker call. Ids and mints that are well-formed but random still reach the DB.

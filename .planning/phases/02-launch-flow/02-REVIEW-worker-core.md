@@ -240,7 +240,7 @@ const ixs = [...float(o), ...(await buy(new BN(bought.toString()))), burnIx(o.w,
 
 ### IN-02: The submit pause check lets launches through when the chain read fails
 
-**Status:** open. Refusing on a failed chain read trades a transient RPC error for a second signature; left for the owner to decide.
+**Status:** fixed (97f1f13). Submit refuses with `build_failed` and keeps the mint, so Try again works once the RPC answers.
 
 **File:** `apps/worker/src/status.ts:44-47, 156`, `apps/worker/src/submit.ts:84-85`
 **Issue:** When `readChain` fails, `venue` is null, so `paused` is null. Submit then co-signs even if BONDR is in the 6107 window, and the dev pays the fee for a tx that will fail on chain. Prepare is protected by `min === null`, but submit is not.

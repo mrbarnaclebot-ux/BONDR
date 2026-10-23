@@ -143,10 +143,13 @@ created: 2026-10-23
 
 None. Every SUMMARY `## Threat Flags` section reports "none beyond the plan's threat model" and maps each claim to a registered ID (02-01, 02-02, 02-03 and 02-18 have no section).
 
-Informational, outside the register (from 02-REVIEW-web.md and 02-REVIEW-worker-core.md, status open, not blockers here):
-- Review fixes added surface after the plans: consent nonce plus signMessage, the HMAC session cookie and the pin proof (apps/web/lib/session.ts). They harden T-02-05-01/02, T-02-10-02 and T-02-11-01. The spent-nonce set is per-process memory (ponytail comment session.ts:53-54): a restart allows replay of a captured signature until its 5-minute nonce expires.
-- web IN-03: the CSP sets only frame-ancestors. IN-05: public GET reads have no rate limit. IN-06: /api/sentry-test is a GET (gated by SENTRY_TEST_ROUTE, unset on staging).
-- worker-core IN-02: the awaiting-migration pause fails open in submit when the chain read fails (the kill switch still fails closed). IN-07: a bad concurrent submit can fail a prepared row (no double send).
+Informational, outside the register (from 02-REVIEW-web.md and 02-REVIEW-worker-core.md):
+- Review fixes added surface after the plans: consent nonce plus signMessage, the HMAC session cookie and the pin proof (apps/web/lib/session.ts). They harden T-02-05-01/02, T-02-10-02 and T-02-11-01.
+- Consent replay after a restart: closed (0729f3e). Spent nonces are rows in consent_nonces (migration 0002), inserted with ON CONFLICT DO NOTHING after the signature check; consent.e2e replays a signature and gets 403.
+- worker-core IN-02: closed (97f1f13). Submit refuses with build_failed when the chain read fails, keeping the mint for Try again (submit.test.ts).
+- web IN-03: closed (baa810b). The CSP keeps scripts, fetches and frames on our origin, images on ipfs.io and *.mypinata.cloud, errors on Sentry; HSTS added. script-src keeps 'unsafe-inline' (ponytail: nonce via proxy.ts later). Checked on a production build: no console errors, gateway image 200.
+- web IN-05: closed (5489529). proxy.ts limits GET /coin/:mint, /api/launch/:id and /api/status to 300 a minute per IP; 301st gets 429, another IP is unaffected.
+- Still open, informational: web IN-06 (/api/sentry-test is a GET, gated by SENTRY_TEST_ROUTE, unset on staging); worker-core IN-07 (a bad concurrent submit can fail a prepared row, no double send).
 - web WR-03: closed. Verified on staging (02-16): Railway's edge overwrites a client-sent X-Real-IP; 12 requests with forged IPs got 429 from the 11th.
 
 ---

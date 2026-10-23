@@ -31,8 +31,8 @@ test("the ring keeps the last 2,000 events and replays only from an id it still 
   const ring = new Ring();
   ring.reset("1-0");
   for (let i = 1; i <= 2001; i++) ring.push(holders(`1-${i}`, "M"));
-  expect(ring.since("1-1")).toBeNull(); // pushed out
-  expect(ring.since("1-0")).toBeNull();
+  expect(ring.since("1-0")).toBeNull(); // 1-1 was pushed out, so 1-0's successor is gone
+  expect(ring.since("1-1")).toHaveLength(2000); // the oldest pushed out: everything after it is held
   expect(ring.since("1-1999")?.map((e) => e.id)).toEqual(["1-2000", "1-2001"]);
   expect(ring.since("1-2001")).toEqual([]);
   expect(ring.since("2-5")).toBeNull(); // another epoch

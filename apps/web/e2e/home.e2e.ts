@@ -2,7 +2,7 @@
 // seeded coin with the highest market cap and the newest launch time, so it is first in Top and Latest.
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { dropCoin, type Seeded, seedCoin } from "./fixtures.ts";
+import { dropCoin, fakeMint, type Seeded, seedCoin } from "./fixtures.ts";
 import { rootEnv } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
@@ -123,7 +123,7 @@ test.describe("grid", () => {
   });
 
   test("the coins route checks sort and page", async ({ request }) => {
-    for (const q of ["sort=bad", "page=-1", "page=100", "page=1.5"])
+    for (const q of ["sort=bad", "page=-1", "page=100", "page=1.5", `q=${"a".repeat(65)}`])
       expect((await request.get(`/api/coins?${q}`)).status(), q).toBe(400);
     const res = await request.get("/api/coins?sort=latest&page=0");
     expect(res.status()).toBe(200);
@@ -131,5 +131,67 @@ test.describe("grid", () => {
     const body = (await res.json()) as { coins: { mint: string }[]; more: boolean };
     expect(typeof body.more).toBe("boolean");
     expect(body.coins.length).toBeLessThanOrEqual(50);
+  });
+});
+
+test.describe("search", () => {
+  test.skip(!sql, "needs DATABASE_URL in the root .env");
+  let coin: Seeded;
+  test.beforeAll(async () => {
+    coin = await seedCoin(sql as postgres.Sql, { trades: 0, coin: { mcap_sol: 800_000 } });
+  });
+  test.afterAll(async () => {
+    if (coin) await dropCoin(sql as postgres.Sql, coin.mint);
+  });
+
+  const box = (page: Page) => page.getByRole("searchbox", { name: "Search coins by name, symbol or mint" });
+  const grid = (page: Page) => page.getByRole("list", { name: "Coins" });
+  const card = (page: Page) => grid(page).getByRole("link", { name: new RegExp(`E2E ${coin.symbol}`) });
+
+  test("2+ characters search by symbol in any case, one character does nothing, Escape clears", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const first = await grid(page).getByRole("listitem").first().textContent();
+    await box(page).fill("z");
+    await page.waitForTimeout(600);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(grid(page).getByRole("listitem").first()).toHaveText(first ?? "");
+
+    await box(page).fill(coin.symbol.toLowerCase());
+    await expect(card(page)).toBeVisible();
+    await expect(page.getByText(/^(\d+ coins match|1 coin matches)$/)).toBeAttached();
+    await expect(page).toHaveURL(new RegExp(`\\?q=${coin.symbol.toLowerCase()}$`));
+    await page.reload();
+    await expect(box(page)).toHaveValue(coin.symbol.toLowerCase());
+    await expect(card(page)).toBeVisible();
+
+    await box(page).press("Escape");
+    await expect(box(page)).toHaveValue("");
+    await expect(box(page)).toBeFocused();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(grid(page).getByRole("listitem").first()).toHaveText(first ?? "");
+  });
+
+  test("a mint prefix finds the coin; a full BONDR mint opens it", async ({ page }) => {
+    await page.goto("/");
+    await box(page).fill(coin.mint.slice(0, 6));
+    await expect(card(page)).toBeVisible();
+    await expect(page.getByText("1 coin matches")).toBeAttached();
+    await box(page).fill(coin.mint);
+    await expect(page).toHaveURL(new RegExp(`/coin/${coin.mint}$`));
+  });
+
+  test("a mint not on BONDR and a miss show their empty states with Clear search", async ({ page }) => {
+    await page.goto("/");
+    await box(page).fill(fakeMint());
+    await expect(page.getByRole("heading", { name: "No BONDR coin at this address" })).toBeVisible();
+    await box(page).fill("zzzzqq");
+    await expect(page.getByRole("heading", { name: 'No BONDR coin matches "zzzzqq"' })).toBeVisible();
+    await expect(page.getByText("No coins match")).toBeAttached();
+    await page.getByRole("main").getByRole("button", { name: "Clear search" }).last().click();
+    await expect(box(page)).toHaveValue("");
+    await expect(box(page)).toBeFocused();
+    await expect(grid(page)).toBeVisible();
   });
 });

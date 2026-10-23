@@ -5,13 +5,17 @@ import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { afterAll, describe, expect, test, vi } from "vitest";
 import { dropCoin, fakeMint, fakeSig, seedCoin } from "../e2e/fixtures.ts";
-import { coinByMint, heroCounts, listCoins } from "./coins";
+import { coinByMint, escapeLike, heroCounts, listCoins } from "./coins";
 import { close } from "./db";
 
 vi.mock("server-only", () => ({}));
 
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
 if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFile);
+
+test("escapeLike escapes the LIKE wildcards and the escape character", () => {
+  expect(escapeLike("50%_a\\b")).toBe("50\\%\\_a\\\\b");
+});
 
 type Trade = [minutesAgo: number, mcap: number, side: "buy" | "sell" | "burn", lamports: number | null];
 
@@ -116,4 +120,35 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     expect(p1.coins.some((c) => p0.coins.some((d) => d.mint === c.mint))).toBe(false);
     vi.useRealTimers();
   });
+
+  // Names carry a random tag so the dev branch's other coins never match; launched in 2099 so Latest leads.
+  test("search matches name or symbol (contains, any case) or mint prefix; % and _ are literal", async () => {
+    const tag = `q${fakeMint().slice(0, 8)}`;
+    const seed = async (name: string, symbol: string, launched: string) => {
+      const coin = { launched_at: new Date(launched) };
+      const { mint } = await seedCoin(sql, { trades: 0, coin });
+      await sql`update launches set name = ${name}, symbol = ${symbol} where mint = ${mint}`;
+      mints.push(mint);
+      return mint;
+    };
+    const grubby = await seed(`Grubby ${tag}`, "XQ1", "2099-02-01T00:00:00Z");
+    const grub = await seed(`Plain ${tag}`, "GRUB", "2099-02-02T00:00:00Z");
+    const pct = await seed(`50% ${tag}`, "XQ2", "2099-02-03T00:00:00Z");
+    const fifty = await seed(`50x ${tag}`, "XQ3", "2099-02-04T00:00:00Z");
+    const under = await seed(`a_b ${tag}`, "XQ4", "2099-02-05T00:00:00Z");
+    const plain = await seed(`aXb ${tag}`, "XQ5", "2099-02-06T00:00:00Z");
+    const find = async (q: string, sort: "latest" | "oldest" = "latest") =>
+      (await listCoins({ sort, page: 0, q })).coins.map((c) => c.mint);
+
+    expect(await find("grub")).toEqual(expect.arrayContaining([grubby, grub]));
+    expect(await find(`0% ${tag}`)).toEqual([pct]);
+    expect(await find(`a_b ${tag}`)).toEqual([under]);
+    expect(await find(grubby.slice(0, 6))).toContain(grubby);
+    expect(await find(`  ${grubby}  `)).toEqual([grubby]);
+    expect(await find(fakeMint())).toEqual([]);
+    expect(await find(tag)).toEqual([plain, under, fifty, pct, grub, grubby]);
+    expect(await find(tag, "oldest")).toEqual([grubby, grub, pct, fifty, under, plain]);
+    expect(await find("G")).toEqual(await find(""));
+  });
 });
+

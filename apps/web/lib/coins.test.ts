@@ -2,10 +2,11 @@
 // removed after); CI has no .env and skips.
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import type { CoinRow } from "@bondr/core/api";
 import postgres from "postgres";
 import { afterAll, describe, expect, test, vi } from "vitest";
 import { dropCoin, fakeMint, fakeSig, seedCoin } from "../e2e/fixtures.ts";
-import { coinByMint, escapeLike, heroCounts, listCoins } from "./coins";
+import { coinByMint, escapeLike, heroCounts, listCoins, trending, trendMode } from "./coins";
 import { close } from "./db";
 
 vi.mock("server-only", () => ({}));
@@ -15,6 +16,14 @@ if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFil
 
 test("escapeLike escapes the LIKE wildcards and the escape character", () => {
   expect(escapeLike("50%_a\\b")).toBe("50\\%\\_a\\\\b");
+});
+
+test("trendMode reads the first ranked row: 1h volume, else 24h volume, else the latest launches", () => {
+  const row = (vol1h: number, vol24h: number) => ({ vol1h, vol24h }) as CoinRow;
+  expect(trendMode([row(0.5, 2), row(0, 9)])).toBe("1h");
+  expect(trendMode([row(0, 3), row(0, 1)])).toBe("24h");
+  expect(trendMode([row(0, 0)])).toBe("latest");
+  expect(trendMode([])).toBe("latest");
 });
 
 type Trade = [minutesAgo: number, mcap: number, side: "buy" | "sell" | "burn", lamports: number | null];
@@ -149,5 +158,24 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     expect(await find(tag)).toEqual([plain, under, fifty, pct, grub, grubby]);
     expect(await find(tag, "oldest")).toEqual([grubby, grub, pct, fifty, under, plain]);
     expect(await find("G")).toEqual(await find(""));
+  });
+
+  // Volumes no real coin reaches, so the seeded coins lead the 1h ranking; a 24h-only coin ranks below them.
+  test("trending ranks up to 10 coins by 1h volume, then 24h volume", async () => {
+    const a = await coin(30, 28, 28, [[10, 28, "buy", 9e15]]);
+    const b = await coin(30, 28, 28, [
+      [10, 28, "buy", 8e15],
+      [9, 99, "burn", null],
+    ]);
+    const c = await coin(400, 28, 28, [[300, 28, "buy", 9.5e15]]);
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 20_000 }); // past any cached trending read
+    const t = await trending();
+    vi.useRealTimers();
+    expect(t.mode).toBe("1h");
+    expect(t.coins.length).toBeLessThanOrEqual(10);
+    expect(t.coins.slice(0, 2).map((r) => r.mint)).toEqual([a, b]);
+    expect(t.coins[1].vol1h).toBeCloseTo(8e6);
+    const i = t.coins.findIndex((r) => r.mint === c);
+    if (i >= 0) expect(t.coins.slice(0, i).every((r) => r.vol1h > 0)).toBe(true);
   });
 });

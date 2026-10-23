@@ -2,7 +2,7 @@
 // seeded coin with the highest market cap and the newest launch time, so it is first in Top and Latest.
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { dropCoin, fakeMint, type Seeded, seedCoin } from "./fixtures.ts";
+import { dropCoin, fakeMint, fakeSig, type Seeded, seedCoin } from "./fixtures.ts";
 import { rootEnv } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
@@ -195,5 +195,61 @@ test.describe("search", () => {
     await expect(box(page)).toHaveValue("");
     await expect(box(page)).toBeFocused();
     await expect(grid(page)).toBeVisible();
+  });
+});
+
+test.describe("trending", () => {
+  test.skip(!sql, "needs DATABASE_URL in the root .env");
+  let coin: Seeded;
+  // A coin with a 1h volume no real coin reaches, so it ranks #1 whatever else trades on devnet.
+  test.beforeAll(async () => {
+    const db = sql as postgres.Sql;
+    coin = await seedCoin(db, { trades: 0, coin: { mcap_sol: 700_000 } });
+    const row = {
+      signature: fakeSig(),
+      ix: 0,
+      mint: coin.mint,
+      slot: "2000",
+      at: new Date(Date.now() - 600_000),
+    };
+    await db`insert into trades ${db({ ...row, side: "buy", venue: "curve", trader: fakeMint(), token_amount: "1000", sol: "5000000000000000", mcap_sol: 700_000 })}`;
+  });
+  test.afterAll(async () => {
+    if (coin) await dropCoin(sql as postgres.Sql, coin.mint);
+  });
+
+  const region = (page: Page) => page.getByRole("region", { name: "Trending coins" });
+
+  /** Trending is kept 10 s per process, so a page rendered just before the seed can miss the coin. */
+  async function open(page: Page) {
+    await expect(async () => {
+      await page.goto("/");
+      await expect(region(page).getByRole("link").first()).toContainText(coin.symbol, { timeout: 2000 });
+    }).toPass({ timeout: 20_000 });
+  }
+
+  test("a coin traded in the last hour ranks #1 with its 1h volume", async ({ page }) => {
+    await open(page);
+    const card = region(page).getByRole("link").first();
+    await expect(card).toHaveAttribute("href", `/coin/${coin.mint}`);
+    await expect(card).toContainText("#1");
+    await expect(card).toContainText("5,000,000 SOL 1h");
+    await expect(page.getByRole("heading", { level: 2, name: "Trending" })).toBeVisible();
+    await expect(
+      page.getByText("Ranked by volume in the last hour. Drag, swipe or use the arrows."),
+    ).toBeVisible();
+  });
+
+  test("the arrows scroll at 1440 and are hidden at 390", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page);
+    const left = page.getByRole("button", { name: "Scroll trending left" });
+    await expect(left).toHaveAttribute("aria-disabled", "true");
+    await page.getByRole("button", { name: "Scroll trending right" }).click();
+    await expect.poll(() => region(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+    await expect(left).toHaveAttribute("aria-disabled", "false");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(left).toBeHidden();
+    await expect(region(page)).toBeVisible();
   });
 });

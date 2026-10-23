@@ -2,6 +2,8 @@
 // in one transaction. Trades are keyed by (signature, ix), so a replay or an overlapping gap fill inserts
 // nothing, and a coin moves only when one of its trades was new. Writes happen only when a launch or trade
 // lands: nothing here runs on a timer (D-04, Neon budget).
+// ponytail: no rollback handling for a confirmed block that never finalizes (Pitfall 5); the idempotent keys
+// make a re-ingest safe. Finalized commitment would add about 13 s to every live update.
 import { coins, db, launches, trades } from "@bondr/core/db";
 import { redact } from "@bondr/core/net";
 import { bondingCurvePda, canonicalPumpPoolPdaWithQuote } from "@bondr/core/pump";
@@ -108,8 +110,10 @@ export async function ingestTx(conn: Connection, sig: string): Promise<Inserted[
   return db().transaction((t) => writeParsed(t, parsed));
 }
 
-// The launch tx the settle already fetched: the coin row, its Launch rows, then the coin joins the registry.
+// The launch tx the settle already fetched: the coin row, its Launch rows, then the coin joins the registry
+// and a gap fill catches a sniper trade the stream saw before the coin was known (Pitfall 3).
 export async function ingestLaunch(
+  conn: Connection,
   row: Pick<LaunchRow, "id" | "mint" | "exit">,
   tx: TradeTx,
 ): Promise<Inserted[]> {
@@ -120,11 +124,51 @@ export async function ingestLaunch(
   const parsed = parse(tx, { mint: row.mint, exit: row.exit as "burn" | "sell" });
   const inserted = await db().transaction((t) => writeParsed(t, parsed, { id: row.id, pool }));
   const init = parsed.created?.initialRealTokenReserves;
-  if (init) {
-    const bondingCurve = bondingCurvePda(mint).toBase58();
-    knownCoins.set(row.mint, { mint: row.mint, bondingCurve, pool, initialRealTokenReserves: init });
-  }
+  if (!init) return inserted;
+  const bondingCurve = bondingCurvePda(mint).toBase58();
+  knownCoins.set(row.mint, { mint: row.mint, bondingCurve, pool, initialRealTokenReserves: init });
+  await gapFill(conn, row.mint, tx.transaction.signatures[0]);
   return inserted;
+}
+
+type Ingest = (conn: Connection, sig: string) => Promise<unknown>;
+const paced: Ingest = (conn, sig) => pace(BACKFILL_PACE_MS).then(() => ingestTx(conn, sig));
+const PAGE = 1000;
+
+// Every signature of the mint after `until` (exclusive), newest-first pages walked with `before`, then
+// ingested oldest first. A failed ingest stops the fill, so last_sig stays before it and the next fill retries.
+export async function gapFill(
+  conn: Connection,
+  mint: string,
+  until?: string,
+  ingest = paced,
+): Promise<number> {
+  const sigs: string[] = [];
+  for (let before: string | undefined; ; ) {
+    await pace(BACKFILL_PACE_MS);
+    const opts = { until, before, limit: PAGE };
+    const page = await conn.getSignaturesForAddress(new PublicKey(mint), opts, "confirmed");
+    sigs.push(...page.filter((s) => !s.err).map((s) => s.signature));
+    if (page.length < PAGE) break;
+    before = page.at(-1)?.signature;
+  }
+  for (const sig of sigs.reverse()) await ingest(conn, sig);
+  return sigs.length;
+}
+
+// Every known coin from its last indexed trade, one coin at a time. One read of coins per call; called on
+// each websocket open, never on a timer.
+export async function gapFillAll(conn: Connection): Promise<number> {
+  const rows = await db().select({ mint: coins.mint, lastSig: coins.lastSig }).from(coins);
+  let n = 0;
+  for (const r of rows) {
+    if (!knownCoins.has(r.mint)) continue;
+    n += await gapFill(conn, r.mint, r.lastSig ?? undefined).catch((e: unknown) => {
+      logged(`gap fill ${r.mint}`)(e);
+      return 0;
+    });
+  }
+  return n;
 }
 
 // Boot: every landed launch without a coin row (Phase 2 launches, or one whose ingest failed), one pass.
@@ -142,7 +186,7 @@ export async function backfillLaunches(conn: Connection): Promise<number> {
       console.error(`backfill ${row.id}: tx not found`);
       continue;
     }
-    await ingestLaunch(row, tx).then(() => done++, logged(`backfill ${row.id}`));
+    await ingestLaunch(conn, row, tx).then(() => done++, logged(`backfill ${row.id}`));
   }
   return done;
 }

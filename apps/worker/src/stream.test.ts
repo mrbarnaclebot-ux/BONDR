@@ -40,7 +40,10 @@ test("backoff: about 1 s growing to a 30 s cap, jitter within 20 percent", () =>
 
 test("gapFill pages back to last_sig, then ingests oldest first and skips failed txs", async () => {
   // Newest first, as getSignaturesForAddress returns them; pages of 1000.
-  const all = Array.from({ length: 1002 }, (_, i) => ({ signature: `s${1001 - i}`, err: i === 1 ? {} : null }));
+  const all = Array.from({ length: 1002 }, (_, i) => ({
+    signature: `s${1001 - i}`,
+    err: i === 1 ? {} : null,
+  }));
   const calls: { until?: string; before?: string; limit?: number }[] = [];
   const conn = {
     getSignaturesForAddress: async (_: unknown, o: { until?: string; before?: string; limit?: number }) => {

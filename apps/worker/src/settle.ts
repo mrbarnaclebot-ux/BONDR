@@ -95,7 +95,7 @@ async function landed(conn: Connection, row: Row): Promise<void> {
   if (!tx) return;
   await advance(db(), row.id, "landed", "landed", { facts: launchFacts(tx, row) });
   // The coin and its Launch rows, from the same tx. A failure never undoes landed; the boot backfill retries it.
-  await ingestLaunch(row, tx).catch(logged(row.id));
+  await ingestLaunch(conn, row, tx).catch(logged(row.id));
 }
 
 async function conclude(conn: Connection, row: Row, next: Next): Promise<void> {

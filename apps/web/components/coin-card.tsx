@@ -1,11 +1,19 @@
+"use client";
+
 import type { CoinRow } from "@bondr/core/api";
 import Link from "next/link";
 import type { ReactNode, SyntheticEvent } from "react";
 import { cn } from "@/lib/cn";
+import { flashClass, type Side } from "@/lib/flash";
 import { age, curvePct, mcapSol, signedPct } from "@/lib/format";
 import { imageUrl } from "@/lib/pinata";
 import { BondGlyph } from "./bond-glyph";
+import { useHomeLive } from "./home-live";
 import { Tag } from "./tag";
+
+type Flash = { side: Side; n: number } | undefined;
+/** The trade side's tint; keyed by the trade counter so it replays on every trade (D-15). */
+const lit = (f: Flash) => ({ key: f?.n, fl: f && flashClass(f.side) });
 
 type Variant = "grid" | "trending";
 type Props = { coin: CoinRow; variant?: Variant; rank?: number; chip?: ReactNode };
@@ -56,19 +64,22 @@ function Art({ cid, variant }: { cid: string | null; variant: Variant }) {
   );
 }
 
-function Change({ f }: { f: number | null }) {
+function Change({ f, flash }: { f: number | null; flash: Flash }) {
   const tone =
     f === null || signedPct(f) === "0.0%"
       ? "text-muted-foreground"
       : f > 0
         ? "text-leaf"
         : "text-destructive";
+  const { key, fl } = lit(flash);
   return (
     <span
+      key={key}
       data-field="change"
       className={cn(
         "num inline-flex min-h-6 items-center rounded-full bg-[color-mix(in_oklch,currentColor_12%,transparent)] px-2 text-sm",
         tone,
+        fl,
       )}
     >
       {f === null ? "–" : signedPct(f)}
@@ -76,9 +87,10 @@ function Change({ f }: { f: number | null }) {
   );
 }
 
-function Bond({ coin }: { coin: CoinRow }) {
+function Bond({ coin, flash }: { coin: CoinRow; flash: Flash }) {
   const bonded = coin.venue !== "curve" || coin.progress >= 1;
   const pct = curvePct(coin.progress);
+  const { key, fl } = lit(flash);
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5">
       <BondGlyph
@@ -94,7 +106,7 @@ function Bond({ coin }: { coin: CoinRow }) {
       ) : (
         <span aria-hidden="true" className="text-xs whitespace-nowrap">
           <span className="text-muted-foreground">curve</span>{" "}
-          <span data-field="curve" className="num">
+          <span key={key} data-field="curve" className={cn("num rounded-sm", fl)}>
             {pct}
           </span>
         </span>
@@ -106,9 +118,13 @@ function Bond({ coin }: { coin: CoinRow }) {
 /**
  * One coin as a single link (UI-SPEC Coin card, LIST-04): art, name and symbol, market cap in SOL with the 1h
  * change, bond progress. Grid cards carry the age chip and turn horizontal below 560px; trending cards take a
- * rank and a volume chip. data-field marks the numbers a live trade flashes.
+ * rank and a volume chip. data-field marks the numbers a live trade flashes; on the home page the flash and the
+ * new-launch glow come from HomeLiveProvider.
  */
 export function CoinCard({ coin, variant = "grid", rank, chip }: Props) {
+  const live = useHomeLive();
+  const flash = live?.flash[coin.mint];
+  const { key, fl } = lit(flash);
   const grid = variant === "grid";
   const old = (
     <time dateTime={coin.launchedAt} suppressHydrationWarning>
@@ -122,6 +138,7 @@ export function CoinCard({ coin, variant = "grid", rank, chip }: Props) {
       className={cn(
         "group relative flex flex-1 snap-start flex-col overflow-hidden rounded-lg border border-line bg-[linear-gradient(180deg,var(--surface-2),var(--surface)_60%)] text-foreground no-underline shadow-elev-1 select-none [transition:translate_560ms_var(--ease-spring),box-shadow_400ms_var(--ease-out)] hover:-translate-y-1.5 hover:text-foreground hover:shadow-[var(--elev-2),0_0_0_1px_color-mix(in_oklch,var(--leaf)_35%,transparent)]",
         grid && "max-[560px]:flex-row",
+        grid && live?.fresh.has(coin.mint) && "animate-launch",
       )}
     >
       <Art cid={coin.imageCid} variant={variant} />
@@ -132,14 +149,14 @@ export function CoinCard({ coin, variant = "grid", rank, chip }: Props) {
         </div>
         <div className="flex items-baseline justify-between gap-2">
           <span>
-            <span data-field="mcap" className="num text-lg">
+            <span key={key} data-field="mcap" className={cn("num rounded-sm text-lg", fl)}>
               {mcapSol(coin.mcapSol)} SOL
             </span>
             {!grid && <span className="block text-xs text-muted-foreground">{old} old</span>}
           </span>
-          <Change f={coin.change1h} />
+          <Change f={coin.change1h} flash={flash} />
         </div>
-        <Bond coin={coin} />
+        <Bond coin={coin} flash={flash} />
       </div>
       {grid && (
         <span

@@ -4,9 +4,9 @@ import type { CoinRow } from "@bondr/core/api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { age, mcapSol } from "@/lib/format";
+import type { TrendMode } from "@/lib/live-list";
 import { CoinCard } from "./coin-card";
-
-export type TrendMode = "1h" | "24h" | "latest";
+import { useHome } from "./home-live";
 
 const CAPTION: Record<TrendMode, string> = {
   "1h": "Ranked by volume in the last hour. Drag, swipe or use the arrows.",
@@ -132,8 +132,15 @@ function Arrows({ scroller, atStart, atEnd }: ArrowsProps) {
 const SCROLLER =
   "-mx-(--gutter) grid cursor-grab auto-cols-[80%] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain scroll-px-(--gutter) px-(--gutter) pt-2 pb-6 [scrollbar-width:none] snap-x snap-mandatory active:cursor-grabbing min-[760px]:auto-cols-[288px] [&::-webkit-scrollbar]:hidden";
 
-/** Trending (LIST-01, D-13): up to 10 cards in a side-scroller; the caption and chips follow the mode. */
-export function HomeTrending({ mode, coins }: { mode: TrendMode; coins: CoinRow[] }) {
+/** Trending (LIST-01, D-13), live from HomeLiveProvider; hidden while no coin exists. */
+export function HomeTrending() {
+  const { trend } = useHome();
+  return trend?.coins.length ? <Scroller {...trend} /> : null;
+}
+
+/** Up to 10 cards in a side-scroller; the caption and chips follow the mode. */
+function Scroller({ mode, coins }: { mode: TrendMode; coins: CoinRow[] }) {
+  const { hold } = useHome();
   const ref = useRef<HTMLElement>(null);
   const { atStart, atEnd, edges } = useEdges(ref);
   useDrag(ref);
@@ -149,6 +156,7 @@ export function HomeTrending({ mode, coins }: { mode: TrendMode; coins: CoinRow[
         <Arrows scroller={ref} atStart={atStart} atEnd={atEnd} />
       </div>
       <section
+        {...hold}
         ref={ref}
         aria-label="Trending coins"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: UI-SPEC, the region takes focus so arrow keys scroll it

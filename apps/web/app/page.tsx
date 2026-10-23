@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Callout } from "@/components/callout";
 import { HomeCoins } from "@/components/home-coins";
 import { HomeHero } from "@/components/home-hero";
+import { HomeLiveProvider } from "@/components/home-live";
 import { HomeTrending } from "@/components/home-trending";
 import { heroCounts, listCoins, parseQ, parseSort, trending } from "@/lib/coins";
 import { workerGet } from "@/lib/worker";
@@ -30,7 +31,10 @@ async function pauseReason(): Promise<PauseReason | null> {
 type Props = { searchParams: Promise<{ sort?: string | string[]; q?: string | string[] }> };
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
-/** Home: paused banner, hero with the D-09 counts, Trending (hidden with no coins), and All coins. No closest-to-bond rail (D-08), no USD (D-01). */
+/**
+ * Home: paused banner, hero with the D-09 counts, Trending (hidden with no coins), and All coins, all live through
+ * one HomeLiveProvider stream (LIST-04). No closest-to-bond rail (D-08), no USD (D-01).
+ */
 export default async function Home({ searchParams }: Props) {
   const params = await searchParams;
   const sort = parseSort(one(params.sort)) ?? "top";
@@ -42,29 +46,31 @@ export default async function Home({ searchParams }: Props) {
     trending().catch(() => null),
   ]);
   return (
-    <div className="overflow-x-clip">
-      {paused && (
-        <div className="mx-auto w-full max-w-[1440px] px-(--gutter) pt-4">
-          <Callout variant="warn" icon={Pause} title="Launches paused.">
-            {PAUSED[paused]}
-          </Callout>
-        </div>
-      )}
-      <HomeHero counts={counts} paused={paused !== null} />
-      {trend && trend.coins.length > 0 && <HomeTrending {...trend} />}
-      <section
-        id="all-coins"
-        aria-labelledby="all-coins-h"
-        className="mx-auto w-full max-w-[1440px] scroll-mt-20 px-(--gutter) pt-16"
-      >
-        <div className="reveal mb-6">
-          <h2 id="all-coins-h" className="display text-[clamp(2.5rem,6vw,4.5rem)]">
-            All coins
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">Only coins launched on BONDR.</p>
-        </div>
-        <HomeCoins initial={list} sort={sort} q={q} />
-      </section>
-    </div>
+    <HomeLiveProvider list={list} sort={sort} q={q} trend={trend} counts={counts}>
+      <div className="overflow-x-clip">
+        {paused && (
+          <div className="mx-auto w-full max-w-[1440px] px-(--gutter) pt-4">
+            <Callout variant="warn" icon={Pause} title="Launches paused.">
+              {PAUSED[paused]}
+            </Callout>
+          </div>
+        )}
+        <HomeHero paused={paused !== null} />
+        <HomeTrending />
+        <section
+          id="all-coins"
+          aria-labelledby="all-coins-h"
+          className="mx-auto w-full max-w-[1440px] scroll-mt-20 px-(--gutter) pt-16"
+        >
+          <div className="reveal mb-6">
+            <h2 id="all-coins-h" className="display text-[clamp(2.5rem,6vw,4.5rem)]">
+              All coins
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">Only coins launched on BONDR.</p>
+          </div>
+          <HomeCoins />
+        </section>
+      </div>
+    </HomeLiveProvider>
   );
 }

@@ -6,16 +6,16 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { BASE58_KEY } from "@/lib/guard";
+import type { Sort } from "@/lib/live-list";
 import { Callout } from "./callout";
 import { CoinCard } from "./coin-card";
+import { type CoinPage, useHome } from "./home-live";
 import { MatchCount, SearchBox, SearchEmpty, useSearch } from "./home-search";
 import { Button, buttonVariants } from "./ui-button";
 import { Seg } from "./ui-seg";
 
 const LABELS = { top: "Top", latest: "Latest", oldest: "Oldest" } as const;
 const OPTIONS = Object.values(LABELS);
-export type Sort = keyof typeof LABELS;
-export type CoinPage = { coins: CoinRow[]; more: boolean };
 
 async function fetchPage(sort: Sort, page: number, q: string, signal: AbortSignal): Promise<CoinPage> {
   const res = await fetch(`/api/coins?${new URLSearchParams({ sort, page: String(page), q })}`, { signal });
@@ -64,9 +64,9 @@ function syncUrl(sort: Sort, q: string) {
   window.history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
 }
 
-/** The list state: page 0 of a sort replaces the list, a later page appends; a newer load aborts the last. */
-function useCoinList(initial: CoinPage | null) {
-  const [list, setList] = useState(initial);
+/** The list (held by HomeLiveProvider): page 0 of a sort replaces it, a later page appends; a newer load aborts the last. */
+function useCoinList() {
+  const [list, setList] = useHome().list;
   const [pages, setPages] = useState(1);
   const [busy, setBusy] = useState<Busy>(null);
   const ctl = useRef<AbortController>(null);
@@ -96,6 +96,7 @@ function useCoinList(initial: CoinPage | null) {
 function Grid({ coins, busy }: { coins: CoinRow[]; busy: boolean }) {
   return (
     <ol
+      {...useHome().hold}
       aria-label="Coins"
       aria-busy={busy}
       className={cn(
@@ -112,21 +113,20 @@ function Grid({ coins, busy }: { coins: CoinRow[]; busy: boolean }) {
   );
 }
 
-type Props = { initial: CoinPage | null; sort: Sort; q: string };
-
 /**
  * All coins (LIST-02, LIST-03, LIST-05): Top / Latest / Oldest and search, 50 cards a page with Show more. A tab
  * switch or search keeps the old cards at 60% with aria-busy until the new page arrives. A full BONDR mint opens
- * its coin. `initial` is the server render; null when that read failed. `q` is the active search, so live
- * updates (03-13) can skip inserting new launches while it is set.
+ * its coin. The list, sort and search live in HomeLiveProvider (null list: the read failed), so live events see
+ * them: a new launch is inserted only into Latest with no search.
  */
-export function HomeCoins({ initial, sort: first, q: firstQ }: Props) {
+export function HomeCoins() {
   const router = useRouter();
-  const [sort, setSort] = useState(first);
-  const [q, setQ] = useState(firstQ);
+  const live = useHome();
+  const [sort, setSort] = live.sort;
+  const [q, setQ] = live.q;
   const input = useRef<HTMLInputElement>(null);
-  const { list, pages, busy, load } = useCoinList(initial);
-  const search = useSearch(firstQ, find);
+  const { list, pages, busy, load } = useCoinList();
+  const search = useSearch(q, find);
 
   async function find(next: string) {
     setQ(next);

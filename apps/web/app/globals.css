@@ -126,6 +126,15 @@
       background-color: color-mix(in oklch, var(--destructive) 32%, transparent);
     }
   }
+  /* a launch that just slid into Latest (UI-SPEC Motion, D-14): rise, then --glow held 3 s and faded over 600 ms.
+     home-live.tsx drops the class after 3.6 s; under reduced motion the glow is static for that time (below). */
+  --animate-launch: rise 700ms var(--ease-spring) both, glow 3.6s linear;
+  @keyframes glow {
+    0%,
+    83% {
+      box-shadow: var(--glow);
+    }
+  }
   /* consent bottom sheet below 768px; ease-out, because a spring overshoot would lift it off the edge */
   --animate-sheet: sheet 620ms var(--ease-out) both;
   @keyframes sheet {
@@ -229,6 +238,12 @@
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
     /* biome-ignore-end lint/complexity/noImportantStyles: end of the reduced-motion override */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-launch {
+    box-shadow: var(--glow);
   }
 }
 

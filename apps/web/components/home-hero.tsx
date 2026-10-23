@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type CSSProperties, useEffect, useState } from "react";
 import { thousands } from "@/lib/format";
+import { useHome } from "./home-live";
 import { Button, buttonVariants } from "./ui-button";
 
 // 16 motes at fixed pseudo-random spots (the mockup's seeded rng), so server and client render the same markup.
@@ -49,7 +50,10 @@ function HeroArt() {
   );
 }
 
-function Pulse({ counts }: { counts: { launched: number; bonded: number } }) {
+/** The D-09 counts, counting up on live launch and bond events; hidden when the read failed. */
+function Pulse() {
+  const { counts } = useHome();
+  if (!counts) return null;
   const { launched, bonded } = counts;
   return (
     <p className="mt-6 flex items-center gap-2.5 text-sm text-muted-foreground">
@@ -67,10 +71,8 @@ function Pulse({ counts }: { counts: { launched: number; bonded: number } }) {
   );
 }
 
-type Props = { counts: { launched: number; bonded: number } | null; paused: boolean };
-
 /** Home hero (UI-SPEC Hero): headline, lede, Launch a coin and See all coins, the D-09 pulse line, the art. */
-export function HomeHero({ counts, paused }: Props) {
+export function HomeHero({ paused }: { paused: boolean }) {
   return (
     <section aria-labelledby="hero-h" className="hero">
       <HeroArt />
@@ -99,7 +101,7 @@ export function HomeHero({ counts, paused }: Props) {
               See all coins
             </a>
           </div>
-          {counts && <Pulse counts={counts} />}
+          <Pulse />
         </div>
       </div>
     </section>

@@ -14,8 +14,9 @@ const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
 if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFile);
 
 const fixture = (name: string): TradeTx =>
-  JSON.parse(readFileSync(new URL(`../../../packages/core/src/fixtures/${name}.json`, import.meta.url), "utf8"))
-    .response;
+  JSON.parse(
+    readFileSync(new URL(`../../../packages/core/src/fixtures/${name}.json`, import.meta.url), "utf8"),
+  ).response;
 const DEV = "F9DVpqKqC3yFCZCLPYXdRMTxMkkMommj1ue1uXAPbndr"; // the launch-burn and curve-buy fixtures' coin
 const BONDR = { mint: "4Jw2pr67qmpMi7DQGNZBwKF5Trgse5tNszLkpCnFEovA", pool: "unused" };
 
@@ -59,7 +60,12 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
         expect(await tx.$count(coins, eq(coins.mint, DEV))).toBe(1);
 
         const init = parsed.created?.initialRealTokenReserves ?? "";
-        const known: KnownCoin = { mint: DEV, bondingCurve: "c", pool: "pool", initialRealTokenReserves: init };
+        const known: KnownCoin = {
+          mint: DEV,
+          bondingCurve: "c",
+          pool: "pool",
+          initialRealTokenReserves: init,
+        };
         const buy = parseTx(fixture("curve-buy"), new Map([[DEV, known]]), { ...BONDR, sol: 3e-7 });
         expect(await writeParsed(tx, buy)).toHaveLength(1);
         const [patch, trade] = [buy.patches[0], buy.trades[0]];

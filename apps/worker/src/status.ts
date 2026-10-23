@@ -105,7 +105,7 @@ async function bondrLegBps(ctx: Ctx, venue: Venue, g: Global, fc: FeeConfig): Pr
   return sum(f.lpFeeBps, f.protocolFeeBps, f.creatorFeeBps);
 }
 
-async function venueOf(ctx: Ctx): Promise<Venue | "awaiting"> {
+export async function venueOf(ctx: Ctx): Promise<Venue | "awaiting"> {
   try {
     return await quoteVenue(ctx.online, ctx.Q);
   } catch (e) {

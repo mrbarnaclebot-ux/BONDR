@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-10-23T13:58:34.105Z"
+last_updated: "2026-10-23T14:10:13.472Z"
 last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 29
+  completed_plans: 30
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 2 of 15
+Plan: 3 of 15
 Status: Ready to execute
 Last activity: 2026-10-23
 
-Progress: [███████░░░] 67%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [███████░░░] 67%
 | Phase 02 P15 | 13 min | 2 tasks | - |
 | Phase 02 P16 | 67 min | 3 tasks | - |
 | Phase 03 P01 | 12 min | 3 tasks | 18 files |
+| Phase 03 P03 | 14 min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-01: A1 and A2 hold on devnet: Helius logsSubscribe mentions [BONDR] notified launches (BONDR loaded from the per-coin table), curve, multi-hop and BONDR-only trades, and getSignaturesForAddress(mint) listed them all; the 03-07 stream design stands
 - [Phase 03]: 03-01: A8 fails on devnet: a child needs about 752M BONDR to complete, more than BONDR's curve holds (723M), so pool-trade and migration fixtures come from the Surfpool fork and devnet pool trades are fixture-only
 - [Phase 03]: 03-01: devnet-trades --complete is a refuse-only gate (exit 2); the buy-out and pool path is not built because it cannot run on devnet
+- [Phase 03]: 03-03: coin card route sets cache-control itself (immutable for a landed coin, max-age=300 site card) and is force-dynamic
+- [Phase 03]: 03-03: landedCoin in lib/launches.ts is the one cached landed lookup for page, metadata and share card
 
 ### Pending Todos
 
@@ -192,6 +195,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T13:58:29.679Z
+Last session: 2026-10-23T14:10:09.239Z
 Stopped at: Completed 03-01-PLAN.md
 Resume file: None

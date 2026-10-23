@@ -27,10 +27,27 @@ if (existsSync(rootEnv)) {
   }
 }
 
+// The page hands a transaction to Phantom, so the CSP keeps every script, frame and fetch on our own origin:
+// images come only from the IPFS hosts rules.ts allows, and errors go only to Sentry (web IN-03).
+// ponytail: script-src keeps 'unsafe-inline' for Next's inline bootstrap; a nonce from proxy.ts removes it,
+// at the cost of rendering every page dynamically.
+const CSP = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data: https://ipfs.io https://*.mypinata.cloud",
+  "connect-src 'self' https://*.ingest.us.sentry.io",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 // Clickjacking of the sign flow is the main framing risk, so framing is refused twice (old and new header).
 const SECURITY_HEADERS = [
   { key: "X-Frame-Options", value: "DENY" },
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "Content-Security-Policy", value: CSP },
+  { key: "Strict-Transport-Security", value: "max-age=63072000" }, // browsers ignore it over plain http
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Content-Type-Options", value: "nosniff" },
 ];

@@ -3,6 +3,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
+import { dropCoin, fakeMint, type Seeded, seedCoin } from "./fixtures.ts";
 import { rootEnv } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
@@ -10,8 +11,6 @@ const url = rootEnv().DATABASE_URL;
 // and reuses the module if it comes back, and an ended client refuses every query (CONNECTION_ENDED).
 const sql = url ? postgres(url, { max: 1, idle_timeout: 5, onnotice: () => {} }) : undefined;
 const db = () => sql as postgres.Sql;
-const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const fakeMint = () => Array.from({ length: 44 }, () => B58[randomInt(58)]).join("");
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const fixtures: string[] = [];
 
@@ -152,6 +151,55 @@ test.describe("found", () => {
       expect(chip?.height).toBeGreaterThanOrEqual(width < 768 ? 44 : 32);
     });
   }
+});
+
+test.describe("trades", () => {
+  let coin: Seeded;
+  test.beforeAll(async () => {
+    coin = await seedCoin(db(), { trades: 60 });
+  });
+  test.afterAll(async () => {
+    if (coin) await dropCoin(db(), coin.mint);
+  });
+
+  test("the feed shows 50 newest trades and loads older ones back to the launch", async ({ page }) => {
+    await page.goto(`/coin/${coin.mint}`);
+    await expect(page.getByRole("heading", { name: "Trades", exact: true })).toBeVisible();
+    const table = page.getByRole("table", { name: `Trades for ${coin.symbol}, newest first` });
+    for (const name of ["Time", "Side", "SOL", coin.symbol, "Trader", "Tx"])
+      await expect(table.getByRole("columnheader", { name, exact: true })).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(50);
+    await expect(table.getByText("Buy", { exact: true }).first()).toBeVisible();
+    await expect(table.getByText("Sell", { exact: true }).first()).toBeVisible();
+    await expect(table.getByText("Launch", { exact: true })).toHaveCount(0);
+    const newest = coin.sigs.at(-1) as string;
+    await expect(table.getByRole("link").first()).toHaveAccessibleName(
+      `Transaction ${short(newest)} (opens Solscan)`,
+    );
+    const hrefs = await table
+      .getByRole("link")
+      .evaluateAll((a) => a.map((x) => (x as HTMLAnchorElement).href));
+    expect(hrefs[0]).toContain(newest);
+    for (const href of hrefs) expect(href).toContain("cluster=devnet");
+
+    await page.getByRole("button", { name: "Load 50 older trades" }).click();
+    await expect(page.getByText("That is every trade since launch.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Load 50 older trades" })).toHaveCount(0);
+    await expect(table.getByText("Launch", { exact: true })).toHaveCount(2);
+    await expect(table).toContainText(
+      `Launch transaction: ${Number(coin.solIn) / 1e9} SOL dev buy, then insta burn.`,
+    );
+    await expect(table.getByText("burned", { exact: true })).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(61); // 60 trades and the launch caption row
+  });
+
+  test("the Trader column is hidden at 390", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(`/coin/${coin.mint}`);
+    await expect(page.getByRole("heading", { name: "Trades", exact: true })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Trader" })).toBeHidden();
+    await expect(page.getByRole("columnheader", { name: "Tx" })).toBeVisible();
+  });
 });
 
 test("the image optimizer refuses IPFS URLs instead of proxying them (web WR-07)", async ({ request }) => {

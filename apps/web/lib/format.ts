@@ -39,3 +39,36 @@ export function age(iso: string, now = Date.now()): string {
   if (d) return `${d}d ${h}h`;
   return h ? `${h}h ${m % 60}m` : `${m}m`;
 }
+
+const fixed = (n: number, d: number) =>
+  n.toLocaleString("en", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/** Market cap, volume or bond SOL: "18,400", "140.7", "61.40", "0.842" (UI-SPEC Number formats). */
+export const mcapSol = (n: number): string => fixed(n, n >= 1000 ? 0 : n >= 100 ? 1 : n >= 1 ? 2 : 3);
+
+/** Trade lamports as SOL with 3 decimals, "<0.001" below that. */
+export const tradeSol = (lamports: string): string =>
+  BigInt(lamports) < 1_000_000n ? "<0.001" : (Number(lamports) / 1e9).toFixed(3);
+
+/** A fraction as a signed percent, "+18.2%", "−2.2%" (U+2212 minus), "0.0%". */
+export function signedPct(f: number): string {
+  const s = (Math.abs(f) * 100).toFixed(1);
+  if (s === "0.0") return "0.0%";
+  return `${f > 0 ? "+" : "−"}${s}%`;
+}
+
+/** Curve filled, floored to 1 decimal so it never reads full early; "100%" once complete. */
+export const curvePct = (f: number): string =>
+  f >= 1 ? "100%" : `${(Math.floor(Math.max(0, f) * 1000 + 1e-9) / 10).toFixed(1)}%`;
+
+/** Feed time: "now" under 5 s, then "12s", "4m", "3h", "2d". */
+export function relTime(iso: string, now = Date.now()): string {
+  const s = Math.max(0, Math.floor((now - Date.parse(iso)) / 1000));
+  if (s < 5) return "now";
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  return s < 86_400 ? `${Math.floor(s / 3600)}h` : `${Math.floor(s / 86_400)}d`;
+}
+
+/** Integer with a thousands separator: "2,940,180". */
+export const thousands = (n: number | bigint): string => fixed(Number(n), 0);

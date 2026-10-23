@@ -268,7 +268,9 @@ test.describe("stats and bond", () => {
     await expect(panel).toContainText("100%");
     await expect(panel.getByText("Bonded", { exact: true })).toBeVisible();
     await expect(panel.getByRole("img", { name: "Bonded" })).toBeVisible();
-    await expect(panel).toContainText(new RegExp(`Bonded 2h \\d+m ago\\. ${c.symbol} now trades on PumpSwap\\.`));
+    await expect(panel).toContainText(
+      new RegExp(`Bonded 2h \\d+m ago\\. ${c.symbol} now trades on PumpSwap\\.`),
+    );
     await expect(panel.getByRole("link", { name: new RegExp(`^Bond tx ${short(sig)}`) })).toHaveAttribute(
       "href",
       new RegExp(`/tx/${sig}\\?cluster=devnet$`),

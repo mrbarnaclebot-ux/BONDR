@@ -26,7 +26,12 @@ const mono = Martian_Mono({
   variable: "--font-martian",
 });
 
-export const metadata: Metadata = { title: "BONDR" };
+// metadataBase makes the share card URLs absolute, as X and Telegram need; SITE_URL is the public origin.
+export const metadata: Metadata = {
+  metadataBase: process.env.SITE_URL ? new URL(process.env.SITE_URL) : undefined,
+  title: "BONDR: built to bond",
+  description: "Every coin on BONDR launches with one job: reach its bond.",
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

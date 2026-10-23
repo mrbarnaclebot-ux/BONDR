@@ -16,6 +16,7 @@ export const WEB_ENV = [
   "NEXT_PUBLIC_SENTRY_DSN",
   "SENTRY_TEST_ROUTE",
   "SESSION_SECRET",
+  "SITE_URL",
 ] as const;
 
 // Local only: Railway has no file and sets each web variable on the service.

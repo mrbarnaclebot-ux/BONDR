@@ -2,7 +2,7 @@
 // numbers live.
 import "server-only";
 import type { CoinRow } from "@bondr/core/api";
-import { coinRow, coinRows } from "@bondr/core/coin-row";
+import { coinRow, coinRows, vol } from "@bondr/core/coin-row";
 import { asc, desc, sql } from "drizzle-orm";
 import { coins, db, launches } from "./db";
 
@@ -74,6 +74,23 @@ export const listCoins = ({ sort, page, q }: { sort: Sort; page: number; q?: str
     return { coins: rows.slice(0, LIST_PAGE), more: rows.length > LIST_PAGE };
   });
 };
+
+export type TrendMode = "1h" | "24h" | "latest";
+export type Trending = { mode: TrendMode; coins: CoinRow[] };
+
+// D-03 and D-13 in one order: 1h volume, then 24h volume, then the newest launch. Burns never count (vol).
+const TRENDING = [desc(vol("1 hour")), desc(vol("24 hours")), desc(coins.launchedAt), asc(coins.mint)];
+
+/** Which key decided the order: the first row has 1h volume, else 24h volume, else none traded in 24 h. */
+export const trendMode = (rows: CoinRow[]): TrendMode =>
+  !rows[0] ? "latest" : rows[0].vol1h > 0 ? "1h" : rows[0].vol24h > 0 ? "24h" : "latest";
+
+/** The Trending scroller (LIST-01): up to 10 coins and the mode its caption and chips follow. */
+export const trending = (): Promise<Trending> =>
+  kept("trending", async () => {
+    const rows = await coinRows(db(), TRENDING, 10, 0);
+    return { mode: trendMode(rows), coins: rows };
+  });
 
 /** The hero's pulse line (D-09): coins launched and bonded (curve complete or on PumpSwap). */
 export const heroCounts = (): Promise<{ launched: number; bonded: number }> =>

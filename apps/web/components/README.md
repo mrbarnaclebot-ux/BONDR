@@ -35,3 +35,4 @@
 - `coin-card.tsx`: CoinCard, one coin as a single link (art bleed and avatar, name, symbol, market cap in SOL, 1h change pill, bond glyph); `grid` (age chip, horizontal below 560px) and `trending` (rank and volume chips) variants; `data-field` marks the numbers a trade flashes.
 - `home-coins.tsx`: HomeCoins, All coins: the Top / Latest / Oldest Seg and search (?sort= and ?q= by replaceState, a full BONDR mint opens its coin), the card grid with the 60% hold while a tab loads, Show more, and the empty and error states.
 - `home-search.tsx`: the search box (300 ms debounce, Escape and X clear), the sr-only match count and the no-match and mint-not-on-BONDR empty states.
+- `home-trending.tsx`: HomeTrending, the Trending side-scroller (up to 10 cards by 1h volume, else 24h, else the latest launches, D-13), the mode caption, arrows from 760px and mouse drag.

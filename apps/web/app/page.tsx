@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import { Callout } from "@/components/callout";
 import { HomeCoins } from "@/components/home-coins";
 import { HomeHero } from "@/components/home-hero";
-import { heroCounts, listCoins, parseQ, parseSort } from "@/lib/coins";
+import { HomeTrending } from "@/components/home-trending";
+import { heroCounts, listCoins, parseQ, parseSort, trending } from "@/lib/coins";
 import { workerGet } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
@@ -29,15 +30,16 @@ async function pauseReason(): Promise<PauseReason | null> {
 type Props = { searchParams: Promise<{ sort?: string | string[]; q?: string | string[] }> };
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
-/** Home: paused banner, hero with the D-09 counts, and All coins. No closest-to-bond rail (D-08), no USD (D-01). */
+/** Home: paused banner, hero with the D-09 counts, Trending (hidden with no coins), and All coins. No closest-to-bond rail (D-08), no USD (D-01). */
 export default async function Home({ searchParams }: Props) {
   const params = await searchParams;
   const sort = parseSort(one(params.sort)) ?? "top";
   const q = parseQ(one(params.q)) ?? "";
-  const [counts, paused, list] = await Promise.all([
+  const [counts, paused, list, trend] = await Promise.all([
     heroCounts().catch(() => null),
     pauseReason(),
     listCoins({ sort, page: 0, q }).catch(() => null),
+    trending().catch(() => null),
   ]);
   return (
     <div className="overflow-x-clip">
@@ -49,6 +51,7 @@ export default async function Home({ searchParams }: Props) {
         </div>
       )}
       <HomeHero counts={counts} paused={paused !== null} />
+      {trend && trend.coins.length > 0 && <HomeTrending {...trend} />}
       <section
         id="all-coins"
         aria-labelledby="all-coins-h"

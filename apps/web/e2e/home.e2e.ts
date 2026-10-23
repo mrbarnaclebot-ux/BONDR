@@ -200,6 +200,7 @@ test.describe("search", () => {
 
 test.describe("trending", () => {
   test.skip(!sql, "needs DATABASE_URL in the root .env");
+  test.describe.configure({ mode: "serial" }); // one seeded #1 coin: parallel workers would each seed one
   let coin: Seeded;
   // A coin with a 1h volume no real coin reaches, so it ranks #1 whatever else trades on devnet.
   test.beforeAll(async () => {
@@ -251,5 +252,21 @@ test.describe("trending", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(left).toBeHidden();
     await expect(region(page)).toBeVisible();
+  });
+
+  test("a mouse drag scrolls the region and does not open the card under it", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page);
+    await region(page).scrollIntoViewIfNeeded(); // page.mouse works in viewport coordinates
+    const box = await region(page).getByRole("link").nth(1).boundingBox();
+    if (!box) throw new Error("no card");
+    const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 300, y, { steps: 10 });
+    await page.mouse.up();
+    await expect.poll(() => region(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+    await page.waitForTimeout(500);
+    await expect(page).toHaveURL(/\/$/);
   });
 });

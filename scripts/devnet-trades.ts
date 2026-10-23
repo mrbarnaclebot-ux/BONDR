@@ -13,10 +13,13 @@
 //                        the cost exceeds COMPLETE_BUDGET_SOL = 0.6 SOL, would take ops under the floor, or needs
 //                        more BONDR than BONDR's curve holds (buying it would complete BONDR and stop launches)
 //   --json               one JSON line per landed tx: { kind, sig, mint }
+//   --expect-indexed S   after the run, poll the trades table for each landed signature (a running worker must
+//                        index it); exit 1 when one is missing after S seconds, else print how long each took
 // Run: node --env-file=.env scripts/devnet-trades.ts --mint <mint> --buy 0.01 --json
+import { setTimeout as delay } from "node:timers/promises";
 import { parseArgs } from "node:util";
 import { costToComplete, readCurve } from "@bondr/core/curve";
-import { close } from "@bondr/core/db";
+import { close, db } from "@bondr/core/db";
 import { derive } from "@bondr/core/keys";
 import { connect, redact } from "@bondr/core/net";
 import {
@@ -46,7 +49,8 @@ const CU = 600_000;
 const SLIPPAGE_BPS = 500;
 const DECIMALS = 1_000_000; // BONDR and every child are 6-decimal pump coins
 type Online = InstanceType<typeof OnlinePumpSdk>;
-type T = { conn: Connection; online: Online; Q: PublicKey; sim: Keypair; json: boolean };
+type T = { conn: Connection; online: Online; Q: PublicKey; sim: Keypair; json: boolean; landed: Landed[] };
+type Landed = { sig: string; at: number };
 
 const sol = (lamports: number): string => (lamports / LAMPORTS_PER_SOL).toFixed(6);
 const floor = (x: BN, bps = 10_000 - SLIPPAGE_BPS): BN => x.muln(bps).divn(10_000);
@@ -60,6 +64,7 @@ function solIn(raw: string): BN {
 async function land(t: T, kind: string, mint: PublicKey, ixs: TransactionInstruction[]): Promise<void> {
   const r = await sendTx({ conn: t.conn, payer: t.sim, ixs: [...budget(CU), ...ixs], paceMs: 1100 });
   if (!r.ok || !r.sig) throw new Error(`${kind} ${r.status}: ${r.err ?? ""}`);
+  t.landed.push({ sig: r.sig, at: Date.now() });
   const line = { kind, sig: r.sig, mint: mint.toBase58() };
   console.log(t.json ? JSON.stringify(line) : `landed ${kind} ${r.sig} (${r.bytes} B, ${r.cu} CU)`);
 }
@@ -175,6 +180,17 @@ async function complete(t: T, C: PublicKey, opsLamports: number): Promise<void> 
   throw new Error("complete is within budget but the buy-out path is not built: build it before running");
 }
 
+// Test-script polling, not app code: the worker under test must write each landed signature in time.
+async function expectIndexed(landed: readonly Landed[], seconds: number): Promise<void> {
+  for (const { sig, at: start } of landed) {
+    while (!(await db().$client`select 1 from trades where signature = ${sig}`).length) {
+      if (Date.now() - start > seconds * 1000) throw new Error(`${sig} not indexed within ${seconds} s`);
+      await delay(1000);
+    }
+    console.log(`indexed ${sig} ${((Date.now() - start) / 1000).toFixed(1)} s after landing`);
+  }
+}
+
 const MODES = ["buy", "sell", "curve-buy", "curve-sell", "bondr", "fund", "complete"] as const;
 type Mode = (typeof MODES)[number];
 
@@ -190,6 +206,7 @@ function args() {
     fund: b,
     complete: b,
     json: b,
+    "expect-indexed": s,
   };
   const v = parseArgs({ options }).values as Record<string, string | boolean | undefined>;
   const set = MODES.filter((m) => v[m] !== undefined && v[m] !== false);
@@ -197,7 +214,10 @@ function args() {
   const mode = set[0] as Mode;
   if (!v.mint && mode !== "bondr" && mode !== "fund") throw new Error(`--${mode} needs --mint`);
   const value = typeof v[mode] === "string" ? (v[mode] as string) : "0.01";
-  return { mode, value, mint: v.mint ? new PublicKey(v.mint) : undefined, json: v.json === true };
+  const expect = v["expect-indexed"] === undefined ? undefined : Number(v["expect-indexed"]);
+  if (expect !== undefined && !(expect > 0)) throw new Error("--expect-indexed takes seconds > 0");
+  const mint = v.mint ? new PublicKey(v.mint) : undefined;
+  return { mode, value, mint, json: v.json === true, expect };
 }
 
 async function act(t: T, mode: Mode, value: string, C: PublicKey | undefined, opsL: number): Promise<void> {
@@ -220,6 +240,7 @@ async function main(): Promise<void> {
     Q: env.quoteMint,
     sim: derive(env.seed, "sim", "devnet", "dev"),
     json: a.json,
+    landed: [],
   };
   const opsKey = ops(env.seed, "devnet").publicKey;
   const both = async () => Promise.all([conn.getBalance(opsKey), conn.getBalance(t.sim.publicKey)]);
@@ -234,6 +255,7 @@ async function main(): Promise<void> {
     `after: ops ${sol(opsA)} SOL, sim ${sol(simA)} SOL; run spend ${sol(spend)} of ${TRADE_BUDGET_SOL} SOL`,
   );
   if (spend > TRADE_BUDGET_SOL * LAMPORTS_PER_SOL) throw new Error("run spend over budget");
+  if (a.expect) await expectIndexed(t.landed, a.expect);
 }
 
 if (import.meta.main)

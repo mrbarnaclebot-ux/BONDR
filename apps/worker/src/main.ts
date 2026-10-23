@@ -4,6 +4,7 @@
 // First (a side-effect import, so import sorting keeps it first): Sentry is up before other modules log.
 import "./sentry.ts";
 import { close, db } from "@bondr/core/db";
+import type { Net } from "@bondr/core/keys";
 import { connect, redact } from "@bondr/core/net";
 import { OnlinePumpSdk } from "@bondr/core/pump";
 import { seedBondrPrice } from "./bondr-price.ts";
@@ -15,16 +16,19 @@ import { type PrepareCtx, prepare } from "./prepare.ts";
 import { flush } from "./sentry.ts";
 import { resumeLaunches } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
+import { startStream } from "./stream.ts";
 import { submit } from "./submit.ts";
 
 const failed = (what: string) => (e: unknown) =>
   console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
 
-// The coin registry and BONDR's price in memory, then a one-time pass over launches not indexed yet.
-async function bootIndex(ctx: Ctx): Promise<void> {
+// The coin registry and BONDR's price in memory, a one-time pass over launches not indexed yet, then the
+// live stream (which gap fills every coin on open).
+async function bootIndex(ctx: Ctx, net: Net): Promise<void> {
   await seedBondrPrice(ctx);
   await loadCoins(db());
   console.log(`backfilled ${await backfillLaunches(ctx.conn)} launches`);
+  startStream(ctx, net);
 }
 
 const SAMPLE_ADDR = "9wRtPq3yq1ZJ8yQd2ynVfUKAnx3bK2SMQkkjD8Kq4e3F";
@@ -51,7 +55,7 @@ async function main() {
   server.on("listening", () => {
     console.log(`worker listening on ${env.net}`);
     void startRefill(env);
-    bootIndex(ctx).catch(failed("index boot"));
+    bootIndex(ctx, env.net).catch(failed("index boot"));
     resumeLaunches(conn).catch(failed("resume"));
   });
   process.once("SIGTERM", () => {

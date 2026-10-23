@@ -1,17 +1,13 @@
 import type { LaunchView, Links } from "@bondr/core/api";
 import type { ReactNode } from "react";
 import { age } from "@/lib/format";
-import { ipfsUri } from "@/lib/pinata";
+import { imageUrl } from "@/lib/pinata";
 import { CopyChip } from "./copy-chip";
 
-// The gateway the on-chain URI uses (pinata.ts). A CSS background, not
+// The coin image is the gateway the on-chain URI uses (pinata.ts imageUrl). A CSS background, not
 // next/image: a failed load (ipfs.io answers 429 under load) leaves the surface block instead of a broken
 // image glyph, and each browser fetches it, not one server IP for every visitor.
 // ponytail: unoptimized; route through next/image once a dedicated gateway is set (Phase 3 lists).
-function imageUrl(cid: string | null): string | null {
-  if (!cid || !/^[A-Za-z0-9]+$/.test(cid)) return null;
-  return ipfsUri(cid);
-}
 
 // Links were normalized to https at pin time (rules.ts); anything else is dropped here, not rendered.
 type MetaLink = { href: string; text: string; label?: string };

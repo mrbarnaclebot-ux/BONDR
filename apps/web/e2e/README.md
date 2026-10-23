@@ -9,6 +9,7 @@ Playwright specs (`*.e2e.ts`, run with `pnpm e2e`) and their helpers. `E2E_BASE_
 - `launch-live.e2e.ts`: steps 4 and 5. The stubbed group covers every failure state and the reload restore; the devnet group (`E2E_DEVNET=1`) runs one real minimum launch and checks the 5 s success window.
 - `launch-recover.e2e.ts`: step 4 while a submit is still in the worker: a reload restores a prepared row, and a row prepared past its blockhash ends as expired, and a refused resend leaves the outcome to the row.
 - `coin.e2e.ts`: the token page. The 404 group covers unknown, malformed, failed-only and prepared-only mints; the found group reads the newest landed devnet launch, plus a throwaway landed row with links (its fake mint has used_at set, so the pool never hands it out; both rows are deleted after).
+- `og.e2e.ts`: the share cards (TOKEN-06). A throwaway landed row on a fake mint checks og:image, twitter:card and the alt on its page, then fetches the card: a 1200x630 PNG with an immutable cache; an unknown mint gets the site card with a 5 minute cache, and /terms carries the site card.
 - `wallet.e2e.ts`: connect, disconnect and account switching.
 - `consent.e2e.ts`: the consent prompt and its server row: Accept signs once and a reload keeps the session, a rejected signature stores nothing, a bad signature is refused, the launch routes ignore a wallet in the body, and prepare refuses metadata the pin route did not build.
 - `pin.e2e.ts`: the pin route's refusals.

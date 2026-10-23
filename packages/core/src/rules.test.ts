@@ -68,10 +68,14 @@ test("checkImage refuses over 4 MB and unknown types", () => {
   expect(checkImage(ascii("<svg"), 10)).toEqual({ ok: false, code: "type" });
 });
 
-test("checkUri accepts only ipfs.io gateway URIs up to 200 characters", () => {
+test("checkUri accepts only ipfs.io or a Pinata dedicated gateway, up to 200 characters", () => {
   const cid = `bafkrei${"a".repeat(52)}`;
   expect(cid.length).toBe(59);
   expect(checkUri(`https://ipfs.io/ipfs/${cid}`).ok).toBe(true);
+  expect(checkUri(`https://some-name-123.mypinata.cloud/ipfs/${cid}`).ok).toBe(true);
+  expect(checkUri(`https://evil.com/x.mypinata.cloud/ipfs/${cid}`).ok).toBe(false);
+  expect(checkUri(`https://a.mypinata.cloud.evil.com/ipfs/${cid}`).ok).toBe(false);
+  expect(checkUri(`http://ipfs.io/ipfs/${cid}`).ok).toBe(false);
   expect(checkUri(`https://gateway.pinata.cloud/ipfs/${cid}`).ok).toBe(false);
   expect(checkUri(`https://ipfs.io/ipfs/${"a".repeat(180)}`).ok).toBe(false);
   expect(checkUri("https://ipfs.io/ipfs/").ok).toBe(false);

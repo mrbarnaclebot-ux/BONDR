@@ -1,13 +1,14 @@
 import { readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { checkUri, normalizeLink } from "@bondr/core/rules";
-import { expect, test } from "vitest";
-import { ipfsUri, metadataJson, pinFile } from "./pinata";
+import { expect, test, vi } from "vitest";
+import { gatewayHost, ipfsUri, metadataJson, pinFile } from "./pinata";
 
 const CID = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"; // a 59-char CIDv1
 const IMG = "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
 
-test("metadataJson uses the ipfs.io image URI, shows the name and keeps only the links given", () => {
+test("metadataJson uses the gateway image URI, shows the name and keeps only the links given", () => {
+  vi.stubEnv("PINATA_GATEWAY", "");
   const x = normalizeLink("x", "x.com/coin");
   if (!x.ok || !x.value) throw new Error("fixture link");
   const meta = metadataJson({ name: "Coin", symbol: "COIN", description: "d", links: { x: x.value } }, IMG);
@@ -23,10 +24,13 @@ test("metadataJson uses the ipfs.io image URI, shows the name and keeps only the
   expect("telegram" in meta).toBe(false);
 });
 
-test("ipfsUri of a CIDv1 is 80 chars and passes checkUri", () => {
-  const uri = ipfsUri(CID);
+test("ipfsUri of a CIDv1 is 80 chars on ipfs.io and passes checkUri on either gateway", () => {
+  const uri = ipfsUri(CID, "ipfs.io");
   expect(uri).toHaveLength(80);
   expect(checkUri(uri).ok).toBe(true);
+  expect(gatewayHost(" https://my-gw.mypinata.cloud/ipfs/ ")).toBe("my-gw.mypinata.cloud");
+  expect(gatewayHost("")).toBe("ipfs.io");
+  expect(checkUri(ipfsUri(CID, gatewayHost("my-gw.mypinata.cloud"))).ok).toBe(true);
 });
 
 test("pinFile posts the file publicly with the bearer JWT and returns data.cid", async () => {

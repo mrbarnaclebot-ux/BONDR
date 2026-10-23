@@ -44,7 +44,11 @@ const config: NextConfig = {
   // dedicated gateway alone, with a response size cap, when coin lists route images through it.
   agentRules: false, // next dev would otherwise write a second AGENTS.md here, shadowing the root one
   // The browser has no runtime env, so the client Sentry environment is fixed at build time.
-  env: { NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT_NAME ?? "local" },
+  // PINATA_GATEWAY is public (it is in every on-chain URI); the client needs it for the step 5 image.
+  env: {
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT_NAME ?? "local",
+    PINATA_GATEWAY: process.env.PINATA_GATEWAY ?? "",
+  },
   async redirects() {
     // ponytail: Phase 3 replaces / with the home lists
     return [{ source: "/", destination: "/launch", permanent: false }];

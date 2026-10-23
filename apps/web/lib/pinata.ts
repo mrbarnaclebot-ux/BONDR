@@ -3,10 +3,16 @@
 import type { Links } from "@bondr/core/api";
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
-// Gateway-neutral, so the coin outlives a Pinata account change: 21 + a 59-char CIDv1 = 80 chars.
-const IPFS = "https://ipfs.io/ipfs/";
+// The owner's Pinata gateway when PINATA_GATEWAY is set: ipfs.io now refuses server and wallet fetches
+// (429, "service worker gateway only"), so on-chain links to it leave coins without images. The cost is that
+// the links die with the Pinata account; ipfs.io stays the fallback. Inlined into the client by next.config.
+export const gatewayHost = (raw = process.env.PINATA_GATEWAY): string =>
+  raw
+    ?.trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "") || "ipfs.io";
 
-export const ipfsUri = (cid: string): string => `${IPFS}${cid}`;
+export const ipfsUri = (cid: string, host = gatewayHost()): string => `https://${host}/ipfs/${cid}`;
 
 export type MetaFields = { name: string; symbol: string; description: string; links: Links };
 

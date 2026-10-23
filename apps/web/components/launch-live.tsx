@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type Dispatch, useEffect } from "react";
 import { compact, sol } from "@/lib/format";
 import { getView } from "@/lib/launch-run";
+import { ipfsUri } from "@/lib/pinata";
 import { CaRow } from "./ca-row";
 import type { Action, StepProps } from "./launch-flow";
 import { stored } from "./launch-sign";
@@ -72,7 +73,7 @@ function Art({ image }: { image: string | null }) {
 export function LaunchLive({ state, dispatch, live }: StepProps) {
   const v = state.view as LaunchView;
   useFacts(v, dispatch);
-  const image = state.image?.url ?? (v.imageCid ? `https://ipfs.io/ipfs/${v.imageCid}` : null);
+  const image = state.image?.url ?? (v.imageCid ? ipfsUri(v.imageCid) : null);
   const another = () => {
     stored.set(null);
     dispatch({ type: "reset" });

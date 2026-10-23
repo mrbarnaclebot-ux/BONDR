@@ -29,9 +29,10 @@ export const LAUNCH_CU_LIMIT = 600_000;
 export const MAX_SOL_IN = 100n * BigInt(LAMPORTS_PER_SOL);
 
 // Accounts a launch creates, read from the devnet launch.burn signature 2cYEyQd2JaHC...j134r (2026-10-19).
-// The mint grows with name, symbol and URI; its 434 bytes held a 96-character URI, so this overestimates a little.
+// The mint grows with name, symbol and URI; its 434 bytes held a 96-character URI. A Pinata dedicated gateway
+// URI runs to about 120 characters, so 24 bytes are added; short names still overestimate a little.
 const CREATE_ACCOUNT_SIZES = {
-  mint: 434, // Token-2022 mint with its metadata
+  mint: 458, // Token-2022 mint with its metadata
   bondingCurve: 166,
   curveChildAta: 170,
   curveBondrAta: 170,

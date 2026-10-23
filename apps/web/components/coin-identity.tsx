@@ -1,18 +1,16 @@
 import type { LaunchView, Links } from "@bondr/core/api";
 import type { ReactNode } from "react";
 import { age } from "@/lib/format";
+import { ipfsUri } from "@/lib/pinata";
 import { CopyChip } from "./copy-chip";
 
-// The owner's Pinata gateway when set, else ipfs.io, the on-chain URI's host. A CSS background, not
+// The gateway the on-chain URI uses (pinata.ts). A CSS background, not
 // next/image: a failed load (ipfs.io answers 429 under load) leaves the surface block instead of a broken
 // image glyph, and each browser fetches it, not one server IP for every visitor.
 // ponytail: unoptimized; route through next/image once a dedicated gateway is set (Phase 3 lists).
 function imageUrl(cid: string | null): string | null {
   if (!cid || !/^[A-Za-z0-9]+$/.test(cid)) return null;
-  const host = process.env.PINATA_GATEWAY?.trim()
-    .replace(/^https?:\/\//, "")
-    .replace(/\/.*$/, "");
-  return `https://${host || "ipfs.io"}/ipfs/${cid}`;
+  return ipfsUri(cid);
 }
 
 // Links were normalized to https at pin time (rules.ts); anything else is dropped here, not rendered.

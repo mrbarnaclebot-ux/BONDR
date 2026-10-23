@@ -5,7 +5,8 @@ export const NAME_MAX_BYTES = 32;
 export const SYMBOL_MAX = 13;
 export const DESCRIPTION_MAX = 500;
 export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-const URI_PREFIX = "https://ipfs.io/ipfs/";
+// ipfs.io or the owner's Pinata dedicated gateway, then a bare CID.
+const URI = /^https:\/\/(?:ipfs\.io|[a-z0-9-]+\.mypinata\.cloud)\/ipfs\/[A-Za-z0-9]+$/;
 const URI_MAX = 200;
 const LINK_MAX = 200;
 
@@ -87,8 +88,7 @@ export function checkImage(head: Uint8Array, size: number): Check<ImageType> {
 
 export function checkUri(uri: string): Check<string> {
   if (uri.length > URI_MAX) return fail("too_long", { n: uri.length });
-  const cid = uri.startsWith(URI_PREFIX) ? uri.slice(URI_PREFIX.length) : "";
-  return /^[A-Za-z0-9]+$/.test(cid) ? ok(uri) : fail("invalid");
+  return URI.test(uri) ? ok(uri) : fail("invalid");
 }
 
 // Decimal SOL to lamports with no float on the way: digits, an optional point and at most 9 decimals.

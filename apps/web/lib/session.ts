@@ -50,29 +50,20 @@ export function issueNonce(now = Date.now()): { nonce: string; expires: string }
   return { nonce: seal(`${exp}-${randomBytes(12).toString("hex")}`), expires: new Date(exp).toISOString() };
 }
 
-// ponytail: per-instance memory while web runs one replica. A restart forgets it, so a captured signature
-// could be replayed until its nonce expires (5 min at most); move to a Postgres table if web scales out.
-const spent = new Map<string, number>();
-
-function spend(nonce: string, exp: number, now: number): boolean {
-  if (spent.has(nonce)) return false;
-  if (spent.size >= 10_000) for (const [k, end] of spent) if (now >= end) spent.delete(k);
-  spent.set(nonce, exp);
-  return true;
-}
-
-/** True when signature is the wallet's signature over the consent message of a live nonce never used before. */
+/**
+ * The nonce's expiry when signature is the wallet's signature over the consent message of a live nonce, else
+ * null. Single use is the caller's job: it spends the nonce in Postgres, so a restart cannot forget it.
+ */
 export function verifyConsent(
   wallet: string,
   nonce: string,
   signature: Uint8Array,
   now = Date.now(),
-): boolean {
+): Date | null {
   const exp = Number(unseal(nonce)?.split("-")[0]);
-  if (!(exp > now)) return false;
+  if (!(exp > now)) return null;
   const message = new TextEncoder().encode(consentMessage(wallet, nonce, new Date(exp).toISOString()));
-  // The signature first, so a request with someone else's nonce cannot use it up.
-  return signatureOk(message, signature, wallet) && spend(nonce, exp, now);
+  return signatureOk(message, signature, wallet) ? new Date(exp) : null;
 }
 
 /** Set-Cookie for a session bound to wallet. Secure only in production, where web is served over https. */

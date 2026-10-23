@@ -1,4 +1,4 @@
-// The consent proof: nonce expiry and single use, the Ed25519 check and the session cookie.
+// The consent proof: nonce expiry (single use is a Postgres row, covered by consent.e2e), the Ed25519 check and the session cookie.
 import { createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import bs58 from "bs58";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -27,28 +27,26 @@ function account() {
 const signed = (a: ReturnType<typeof account>, n: { nonce: string; expires: string }, wallet = a.wallet) =>
   sign(null, Buffer.from(consentMessage(wallet, n.nonce, n.expires)), a.key);
 
-test("a signed nonce verifies once, and never after it expires", () => {
+test("a signed nonce verifies with its expiry, and never after it expires", () => {
   const a = account();
   const now = Date.now();
   const n = issueNonce(now);
-  expect(verifyConsent(a.wallet, n.nonce, signed(a, n), now)).toBe(true);
-  expect(verifyConsent(a.wallet, n.nonce, signed(a, n), now)).toBe(false); // single use
+  expect(verifyConsent(a.wallet, n.nonce, signed(a, n), now)?.toISOString()).toBe(n.expires);
 
   const late = issueNonce(now);
-  expect(verifyConsent(a.wallet, late.nonce, signed(a, late), now + 5 * 60_000)).toBe(false);
+  expect(verifyConsent(a.wallet, late.nonce, signed(a, late), now + 5 * 60_000)).toBeNull();
 });
 
 test("another wallet's signature, a tampered nonce and another secret all fail", () => {
   const [a, b] = [account(), account()];
   const n = issueNonce();
-  expect(verifyConsent(b.wallet, n.nonce, signed(a, n, b.wallet))).toBe(false);
+  expect(verifyConsent(b.wallet, n.nonce, signed(a, n, b.wallet))).toBeNull();
   const forged = `${Date.now() + 60_000}${n.nonce.slice(13)}`;
-  expect(verifyConsent(a.wallet, forged, signed(a, { ...n, nonce: forged }))).toBe(false);
+  expect(verifyConsent(a.wallet, forged, signed(a, { ...n, nonce: forged }))).toBeNull();
   vi.stubEnv("SESSION_SECRET", "t".repeat(32));
-  expect(verifyConsent(a.wallet, n.nonce, signed(a, n))).toBe(false);
-  // A failed check does not use the nonce up.
+  expect(verifyConsent(a.wallet, n.nonce, signed(a, n))).toBeNull();
   vi.stubEnv("SESSION_SECRET", "s".repeat(32));
-  expect(verifyConsent(a.wallet, n.nonce, signed(a, n))).toBe(true);
+  expect(verifyConsent(a.wallet, n.nonce, signed(a, n))).not.toBeNull();
 });
 
 test("the session cookie names its wallet until it expires and cannot be edited", () => {

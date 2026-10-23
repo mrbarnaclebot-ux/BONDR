@@ -22,6 +22,13 @@ export const wallets = pgTable("wallets", {
   termsVersion: text().notNull(),
 });
 
+// Each consent nonce is spent once, across restarts and replicas (CR-01). Rows past expiry are deleted on the
+// next consent, so the table holds at most five minutes of consents.
+export const consentNonces = pgTable("consent_nonces", {
+  nonce: text().primaryKey(),
+  expiresAt: tstz().notNull(),
+});
+
 // One row (id 1) so the owner pauses launches with a single UPDATE (LAUNCH-06).
 export const settings = pgTable(
   "settings",

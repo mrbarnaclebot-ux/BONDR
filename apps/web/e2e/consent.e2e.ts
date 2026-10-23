@@ -1,6 +1,7 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomInt, sign } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
+import { consentMessage } from "../lib/terms.ts";
 import { injectPhantom, newTestAccount, rootEnv, signIn } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
@@ -138,6 +139,27 @@ test("POST /api/consent refuses cross-site, malformed and oversized bodies", asy
   expect(unsigned.status()).toBe(403);
   expect(await unsigned.json()).toEqual({ error: "consent_required" });
   expect(await rows(wallet)).toBe(0);
+});
+
+test("a captured consent signature works once, even across a web restart (CR-01)", async ({
+  request,
+  baseURL,
+}) => {
+  const account = newTestAccount();
+  used.push(account.address);
+  const headers = { origin: new URL(baseURL as string).origin, "x-real-ip": `10.7.${randomInt(256)}.1` };
+  const { nonce, expires } = await (await request.get("/api/consent", { headers })).json();
+  const message = Buffer.from(consentMessage(account.address, nonce, expires));
+  const data = {
+    wallet: account.address,
+    nonce,
+    signature: sign(null, message, account.key).toString("base64"),
+  };
+  expect((await request.post("/api/consent", { headers, data })).status()).toBe(204);
+  const replay = await request.post("/api/consent", { headers, data });
+  expect(replay.status()).toBe(403);
+  // The spent nonce is a row, not process memory, so a restart cannot forget it.
+  expect((await (sql as postgres.Sql)`select 1 from consent_nonces where nonce = ${nonce}`).length).toBe(1);
 });
 
 test("the launch routes take the wallet from the session, never from the body", async ({ request }) => {

@@ -15,6 +15,13 @@
       "when": 1792650384312,
       "tag": "0001_inflight_mint",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792746371565,
+      "tag": "0002_consent_nonces",
+      "breakpoints": true
     }
   ]
 }

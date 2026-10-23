@@ -1,8 +1,8 @@
 // One coin's indexed row for the token page, with the windowed values (1h and 24h volume, 1h change)
 // computed at read time (RESEARCH Pattern 7). Burn rows never count: they carry no SOL and their market cap
 // is not a trade price. Web reads it for the token page; the worker reads it after a write to publish the
-// coin's new numbers, so both always agree.
-import { eq, sql } from "drizzle-orm";
+// coin's new numbers, so both always agree. The home lists read pages of the same rows (coinRows).
+import { eq, type SQL, sql } from "drizzle-orm";
 import type { CoinRow, Exit, Venue } from "./api.ts";
 import type { Db } from "./db.ts";
 import { coins, launches } from "./schema.ts";
@@ -47,18 +47,14 @@ export const change1h = (mcap: number, before: number | null, launch: number): n
 
 const iso = (d: Date | null) => d?.toISOString() ?? null;
 
-/** The indexed coin of a mint, or null before the indexer has its row. The caller checks the mint format. */
-export async function coinRow(exec: Pick<Db, "select">, mint: string): Promise<CoinRow | null> {
-  const [r] = await exec
-    .select(COLUMNS)
-    .from(coins)
-    .innerJoin(launches, eq(launches.id, coins.launchId))
-    .where(eq(coins.mint, mint))
-    .limit(1);
-  if (!r) return null;
-  const { mcap1hAgo: before, ...rest } = r;
+const select = (exec: Pick<Db, "select">) =>
+  exec.select(COLUMNS).from(coins).innerJoin(launches, eq(launches.id, coins.launchId));
+
+type Raw = Awaited<ReturnType<typeof select>>[number];
+
+function toRow({ mcap1hAgo: before, ...r }: Raw): CoinRow {
   return {
-    ...rest,
+    ...r,
     venue: r.venue as Venue,
     exit: r.exit as Exit,
     vol1h: Number(r.vol1h) / 1e9,
@@ -68,4 +64,24 @@ export async function coinRow(exec: Pick<Db, "select">, mint: string): Promise<C
     launchedAt: r.launchedAt.toISOString(),
     bondedAt: iso(r.bondedAt),
   };
+}
+
+/** The indexed coin of a mint, or null before the indexer has its row. The caller checks the mint format. */
+export async function coinRow(exec: Pick<Db, "select">, mint: string): Promise<CoinRow | null> {
+  const [r] = await select(exec).where(eq(coins.mint, mint)).limit(1);
+  return r ? toRow(r) : null;
+}
+
+/** A page of indexed coins in `order` (fixed column orders from the caller, never user text). */
+export async function coinRows(
+  exec: Pick<Db, "select">,
+  order: SQL[],
+  limit: number,
+  offset: number,
+): Promise<CoinRow[]> {
+  const rows = await select(exec)
+    .orderBy(...order)
+    .limit(limit)
+    .offset(offset);
+  return rows.map(toRow);
 }

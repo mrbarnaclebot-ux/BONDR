@@ -19,7 +19,10 @@ test.describe("hero", () => {
     await expect(page).toHaveTitle("BONDR: built to bond");
     await expect(page.getByRole("heading", { level: 1, name: "Built to bond." })).toBeVisible();
     const main = page.getByRole("main");
-    await expect(main.getByRole("link", { name: "Launch a coin" }).first()).toHaveAttribute("href", "/launch");
+    await expect(main.getByRole("link", { name: "Launch a coin" }).first()).toHaveAttribute(
+      "href",
+      "/launch",
+    );
     await expect(main.getByRole("link", { name: "See all coins" })).toHaveAttribute("href", "#all-coins");
     await expect(
       main.getByText(/^(\d[\d,]* coins? launched, \d[\d,]* bonded\.|No coins launched yet\.)$/),

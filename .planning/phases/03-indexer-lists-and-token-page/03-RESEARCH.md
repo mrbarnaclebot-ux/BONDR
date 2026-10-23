@@ -529,13 +529,13 @@ export function GET(req: Request) {
 | A7 | Event `quoteAmount` (net of fees) is the right "SOL amount" for the feed and volume | Prices | Displayed amounts differ from gross by about 2.45% on the curve |
 | A8 | Completing a devnet child curve is cheap enough for a pool-trade e2e | Pitfall 9 | Pool path tested only by fixture |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Market cap supply (owner decision).** Pump.fun-style market cap uses the full 1B supply; PumpSwap's own `poolMarketCap` uses the live mint supply. BONDR coins burn at launch (insta burn) and, in Phase 5, up to about 80% of supply at a forced bond. With 1B, the market cap overstates burned coins; with live supply, a forced bond shows a large step down that is real.
    - Recommendation: live supply (`getTokenSupply` once per launch ingest, 1 credit; Phase 5 updates it after its own burns). The schema above stores `supply` either way.
    - **Owner decision (2026-10-23): fixed 1B supply** (D-22 in CONTEXT.md). Market cap = price x 1,000,000,000 on both curve and pool, so numbers match pump.fun and other trackers. Do not use `poolMarketCap` with live supply; use the 1B constant.
-2. **Probe results A1, A2, A8.** Plan a Wave 0 task: run the stream against devnet, launch one coin through the existing `scripts/devnet-launch.ts`, run one `devnet-trades.ts` buy and sell, and assert all three are notified and appear in `getSignaturesForAddress(mint)`; capture each as a fixture.
-3. **PumpSwap event reserve semantics.** Avoided by reading `postTokenBalances`; confirm on the captured pool fixture that the computed price matches the pool account after the trade.
+2. **Probe results A1, A2, A8.** Plan a Wave 0 task: run the stream against devnet, launch one coin through the existing `scripts/devnet-launch.ts`, run one `devnet-trades.ts` buy and sell, and assert all three are notified and appear in `getSignaturesForAddress(mint)`; capture each as a fixture. RESOLVED: planned as the 03-01 stream probe.
+3. **PumpSwap event reserve semantics.** Avoided by reading `postTokenBalances`; confirm on the captured pool fixture that the computed price matches the pool account after the trade. RESOLVED: 03-02 reads postTokenBalances and checks it on the pool fixture.
 4. **Staging e2e coins.** Recommend no special handling: staging is devnet and every staging coin is a test coin. Specs should name coins with a recognizable prefix (for example "E2E ") so a person can tell them apart; nothing filters them.
 
 ## Environment Availability

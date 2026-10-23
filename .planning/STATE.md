@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-10-23T14:19:30.658Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-10-23T14:29:55.835Z"
 last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 31
+  completed_plans: 32
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 4 of 15
+Plan: 5 of 15
 Status: Ready to execute
 Last activity: 2026-10-23
 
-Progress: [███████░░░] 72%
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Progress: [███████░░░] 72%
 | Phase 02 P16 | 67 min | 3 tasks | - |
 | Phase 03 P01 | 12 min | 3 tasks | 18 files |
 | Phase 03 P03 | 14 min | 2 tasks | 18 files |
+| Phase 03 P04 | 12 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,9 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-01: devnet-trades --complete is a refuse-only gate (exit 2); the buy-out and pool path is not built because it cannot run on devnet
 - [Phase 03]: 03-03: coin card route sets cache-control itself (immutable for a landed coin, max-age=300 site card) and is force-dynamic
 - [Phase 03]: 03-03: landedCoin in lib/launches.ts is the one cached landed lookup for page, metadata and share card
+- [Phase 03]: 03-04: int8 amount columns are a string customType (drizzle 0.45 bigint has no string mode)
+- [Phase 03]: 03-04: BONDR identity (mint, pool) lives in worker bondr-price.ts; seedBondrPrice sets it before its first await and ingest reads bondr()
+- [Phase 03]: 03-04: a coin patch applies when its mint got a newly inserted trade, or when the tx has no trade of that mint (CreatePoolEvent); no slot-order guard yet
 
 ### Pending Todos
 
@@ -195,6 +199,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T14:19:30.652Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-10-23T14:29:40.108Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None

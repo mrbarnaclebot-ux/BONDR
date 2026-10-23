@@ -8,7 +8,7 @@ import { bondingCurvePda, canonicalPumpPoolPdaWithQuote } from "@bondr/core/pump
 import { fetchTx, pace } from "@bondr/core/send";
 import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } from "@bondr/core/trades";
 import { type Connection, PublicKey } from "@solana/web3.js";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { bondr, bondrPrice } from "./bondr-price.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
 
@@ -35,11 +35,6 @@ export async function loadCoins(exec: Exec): Promise<void> {
   for (const r of rows) knownCoins.set(r.mint, r);
 }
 
-const patchSet = ({ mint: _, bondedAt, ...rest }: CoinPatch) => ({
-  ...rest,
-  ...(bondedAt && { bondedAt: new Date(bondedAt) }),
-});
-
 // created carries the launch's own patch, so a launch that already completed the curve brings venue and bondedAt.
 async function insertCoin(exec: Exec, created: NonNullable<Parsed["created"]>, launch: LaunchRef) {
   const { mcapSol, launchMcapSol, launchedAt, ...rest } = created;
@@ -56,8 +51,29 @@ async function insertCoin(exec: Exec, created: NonNullable<Parsed["created"]>, l
     .onConflictDoNothing();
 }
 
+// Curve state moves only forward in slots, so a gap fill writing an older trade after a newer one inserts
+// its row and leaves the coin alone (Pitfall 4). Same-slot txs have no known order: the later write wins.
+// Venue only advances (curve, complete, pool); the coins_bonded check refuses pool before complete.
+async function applyPatch(exec: Exec, p: CoinPatch, fresh: Inserted | undefined): Promise<void> {
+  const { mint, venue, bondSig, bondedAt, ...state } = p;
+  if (fresh) {
+    const seen = { lastSig: fresh.signature, lastTradeAt: fresh.at, lastSlot: fresh.slot };
+    const newer = or(isNull(coins.lastSlot), lte(coins.lastSlot, fresh.slot));
+    await exec
+      .update(coins)
+      .set({ ...state, ...seen })
+      .where(and(eq(coins.mint, mint), newer));
+  }
+  if (!venue) return;
+  const from = venue === "pool" ? ["curve", "complete"] : ["curve"];
+  await exec
+    .update(coins)
+    .set({ venue, bondSig, ...(bondedAt && { bondedAt: new Date(bondedAt) }) })
+    .where(and(eq(coins.mint, mint), inArray(coins.venue, from)));
+}
+
 // Runs in the caller's transaction. A patch applies when its mint got a new trade, or when the tx has no trade
-// of that mint at all (a migration's CreatePoolEvent), which only ever sets the same values again.
+// of that mint at all (a migration's CreatePoolEvent), which only ever advances the venue.
 export async function writeParsed(exec: Exec, parsed: Parsed, launch?: LaunchRef): Promise<Inserted[]> {
   if (parsed.created && launch) await insertCoin(exec, parsed.created, launch);
   const rows = parsed.trades.map((t) => ({ ...t, at: new Date(t.at) }));
@@ -65,14 +81,9 @@ export async function writeParsed(exec: Exec, parsed: Parsed, launch?: LaunchRef
     ? await exec.insert(trades).values(rows).onConflictDoNothing().returning()
     : [];
   for (const p of parsed.patches) {
-    const fresh = inserted.filter((t) => t.mint === p.mint);
-    const last = fresh.at(-1);
-    if (!last && parsed.trades.some((t) => t.mint === p.mint)) continue;
-    const seen = last && { lastSig: last.signature, lastTradeAt: last.at };
-    await exec
-      .update(coins)
-      .set({ ...patchSet(p), ...seen })
-      .where(eq(coins.mint, p.mint));
+    const fresh = inserted.filter((t) => t.mint === p.mint).at(-1);
+    if (!fresh && parsed.trades.some((t) => t.mint === p.mint)) continue;
+    await applyPatch(exec, p, fresh);
   }
   return inserted;
 }

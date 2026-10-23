@@ -128,6 +128,7 @@ export const coins = pgTable(
     bondSol: dbl(),
     lastTradeAt: tstz(),
     lastSig: text(),
+    lastSlot: big(), // the slot of the trade that set the state above; older trades never move it back
     holders: integer(),
     holdersAt: tstz(),
     bondSig: text(),

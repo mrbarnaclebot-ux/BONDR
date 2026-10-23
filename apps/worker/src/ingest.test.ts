@@ -85,4 +85,34 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
       if (!(e instanceof TransactionRollbackError)) throw e;
     }
   });
+
+  // A gap fill can write an older trade after a newer one: its row lands, the coin keeps the newer state.
+  test("an older trade inserts its row but does not roll the coin back", async () => {
+    try {
+      await db().transaction(async (tx) => {
+        await tx.delete(trades).where(eq(trades.mint, DEV));
+        await tx.delete(coins).where(eq(coins.mint, DEV));
+        const bondr = { ...BONDR, sol: 3e-7 };
+        const launch = parseTx(fixture("launch-burn"), new Map(), bondr, { mint: DEV, exit: "burn" });
+        await writeParsed(tx, launch, { id: await launchOf(tx), pool: "pool" });
+        const init = launch.created?.initialRealTokenReserves ?? "";
+        const known = new Map([
+          [DEV, { mint: DEV, bondingCurve: "c", pool: "pool", initialRealTokenReserves: init }],
+        ]);
+        const newer = parseTx(fixture("curve-sell"), known, bondr);
+        const older = parseTx(fixture("curve-buy"), known, bondr);
+        await writeParsed(tx, newer);
+        expect(await writeParsed(tx, older)).toHaveLength(1);
+        expect(await coinOf(tx)).toMatchObject({
+          mcapSol: newer.patches[0]?.mcapSol,
+          realTokenReserves: newer.patches[0]?.realTokenReserves,
+          lastSig: newer.trades[0]?.signature,
+          lastSlot: newer.trades[0]?.slot,
+        });
+        tx.rollback();
+      });
+    } catch (e) {
+      if (!(e instanceof TransactionRollbackError)) throw e;
+    }
+  });
 });

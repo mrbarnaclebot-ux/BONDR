@@ -36,7 +36,7 @@
 - [x] **LIST-02**: User sees a Top list ranked by market cap
 - [x] **LIST-03**: User sees Latest (newest launches first) and Oldest, in tabs alongside Top, each shown as a card grid of at most 5 cards per row
 - [ ] **LIST-04**: Each coin card shows image, name, symbol, market cap, 1h change, bond progress and age, and updates live without a reload
-- [ ] **LIST-05**: User can search BONDR coins by name, symbol or mint
+- [x] **LIST-05**: User can search BONDR coins by name, symbol or mint
 
 ### Token page
 
@@ -132,7 +132,7 @@
 | LIST-02 | Phase 3 | Complete |
 | LIST-03 | Phase 3 | Complete |
 | LIST-04 | Phase 3 | Pending |
-| LIST-05 | Phase 3 | Pending |
+| LIST-05 | Phase 3 | Complete |
 | TOKEN-01 | Phase 3 | Complete |
 | TOKEN-02 | Phase 3 | Complete |
 | TOKEN-03 | Phase 5 | Pending |

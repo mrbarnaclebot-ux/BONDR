@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-11-PLAN.md
-last_updated: "2026-10-23T19:01:35.663Z"
+stopped_at: Completed 03-12-PLAN.md
+last_updated: "2026-10-23T19:31:59.166Z"
 last_activity: 2026-10-23
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 43
-  completed_plans: 39
+  completed_plans: 40
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 12 of 15
+Plan: 13 of 15
 Status: Ready to execute
 Last activity: 2026-10-23
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Progress: [█████████░] 91%
 | Phase 03 P07 | 16 min | 3 tasks | 15 files |
 | Phase 03 P10 | 19min | 2 tasks | 15 files |
 | Phase 03 P11 | 18min | 3 tasks | 21 files |
+| Phase 03 P12 | 27min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-10: default candle interval is computed on the server from coins.launched_at; oklch CSS tokens go to rgba through a 1px canvas for lightweight-charts
 - [Phase 03]: 03-11: list rows reuse core coinRow's select and mapping (coinRows), so cards, the token page and live events read the same numbers
 - [Phase 03]: 03-11: header Launch link is an icon below 360px and the wordmark hides below 440px so the devnet header fits at 320 and 390
+- [Phase 03]: 03-12: a full mint searches through listCoins q; the client opens /coin/{mint} only on an exact mint in the result (no searchByMint)
+- [Phase 03]: 03-12: trending is one query ordered by 1h volume, 24h volume, newest launch; mode read from the first row; list not filtered (up to 10 cards)
 
 ### Pending Todos
 
@@ -213,6 +216,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-23T19:01:35.658Z
-Stopped at: Completed 03-11-PLAN.md
+Last session: 2026-10-23T19:31:55.840Z
+Stopped at: Completed 03-12-PLAN.md
 Resume file: None

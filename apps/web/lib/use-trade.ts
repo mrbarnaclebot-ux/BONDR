@@ -218,7 +218,11 @@ function useRun(a: RunArgs, refreshBalance: () => void, onLanded: () => void) {
     try {
       const v = await runTrade(input);
       setResult(toResult(a.side, v));
-      if (v.state === "landed") onLanded();
+      if (v.state === "landed") {
+        onLanded();
+        // One bounded second read: the worker's balance RPC can lag the confirmation (C-WR-09, D-16).
+        setTimeout(refreshBalance, 2_000);
+      }
     } catch (e) {
       const code = e instanceof Stop ? e.code : "worker_unavailable";
       // The server has no session for this wallet: back to "Accept terms to trade" and the consent dialog.

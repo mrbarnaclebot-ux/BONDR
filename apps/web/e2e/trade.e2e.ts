@@ -171,17 +171,14 @@ test.describe("trade panel", () => {
       await page.clock.runFor(2_000);
       await quotes().toBe(n);
     }
-    // Past 60 s without input the loop stops for good.
+    // Past 60 s without input the loop stops for good: the pause is announced, then no tick quotes (C-WR-09).
     await page.clock.runFor(60_000);
+    await expect(panel(page, coin.symbol).locator('[aria-live="polite"]')).toHaveText("Quote paused.");
     await page.clock.runFor(1);
     const stopped = calls.quote.length;
     expect(stopped).toBeGreaterThan(4);
-    for (let i = 0; i < 3; i++) {
-      await page.clock.runFor(2_000);
-      await page.waitForTimeout(200);
-    }
-    await page.clock.runFor(1);
-    expect(calls.quote.length).toBe(stopped);
+    await page.clock.runFor(6_000);
+    await quotes().toBe(stopped);
     // Any input resumes it.
     await input.fill("0.6");
     await page.clock.runFor(400);
@@ -293,6 +290,10 @@ test.describe("devnet", () => {
     const buy = await landed(page, trade, "Bought", "Buy");
 
     await trade.getByRole("button", { name: "Sell", exact: true }).click();
+    // The post-buy balance read can lag the confirmation: wait for a non-zero coin balance (C-WR-09).
+    await expect(trade.getByText(new RegExp(`^Balance (?!0 )[\\d,.]+ ${c.symbol}$`))).toBeVisible({
+      timeout: 30_000,
+    });
     await chip(page, c.symbol, "100%").click();
     // A sell of the whole balance through two curves can pass 15% impact: then it is the "anyway" press (D-13).
     const ready = new RegExp(`^Sell ([\\d,.]+ ${c.symbol}|anyway, [\\d.]+% price impact)$`);

@@ -64,68 +64,73 @@ const matches = (e: HubEvent, mint?: string) =>
 
 const backoff = (n: number) => new Promise((r) => setTimeout(r, Math.min(30_000, 1000 * 2 ** (n - 1))));
 
-export function createHub(open: Open, wait: (fails: number) => Promise<unknown> = backoff) {
-  const ring = new Ring();
-  const subs = new Set<{ write: Write; mint?: string }>();
-  let started = false;
+type Sub = { write: Write; mint?: string };
+type State = { ring: Ring; subs: Set<Sub> };
 
-  const fan = (e: HubEvent) => {
-    for (const s of subs) {
-      if (!matches(e, s.mint)) continue;
-      try {
-        s.write(e);
-      } catch {
-        subs.delete(s); // a closed stream; its route cleans up in cancel()
-      }
-    }
-  };
-
-  // The first ping of a connection carries the worker's current id. Anything other than where the hub left
-  // off (worker restart, events published while disconnected) is a gap: clear the ring and resync clients.
-  // ponytail: the first connect after a web boot never resyncs; pages rendered just before it may miss
-  // events from those seconds.
-  const sync = (id: string) => {
-    if (ring.head === id) return;
-    const gap = ring.head !== null;
-    ring.reset(id);
-    if (gap) fan({ type: "resync", id });
-  };
-
-  async function run(): Promise<never> {
-    for (let fails = 0; ; ) {
-      try {
-        for await (const value of splitLines(await open())) {
-          const line = value as Line;
-          if (typeof line?.id !== "string") continue;
-          fails = 0;
-          if (line.type === "ping") {
-            sync(line.id);
-            continue;
-          }
-          ring.push(line);
-          fan(line);
-        }
-      } catch (e) {
-        console.error(`live upstream failed: ${e instanceof Error ? e.message : "unknown"}`);
-      }
-      await wait(++fails);
+function fan(h: State, e: HubEvent): void {
+  for (const s of h.subs) {
+    if (!matches(e, s.mint)) continue;
+    try {
+      s.write(e);
+    } catch {
+      h.subs.delete(s); // a closed stream; its route cleans up in cancel()
     }
   }
+}
 
+// The first ping of a connection carries the worker's current id. Anything other than where the hub left
+// off (worker restart, events published while disconnected) is a gap: clear the ring and resync clients.
+// ponytail: the first connect after a web boot never resyncs; pages rendered just before it may miss
+// events from those seconds.
+function sync(h: State, id: string): void {
+  if (h.ring.head === id) return;
+  const gap = h.ring.head !== null;
+  h.ring.reset(id);
+  if (gap) fan(h, { type: "resync", id });
+}
+
+function take(h: State, line: Line): void {
+  if (line.type === "ping") {
+    sync(h, line.id);
+    return;
+  }
+  h.ring.push(line);
+  fan(h, line);
+}
+
+async function run(h: State, open: Open, wait: (fails: number) => Promise<unknown>): Promise<never> {
+  for (let fails = 0; ; ) {
+    try {
+      for await (const value of splitLines(await open())) {
+        const line = value as Line;
+        if (typeof line?.id !== "string") continue;
+        fails = 0;
+        take(h, line);
+      }
+    } catch (e) {
+      console.error(`live upstream failed: ${e instanceof Error ? e.message : "unknown"}`);
+    }
+    await wait(++fails);
+  }
+}
+
+export function createHub(open: Open, wait: (fails: number) => Promise<unknown> = backoff) {
+  const h: State = { ring: new Ring(), subs: new Set() };
+  let started = false;
   return {
-    head: () => ring.head,
+    head: () => h.ring.head,
     /** Replays what `lastId` missed (or one resync), then live events; starts the upstream on first use. */
     subscribe(write: Write, { mint, lastId }: { mint?: string; lastId?: string } = {}): () => void {
-      const missed = lastId ? ring.since(lastId) : [];
-      if (!missed) write({ type: "resync", id: ring.head ?? undefined });
+      const missed = lastId ? h.ring.since(lastId) : [];
+      if (!missed) write({ type: "resync", id: h.ring.head ?? undefined });
       else for (const e of missed) if (matches(e, mint)) write(e);
       const sub = { write, mint };
-      subs.add(sub);
+      h.subs.add(sub);
       if (!started) {
         started = true;
-        void run();
+        void run(h, open, wait);
       }
-      return () => void subs.delete(sub);
+      return () => void h.subs.delete(sub);
     },
   };
 }

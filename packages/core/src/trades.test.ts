@@ -176,9 +176,14 @@ test("complete: completing curve buy, PostCompleteBuyEvent pool buy, venue compl
 
 test("create-pool: venue pool, and the events parseTx does not use are listed as unknown", () => {
   const r = parseTx(fixture("create-pool"), coin(FORK, POOL), forkBondr);
-  expect(r.patches).toEqual([{ mint: FORK, venue: "pool" }]);
+  expect(r.patches).toEqual([{ mint: FORK, venue: "pool", bondedAt: r.patches[0]?.bondedAt }]);
+  expect(r.patches[0]?.bondedAt).toMatch(/^\d{4}-/);
   expect(r.trades).toEqual([]);
   expect(r.unknown).toEqual(["InitBoostEvent", "CompletePumpAmmMigrationEvent"]);
+});
+
+test("create-pool: a pool other than the coin's canonical one moves nothing (permissionless create_pool)", () => {
+  expect(parseTx(fixture("create-pool"), coin(FORK, "another-pool"), forkBondr).patches).toEqual([]);
 });
 
 test("coins BONDR did not launch are ignored (D-03)", () => {

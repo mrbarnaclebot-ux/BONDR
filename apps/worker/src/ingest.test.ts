@@ -113,6 +113,18 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
           lastSig: newer.trades[0]?.signature,
           lastSlot: newer.trades[0]?.slot,
         });
+
+        // complete, then the migration: the venue moves to pool and the complete time stays the bond time
+        const venue = (v: "complete" | "pool", bondedAt: string) => ({
+          ...{ trades: [], bondr: null, created: null, unknown: [] },
+          patches: [{ mint: DEV, venue: v, bondedAt }],
+        });
+        const bonded = new Set<string>();
+        await writeParsed(tx, venue("complete", "2026-10-01T00:00:00.000Z"), undefined, bonded);
+        await writeParsed(tx, venue("pool", "2026-10-02T00:00:00.000Z"), undefined, bonded);
+        expect(bonded).toEqual(new Set([DEV]));
+        const after = await coinOf(tx);
+        expect([after?.venue, after?.bondedAt]).toEqual(["pool", new Date("2026-10-01T00:00:00.000Z")]);
         tx.rollback();
       });
     } catch (e) {

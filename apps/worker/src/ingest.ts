@@ -12,7 +12,7 @@ import { bondingCurvePda, canonicalPumpPoolPdaWithQuote } from "@bondr/core/pump
 import { fetchTx, pace } from "@bondr/core/send";
 import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } from "@bondr/core/trades";
 import { type Connection, PublicKey } from "@solana/web3.js";
-import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { bondr, bondrPrice } from "./bondr-price.ts";
 import { listening, publish } from "./events-route.ts";
 import { touch } from "./holders.ts";
@@ -59,8 +59,8 @@ async function insertCoin(exec: Exec, created: NonNullable<Parsed["created"]>, l
 
 // Curve state moves only forward in slots, so a gap fill writing an older trade after a newer one inserts
 // its row and leaves the coin alone (Pitfall 4). Same-slot txs have no known order: the later write wins.
-// Venue only advances (curve, complete, pool); the coins_bonded check refuses pool before complete.
-// True when this patch moved the venue.
+// Venue only advances (curve, complete, pool). A pool patch brings its own time, so a missed CompleteEvent
+// cannot fail the coins_bonded check; the complete time wins when it was seen. True when the venue moved.
 async function applyPatch(exec: Exec, p: CoinPatch, fresh: Inserted | undefined): Promise<boolean> {
   const { mint, venue, bondSig, bondedAt, ...state } = p;
   if (fresh) {
@@ -75,7 +75,11 @@ async function applyPatch(exec: Exec, p: CoinPatch, fresh: Inserted | undefined)
   const from = venue === "pool" ? ["curve", "complete"] : ["curve"];
   const moved = await exec
     .update(coins)
-    .set({ venue, bondSig, ...(bondedAt && { bondedAt: new Date(bondedAt) }) })
+    .set({
+      venue,
+      bondSig,
+      ...(bondedAt && { bondedAt: sql`coalesce(${coins.bondedAt}, ${bondedAt}::timestamptz)` }),
+    })
     .where(and(eq(coins.mint, mint), inArray(coins.venue, from)))
     .returning({ mint: coins.mint });
   return moved.length > 0;

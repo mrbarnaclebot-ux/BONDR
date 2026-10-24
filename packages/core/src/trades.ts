@@ -194,7 +194,9 @@ function handle(c: Ctx, e: PumpEvent): Out {
   if (!c.init.has(mint)) return {};
   if (e.name === "CompleteEvent")
     return { patch: { mint, venue: "complete", bondSig: c.sig, bondedAt: c.at } };
-  if (e.name === "CreatePoolEvent") return { patch: { mint, venue: "pool" } };
+  // Only the coin's canonical pool: create_pool is permissionless, so anyone can open another pool of the coin.
+  if (e.name === "CreatePoolEvent" && c.pools.get(String(e.data.pool))?.mint === mint)
+    return { patch: { mint, venue: "pool", bondedAt: c.at } };
   return {};
 }
 

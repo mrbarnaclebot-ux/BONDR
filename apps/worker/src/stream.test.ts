@@ -1,8 +1,8 @@
 // The stream's pure parts and the gap fill against a fake connection. The socket never opens in Vitest
 // (Pitfall 1: a test must not keep a Neon branch awake).
 import type { Connection } from "@solana/web3.js";
-import { expect, test } from "vitest";
-import { gapFill } from "./ingest.ts";
+import { expect, test, vi } from "vitest";
+import { failedSigs, gapFill, retryFailed } from "./ingest.ts";
 import { backoff, isPumpInvoke, shouldIngest } from "./stream.ts";
 
 const PUMP = "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [2]";
@@ -65,4 +65,25 @@ test("gapFill pages back to last_sig, then ingests oldest first and skips failed
   expect(seen[0]).toBe("s0");
   expect(seen.at(-1)).toBe("s1001");
   expect(seen).not.toContain("s1000");
+});
+
+test("a failed ingest does not stop the fill: it is kept, and retried until it lands", async () => {
+  const conn = {
+    getSignaturesForAddress: async () => ["c", "b", "a"].map((signature) => ({ signature, err: null })),
+  } as unknown as Connection;
+  const seen: string[] = [];
+  let down = true;
+  const ingest = async (_c: Connection, sig: string) => {
+    seen.push(sig);
+    if (sig === "b" && down) throw new Error("neon timeout");
+  };
+  const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+  expect(await gapFill(conn, "11111111111111111111111111111111", "x", ingest)).toBe(3);
+  expect(seen).toEqual(["a", "b", "c"]);
+  expect(failedSigs()).toEqual(["b"]);
+  down = false;
+  await retryFailed(conn, ingest);
+  expect(seen).toEqual(["a", "b", "c", "b"]);
+  expect(failedSigs()).toEqual([]);
+  quiet.mockRestore();
 });

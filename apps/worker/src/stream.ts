@@ -1,11 +1,11 @@
 // Live ingestion (RESEARCH Pattern 1): one log subscription on the BONDR mint (D-05), which every BONDR coin
 // trade names as an account. A notification is only a hint: it queues a signature, and ingestTx fetches the
-// tx and checks the emit_cpi authority before writing anything. Every (re)connect subscribes first and then
-// gap fills, so nothing falls between. Never started in Vitest (Pitfall 1).
+// tx and checks the emit_cpi authority before writing anything. Every (re)connect reads each coin's last_sig,
+// subscribes, then gap fills from those marks, so nothing falls between. Never started in Vitest (Pitfall 1).
 import type { Net } from "@bondr/core/keys";
 import { redact, wsUrl } from "@bondr/core/net";
 import type { Connection } from "@solana/web3.js";
-import { gapFillAll, ingestTx } from "./ingest.ts";
+import { gapFillAll, ingestOrKeep, lastSigs, type Marks, retryFailed } from "./ingest.ts";
 import type { Ctx } from "./status.ts";
 
 const PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
@@ -28,32 +28,34 @@ export const shouldIngest = (v: { err: unknown; logs: readonly string[] }): bool
 export const backoff = (attempt: number, r = Math.random()): number =>
   Math.min(30_000, 1000 * 2 ** attempt) * (0.8 + 0.4 * r);
 
-// De-duplicated and drained one at a time, so a burst never exceeds the Helius request rate.
+// De-duplicated and drained one at a time, so a burst never exceeds the Helius request rate. A drain first
+// retries what failed before.
 const queue = new Set<string>();
 let draining = false;
 async function drain(conn: Connection): Promise<void> {
   draining = true;
+  await retryFailed(conn);
   for (const sig of queue) {
-    await ingestTx(conn, sig).catch(logged(`ingest ${sig}`));
+    await ingestOrKeep(conn, sig);
     queue.delete(sig);
   }
   draining = false;
 }
 
-// One fill at a time; an open during a fill runs one more fill after it, from the then-current last_sig.
+// One fill at a time. An open during a fill queues its marks for one more fill after it; for a coin in both
+// snapshots the older mark wins (last_sig only moves forward), so it covers what both disconnects missed.
 let filling = false;
-let again = false;
-async function fillAll(conn: Connection): Promise<void> {
-  if (filling) {
-    again = true;
-    return;
-  }
+let next: Marks | null = null;
+async function fillAll(conn: Connection, marks: Marks): Promise<void> {
+  next = next ? new Map([...marks, ...next]) : marks;
+  if (filling) return;
   filling = true;
-  do {
-    again = false;
-    const n = await gapFillAll(conn).catch(logged("gap fill"));
+  for (let m: Marks | null = next; m; m = next) {
+    next = null;
+    await retryFailed(conn);
+    const n = await gapFillAll(conn, m).catch(logged("gap fill"));
     if (n) console.log(`gap fill: ${n} txs`);
-  } while (again);
+  }
   filling = false;
 }
 
@@ -84,7 +86,8 @@ export function startStream(ctx: Ctx, net: Net, attempt = 0): void {
   }
   let ping: NodeJS.Timeout | undefined;
   let healthy: NodeJS.Timeout | undefined;
-  ws.onopen = () => {
+  const subscribe = (marks: Marks) => {
+    if (ws.readyState !== WebSocket.OPEN) return;
     const params = [{ mentions: [ctx.Q.toBase58()] }, { commitment: "confirmed" }];
     ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "logsSubscribe", params }));
     ping = setInterval(() => ws.send(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "ping" })), PING_MS);
@@ -92,8 +95,13 @@ export function startStream(ctx: Ctx, net: Net, attempt = 0): void {
       attempt = 0;
     }, HEALTHY_MS);
     console.log("stream subscribed");
-    void fillAll(ctx.conn);
+    void fillAll(ctx.conn, marks);
   };
+  ws.onopen = () =>
+    lastSigs().then(subscribe, (e: unknown) => {
+      logged("stream marks")(e);
+      ws.close();
+    });
   ws.onmessage = (m) => onMessage(ctx.conn, m.data);
   // An error is always followed by close, which reconnects.
   ws.onerror = (e) => console.error(`stream error: ${redact(String((e as ErrorEvent).message ?? e.type))}`);

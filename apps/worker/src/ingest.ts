@@ -152,7 +152,7 @@ async function arm(conn: Connection, inserted: Inserted[], bonded: Set<string>, 
 
 export async function ingestTx(conn: Connection, sig: string): Promise<Inserted[]> {
   const tx = await fetchTx(conn, sig);
-  if (!tx) return [];
+  if (!tx) throw new Error(`tx ${sig} not visible`); // a miss is a failure, so it is kept and retried
   const parsed = parse(tx);
   if (!parsed.trades.length && !parsed.patches.length) return [];
   const bonded = new Set<string>();
@@ -186,8 +186,31 @@ type Ingest = (conn: Connection, sig: string) => Promise<unknown>;
 const paced: Ingest = (conn, sig) => pace(BACKFILL_PACE_MS).then(() => ingestTx(conn, sig));
 const PAGE = 1000;
 
+// Live trades move last_sig past a signature that failed, so no later gap fill would reach it: it is kept here
+// and retried by the next drain or fill. ponytail: kept in memory for up to 20 tries; a restart while one waits
+// loses it. A filled_sig column moved only by finished fills would survive restarts.
+const failed = new Map<string, number>(); // signature -> failed tries
+const TRIES = 20;
+export const failedSigs = (): string[] => [...failed.keys()];
+
+export async function ingestOrKeep(conn: Connection, sig: string, ingest: Ingest = ingestTx): Promise<void> {
+  try {
+    await ingest(conn, sig);
+    failed.delete(sig);
+  } catch (e) {
+    const n = (failed.get(sig) ?? 0) + 1;
+    logged(`ingest ${sig} (try ${n}${n < TRIES ? "" : ", giving up"})`)(e);
+    if (n < TRIES) failed.set(sig, n);
+    else failed.delete(sig);
+  }
+}
+
+export async function retryFailed(conn: Connection, ingest = paced): Promise<void> {
+  for (const sig of failedSigs()) await ingestOrKeep(conn, sig, ingest);
+}
+
 // Every signature of the mint after `until` (exclusive), newest-first pages walked with `before`, then
-// ingested oldest first. A failed ingest stops the fill, so last_sig stays before it and the next fill retries.
+// ingested oldest first. A failed ingest is kept for retry and the fill goes on.
 export async function gapFill(
   conn: Connection,
   mint: string,
@@ -203,19 +226,26 @@ export async function gapFill(
     if (page.length < PAGE) break;
     before = page.at(-1)?.signature;
   }
-  for (const sig of sigs.reverse()) await ingest(conn, sig);
+  for (const sig of sigs.reverse()) await ingestOrKeep(conn, sig, ingest);
   return sigs.length;
 }
 
-// Every known coin from its last indexed trade, one coin at a time. One read of coins per call; called on
-// each websocket open, never on a timer.
-export async function gapFillAll(conn: Connection): Promise<number> {
+export type Marks = ReadonlyMap<string, string | null>; // mint -> last_sig
+
+// Every coin's last_sig, one read on each websocket open (never on a timer). Read before subscribing, so no
+// live trade on the new socket can move a coin's boundary past what the disconnect missed.
+export async function lastSigs(): Promise<Marks> {
   const rows = await db().select({ mint: coins.mint, lastSig: coins.lastSig }).from(coins);
+  return new Map(rows.map((r) => [r.mint, r.lastSig]));
+}
+
+// Every known coin from its mark, one coin at a time.
+export async function gapFillAll(conn: Connection, marks: Marks): Promise<number> {
   let n = 0;
-  for (const r of rows) {
-    if (!knownCoins.has(r.mint)) continue;
-    n += await gapFill(conn, r.mint, r.lastSig ?? undefined).catch((e: unknown) => {
-      logged(`gap fill ${r.mint}`)(e);
+  for (const [mint, lastSig] of marks) {
+    if (!knownCoins.has(mint)) continue;
+    n += await gapFill(conn, mint, lastSig ?? undefined).catch((e: unknown) => {
+      logged(`gap fill ${mint}`)(e);
       return 0;
     });
   }

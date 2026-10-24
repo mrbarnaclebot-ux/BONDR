@@ -60,18 +60,55 @@ async function fillAll(conn: Connection, marks: Marks): Promise<void> {
 }
 
 type Note = { params?: { result?: { value?: { signature: string; err: unknown; logs: string[] } } } };
-function onMessage(conn: Connection, data: unknown): void {
-  let msg: Note & { error?: unknown };
+type Reply = Note & { id?: number; result?: unknown; error?: unknown };
+// False when the socket is useless: the reply to logsSubscribe (id 1) refused the subscription.
+export function onMessage(conn: Connection, data: unknown): boolean {
+  let msg: Reply;
   try {
     msg = JSON.parse(String(data));
   } catch {
-    return;
+    return true;
   }
   if (msg.error) console.error(`stream rpc error: ${redact(JSON.stringify(msg.error))}`);
+  if (msg.id === 1 && typeof msg.result !== "number") return false;
   const v = msg.params?.result?.value;
-  if (!v || !shouldIngest(v) || queue.has(v.signature)) return;
+  if (!v || !shouldIngest(v) || queue.has(v.signature)) return true;
   queue.add(v.signature);
   if (!draining) void drain(conn);
+  return true;
+}
+
+const SUBSCRIBE = (ctx: Ctx) =>
+  JSON.stringify({
+    ...{ jsonrpc: "2.0", id: 1, method: "logsSubscribe" },
+    params: [{ mentions: [ctx.Q.toBase58()] }, { commitment: "confirmed" }],
+  });
+// The keepalive is getHealth, not "ping": Helius devnet never answers a JSON-RPC ping (probed 2026-10-24), and an
+// answer is what proves the link is alive. ponytail: about 86k getHealth calls a month; drop to 50 s if credits pinch.
+const PING = JSON.stringify({ jsonrpc: "2.0", id: 2, method: "getHealth" });
+
+type Link = { ws: WebSocket; ping?: NodeJS.Timeout; healthy?: NodeJS.Timeout; seen: number; down: boolean };
+
+// Once per socket. Also the way out of a half-open socket, which may never fire close on its own.
+function drop(l: Link, why: string, retry: () => void): void {
+  if (l.down) return;
+  l.down = true;
+  clearInterval(l.ping);
+  clearTimeout(l.healthy);
+  console.warn(`stream ${why}, reconnecting`);
+  l.ws.close();
+  retry();
+}
+
+function subscribe(ctx: Ctx, l: Link, marks: Marks, dead: (why: string) => void): boolean {
+  if (l.ws.readyState !== WebSocket.OPEN) return false;
+  l.ws.send(SUBSCRIBE(ctx));
+  l.seen = Date.now();
+  // Every getHealth is answered, so two intervals of silence mean the link is dead.
+  l.ping = setInterval(() => (Date.now() - l.seen > 2 * PING_MS ? dead("silent") : l.ws.send(PING)), PING_MS);
+  console.log("stream subscribed");
+  void fillAll(ctx.conn, marks);
+  return true;
 }
 
 export function startStream(ctx: Ctx, net: Net, attempt = 0): void {
@@ -84,31 +121,26 @@ export function startStream(ctx: Ctx, net: Net, attempt = 0): void {
     retry();
     return;
   }
-  let ping: NodeJS.Timeout | undefined;
-  let healthy: NodeJS.Timeout | undefined;
-  const subscribe = (marks: Marks) => {
-    if (ws.readyState !== WebSocket.OPEN) return;
-    const params = [{ mentions: [ctx.Q.toBase58()] }, { commitment: "confirmed" }];
-    ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "logsSubscribe", params }));
-    ping = setInterval(() => ws.send(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "ping" })), PING_MS);
-    healthy = setTimeout(() => {
-      attempt = 0;
-    }, HEALTHY_MS);
-    console.log("stream subscribed");
-    void fillAll(ctx.conn, marks);
+  const l: Link = { ws, seen: 0, down: false };
+  const dead = (why: string) => drop(l, why, retry);
+  const healthy = () => {
+    attempt = 0;
   };
   ws.onopen = () =>
-    lastSigs().then(subscribe, (e: unknown) => {
-      logged("stream marks")(e);
-      ws.close();
-    });
-  ws.onmessage = (m) => onMessage(ctx.conn, m.data);
+    lastSigs().then(
+      (marks) => {
+        if (subscribe(ctx, l, marks, dead)) l.healthy = setTimeout(healthy, HEALTHY_MS);
+      },
+      (e: unknown) => {
+        logged("stream marks")(e);
+        dead("could not read marks");
+      },
+    );
+  ws.onmessage = (m) => {
+    l.seen = Date.now();
+    if (!onMessage(ctx.conn, m.data)) dead("subscription refused");
+  };
   // An error is always followed by close, which reconnects.
   ws.onerror = (e) => console.error(`stream error: ${redact(String((e as ErrorEvent).message ?? e.type))}`);
-  ws.onclose = (e) => {
-    clearInterval(ping);
-    clearTimeout(healthy);
-    console.warn(`stream closed (${e.code}${e.reason ? ` ${redact(e.reason)}` : ""}), reconnecting`);
-    retry();
-  };
+  ws.onclose = (e) => dead(`closed (${e.code}${e.reason ? ` ${redact(e.reason)}` : ""})`);
 }

@@ -3,7 +3,7 @@
 import type { Connection } from "@solana/web3.js";
 import { expect, test, vi } from "vitest";
 import { failedSigs, gapFill, retryFailed } from "./ingest.ts";
-import { backoff, isPumpInvoke, shouldIngest } from "./stream.ts";
+import { backoff, isPumpInvoke, onMessage, shouldIngest } from "./stream.ts";
 
 const PUMP = "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [2]";
 const AMM = "Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA invoke [1]";
@@ -85,5 +85,16 @@ test("a failed ingest does not stop the fill: it is kept, and retried until it l
   await retryFailed(conn, ingest);
   expect(seen).toEqual(["a", "b", "c", "b"]);
   expect(failedSigs()).toEqual([]);
+  quiet.mockRestore();
+});
+
+test("onMessage: a refused logsSubscribe reply asks for a reconnect, a subscription id does not", () => {
+  const conn = {} as Connection;
+  const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+  expect(onMessage(conn, JSON.stringify({ id: 1, error: { code: -32602 } }))).toBe(false);
+  expect(onMessage(conn, JSON.stringify({ id: 1, result: null }))).toBe(false);
+  expect(onMessage(conn, JSON.stringify({ id: 1, result: 7 }))).toBe(true);
+  expect(onMessage(conn, JSON.stringify({ id: 2, result: "pong" }))).toBe(true);
+  expect(onMessage(conn, "not json")).toBe(true);
   quiet.mockRestore();
 });

@@ -1,5 +1,6 @@
 // The trade panel on a seeded curve coin, with /api/trade/* stubbed (trade-stubs.ts), so the asserted values
 // are the fixtures' literals. The panel is the column one: Desktop Chrome is 1280 wide, above the 1100 switch.
+// The devnet group (E2E_DEVNET=1) quotes a real coin through the local web and worker; nothing is signed.
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { row } from "./coin.ts";
@@ -39,5 +40,27 @@ test.describe("trade panel", () => {
     await expect(row(trade, "Minimum received")).toHaveText(`17,062,221 ${coin.symbol}`);
     await expect(trade.getByText("Fees 0.0062 SOL")).toBeVisible();
     await expect(trade.getByText("no BONDR platform fee")).toBeVisible();
+  });
+});
+
+test.describe("devnet", () => {
+  test.skip(process.env.E2E_DEVNET !== "1" || !sql, "a real quote from the local worker: set E2E_DEVNET=1");
+  test.describe.configure({ timeout: 60_000 });
+
+  test("devnet quote", async ({ page }) => {
+    // The newest real curve coin on the dev branch, as live.e2e.ts picks it.
+    const [c] = await db()<{ mint: string; symbol: string }[]>`select c.mint, l.symbol from coins c
+      join launches l on l.mint = c.mint
+      where l.state = 'landed' and c.venue = 'curve' and l.name not like 'E2E %'
+      order by l.created_at desc limit 1`;
+    expect(c, "an indexed curve coin").toBeTruthy();
+    await page.goto(`/coin/${c?.mint}`);
+    const trade = page.getByRole("region", { name: `Trade ${c?.symbol}` });
+    await trade.getByRole("textbox", { name: "You pay" }).fill("0.01");
+    await expect(row(trade, "Route")).toHaveText(`SOL to BONDR curve to ${c?.symbol} curve`, {
+      timeout: 20_000,
+    });
+    await expect(row(trade, "You receive about")).not.toHaveText("–");
+    await expect(row(trade, "You receive about")).toContainText(` ${c?.symbol}`);
   });
 });

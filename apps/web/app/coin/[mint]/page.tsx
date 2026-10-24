@@ -1,6 +1,7 @@
 import type { LaunchView, Net } from "@bondr/core/api";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { CaRow } from "@/components/ca-row";
 import { CoinIdentity } from "@/components/coin-identity";
 import { CoinLiveProvider } from "@/components/coin-live";
@@ -9,11 +10,13 @@ import { BondPanel } from "@/components/token-bond";
 import { McapChart } from "@/components/token-chart";
 import { TokenStats } from "@/components/token-stats";
 import { TradeFeed } from "@/components/token-trades";
+import { TradePanel } from "@/components/trade-panel";
 import { coinByMint } from "@/lib/coins";
 import { chartInterval, compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
 import { hub } from "@/lib/live-hub";
 import { tradesPage } from "@/lib/trades";
+import { TradeProvider } from "@/lib/use-trade";
 
 export const dynamic = "force-dynamic";
 
@@ -61,25 +64,33 @@ function sentence(v: LaunchView): string {
   return `Deployer ${short(v.wallet)} chose insta ${v.exit}: the ${sol(v.solIn)} SOL dev buy${tokens} was ${fate} in the launch transaction.`;
 }
 
-type PanelProps = { v: LaunchView; net: Net; feed: Awaited<ReturnType<typeof firstPage>> };
+type PanelProps = { v: LaunchView; net: Net; feed: Awaited<ReturnType<typeof firstPage>>; chart: ReactNode };
 
-/** One column puts Bond and burn above Trades; at 1100px Trades take the wide column and Bond and burn the
- * 380px right column, sticky under the header (UI-SPEC Token page layout). */
-function Panels({ v, net, feed }: PanelProps) {
+/**
+ * One column: chart, Trade, Bond and burn, Trades. At 1100px the chart and Trades take the wide column and the
+ * 380px right column holds Trade above Bond and burn, not sticky (UI-SPEC Breakpoints and Layout). DOM order is
+ * chart, right column, Trades, so the one-column order needs no order rules; row 2 is 1fr so a tall right column
+ * never opens a gap between chart and Trades.
+ */
+function Panels({ v, net, feed, chart }: PanelProps) {
   return (
-    <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:gap-8">
-      <div className="min-[1100px]:sticky min-[1100px]:top-22 min-[1100px]:col-start-2 min-[1100px]:row-start-1 min-[1100px]:self-start">
+    <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:gap-x-8">
+      <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-1">{chart}</div>
+      <div className="grid min-w-0 gap-4 min-[1100px]:col-start-2 min-[1100px]:row-span-2 min-[1100px]:row-start-1 min-[1100px]:self-start">
+        <TradePanel />
         <BondPanel symbol={v.symbol} net={net} />
       </div>
-      <TradeFeed
-        initial={feed.trades}
-        more={feed.more}
-        mint={v.mint}
-        symbol={v.symbol}
-        net={net}
-        solIn={v.solIn}
-        exit={v.exit}
-      />
+      <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-2 min-[1100px]:self-start">
+        <TradeFeed
+          initial={feed.trades}
+          more={feed.more}
+          mint={v.mint}
+          symbol={v.symbol}
+          net={net}
+          solIn={v.solIn}
+          exit={v.exit}
+        />
+      </div>
     </div>
   );
 }
@@ -91,30 +102,39 @@ export default async function CoinPage({ params }: Props) {
   const net: Net = process.env.SOLANA_NET === "mainnet" ? "mainnet" : "devnet";
   const [feed, coin] = await Promise.all([firstPage(v.mint), coinRow(v.mint)]);
   return (
-    // One provider, so one EventSource serves the venue tag, stats, bond panel and feed (D-18).
+    // One provider, so one EventSource serves the venue tag, stats, bond panel and feed (D-18); one trade state
+    // serves every trade placement.
     <CoinLiveProvider mint={v.mint} initial={coin} last={feed.head}>
-      <div className="overflow-x-clip">
-        <div className="mx-auto grid w-full max-w-[1440px] gap-4 px-(--gutter) pb-12">
-          <CoinIdentity v={v} venue={coin?.venue} stats={<TokenStats />}>
-            {v.signature && (
-              <ProofStamp signature={v.signature} net={net}>
-                {sentence(v)}
-              </ProofStamp>
-            )}
-          </CoinIdentity>
-          <CaRow mint={v.mint} />
-          <McapChart
-            mint={v.mint}
-            symbol={v.symbol}
-            initial={chartInterval(coin?.launchedAt ?? v.createdAt)}
-            launchMcap={coin?.launchMcapSol ?? null}
-          />
-          <Panels v={v} net={net} feed={feed} />
-          <p className="text-[13px] text-muted-foreground">
-            Trading and the public fee ledger for {v.symbol} arrive in a later BONDR update.
-          </p>
+      <TradeProvider mint={v.mint} symbol={v.symbol}>
+        <div className="overflow-x-clip">
+          <div className="mx-auto grid w-full max-w-[1440px] gap-4 px-(--gutter) pb-12">
+            <CoinIdentity v={v} venue={coin?.venue} stats={<TokenStats />}>
+              {v.signature && (
+                <ProofStamp signature={v.signature} net={net}>
+                  {sentence(v)}
+                </ProofStamp>
+              )}
+            </CoinIdentity>
+            <CaRow mint={v.mint} />
+            <Panels
+              v={v}
+              net={net}
+              feed={feed}
+              chart={
+                <McapChart
+                  mint={v.mint}
+                  symbol={v.symbol}
+                  initial={chartInterval(coin?.launchedAt ?? v.createdAt)}
+                  launchMcap={coin?.launchMcapSol ?? null}
+                />
+              }
+            />
+            <p className="text-[13px] text-muted-foreground">
+              The public fee ledger for {v.symbol} arrives in a later BONDR update.
+            </p>
+          </div>
         </div>
-      </div>
+      </TradeProvider>
     </CoinLiveProvider>
   );
 }

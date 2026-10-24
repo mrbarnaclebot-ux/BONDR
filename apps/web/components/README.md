@@ -37,3 +37,4 @@
 - `home-search.tsx`: the search box (300 ms debounce, Escape and X clear), the sr-only match count and the no-match and mint-not-on-BONDR empty states.
 - `home-trending.tsx`: HomeTrending, the Trending side-scroller (up to 10 cards by 1h volume, else 24h, else the latest launches, D-13), the mode caption, arrows from 760px and mouse drag.
 - `home-live.tsx`: HomeLiveProvider, the home page's one `useLive` stream: the grid list, sort and search, Trending and the hero counts in context; trades flash every card of a coin, a launch slides into Latest with the glow, the 60 s tick decays and re-ranks unless the pointer or focus is in a `hold` region, and a resync refetches page 0 and Trending in one GET.
+- `trade-panel.tsx`: TradePanel, the token page trade section (side Seg, amount field, quote rows with the route, impact, minimum and fees line), every value from `useTrade`'s worker quote.

@@ -97,7 +97,7 @@ test.describe("found", () => {
     await expect(page.getByRole("button", { name: "Copy contract address" })).toBeVisible();
     await expect(page.getByText("On curve")).toBeVisible();
     await expect(
-      page.getByText(`Trading and the public fee ledger for ${c.symbol} arrive in a later BONDR update.`),
+      page.getByText(`The public fee ledger for ${c.symbol} arrives in a later BONDR update.`),
     ).toBeVisible();
     for (const name of [`${c.symbol} on X`, "Telegram"]) {
       const link = page.getByRole("link", { name, exact: true });

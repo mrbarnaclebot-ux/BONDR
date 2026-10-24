@@ -76,7 +76,7 @@ export const currentQuote = (
   loading: boolean,
 ) => (!loading && q?.side === side && units !== null && q.amountIn === String(units) ? q : null);
 
-/** 04-03 Note: devnet's buy cap while BONDR is on its curve, from the last buy quote; else null. */
+/** 04-03 Note: devnet's buy cap (BONDR's and the coin's curve, the smaller), from the last buy quote; else null. */
 export const devnetCap = (side: TradeSide, q: TradeQuote | null) =>
   side === "buy" && q?.side === "buy" && q.maxSolIn ? BigInt(q.maxSolIn) : null;
 

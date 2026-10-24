@@ -89,7 +89,7 @@ function errorText(t: Trade, cap: bigint | null): string | undefined {
       : `Enter an amount of ${t.symbol}, like 1,000.`;
   }
   if (cap !== null && t.units !== null && t.units > cap) {
-    return `On devnet, buys stay under ${sol(cap, 4)} SOL so BONDR stays on its curve.`;
+    return `On devnet, buys stay under ${sol(cap, 4)} SOL so the curves stay open.`;
   }
   return undefined;
 }
@@ -99,7 +99,7 @@ export function TradeAmount({ size }: { size?: "sheet" }) {
   const t = useTrade();
   const id = useId();
   const buy = t.side === "buy";
-  // Devnet only, while BONDR is on its curve (04-03 Note): the worker's cap from the last buy quote.
+  // Devnet only (04-03 Note): the worker's cap from the last buy quote, so neither curve completes.
   const cap = devnetCap(t.side, t.quote);
   const hint = hintText(t);
   const error = errorText(t, cap);

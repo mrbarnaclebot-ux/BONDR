@@ -208,7 +208,7 @@ All percentages come from the quote (live FeeConfig and Global), never from cons
 
 Values are SOL, 4 decimals, "<0.0001" below that. The summary total is the sum of the coin hop and BONDR hop fees in SOL. Summary marker: "+" closed, "−" (U+2212) open, mono muted, as in the mockup; native `<details>` gives the keyboard and expanded state.
 
-Note (04-03, owner-delegated): rows show masked live rates: the coin hop lists Creator (and LP on PumpSwap) and never Pump protocol, the BONDR hop carries the Pump protocol sub-row, zero sub-rows are hidden; on devnet while BONDR is on its curve, a buy above the quote's maxSolIn shows the field error 'On devnet, buys stay under {max} SOL so BONDR stays on its curve.' and chips above it are disabled.
+Note (04-03, owner-delegated): rows show masked live rates: the coin hop lists Creator (and LP on PumpSwap) and never Pump protocol, the BONDR hop carries the Pump protocol sub-row, zero sub-rows are hidden; on devnet, a buy above the quote's maxSolIn (the smaller of BONDR's and the coin's curve caps) shows the field error 'On devnet, buys stay under {max} SOL so the curves stay open.' and chips above it are disabled.
 
 Departure (auto-selected, owner-delegated): the mockup's creator lines say "to GRUB burn budget" and "split 80 deployer / 20 treasury". Those describe the Phase 5 fee engine, which does not run yet, so Phase 4 says where the fee lands today. Phase 5 restores the mockup copy.
 

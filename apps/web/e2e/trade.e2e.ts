@@ -196,7 +196,7 @@ test.describe("trade panel", () => {
     const trade = panel(page, coin.symbol);
     await trade.getByRole("textbox", { name: "You pay" }).fill("0.8");
     await expect(
-      trade.getByText("On devnet, buys stay under 0.7 SOL so BONDR stays on its curve."),
+      trade.getByText("On devnet, buys stay under 0.7 SOL so the curves stay open."),
     ).toBeVisible();
     await expect(chip(page, coin.symbol, "1 SOL")).toBeDisabled();
     await expect(chip(page, coin.symbol, "0.5 SOL")).toBeEnabled();

@@ -28,6 +28,8 @@ const trader = Keypair.generate();
 const wallet = trader.publicKey.toBase58();
 const MINT = PublicKey.unique();
 const BH = PublicKey.unique().toBase58();
+const PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
+const AMM = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";
 const conn = { getBlockHeight: vi.fn(async () => 1_000) };
 const ctx = { conn: conn as unknown as Connection, Q: PublicKey.unique() };
 
@@ -138,7 +140,7 @@ describe("submitTrade sends once (D-06)", () => {
       ok: false,
       status: "failed",
       bytes: 1,
-      err: "ExceededSlippage: Transaction simulation failed: custom program error: 0x1774",
+      err: `ExceededSlippage: Simulation failed. \nLogs: \n[\n  "Program ${AMM} failed: custom program error: 0x1774"\n]`,
     });
     const { e, tx } = prepared();
     const r = await submitTrade(ctx, body(e.id, signedBy(tx)));
@@ -170,10 +172,26 @@ describe("settle in the background", () => {
     expect(await run("sell", landed)).toMatchObject({ state: "landed", amountOut: "500000" });
   });
 
-  test("failed on chain: 6004 is slippage, other codes onchain", async () => {
+  test("failed on chain: slippage is keyed by the program that raised it (S-WR-01)", async () => {
     const failed = { ok: false, status: "failed", bytes: 1 };
-    expect(await run("buy", { ...failed, code: 6004 })).toMatchObject({ state: "failed", code: "slippage" });
-    expect(await run("buy", { ...failed, code: 6001 })).toMatchObject({ state: "failed", code: "onchain" });
+    const raised = (program: string, code: number) => {
+      const log = `Program ${program} failed: custom program error: 0x${code.toString(16)}`;
+      // The raiser logs first, then the top-level multi_hop_swap with the same code.
+      const logMessages = [log, `Program ${AMM} failed: custom program error: 0x${code.toString(16)}`];
+      m.fetchTx.mockResolvedValue(
+        landedTx({ err: { InstructionError: [2, { Custom: code }] }, logMessages }),
+      );
+    };
+    const cases: [string, number, string][] = [
+      [AMM, 6004, "slippage"],
+      [PUMP, 6003, "slippage"],
+      [PUMP, 6004, "onchain"], // pump 6004 is MintDoesNotMatchBondingCurve
+      [AMM, 6001, "onchain"],
+    ];
+    for (const [program, code, want] of cases) {
+      raised(program, code);
+      expect(await run("buy", failed)).toMatchObject({ state: "failed", code: want });
+    }
   });
 
   test("unknown stays unknown with its signature and is never resent", async () => {

@@ -6,7 +6,7 @@ import { exitPresent } from "@bondr/core/cosign";
 import { AwaitingMigration, buildLaunch, type LaunchOpts } from "@bondr/core/launch";
 import { redact } from "@bondr/core/net";
 import { checkMessage, messageSize, PACKET_LIMIT } from "@bondr/core/send";
-import { tradeError } from "@bondr/core/trade-error";
+import { launchError } from "@bondr/core/trade-error";
 import {
   type AddressLookupTableAccount,
   type Connection,
@@ -100,8 +100,8 @@ export async function buildMessage(o: LaunchOpts, table: AddressLookupTableAccou
   return { ...built, msg: compileLaunch(o, built.ixs, table, blockhash) };
 }
 
-// The launch name for the shared map, so launch callers and tests stay unchanged.
-export { tradeError as simError };
+// The launch map keeps the launch's own codes (S-WR-01); the name keeps launch callers and tests unchanged.
+export { launchError as simError };
 
 // Lamports the dev's balance drops by, read from the simulation's post state of the dev (agencybook build.ts).
 export async function simulateLaunch(
@@ -120,7 +120,7 @@ export async function simulateLaunch(
   ]);
   const { err, logs } = sim.value;
   if (err !== null) {
-    const out = tradeError(err, logs);
+    const out = launchError(err, logs);
     if (out.error === "build_failed") throw buildFailed(`${JSON.stringify(err)} ${(logs ?? []).slice(-6)}`);
     throw fail(out);
   }

@@ -129,7 +129,10 @@ describe("prepareTrade", () => {
   });
 
   test("maps the final simulation: 6004 is 409 slippage, custom 1 low lamports is 402", async () => {
-    const slip = ctxWith({ err: { InstructionError: [2, { Custom: 6004 }] } }).ctx;
+    const slip = ctxWith({
+      err: { InstructionError: [2, { Custom: 6004 }] },
+      logs: ["Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA failed: custom program error: 0x1774"],
+    }).ctx;
     await expect(prepareTrade(slip, body)).rejects.toMatchObject({
       status: 409,
       body: { error: "slippage" },
@@ -146,7 +149,10 @@ describe("prepareTrade", () => {
 
   test("maps a route throw through textError", async () => {
     vi.mocked(routeSell).mockRejectedValue(
-      new Error('multi_hop_swap simulation failed: {"InstructionError":[2,{"Custom":6005}]}\n'),
+      new Error(
+        'multi_hop_swap simulation failed: {"InstructionError":[2,{"Custom":6005}]}\n' +
+          "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P failed: custom program error: 0x1775",
+      ),
     );
     await expect(prepareTrade(ctxWith({ err: null }).ctx, { ...body, side: "sell" })).rejects.toMatchObject({
       status: 409,

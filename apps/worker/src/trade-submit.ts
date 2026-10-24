@@ -6,7 +6,7 @@ import { sameMessage, signatureOf, signatureOk, slot } from "@bondr/core/cosign"
 import { redact } from "@bondr/core/net";
 import { broadcast, fetchTx, settle } from "@bondr/core/send";
 import { lamportDelta, soldLamports, tokenDelta } from "@bondr/core/trade";
-import { textError } from "@bondr/core/trade-error";
+import { textError, tradeError } from "@bondr/core/trade-error";
 import { type Connection, PublicKey } from "@solana/web3.js";
 import { fail } from "./http.ts";
 import { walletOf } from "./prepare.ts";
@@ -15,7 +15,6 @@ import { getTrade, type TradeEntry, updateTrade } from "./trade-store.ts";
 const SEND_PACE_MS = 1100;
 const ID = /^[0-9a-f]{32}$/;
 const MAX_WIRE = 1232;
-const SLIPPAGE = 6004;
 
 type Req = { tradeId: string; wallet: string };
 type SubmitCtx = { conn: Connection; Q: PublicKey };
@@ -63,14 +62,17 @@ const landedOut = (ctx: SubmitCtx, e: TradeEntry, tx: LandedTx): bigint => {
   return soldLamports(tx, ctx.Q, wallet) ?? lamportDelta(tx.meta);
 };
 
-// One extra getTransaction for the landed amounts.
+// One extra getTransaction for the landed amounts, or for the logs that name the failing program (S-WR-01).
 // ponytail: one more credit per trade; return the tx from settle if credits ever matter.
 async function settleTrade(ctx: SubmitCtx, e: TradeEntry, sig: string, bytes: number): Promise<void> {
   const r = await settle(ctx.conn, sig, bytes, false, e);
   // Never resent (D-16): unknown keeps its signature so the result line links it on Solscan (T8).
   if (r.status === "unknown") return void updateTrade(e.id, { state: "unknown" });
-  if (r.status === "failed") return void finish(e, r.code === SLIPPAGE ? "slippage" : "onchain");
   const tx = await fetchTx(ctx.conn, sig);
+  if (r.status === "failed") {
+    const slipped = tx && tradeError(tx.meta.err, tx.meta.logMessages ?? null).error === "slippage";
+    return void finish(e, slipped ? "slippage" : "onchain");
+  }
   updateTrade(e.id, { state: "landed", ...(tx && { amountOut: landedOut(ctx, e, tx).toString() }) });
 }
 

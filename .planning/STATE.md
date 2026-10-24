@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-10-24T14:25:08.970Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-10-24T14:33:08.130Z"
 last_activity: 2026-10-24
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 56
-  completed_plans: 46
+  completed_plans: 47
   percent: 43
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 4 (Trading) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
 Last activity: 2026-10-24
 
-Progress: [████████░░] 82%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Progress: [████████░░] 82%
 | Phase 03 P14 | 35min | 2 tasks | 13 files |
 | Phase 04 P01 | 12 min | 2 tasks | 10 files |
 | Phase 04 P03 | 25 min | 2 tasks | 9 files |
+| Phase 04 P04 | 8 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-01: hop fee SOL is x*total/(10000+total) on a buy input and x*total/(10000-total) on a sell output; coin hop fees valued at BONDR spot
 - [Phase 04]: 04-03: the token page grid at 1100px uses rows auto 1fr with the right column spanning both, so a tall Trade plus Bond column never opens a gap between chart and Trades
 - [Phase 04]: 04-03: TRADE-03 and TRADE-04 stay open until slippage (04-05) and real trades (04-10) ship
+- [Phase 04]: 04-04: prepareTrade takes TradeCtx (Ctx & { net }), simulates at 1.4M CU with the env price, then asks the estimator once (mainnet only) and clamps for the final ceil(units*11/10) limit
+- [Phase 04]: 04-04: core trade-error.ts is the one error map for launch and trade; launch sims now map a dead blockhash to expired and 6004 to slippage
 
 ### Pending Todos
 
@@ -229,6 +232,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T14:25:06.020Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-10-24T14:33:08.125Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None

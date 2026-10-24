@@ -84,6 +84,7 @@ From the repo root:
 
 Railway project `bondr`, environment `staging`, services `web` (public: https://web-staging-72bad.up.railway.app) and `worker` (no public domain; web reaches it at `http://${{worker.RAILWAY_PRIVATE_DOMAIN}}:${{worker.PORT}}`). Build, start, pre-deploy (web runs `node packages/core/src/migrate.ts`) and healthchecks live in the service settings, not in a file: Railway no longer reads railway.json for new services. Both run in US East, next to Neon.
 
-- Redeploy from the local checkout, worker first: `railway up --service worker --environment staging --detach`, then the same with `--service web`. `.railwayignore` keeps `.planning` out of the upload.
+- Redeploy from the local checkout, worker first: `railway up --service worker --environment staging --detach`, then the same with `--service web`. When a migration is new, deploy web first: its pre-deploy migrates, and the worker's backfill and indexer need the new tables. `.railwayignore` keeps `.planning` out of the upload.
 - Set a secret: `printf %s "$V" | railway variable set NAME --stdin --service worker --environment staging --skip-deploys`. One name per call. The seed and the Helius key go on the worker only; web refuses to boot holding them.
 - Deleting a variable does not redeploy: run `railway service redeploy --service <name> --environment staging --yes`.
+- Staging coins are all devnet test coins. The lists show every coins row and filter none of them (RESEARCH Open Question 4).

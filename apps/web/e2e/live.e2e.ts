@@ -1,9 +1,11 @@
 // The live token page (TOKEN-02, D-15, D-18). The stubbed group answers /api/live with page.route and a fixed
 // SSE body (retry 60 s, so the closed stub does not replay itself); the Live indicator test uses the real stream.
-// The devnet group (E2E_DEVNET=1) buys 0.01 SOL of a real coin and waits for it on the open page.
+// The devnet group (E2E_DEVNET=1) buys 0.01 SOL of a real coin and waits for it on the open page. Against
+// staging (E2E_BASE_URL) the coin is the first curve card on its home page: devnet is shared, so the staging
+// worker sees the local buy on its own stream.
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, request, test } from "@playwright/test";
 import postgres from "postgres";
 import { blockTime, dropCoin, fakeMint, fakeSig, type Seeded, seedCoin } from "./fixtures.ts";
 import { rootEnv } from "./phantom.ts";
@@ -142,15 +144,30 @@ test.describe("stubbed", () => {
   });
 });
 
+/** The newest real curve coin on the dev branch, or the first curve card on staging's home page. */
+async function devnetCoin(): Promise<{ mint: string } | undefined> {
+  const base = process.env.E2E_BASE_URL;
+  if (base) {
+    const api = await request.newContext({ baseURL: base });
+    const { coins } = (await (await api.get("/api/coins?sort=top")).json()) as {
+      coins: { mint: string; venue: string }[];
+    };
+    await api.dispose();
+    return coins.find((x) => x.venue === "curve");
+  }
+  const [c] = await db()<{ mint: string }[]>`select c.mint from coins c join launches l on l.mint = c.mint
+    where l.state = 'landed' and c.venue = 'curve' and l.name not like 'E2E %'
+    order by l.created_at desc limit 1`;
+  return c;
+}
+
 test.describe("devnet", () => {
   test.skip(process.env.E2E_DEVNET !== "1", "one real 0.01 SOL buy: set E2E_DEVNET=1");
   test.describe.configure({ timeout: 180_000 });
 
   test("a real buy shows on the open page within 15 s, without a reload", async ({ page }) => {
-    const [c] = await db()<{ mint: string }[]>`select c.mint from coins c join launches l on l.mint = c.mint
-      where l.state = 'landed' and c.venue = 'curve' and l.name not like 'E2E %'
-      order by l.created_at desc limit 1`;
-    expect(c, "an indexed curve coin on the dev branch").toBeTruthy();
+    const c = (await devnetCoin()) as { mint: string };
+    expect(c, "an indexed curve coin").toBeTruthy();
     await page.goto(`/coin/${c.mint}`);
     await expect(head(page).getByText("Live", { exact: true })).toBeVisible({ timeout: 30_000 });
     const mcap = await stat(page, "Mcap").textContent();

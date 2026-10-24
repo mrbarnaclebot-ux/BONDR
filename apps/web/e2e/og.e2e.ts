@@ -1,20 +1,23 @@
 // TOKEN-06 share cards: a landed coin's page points og:image at its 1200x630 card, served immutable; an
-// unknown mint gets the site card with a short cache. The coin is a throwaway landed row on a fake mint.
+// unknown mint gets the site card with a short cache. The coin is a throwaway landed row on a fake mint, or on
+// staging (E2E_BASE_URL, nothing seeded) the first card on its home page, whose card must point at SITE_URL.
 import { randomBytes, randomInt } from "node:crypto";
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
 import { rootEnv } from "./phantom.ts";
 
-const url = rootEnv().DATABASE_URL;
+const STAGING = process.env.E2E_BASE_URL;
+const url = STAGING ? undefined : rootEnv().DATABASE_URL;
 // idle_timeout instead of end() in afterAll (see coin.e2e.ts).
 const sql = url ? postgres(url, { max: 1, idle_timeout: 5, onnotice: () => {} }) : undefined;
 const db = () => sql as postgres.Sql;
 const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const fakeMint = () => Array.from({ length: 44 }, () => B58[randomInt(58)]).join("");
 const fixtures: string[] = [];
+type Card = { mint: string; name: string; symbol: string };
 
 test.describe.configure({ timeout: 90_000 }); // a Neon cold start plus a first card compile in dev
-test.skip(!sql, "needs DATABASE_URL in the root .env");
+test.skip(!STAGING && !sql, "needs DATABASE_URL in the root .env");
 test.afterAll(async () => {
   if (sql && fixtures.length) {
     await sql`delete from launches where mint in ${sql(fixtures)}`;
@@ -61,15 +64,16 @@ test("a landed coin's page carries its card, served as an immutable 1200x630 PNG
   page,
   request,
 }) => {
-  const mint = await landed();
+  const { mint, name, symbol } = STAGING
+    ? ((await (await request.get("/api/coins?sort=top")).json()) as { coins: Card[] }).coins[0]
+    : { mint: await landed(), name: "BONDR e2e card", symbol: "BCARD" };
   expect((await page.goto(`/coin/${mint}`))?.status()).toBe(200);
   const image = await meta(page, "og:image");
-  expect(image).toMatch(new RegExp(`^https?://[^/]+/coin/${mint}/opengraph-image/card(\\?.*)?$`));
+  const origin = STAGING ? STAGING.replace(/\/$/, "") : "https?://[^/]+";
+  expect(image).toMatch(new RegExp(`^${origin}/coin/${mint}/opengraph-image/card(\\?.*)?$`));
   expect(await meta(page, "twitter:image")).toBe(image);
   expect(await meta(page, "twitter:card")).toBe("summary_large_image");
-  expect(await meta(page, "og:image:alt")).toBe(
-    "BONDR e2e card (BCARD) on BONDR. Dev holds 0 launch supply.",
-  );
+  expect(await meta(page, "og:image:alt")).toBe(`${name} (${symbol}) on BONDR. Dev holds 0 launch supply.`);
   const cache = await png(request, path(image));
   expect(cache).toContain("immutable");
 });

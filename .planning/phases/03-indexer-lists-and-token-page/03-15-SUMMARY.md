@@ -24,13 +24,15 @@ key-decisions:
   - "03-15: web deployed before worker, because migrations 0003 and 0004 run in the web pre-deploy and the worker's backfill needs the coins and trades tables"
   - "03-15: Trending keeps showing up to 10 coins, zero-volume coins at the end (owner decision 2026-10-24)"
   - "03-15: on staging the specs read coins from /api/coins?sort=top (the same order as the first cards on /) instead of seeding"
-status: in-progress
-duration: in progress (Task 2 done in ~10 min)
+status: complete
+requirements-completed: [LIST-01, LIST-02, LIST-03, LIST-04, LIST-05, TOKEN-01, TOKEN-02, TOKEN-06]
+duration: ~10 min active, plus the owner's manual checks
+completed: 2026-10-24
 ---
 
-# Phase 3 Plan 15: Staging Deploy and Sign-off Summary (in progress: waiting on the owner for Task 3)
+# Phase 3 Plan 15: Staging Deploy and Sign-off Summary
 
-**Staging runs the Phase 3 build on devnet. Web and worker deployed on the first try, migrations 0003 and 0004 applied, and the worker backfilled both staging launches and subscribed to its stream. Every staging check passed, and a real 0.01 SOL devnet buy showed on the open staging token page 2.9 s after blockTime, without a reload.**
+**Staging runs the Phase 3 build on devnet. Web and worker deployed on the first try, migrations 0003 and 0004 applied, and the worker backfilled both staging launches and subscribed to its stream. Every staging check passed, and a real 0.01 SOL devnet buy showed on the open staging token page 2.9 s after blockTime, without a reload. The owner signed off on 2026-10-24.**
 
 ## Task 1: owner approval
 
@@ -81,17 +83,22 @@ Owner decision recorded at the same time: Trending keeps showing up to 10 coins,
 - `og.e2e.ts`: the coin-card test uses the first staging coin and requires `og:image` to start with the staging URL. The other two tests are request-only and unchanged.
 - `apps/worker/README.md`: deploy web first when a migration is new. Staging coins are all devnet test coins and are not filtered (RESEARCH Open Question 4).
 
-## Task 3: owner sign-off (PENDING)
+## Task 3: owner sign-off (APPROVED 2026-10-24)
 
-Automated part done: `og.e2e.ts` passed against staging (above). The owner's manual checks are still open:
-1. Open https://web-staging-72bad.up.railway.app: hero counts (2 launched, 0 bonded), the Trending caption, the Top, Latest and Oldest tabs, and search by name, by symbol and by pasted mint.
-2. Open https://web-staging-72bad.up.railway.app/coin/CyR56jVfHjPydeTpqC3TFiFqDMLEYUFLHWVZWtxPbndr: chart intervals, the trade feed with the two Launch rows plus the 03-15 buy, holders, and Bond and burn.
-3. Paste that coin link into Telegram and into the X card validator. Expect the coin image, the name, "EX8EUJ on BONDR" and "Dev holds 0 launch supply".
-4. Neon idle check (D-04): leave / open with no trades for 10 minutes, then confirm in the Neon console that the compute is suspended.
+The owner replied "approved" to the checklist (relayed by the orchestrator), covering:
+1. The home page at https://web-staging-72bad.up.railway.app: hero counts, Trending caption, Top, Latest and Oldest tabs, and search by name, symbol and pasted mint.
+2. The token page https://web-staging-72bad.up.railway.app/coin/CyR56jVfHjPydeTpqC3TFiFqDMLEYUFLHWVZWtxPbndr: chart intervals, the trade feed with the Launch rows and the 03-15 buy, holders, and Bond and burn.
+3. The share card in Telegram and the X card validator (TOKEN-06).
+4. The Neon idle check (D-04): / open and idle for 10 minutes, compute suspended.
 
-## Observations for the owner
+The automated part, `og.e2e.ts` against staging, passed in Task 2.
 
-- In the staging screenshots, TESTCOIN's (HHNK…bndr) art is an empty block, while EX8EUJ's image shows. Both image URLs answer 200 image/png from the Pinata gateway when fetched with curl, so it may simply be a dark image. Worth a look during step 1.
+**TESTCOIN's blank art is not a bug.** Its IPFS image is a 1x1 px e2e fixture PNG, and the gateway serves it as 200 image/png.
+
+**Known minor follow-ups, handled after sign-off by the orchestrator in separate work (not in this plan):**
+- the chart's Bonded marker label is clipped on phones
+- the bond bar looks heavy at tablet width
+- the trade feed stays on Reconnecting when the stream is refused at the per-IP cap
 
 ## Deviations from Plan
 
@@ -107,6 +114,6 @@ None.
 
 None. SITE_URL is public, and no secret was printed or committed. T-03-15-01 is met: nothing changed on Railway before the approval.
 
-## Self-Check: PASSED (Tasks 1-2)
+## Self-Check: PASSED
 
-- FOUND: c749f01, 21 staging screenshots, the 5 modified files
+- FOUND: c749f01, 54b7fff, 21 staging screenshots, the 5 modified files

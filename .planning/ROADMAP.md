@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Chain Spike** - Prove every pump assumption on a Surfpool mainnet fork, each step with a signature (completed 2026-10-19)
 - [x] **Phase 2: Launch Flow** - Phantom connect, consent, launch form, one-tx launch with server co-sign, bare token page (completed 2026-10-23)
-- [ ] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards
+- [x] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards (completed 2026-10-24)
 - [ ] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond
 - [ ] **Phase 5: Fee Engine and Public Ledger** - Worker runs split, forced bond, fallback burn, sweeps, finalize; ledger on the token page
 - [ ] **Phase 6: Admin Dashboard** - Owner-only recovery actions, kill switches, health, moderation, inspector, audit log, EVACUATE
@@ -106,7 +106,7 @@ Plans:
   4. User sees a lightweight-charts price chart with 1m, 5m, 1h and 1d candles, a live trade feed and the holder count on the token page
   5. A token link shared on X or Telegram renders a preview card with the coin's OG image
 
-**Plans:** 14/15 plans executed
+**Plans:** 15/15 plans complete
 
 Plans:
 **Wave 1**
@@ -158,7 +158,7 @@ Plans:
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
-- [ ] 03-15-PLAN.md - Owner checkpoint: staging deploy, staging checks, owner sign-off
+- [x] 03-15-PLAN.md - Owner checkpoint: staging deploy, staging checks, owner sign-off
 
 **UI hint**: yes
 
@@ -235,7 +235,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 |-------|----------------|--------|-----------|
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
 | 2. Launch Flow | 18/18 | Complete | 2026-10-23 |
-| 3. Indexer, Lists and Token Page | 14/15 | In Progress|  |
+| 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 0/TBD | Not started | - |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |
 | 6. Admin Dashboard | 0/TBD | Not started | - |

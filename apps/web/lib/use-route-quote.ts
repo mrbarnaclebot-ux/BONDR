@@ -1,6 +1,6 @@
 "use client";
 // The trade panel's quote fetch (UI-SPEC Quote refresh), split from use-trade.ts to keep both files short.
-import type { ApiError, TradeErrorCode, TradeQuote, TradeSide } from "@bondr/core/api";
+import type { ApiError, TradeErrorCode, TradeQuote, TradeQuoteRequest, TradeSide } from "@bondr/core/api";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
 type QuoteState = {
@@ -8,6 +8,22 @@ type QuoteState = {
   loading: boolean;
   quoteError: TradeErrorCode | "failed" | null;
 };
+
+/** One quote request: the quote, the worker's error code, or "failed" for a network or parse error. */
+async function fetchQuote(
+  req: TradeQuoteRequest,
+  signal: AbortSignal,
+): Promise<TradeQuote | TradeErrorCode | "failed"> {
+  const r = await fetch("/api/trade/quote", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(req),
+    signal,
+  }).catch(() => null);
+  const body = (await r?.json().catch(() => null)) as TradeQuote | ApiError | null;
+  if (r?.ok && body && "amountOut" in body) return body;
+  return body && "error" in body ? (body.error as TradeErrorCode) : "failed";
+}
 
 /**
  * The debounced quote. The previous quote stays while the next loads (the panel dims it); stale requests abort.
@@ -34,21 +50,12 @@ export function useRouteQuote(
     const abort = new AbortController();
     const timer = setTimeout(
       () => {
-        fetch("/api/trade/quote", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ side, mint, amount: String(units), slippageBps }),
-          signal: abort.signal,
-        })
-          .then(async (r) => {
-            const body = (await r.json().catch(() => null)) as TradeQuote | ApiError | null;
-            if (r.ok && body && "amountOut" in body) setS({ quote: body, loading: false, quoteError: null });
-            else {
-              const code = body && "error" in body ? (body.error as TradeErrorCode) : "failed";
-              setS({ quote: null, loading: false, quoteError: code });
-            }
-          })
-          .catch(() => abort.signal.aborted || setS({ quote: null, loading: false, quoteError: "failed" }));
+        void fetchQuote({ side, mint, amount: String(units), slippageBps }, abort.signal).then((a) => {
+          // C-WR-04: an aborted request (a newer input, or unmount) never writes, even mid-json.
+          if (abort.signal.aborted) return;
+          if (typeof a === "object") setS({ quote: a, loading: false, quoteError: null });
+          else setS({ quote: null, loading: false, quoteError: a });
+        });
       },
       refresh ? 0 : delay.current,
     );

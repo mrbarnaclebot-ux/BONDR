@@ -1,19 +1,29 @@
 // The build half of a trade (TRADE-01, TRADE-02): a validated buy or sell becomes one unsigned, simulated,
 // compute-budgeted v0 transaction the wallet signs once, and its exact bytes are kept for submit (Pitfall 3).
-// The message holds only the compute budget and the multi_hop_swap route, so BONDR takes no fee (TRADE-04).
+// The message holds only the compute budget and the multi_hop_swap route, so BONDR takes no fee (TRADE-04);
+// routeOnly checks that on every build.
 // Its own path, not the launch prepare one, which waits behind 10-18 s launch builds (RESEARCH anti-pattern).
 import type { ApiError, TradePrepareResult } from "@bondr/core/api";
+import { MULTI_HOP_SWAP } from "@bondr/core/cosign";
 import { redact } from "@bondr/core/net";
-import { BN } from "@bondr/core/pump";
+import { BN, PUMP_AMM_PROGRAM_ID } from "@bondr/core/pump";
 import { routeBuy, routeSell } from "@bondr/core/route";
 import { budget, checkMessage, messageSize, PACKET_LIMIT } from "@bondr/core/send";
 import { textError, tradeError } from "@bondr/core/trade-error";
-import { NATIVE_MINT } from "@solana/spl-token";
 import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+  NATIVE_MINT,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
+  ComputeBudgetProgram,
   type Connection,
   PublicKey,
+  SystemProgram,
   type TransactionInstruction,
   TransactionMessage,
+  type VersionedMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
 import { fail } from "./http.ts";
@@ -107,6 +117,52 @@ async function routeFor(ctx: TradeCtx, req: TradeReq, user: PublicKey) {
   }
 }
 
+const [CU, SYSTEM, ATA, TOKEN, AMM] = [
+  ComputeBudgetProgram.programId,
+  SystemProgram.programId,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  PUMP_AMM_PROGRAM_ID,
+].map((k) => k.toBase58());
+const [TRANSFER, CREATE_IDEMPOTENT, CLOSE_ACCOUNT, SYNC_NATIVE] = [2, 1, 9, 17];
+
+// What multiHopSwapInstructions builds around the swap: idempotent ATA creates the user pays for, and the
+// wrap, sync and close of the user's own WSOL account. A System transfer anywhere else is a fee.
+// ponytail: an ATA create for another owner (the buyback ATA) is allowed; its rent is the only leak.
+function routeIx(p: string, d: Buffer, acc: string[], me: string, wsol: string): boolean {
+  if (p === SYSTEM)
+    return d.length === 12 && d.readUInt32LE(0) === TRANSFER && acc.join() === `${me},${wsol}`;
+  if (p === ATA) return d.length === 1 && d[0] === CREATE_IDEMPOTENT && acc[0] === me;
+  if (p !== TOKEN || acc[0] !== wsol || d.length !== 1) return false;
+  return d[0] === SYNC_NATIVE || (d[0] === CLOSE_ACCOUNT && acc[1] === me);
+}
+
+// TRADE-04 at runtime (S-WR-03): the two budget ixs first, then the route with exactly one multi_hop_swap.
+// An SDK bump that adds a fee transfer or another program fails the build, not a friend's wallet.
+export function routeOnly(msg: VersionedMessage, user: PublicKey): string | null {
+  const keys = msg.staticAccountKeys.map((k) => k.toBase58());
+  const [me, wsol] = [user.toBase58(), getAssociatedTokenAddressSync(NATIVE_MINT, user, true).toBase58()];
+  let swaps = 0;
+  for (const [i, ix] of msg.compiledInstructions.entries()) {
+    const p = keys[ix.programIdIndex] ?? "missing";
+    const d = Buffer.from(ix.data);
+    if ((p === CU) !== i < 2) return `compute budget ix at ${i}`;
+    if (p === CU) continue;
+    if (p === AMM && d.subarray(0, 8).equals(MULTI_HOP_SWAP)) swaps++;
+    else if (
+      !routeIx(
+        p,
+        d,
+        ix.accountKeyIndexes.map((k) => keys[k] ?? ""),
+        me,
+        wsol,
+      )
+    )
+      return `ix ${i} (${p}) is not part of the route`;
+  }
+  return swaps === 1 ? null : `${swaps} multi_hop_swap ixs`;
+}
+
 const compile = (payer: PublicKey, ixs: TransactionInstruction[], blockhash: string) =>
   new TransactionMessage({
     payerKey: payer,
@@ -149,7 +205,7 @@ export async function prepareTrade(ctx: TradeCtx, body: unknown): Promise<TradeP
   const bh = await ctx.conn.getLatestBlockhash();
   // One compile after the blockhash: these exact bytes are stored and returned (Pitfall 3).
   const msg = compile(user, [...budget(cuLimit, price), ...r.ixs], bh.blockhash);
-  const refused = checkMessage(msg);
+  const refused = checkMessage(msg) ?? routeOnly(msg, user);
   if (refused) throw refuse({ error: "build_failed" }, refused);
   if (messageSize(msg) > PACKET_LIMIT) throw refuse({ error: "build_failed" }, `${messageSize(msg)} bytes`);
   const side = req.side;

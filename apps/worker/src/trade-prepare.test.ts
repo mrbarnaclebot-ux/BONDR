@@ -1,13 +1,21 @@
 // prepareTrade with the chain, the route and the quote state stubbed.
 
+import { MULTI_HOP_SWAP } from "@bondr/core/cosign";
 import { BN } from "@bondr/core/pump";
 import { routeBuy, routeSell } from "@bondr/core/route";
 import { budget } from "@bondr/core/send";
-import { NATIVE_MINT } from "@solana/spl-token";
+import {
+  createAssociatedTokenAccountIdempotentInstruction,
+  createCloseAccountInstruction,
+  createSyncNativeInstruction,
+  getAssociatedTokenAddressSync,
+  NATIVE_MINT,
+} from "@solana/spl-token";
 import {
   type Connection,
   Keypair,
   PublicKey,
+  SystemProgram,
   TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
@@ -15,7 +23,7 @@ import {
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { knownCoins } from "./ingest.ts";
 import type { Ctx } from "./status.ts";
-import { cuLimitFor, prepareTrade, priorityMicroLamports } from "./trade-prepare.ts";
+import { cuLimitFor, prepareTrade, priorityMicroLamports, routeOnly } from "./trade-prepare.ts";
 import { maxSolIn } from "./trade-quote.ts";
 import { getTrade } from "./trade-store.ts";
 
@@ -41,7 +49,7 @@ const swap = (programId = AMM) =>
       { pubkey: wallet, isSigner: true, isWritable: true },
       { pubkey: COIN, isSigner: false, isWritable: true },
     ],
-    data: Buffer.from([9, 9]),
+    data: Buffer.concat([MULTI_HOP_SWAP, Buffer.from([9, 9])]),
   });
 const body = {
   wallet: wallet.toBase58(),
@@ -184,6 +192,49 @@ describe("prepareTrade", () => {
     await expect(prepareTrade(ctxWith({ err: null }).ctx, body)).rejects.toMatchObject({
       body: { error: "build_failed" },
     });
+  });
+
+  test("refuses a route with a System transfer the route shape does not allow (S-WR-03)", async () => {
+    const fee = SystemProgram.transfer({ fromPubkey: wallet, toPubkey: PublicKey.unique(), lamports: 1 });
+    vi.mocked(routeBuy).mockResolvedValue(routed([fee, swap()]));
+    await expect(prepareTrade(ctxWith({ err: null }).ctx, body)).rejects.toMatchObject({
+      body: { error: "build_failed" },
+    });
+  });
+});
+
+describe("routeOnly (S-WR-03)", () => {
+  const wsol = getAssociatedTokenAddressSync(NATIVE_MINT, wallet, true);
+  const create = (mint: PublicKey) =>
+    createAssociatedTokenAccountIdempotentInstruction(wallet, PublicKey.unique(), wallet, mint);
+  // What multiHopSwapInstructions builds for a SOL in route that starts at a pool.
+  const sdkRoute = [
+    create(NATIVE_MINT),
+    SystemProgram.transfer({ fromPubkey: wallet, toPubkey: wsol, lamports: 10_000_000 }),
+    createSyncNativeInstruction(wsol),
+    create(COIN),
+    swap(),
+    createCloseAccountInstruction(wsol, wallet, wallet),
+  ];
+  const msg = (ixs: TransactionInstruction[]) =>
+    new TransactionMessage({ payerKey: wallet, recentBlockhash: BH, instructions: ixs }).compileToV0Message();
+  const other = PublicKey.unique();
+
+  test("the budget then the SDK's route passes", () => {
+    expect(routeOnly(msg([...budget(200_000), ...sdkRoute]), wallet)).toBeNull();
+  });
+
+  test("a transfer elsewhere, a second swap, a late budget ix or a foreign close is refused", () => {
+    const bad = [
+      [...sdkRoute, SystemProgram.transfer({ fromPubkey: wallet, toPubkey: other, lamports: 1 })],
+      [...sdkRoute, swap()],
+      sdkRoute.filter((ix) => ix !== sdkRoute[4]),
+      [...sdkRoute, createCloseAccountInstruction(wsol, other, wallet)],
+    ];
+    for (const ixs of bad) expect(routeOnly(msg([...budget(200_000), ...ixs]), wallet)).not.toBeNull();
+    expect(
+      routeOnly(msg([...budget(200_000).slice(0, 1), ...sdkRoute, ...budget(1).slice(1)]), wallet),
+    ).not.toBeNull();
   });
 });
 

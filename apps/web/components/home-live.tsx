@@ -9,6 +9,7 @@ import {
   createContext,
   type Dispatch,
   type ReactNode,
+  type RefObject,
   type SetStateAction,
   useCallback,
   useContext,
@@ -21,7 +22,9 @@ import {
   applyBond,
   applyTrade,
   decay,
+  fresher,
   insertLaunch,
+  mergePage,
   rerank,
   type Sort,
   type TrendMode,
@@ -63,6 +66,8 @@ const HELD = "[data-hold]:hover, [data-hold]:focus-within";
 const TOP = 10;
 
 type Props = { list: CoinPage | null; sort: Sort; q: string; trend: Trend | null; counts: Counts | null };
+/** The provider's state as of the last render, read when an event or a fetch lands instead of captured. */
+type View = { sort: Sort; q: string; list: CoinPage | null; trend: Trend | null };
 
 /** An updater applying `fn` to a list; an unchanged array keeps the old state, so nothing re-renders. */
 const keep =
@@ -77,15 +82,7 @@ const keep =
  * holds focus; then it runs when the pointer or focus leaves. Trending is re-picked from every coin on the page,
  * so a grid coin that starts trading can enter it and the mode and caption follow (D-13). No reads here.
  */
-function useReRank(
-  view: { sort: Sort; list: CoinPage | null },
-  setList: Setter<CoinPage | null>,
-  setTrend: Setter<Trend | null>,
-) {
-  const now = useRef(view);
-  useEffect(() => {
-    now.current = view;
-  });
+function useReRank(now: RefObject<View>, setList: Setter<CoinPage | null>, setTrend: Setter<Trend | null>) {
   const due = useRef(false);
   const release = useCallback(() => {
     if (!due.current || document.querySelector(HELD)) return;
@@ -97,7 +94,7 @@ function useReRank(
       const coins = rerank(decay(union(t?.coins ?? [], list?.coins ?? []), at), "trending").slice(0, TOP);
       return { mode: trendingMode(coins), coins };
     });
-  }, [setList, setTrend]);
+  }, [now, setList, setTrend]);
   useEffect(() => {
     const id = setInterval(() => {
       due.current = true;
@@ -120,11 +117,70 @@ function useFresh() {
   return [fresh, glow] as const;
 }
 
-/** A real gap (resync): one read of page 0 and Trending through the rate-limited, 10 s kept coins route. */
+/** A real gap (resync): one read of page 0, Trending and the hero counts through the 10 s kept coins route. */
 async function catchUp(sort: Sort, q: string) {
   const p = new URLSearchParams({ sort, page: "0", q, trending: "1" });
   const res = await fetch(`/api/coins?${p}`, { cache: "no-store" }).catch(() => null);
-  return res?.ok ? ((await res.json()) as CoinPage & { trending: Trend }) : null;
+  return res?.ok ? ((await res.json()) as CoinPage & { trending: Trend; counts: Counts }) : null;
+}
+
+type Sets = {
+  setList: Setter<CoinPage | null>;
+  setTrend: Setter<Trend | null>;
+  setCounts: Setter<Counts | null>;
+  setFlash: Setter<Ctx["flash"]>;
+  glow(mint: string): void;
+};
+
+const listed = (mint: string, p: { coins: CoinRow[] } | null) => !!p?.coins.some((c) => c.mint === mint);
+// Counts only grow; the kept server count may lag a live launch by 10 s, a live count may have missed a gap.
+const most = (c: Counts | null, s: Counts): Counts =>
+  c ? { launched: Math.max(c.launched, s.launched), bonded: Math.max(c.bonded, s.bonded) } : s;
+
+/** A resync's catch-up, dropped when the sort or search changed while it was in flight. */
+function resync(view: RefObject<View>, s: Sets) {
+  const at = view.current;
+  void catchUp(at.sort, at.q).then((got) => {
+    const now = view.current;
+    if (!got || now.sort !== at.sort || now.q !== at.q) return;
+    // Page 0 merges over its coins and later pages stay below; a failed read waits for the next events.
+    s.setList((l) => ({
+      coins: union(mergePage(got.coins, l?.coins ?? [], at), l?.coins ?? []),
+      more: got.more || !!l?.more,
+    }));
+    s.setTrend((t) => ({
+      ...got.trending,
+      coins: fresher(got.trending.coins, [...(t?.coins ?? []), ...(now.list?.coins ?? [])]),
+    }));
+    s.setCounts((c) => most(c, got.counts));
+  });
+}
+
+function useHomeStream(view: RefObject<View>, s: Sets) {
+  const both = (fn: (l: CoinRow[]) => CoinRow[]) => {
+    s.setList(keep(fn));
+    s.setTrend(keep(fn));
+  };
+  useLive({
+    onTrade: (d) => {
+      both((l) => applyTrade(l, d));
+      const { mint } = d.coin;
+      if (!listed(mint, view.current.list) && !listed(mint, view.current.trend)) return;
+      const side: Side = d.trade.side === "buy" ? "buy" : "sell";
+      s.setFlash((f) => ({ ...f, [mint]: { side, n: (f[mint]?.n ?? 0) + 1 } }));
+    },
+    onBond: (d) => {
+      both((l) => applyBond(l, d));
+      if (d.venue === "complete") s.setCounts((c) => c && { ...c, bonded: c.bonded + 1 });
+    },
+    onLaunch: (c) => {
+      const at = view.current;
+      s.setCounts((n) => n && { ...n, launched: n.launched + 1 });
+      s.setList(keep((l) => insertLaunch(l, c, at)));
+      if (at.sort === "latest" && !at.q) s.glow(c.mint);
+    },
+    onResync: () => resync(view, s),
+  });
 }
 
 export function HomeLiveProvider({ children, ...init }: Props & { children: ReactNode }) {
@@ -135,35 +191,12 @@ export function HomeLiveProvider({ children, ...init }: Props & { children: Reac
   const [counts, setCounts] = useState(init.counts);
   const [flash, setFlash] = useState<Ctx["flash"]>({});
   const [fresh, glow] = useFresh();
-  const setList = list[1];
-  const both = (fn: (l: CoinRow[]) => CoinRow[]) => {
-    setList(keep(fn));
-    setTrend(keep(fn));
-  };
-  const hold = useReRank({ sort: sort[0], list: list[0] }, setList, setTrend);
-  useLive({
-    onTrade: (d) => {
-      both((l) => applyTrade(l, d));
-      const side: Side = d.trade.side === "buy" ? "buy" : "sell";
-      setFlash((f) => ({ ...f, [d.coin.mint]: { side, n: (f[d.coin.mint]?.n ?? 0) + 1 } }));
-    },
-    onBond: (d) => {
-      both((l) => applyBond(l, d));
-      if (d.venue === "complete") setCounts((c) => c && { ...c, bonded: c.bonded + 1 });
-    },
-    onLaunch: (c) => {
-      setCounts((n) => n && { ...n, launched: n.launched + 1 });
-      setList(keep((l) => insertLaunch(l, c, { sort: sort[0], q: q[0] })));
-      if (sort[0] === "latest" && !q[0]) glow(c.mint);
-    },
-    // Page 0 replaces its coins and later pages stay below; a failed read waits for the next events.
-    onResync: () =>
-      void catchUp(sort[0], q[0]).then((got) => {
-        if (!got) return;
-        setList((l) => ({ coins: union(got.coins, l?.coins ?? []), more: got.more || !!l?.more }));
-        setTrend(got.trending);
-      }),
+  const view = useRef<View>({ sort: sort[0], q: q[0], list: list[0], trend });
+  useEffect(() => {
+    view.current = { sort: sort[0], q: q[0], list: list[0], trend };
   });
+  const hold = useReRank(view, list[1], setTrend);
+  useHomeStream(view, { setList: list[1], setTrend, setCounts, setFlash, glow });
   const value = { list, sort, q, trend, counts, flash, fresh, hold };
   return <LiveCtx.Provider value={value}>{children}</LiveCtx.Provider>;
 }

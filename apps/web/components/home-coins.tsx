@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { BASE58_KEY } from "@/lib/guard";
-import type { Sort } from "@/lib/live-list";
+import { mergePage, type Sort } from "@/lib/live-list";
 import { Callout } from "./callout";
 import { CoinCard } from "./coin-card";
 import { type CoinPage, useHome } from "./home-live";
@@ -61,14 +61,18 @@ function syncUrl(sort: Sort, q: string) {
   const p = new URLSearchParams();
   if (sort !== "top") p.set("sort", sort);
   if (q) p.set("q", q);
-  window.history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
+  window.history.replaceState(null, "", `${p.size ? `?${p}` : location.pathname}${location.hash}`);
 }
 
-/** The list (held by HomeLiveProvider): page 0 of a sort replaces it, a later page appends; a newer load aborts the last. */
+/**
+ * The list (held by HomeLiveProvider): page 0 of a sort replaces it, merged with anything live made newer (the
+ * page is kept up to 10 s); a later page appends. A newer load aborts the last.
+ */
 function useCoinList() {
   const [list, setList] = useHome().list;
   const [pages, setPages] = useState(1);
   const [busy, setBusy] = useState<Busy>(null);
+  const [moreFailed, setMoreFailed] = useState(false);
   const ctl = useRef<AbortController>(null);
 
   async function load(sort: Sort, page: number, q: string): Promise<CoinPage | null> {
@@ -76,21 +80,28 @@ function useCoinList() {
     const c = new AbortController();
     ctl.current = c;
     setBusy(page ? "more" : "swap");
+    setMoreFailed(false);
     try {
       const got = await fetchPage(sort, page, q, c.signal);
       if (c.signal.aborted) return null;
-      setList((old) => (page && old ? append(old, got) : got));
+      setList((old) =>
+        page && old
+          ? append(old, got)
+          : { ...got, coins: mergePage(got.coins, old?.coins ?? [], { sort, q }) },
+      );
       setPages(page + 1);
       setBusy(null);
       return got;
     } catch {
       if (c.signal.aborted) return null;
-      setList(null); // UI-SPEC Home states: the error replaces the grid
+      // UI-SPEC Home states: the error replaces the grid on a swap; a failed Show more keeps the cards.
+      if (page === 0) setList(null);
+      else setMoreFailed(true);
     }
     setBusy(null);
     return null;
   }
-  return { list, pages, busy, load };
+  return { list, pages, busy, moreFailed, load };
 }
 
 function Grid({ coins, busy }: { coins: CoinRow[]; busy: boolean }) {
@@ -113,6 +124,30 @@ function Grid({ coins, busy }: { coins: CoinRow[]; busy: boolean }) {
   );
 }
 
+function ShowMore({ busy, failed, onClick }: { busy: Busy; failed: boolean; onClick(): void }) {
+  return (
+    <div className="mt-6 flex flex-col items-center gap-2">
+      <Button className="max-[560px]:w-full" disabled={busy !== null} onClick={onClick}>
+        {busy === "more" ? "Loading…" : "Show more coins"}
+      </Button>
+      {failed && (
+        <p role="alert" className="text-xs text-destructive">
+          Could not load more coins. Try again.
+        </p>
+      )}
+    </div>
+  );
+}
+
+type ListingProps = { list: CoinPage | null; q: string; busy: Busy; retry(): void; clear(): void };
+
+/** The grid, or the error, no-coins or no-match state in its place. */
+function Listing({ list, q, busy, retry, clear }: ListingProps) {
+  if (!list) return <Failed retry={retry} busy={busy !== null} />;
+  if (list.coins.length) return <Grid coins={list.coins} busy={busy === "swap"} />;
+  return q ? <SearchEmpty q={q} clear={clear} /> : <Empty />;
+}
+
 /**
  * All coins (LIST-02, LIST-03, LIST-05): Top / Latest / Oldest and search, 50 cards a page with Show more. A tab
  * switch or search keeps the old cards at 60% with aria-busy until the new page arrives. A full BONDR mint opens
@@ -125,7 +160,7 @@ export function HomeCoins() {
   const [sort, setSort] = live.sort;
   const [q, setQ] = live.q;
   const input = useRef<HTMLInputElement>(null);
-  const { list, pages, busy, load } = useCoinList();
+  const { list, pages, busy, moreFailed, load } = useCoinList();
   const search = useSearch(q, find);
 
   async function find(next: string) {
@@ -155,28 +190,8 @@ export function HomeCoins() {
         <SearchBox {...search} clear={clear} ref={input} />
       </div>
       <MatchCount n={q && list && busy === null ? list.coins.length : null} />
-      {!list ? (
-        <Failed retry={() => void load(sort, 0, q)} busy={busy !== null} />
-      ) : list.coins.length === 0 ? (
-        q ? (
-          <SearchEmpty q={q} clear={clear} />
-        ) : (
-          <Empty />
-        )
-      ) : (
-        <Grid coins={list.coins} busy={busy === "swap"} />
-      )}
-      {list?.more && (
-        <div className="mt-6 flex justify-center">
-          <Button
-            className="max-[560px]:w-full"
-            disabled={busy !== null}
-            onClick={() => void load(sort, pages, q)}
-          >
-            {busy === "more" ? "Loading…" : "Show more coins"}
-          </Button>
-        </div>
-      )}
+      <Listing list={list} q={q} busy={busy} retry={() => void load(sort, 0, q)} clear={clear} />
+      {list?.more && <ShowMore busy={busy} failed={moreFailed} onClick={() => void load(sort, pages, q)} />}
     </>
   );
 }

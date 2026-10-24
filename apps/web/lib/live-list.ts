@@ -1,6 +1,6 @@
-// The home lists' live rules (D-12 to D-14), pure so they are tested without a browser. The 60 s tick, the
-// pointer and focus hold and the stream itself live in components/home-live.tsx.
-import type { CoinLive, CoinRow, Venue } from "@bondr/core/api";
+// The live lists' rules (home lists D-12 to D-14, the trade feed D-18), pure so they are tested without a
+// browser. The 60 s tick, the pointer and focus hold and the stream itself live in components/home-live.tsx.
+import type { CoinLive, CoinRow, TradeRow, Venue } from "@bondr/core/api";
 
 export type Sort = "top" | "latest" | "oldest";
 export type TrendMode = "1h" | "24h" | "latest";
@@ -65,4 +65,56 @@ export const trendingMode = (list: CoinRow[]): TrendMode =>
 export function union(a: CoinRow[], b: CoinRow[]): CoinRow[] {
   const seen = new Set(a.map((c) => c.mint));
   return [...a, ...b.filter((c) => !seen.has(c.mint))];
+}
+
+const stamp = (c: CoinRow) => (c.lastTradeAt ? Date.parse(c.lastTradeAt) : 0);
+
+/** A server list (kept up to 10 s) over what the stream already showed: a local copy with a newer trade wins. */
+export function fresher(got: CoinRow[], local: CoinRow[]): CoinRow[] {
+  const mine = new Map(local.map((c) => [c.mint, c]));
+  return got.map((c) => {
+    const l = mine.get(c.mint);
+    return l && stamp(l) > stamp(c) ? l : c;
+  });
+}
+
+/** `fresher`, and in Latest with no search, local launches newer than the page's newest stay in front (D-14). */
+export function mergePage(got: CoinRow[], local: CoinRow[], view: { sort: Sort; q: string }): CoinRow[] {
+  const coins = fresher(got, local);
+  if (view.sort !== "latest" || view.q) return coins;
+  const newest = got[0] ? Date.parse(got[0].launchedAt) : 0;
+  return union(
+    rerank(
+      local.filter((c) => Date.parse(c.launchedAt) > newest),
+      "latest",
+    ),
+    coins,
+  );
+}
+
+type Trade = Pick<TradeRow, "signature" | "ix" | "slot" | "seq"> & { fresh?: unknown };
+export type Feed<T extends Trade> = { rows: T[]; more: boolean };
+
+const tradeKey = (t: Trade) => `${t.signature}:${t.ix}`;
+const desc = (a: string, b: string) => (BigInt(a) > BigInt(b) ? -1 : BigInt(a) < BigInt(b) ? 1 : 0);
+const newestFirst = (a: Trade, b: Trade) => desc(a.slot, b.slot) || desc(a.seq, b.seq);
+
+/** Adds the unseen trades in chain order, newest first; the same array when none is new. */
+export function addTrades<T extends Trade>(rows: T[], add: T[]): T[] {
+  const seen = new Set(rows.map(tradeKey));
+  const unseen = add.filter((t) => {
+    const k = tradeKey(t);
+    return !seen.has(k) && !!seen.add(k);
+  });
+  return unseen.length ? [...rows, ...unseen].toSorted(newestFirst) : rows;
+}
+
+/**
+ * A resync's refetched first page. With older trades beyond it and no server-loaded row (not `fresh`) inside it,
+ * a hole may sit below it, so it replaces the feed and Load more fills down from it; otherwise it merges.
+ */
+export function resyncFeed<T extends Trade>(feed: Feed<T>, page: Feed<T>): Feed<T> {
+  const keys = new Set(page.rows.map(tradeKey));
+  const joined = feed.rows.some((r) => !r.fresh && keys.has(tradeKey(r)));
+  return page.more && !joined ? page : { ...feed, rows: addTrades(feed.rows, page.rows) };
 }

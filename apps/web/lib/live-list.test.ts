@@ -1,6 +1,17 @@
 import type { CoinLive, CoinRow } from "@bondr/core/api";
 import { expect, test } from "vitest";
-import { applyBond, applyTrade, decay, insertLaunch, rerank, trendingMode, union } from "./live-list";
+import {
+  addTrades,
+  applyBond,
+  applyTrade,
+  decay,
+  insertLaunch,
+  mergePage,
+  rerank,
+  resyncFeed,
+  trendingMode,
+  union,
+} from "./live-list";
 
 const NOW = Date.parse("2026-10-24T12:00:00Z");
 const ago = (ms: number) => new Date(NOW - ms).toISOString();
@@ -95,4 +106,56 @@ test("trendingMode: 1h, else 24h, else latest", () => {
 test("union keeps the first list's copy of a coin", () => {
   const a = coin("a", { mcapSol: 1 });
   expect(union([a], [coin("a", { mcapSol: 2 }), coin("b")])).toEqual([a, coin("b")]);
+});
+
+test("mergePage keeps a local copy with a newer trade and local launches the kept page missed", () => {
+  const live = coin("a", { mcapSol: 900, lastTradeAt: ago(1000), launchedAt: ago(2000) });
+  const snap = [
+    coin("a", { mcapSol: 860, lastTradeAt: ago(9000), launchedAt: ago(2000) }),
+    coin("b", { launchedAt: ago(5000) }),
+  ];
+  const launch = coin("n", { launchedAt: ago(100) });
+  expect(mergePage(snap, [live, launch], { sort: "top", q: "" })).toEqual([live, snap[1]]);
+  expect(mints(mergePage(snap, [live, launch], { sort: "latest", q: "" }))).toEqual(["n", "a", "b"]);
+  expect(mints(mergePage(snap, [launch], { sort: "latest", q: "gr" }))).toEqual(["a", "b"]);
+  const older = coin("a", { mcapSol: 1, lastTradeAt: ago(20_000), launchedAt: ago(2000) });
+  expect(mergePage(snap, [older], { sort: "top", q: "" })[0]).toBe(snap[0]);
+});
+
+const trade = (slot: number, seq = 0, fresh?: "buy") => ({
+  signature: `s${slot}.${seq}`,
+  ix: 0,
+  slot: String(slot),
+  seq: String(seq),
+  fresh,
+});
+const sigs = (l: { signature: string }[]) => l.map((t) => t.signature);
+
+test("addTrades merges in (slot, seq) order and never twice", () => {
+  const rows = [trade(5, 0, "buy"), trade(3)];
+  expect(sigs(addTrades(rows, [trade(5, 0), trade(4), trade(5, 1)]))).toEqual([
+    "s5.1",
+    "s5.0",
+    "s4.0",
+    "s3.0",
+  ]);
+  expect(addTrades(rows, [trade(3)])).toBe(rows);
+  // BigInt, not string order: slot 10 is newer than slot 9
+  expect(sigs(addTrades([trade(9)], [trade(10)]))).toEqual(["s10.0", "s9.0"]);
+});
+
+test("resyncFeed merges a page that overlaps the loaded rows and replaces one that leaves a hole", () => {
+  const feed = { rows: [trade(5, 0, "buy"), trade(3), trade(2)], more: false };
+  const overlap = resyncFeed(feed, { rows: [trade(6), trade(4), trade(3)], more: true });
+  expect(sigs(overlap.rows)).toEqual(["s6.0", "s5.0", "s4.0", "s3.0", "s2.0"]);
+  expect(overlap.more).toBe(false);
+  const gap = { rows: [trade(60), trade(59)], more: true };
+  expect(resyncFeed(feed, gap)).toBe(gap);
+  expect(sigs(resyncFeed(feed, { rows: [trade(9), trade(8)], more: false }).rows)).toEqual([
+    "s9.0",
+    "s8.0",
+    "s5.0",
+    "s3.0",
+    "s2.0",
+  ]);
 });

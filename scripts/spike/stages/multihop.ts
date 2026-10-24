@@ -8,10 +8,10 @@ import { BN, OnlinePumpSdk } from "@bondr/core/pump";
 import { routeQuote } from "@bondr/core/quote";
 import { hopInputs, readConfigs, readMintState } from "@bondr/core/quote-read";
 import { type Route, routeBuy, routeSell } from "@bondr/core/route";
-import { budget, fetchMeta, sendTx } from "@bondr/core/send";
-import { lamportDelta, tokenDelta } from "@bondr/core/trade";
+import { budget, fetchTx, sendTx } from "@bondr/core/send";
+import { lamportDelta, soldLamports, tokenDelta } from "@bondr/core/trade";
 import { getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
-import { type ConfirmedTransactionMeta, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { fundSol, paceMs } from "../fund.ts";
 import type { Ctx, Rule, Stage } from "../results.ts";
 
@@ -23,6 +23,7 @@ type Online = InstanceType<typeof OnlinePumpSdk>;
 type Leg = { id: string; step: string; route: Route; amountIn: BN };
 type Hop = { ctx: Ctx; online: Online; Q: PublicKey; C: PublicKey; prefix: string; label: string };
 type Side = "buy" | "sell";
+type Landed = NonNullable<Awaited<ReturnType<typeof fetchTx>>>;
 
 // Pitfall 1: a route that completed Q would block every child create (6107) before the plan wants it.
 // A migrated Q trades on its pool, so the guard only applies while Q is on its curve.
@@ -61,20 +62,20 @@ async function pure(h: Hop, side: Side, amountIn: BN): Promise<Record<string, st
   };
 }
 
-async function send(h: Hop, side: Side, leg: Leg, out: (m: ConfirmedTransactionMeta) => bigint) {
+async function send(h: Hop, side: Side, leg: Leg, out: (tx: Landed) => bigint) {
   const ctx = h.ctx;
   const quoted = await pure(h, side, leg.amountIn);
   const trader = ctx.key("sim", "trader");
   const ixs = [...budget(CU), ...leg.route.ixs];
   const r = await sendTx({ conn: ctx.conn, payer: trader, ixs, paceMs: paceMs(ctx) });
-  const meta = r.ok && r.sig ? await fetchMeta(ctx.conn, r.sig) : undefined;
+  const tx = r.ok && r.sig ? await fetchTx(ctx.conn, r.sig) : undefined;
   const facts = {
     amountIn: leg.amountIn.toString(),
     expectedOut: leg.route.expectedOut.toString(),
     minAmountOut: leg.route.minAmountOut.toString(),
     venues: leg.route.venues,
     ...quoted,
-    ...(meta && { outAmount: out(meta).toString() }),
+    ...(tx && { outAmount: out(tx).toString() }),
   };
   ctx.record({ id: leg.id, step: leg.step, ...r, cuLimit: CU, facts });
   return r.ok;
@@ -94,7 +95,8 @@ async function buy(h: Hop, amountIn: BN): Promise<void> {
   const route = await routeBuy({ ...opts, path: [NATIVE_MINT, h.Q, h.C] });
   const step = `multi_hop_swap buy SOL -> Q -> ${h.label}`;
   const leg = { id: `${h.prefix}multihop.buy`, step, route, amountIn };
-  if (!(await send(h, "buy", leg, (m) => tokenDelta(m, h.C, user)))) throw new Error("multihop buy failed");
+  if (!(await send(h, "buy", leg, (tx) => tokenDelta(tx.meta, h.C, user))))
+    throw new Error("multihop buy failed");
 }
 
 async function sell(h: Hop): Promise<void> {
@@ -110,7 +112,9 @@ async function sell(h: Hop): Promise<void> {
   });
   const step = `multi_hop_swap sell ${h.label} -> Q -> SOL`;
   const leg = { id: `${h.prefix}multihop.sell`, step, route, amountIn };
-  if (!(await send(h, "sell", leg, lamportDelta))) throw new Error("multihop sell failed");
+  // The panel's "Sold for" figure (S-CR-01), so the rule proves what the user sees.
+  const out = (tx: Landed) => soldLamports(tx, h.Q, user) ?? lamportDelta(tx.meta);
+  if (!(await send(h, "sell", leg, out))) throw new Error("multihop sell failed");
 }
 
 const legRule: Rule = (row) => {

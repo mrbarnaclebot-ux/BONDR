@@ -4,8 +4,8 @@
 import type { TradeErrorCode, TradeView } from "@bondr/core/api";
 import { sameMessage, signatureOf, signatureOk, slot } from "@bondr/core/cosign";
 import { redact } from "@bondr/core/net";
-import { broadcast, fetchMeta, settle } from "@bondr/core/send";
-import { lamportDelta, tokenDelta } from "@bondr/core/trade";
+import { broadcast, fetchTx, settle } from "@bondr/core/send";
+import { lamportDelta, soldLamports, tokenDelta } from "@bondr/core/trade";
 import { textError } from "@bondr/core/trade-error";
 import { type Connection, PublicKey } from "@solana/web3.js";
 import { fail } from "./http.ts";
@@ -18,6 +18,8 @@ const MAX_WIRE = 1232;
 const SLIPPAGE = 6004;
 
 type Req = { tradeId: string; wallet: string };
+type SubmitCtx = { conn: Connection; Q: PublicKey };
+type LandedTx = NonNullable<Awaited<ReturnType<typeof fetchTx>>>;
 
 function parseReq(body: unknown): Req {
   const b = (body ?? {}) as Record<string, unknown>;
@@ -53,37 +55,40 @@ const finish = (e: TradeEntry, code: TradeErrorCode): TradeView =>
 const logged = (id: string) => (e: unknown) =>
   console.error(`trade settle ${id} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
 
+// A buy's coin delta has no rent in it; a sell reads its BONDR to SOL leg's event, since the wallet's SOL delta
+// counts the rent of every ATA the tx closed or opened (S-CR-01).
+const landedOut = (ctx: SubmitCtx, e: TradeEntry, tx: LandedTx): bigint => {
+  const wallet = new PublicKey(e.wallet);
+  if (e.side === "buy") return tokenDelta(tx.meta, new PublicKey(e.mint), wallet);
+  return soldLamports(tx, ctx.Q, wallet) ?? lamportDelta(tx.meta);
+};
+
 // One extra getTransaction for the landed amounts.
-// ponytail: one more credit per trade; return the meta from settle if credits ever matter.
-async function settleTrade(conn: Connection, e: TradeEntry, sig: string, bytes: number): Promise<void> {
-  const r = await settle(conn, sig, bytes, false, e);
+// ponytail: one more credit per trade; return the tx from settle if credits ever matter.
+async function settleTrade(ctx: SubmitCtx, e: TradeEntry, sig: string, bytes: number): Promise<void> {
+  const r = await settle(ctx.conn, sig, bytes, false, e);
   // Never resent (D-16): unknown keeps its signature so the result line links it on Solscan (T8).
   if (r.status === "unknown") return void updateTrade(e.id, { state: "unknown" });
   if (r.status === "failed") return void finish(e, r.code === SLIPPAGE ? "slippage" : "onchain");
-  const meta = await fetchMeta(conn, sig);
-  const out =
-    meta &&
-    (e.side === "buy"
-      ? tokenDelta(meta, new PublicKey(e.mint), new PublicKey(e.wallet))
-      : lamportDelta(meta));
-  updateTrade(e.id, { state: "landed", ...(out !== undefined && { amountOut: out.toString() }) });
+  const tx = await fetchTx(ctx.conn, sig);
+  updateTrade(e.id, { state: "landed", ...(tx && { amountOut: landedOut(ctx, e, tx).toString() }) });
 }
 
 // signed is set before the send, synchronously after the checks, so a concurrent submit only reads.
-async function send(conn: Connection, e: TradeEntry, wire: Uint8Array): Promise<TradeView> {
+async function send(ctx: SubmitCtx, e: TradeEntry, wire: Uint8Array): Promise<TradeView> {
   const signature = signatureOf(wire);
   updateTrade(e.id, { state: "signed", signature });
   const o = { sig: signature, bytes: wire.length, blockhash: e.blockhash, paceMs: SEND_PACE_MS };
-  const r = await broadcast(conn, wire, { ...o, lastValidBlockHeight: e.lastValidBlockHeight });
+  const r = await broadcast(ctx.conn, wire, { ...o, lastValidBlockHeight: e.lastValidBlockHeight });
   // Preflight rejected it, so nothing went out.
   if (r?.status === "failed") return finish(e, textError(r.err ?? "").error);
   // Accepted, or a throw after which it may have gone out: both are settled by status, never resent.
   const sent = updateTrade(e.id, { state: "sent" });
-  void settleTrade(conn, e, signature, wire.length).catch(logged(e.id));
+  void settleTrade(ctx, e, signature, wire.length).catch(logged(e.id));
   return view(sent ?? e);
 }
 
-export async function submitTrade(ctx: { conn: Connection }, body: unknown): Promise<TradeView> {
+export async function submitTrade(ctx: SubmitCtx, body: unknown): Promise<TradeView> {
   const req = parseReq(body);
   const wire = parseWire(body);
   if (owned(req).state !== "prepared") return view(owned(req)); // a repeat submit is a read
@@ -98,7 +103,7 @@ export async function submitTrade(ctx: { conn: Connection }, body: unknown): Pro
     finish(e, "message_changed");
     throw fail({ error: "message_changed" });
   }
-  return send(ctx.conn, e, wire);
+  return send(ctx, e, wire);
 }
 
 export const viewTrade = (body: unknown): TradeView => view(owned(parseReq(body)));

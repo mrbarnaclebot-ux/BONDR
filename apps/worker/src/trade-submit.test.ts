@@ -16,12 +16,12 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { putTrade } from "./trade-store.ts";
 import { submitTrade, viewTrade } from "./trade-submit.ts";
 
-const m = vi.hoisted(() => ({ broadcast: vi.fn(), settle: vi.fn(), fetchMeta: vi.fn() }));
+const m = vi.hoisted(() => ({ broadcast: vi.fn(), settle: vi.fn(), fetchTx: vi.fn() }));
 vi.mock("@bondr/core/send", async (orig) => ({
   ...(await orig<object>()),
   broadcast: m.broadcast,
   settle: m.settle,
-  fetchMeta: m.fetchMeta,
+  fetchTx: m.fetchTx,
 }));
 
 const trader = Keypair.generate();
@@ -29,7 +29,7 @@ const wallet = trader.publicKey.toBase58();
 const MINT = PublicKey.unique();
 const BH = PublicKey.unique().toBase58();
 const conn = { getBlockHeight: vi.fn(async () => 1_000) };
-const ctx = { conn: conn as unknown as Connection };
+const ctx = { conn: conn as unknown as Connection, Q: PublicKey.unique() };
 
 function prepared(side: TradeSide = "buy") {
   const ix = SystemProgram.transfer({ fromPubkey: trader.publicKey, toPubkey: MINT, lamports: 1 });
@@ -58,15 +58,18 @@ const signedBy = (tx: VersionedTransaction, kp = trader) => {
 };
 const body = (tradeId: string, signed: string, w = wallet) => ({ tradeId, signed, wallet: w });
 
-const meta = (o: Partial<ConfirmedTransactionMeta>) =>
-  ({
+// A landed tx with no inner events, so a sell falls back to the SOL delta.
+const landedTx = (o: Partial<ConfirmedTransactionMeta>) => ({
+  transaction: { message: { staticAccountKeys: [] } },
+  meta: {
     fee: 5_000,
     preBalances: [0],
     postBalances: [0],
     preTokenBalances: [],
     postTokenBalances: [],
     ...o,
-  }) as ConfirmedTransactionMeta;
+  } as ConfirmedTransactionMeta,
+});
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -154,16 +157,16 @@ describe("settle in the background", () => {
     return viewTrade(body(e.id, ""));
   };
 
-  test("a landed buy reports the tokens received, a landed sell the lamports paid", async () => {
+  test("a landed buy reports the tokens received; a sell with no leg event falls back to the lamports paid", async () => {
     const bal = (amount: string) => ({
       accountIndex: 1,
       mint: MINT.toBase58(),
       owner: wallet,
       uiTokenAmount: { amount, decimals: 6, uiAmount: null },
     });
-    m.fetchMeta.mockResolvedValue(meta({ preTokenBalances: [bal("10")], postTokenBalances: [bal("510")] }));
+    m.fetchTx.mockResolvedValue(landedTx({ preTokenBalances: [bal("10")], postTokenBalances: [bal("510")] }));
     expect(await run("buy", landed)).toMatchObject({ state: "landed", amountOut: "500" });
-    m.fetchMeta.mockResolvedValue(meta({ preBalances: [1_000_000], postBalances: [1_495_000] }));
+    m.fetchTx.mockResolvedValue(landedTx({ preBalances: [1_000_000], postBalances: [1_495_000] }));
     expect(await run("sell", landed)).toMatchObject({ state: "landed", amountOut: "500000" });
   });
 

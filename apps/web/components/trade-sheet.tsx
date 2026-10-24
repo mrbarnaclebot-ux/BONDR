@@ -112,6 +112,7 @@ function Bar({ symbol, onOpen }: BarProps) {
   return (
     <section
       aria-label="Quick trade"
+      data-trade-bar
       className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-line-strong bg-background/85 px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] backdrop-blur-[14px]"
     >
       <div className="min-w-0">

@@ -11,6 +11,7 @@ import { McapChart } from "@/components/token-chart";
 import { TokenStats } from "@/components/token-stats";
 import { TradeFeed } from "@/components/token-trades";
 import { TradePanel } from "@/components/trade-panel";
+import { TradeSheet } from "@/components/trade-sheet";
 import { coinByMint } from "@/lib/coins";
 import { chartInterval, compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
@@ -77,7 +78,10 @@ function Panels({ v, net, feed, chart }: PanelProps) {
     <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:gap-x-8">
       <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-1">{chart}</div>
       <div className="grid min-w-0 gap-4 min-[1100px]:col-start-2 min-[1100px]:row-span-2 min-[1100px]:row-start-1 min-[1100px]:self-start">
-        <TradePanel />
+        {/* Below 1100px the panel lives in the trade sheet instead (D-05). */}
+        <div className="grid max-[1099px]:hidden">
+          <TradePanel />
+        </div>
         <BondPanel symbol={v.symbol} net={net} />
       </div>
       <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-2 min-[1100px]:self-start">
@@ -133,6 +137,9 @@ export default async function CoinPage({ params }: Props) {
               The public fee ledger for {v.symbol} arrives in a later BONDR update.
             </p>
           </div>
+        </div>
+        <div className="min-[1100px]:hidden">
+          <TradeSheet />
         </div>
       </TradeProvider>
     </CoinLiveProvider>

@@ -276,7 +276,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
 | 2. Launch Flow | 18/18 | Complete | 2026-10-23 |
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
-| 4. Trading | 13/13 | Complete   | 2026-10-24 |
+| 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |
 | 6. Admin Dashboard | 0/TBD | Not started | - |
 | 7. Go-Live | 0/TBD | Not started | - |

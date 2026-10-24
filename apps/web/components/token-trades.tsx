@@ -8,6 +8,7 @@ import type { Exit, Net, TradeRow } from "@bondr/core/api";
 import { type Dispatch, Fragment, type SetStateAction, useEffect, useState } from "react";
 import { flashClass, type Side } from "@/lib/flash";
 import { compact, relTime, short, sol, tradeSol } from "@/lib/format";
+import { addTrades, type Feed, resyncFeed } from "@/lib/live-list";
 import { useCoinLive } from "./coin-live";
 import { TxLink } from "./tx-link";
 import { Button } from "./ui-button";
@@ -22,33 +23,29 @@ type Props = {
   exit: Exit;
 };
 
-const SIDE = { buy: ["Buy", "text-leaf"], sell: ["Sell", "text-destructive"] } as const;
+const SIDE = {
+  buy: ["Buy", "text-leaf"],
+  sell: ["Sell", "text-destructive"],
+  burn: ["Burn", "text-muted-foreground"],
+} as const;
 const TH = "py-2 font-semibold tracking-[0.05em] uppercase";
 const TD = "border-t border-line py-2";
 const TRADER = "max-md:hidden";
 
 /** `fresh` marks a row that arrived live: it rises with its side's flash once, on mount. */
 type Shown = TradeRow & { fresh?: Side };
-const keyOf = (t: TradeRow) => `${t.signature}:${t.ix}`;
 
-/** Puts the unseen rows of `add` (newest first) above `rows`; a signature plus ix is shown once. */
-function prepend(rows: Shown[], add: Shown[]): Shown[] {
-  const seen = new Set(rows.map(keyOf));
-  const out: Shown[] = [];
-  for (const t of add) {
-    if (seen.has(keyOf(t))) continue;
-    seen.add(keyOf(t));
-    out.push(t);
-  }
-  return out.length ? [...out, ...rows] : rows;
-}
-
-function Row({ t, net, now }: { t: Shown; net: Net; now: number }) {
-  const [label, tone] = t.launch ? ["Launch", "text-mint"] : SIDE[t.side === "sell" ? "sell" : "buy"];
+/** `local` turns on after mount, so the tooltip is the viewer's time zone and locale, not the server's. */
+function Row({ t, net, now, local }: { t: Shown; net: Net; now: number; local: boolean }) {
+  const [label, tone] = t.launch ? ["Launch", "text-mint"] : SIDE[t.side];
   return (
     <tr className={t.fresh && flashClass(t.fresh, "row")}>
       <td className={`${TD} num`}>
-        <time dateTime={t.at} title={new Date(t.at).toLocaleString()} suppressHydrationWarning>
+        <time
+          dateTime={t.at}
+          title={local ? new Date(t.at).toLocaleString() : undefined}
+          suppressHydrationWarning
+        >
           {relTime(t.at, now)}
         </time>
       </td>
@@ -65,31 +62,31 @@ function Row({ t, net, now }: { t: Shown; net: Net; now: number }) {
   );
 }
 
+type Setter = Dispatch<SetStateAction<Feed<Shown>>>;
+
 /** Appends the next older page; `more` turns false once the launch rows are in. */
-function useOlder(mint: string, initial: TradeRow[], initialMore: boolean) {
-  const [rows, setRows] = useState<Shown[]>(initial);
-  const [more, setMore] = useState(initialMore);
+function useOlder(mint: string, initial: Feed<Shown>) {
+  const [feed, setFeed] = useState(initial);
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
   async function load() {
-    const last = rows.at(-1);
+    const last = feed.rows.at(-1);
     if (!last) return;
     setState("loading");
     try {
       const res = await fetch(`/api/coin/${mint}/trades?before=${last.slot}.${last.seq}`);
       if (!res.ok) throw new Error(String(res.status));
       const page = (await res.json()) as { trades: TradeRow[]; more: boolean };
-      setRows((r) => [...r, ...page.trades]);
-      setMore(page.more);
+      setFeed((f) => ({ rows: addTrades(f.rows, page.trades), more: page.more }));
       setState("idle");
     } catch {
       setState("error");
     }
   }
-  return { rows, setRows, more, state, load };
+  return { ...feed, setFeed, state, load };
 }
 
-/** Live trades batched per frame (a burst is one render); a resync merges the refetched first page. */
-function useLiveRows(setRows: Dispatch<SetStateAction<Shown[]>>) {
+/** Live trades batched per frame (a burst is one render); a resync merges the refetched first page in order. */
+function useLiveRows(setFeed: Setter) {
   const subscribe = useCoinLive()?.subscribe;
   useEffect(() => {
     if (!subscribe) return;
@@ -97,12 +94,12 @@ function useLiveRows(setRows: Dispatch<SetStateAction<Shown[]>>) {
     let frame = 0;
     const flush = () => {
       frame = 0;
-      const add = pending.reverse(); // arrival order is oldest first
+      const add = pending;
       pending = [];
-      setRows((r) => prepend(r, add));
+      setFeed((f) => ({ ...f, rows: addTrades(f.rows, add) }));
     };
     const off = subscribe((e) => {
-      if ("trades" in e) return setRows((r) => prepend(r, e.trades));
+      if ("trades" in e) return setFeed((f) => resyncFeed(f, { rows: e.trades, more: e.more }));
       pending.push({ ...e.trade, fresh: e.side });
       frame ||= requestAnimationFrame(flush);
     });
@@ -110,7 +107,7 @@ function useLiveRows(setRows: Dispatch<SetStateAction<Shown[]>>) {
       off();
       cancelAnimationFrame(frame);
     };
-  }, [subscribe, setRows]);
+  }, [subscribe, setFeed]);
 }
 
 /** UI-SPEC Live indicator; the polite span announces a state change once. Empty until the stream first opens. */
@@ -129,39 +126,49 @@ function LiveIndicator() {
   );
 }
 
+const HEADS = [
+  ["Time", ""],
+  ["Side", ""],
+  ["SOL", "text-right"],
+  [null, "text-right"],
+  ["Trader", `pl-4 ${TRADER}`],
+  ["Tx", "text-right"],
+] as const;
+
+function FeedHead({ symbol }: { symbol: string }) {
+  return (
+    <thead className="text-left text-muted-foreground">
+      <tr>
+        {HEADS.map(([name, cls]) => (
+          <th key={name ?? "symbol"} scope="col" className={`${TH} ${cls}`}>
+            {name ?? symbol}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  );
+}
+
 type TableProps = { rows: Shown[]; symbol: string; net: Net; solIn: string; exit: Exit };
 
-function FeedTable({ rows, symbol, net, solIn, exit }: TableProps) {
+/** Relative times on a 15 s tick; `local` flips on after mount (see Row). */
+function useClock() {
   const [now, setNow] = useState(() => Date.now());
+  const [local, setLocal] = useState(false);
   useEffect(() => {
+    setLocal(true);
     const id = setInterval(() => setNow(Date.now()), 15_000);
     return () => clearInterval(id);
   }, []);
+  return { now, local };
+}
+
+function FeedTable({ rows, symbol, net, solIn, exit }: TableProps) {
+  const clock = useClock();
   return (
     <table className="w-full text-xs">
       <caption className="sr-only">{`Trades for ${symbol}, newest first`}</caption>
-      <thead className="text-left text-muted-foreground">
-        <tr>
-          <th scope="col" className={TH}>
-            Time
-          </th>
-          <th scope="col" className={TH}>
-            Side
-          </th>
-          <th scope="col" className={`${TH} text-right`}>
-            SOL
-          </th>
-          <th scope="col" className={`${TH} text-right`}>
-            {symbol}
-          </th>
-          <th scope="col" className={`${TH} pl-4 ${TRADER}`}>
-            Trader
-          </th>
-          <th scope="col" className={`${TH} text-right`}>
-            Tx
-          </th>
-        </tr>
-      </thead>
+      <FeedHead symbol={symbol} />
       <tbody>
         {rows.map((t, i) => (
           <Fragment key={`${t.signature}:${t.ix}`}>
@@ -175,7 +182,7 @@ function FeedTable({ rows, symbol, net, solIn, exit }: TableProps) {
                 </td>
               </tr>
             )}
-            <Row t={t} net={net} now={now} />
+            <Row t={t} net={net} {...clock} />
           </Fragment>
         ))}
       </tbody>
@@ -183,9 +190,35 @@ function FeedTable({ rows, symbol, net, solIn, exit }: TableProps) {
   );
 }
 
+type MoreProps = { shown: boolean; more: boolean; state: "idle" | "loading" | "error"; load(): void };
+
+function LoadMore({ shown, more, state, load }: MoreProps) {
+  if (!more)
+    return shown ? (
+      <p className="mt-4 text-xs text-muted-foreground">That is every trade since launch.</p>
+    ) : null;
+  return (
+    <>
+      <Button
+        className="mt-4 w-full"
+        disabled={state === "loading"}
+        aria-busy={state === "loading"}
+        onClick={load}
+      >
+        {state === "loading" ? "Loading…" : "Load 50 older trades"}
+      </Button>
+      {state === "error" && (
+        <p role="alert" className="mt-2 text-xs text-destructive">
+          Could not load older trades. Try again.
+        </p>
+      )}
+    </>
+  );
+}
+
 export function TradeFeed({ initial, more: initialMore, mint, ...table }: Props) {
-  const { rows, setRows, more, state, load } = useOlder(mint, initial, initialMore);
-  useLiveRows(setRows);
+  const { rows, more, setFeed, state, load } = useOlder(mint, { rows: initial, more: initialMore });
+  useLiveRows(setFeed);
   return (
     <section
       aria-labelledby="trades-h"
@@ -204,26 +237,7 @@ export function TradeFeed({ initial, more: initialMore, mint, ...table }: Props)
       ) : (
         <FeedTable rows={rows} {...table} />
       )}
-      {rows.length > 0 && !more && (
-        <p className="mt-4 text-xs text-muted-foreground">That is every trade since launch.</p>
-      )}
-      {more && (
-        <>
-          <Button
-            className="mt-4 w-full"
-            disabled={state === "loading"}
-            aria-busy={state === "loading"}
-            onClick={load}
-          >
-            {state === "loading" ? "Loading…" : "Load 50 older trades"}
-          </Button>
-          {state === "error" && (
-            <p role="alert" className="mt-2 text-xs text-destructive">
-              Could not load older trades. Try again.
-            </p>
-          )}
-        </>
-      )}
+      <LoadMore shown={rows.length > 0} more={more} state={state} load={load} />
     </section>
   );
 }

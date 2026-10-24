@@ -10,7 +10,7 @@ import { Tag } from "./tag";
 
 export type LiveCoin = CoinLive & Pick<CoinRow, "bondSig" | "bondedAt">;
 /** A live trade, or the first page refetched after a resync. */
-export type FeedEvent = { trade: TradeRow; side: Side } | { trades: TradeRow[] };
+export type FeedEvent = { trade: TradeRow; side: Side } | { trades: TradeRow[]; more: boolean };
 type Ctx = {
   coin: LiveCoin | null;
   /** The last trade's side; `n` changes per trade so a flashing value remounts and replays its animation. */
@@ -22,7 +22,7 @@ type Ctx = {
 const LiveCtx = createContext<Ctx | null>(null);
 export const useCoinLive = () => useContext(LiveCtx);
 
-type Page = { trades: TradeRow[]; coin?: CoinRow | null };
+type Page = { trades: TradeRow[]; more: boolean; coin?: CoinRow | null };
 
 export function CoinLiveProvider(props: { mint: string; initial: LiveCoin | null; children: ReactNode }) {
   const { mint } = props;
@@ -49,7 +49,7 @@ export function CoinLiveProvider(props: { mint: string; initial: LiveCoin | null
         .then(
           (page) => {
             if (page.coin) setCoin(page.coin);
-            emit({ trades: page.trades });
+            emit({ trades: page.trades, more: page.more });
           },
           () => {}, // the next trade event carries the numbers again
         ),

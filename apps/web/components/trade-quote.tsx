@@ -143,8 +143,9 @@ function CustomSlippage() {
   const t = useTrade();
   const id = useId();
   const [text, setText] = useState(String(t.slippageBps / 100));
-  const n = Number(text);
-  const valid = text.trim() !== "" && n >= 0.1 && n <= 50;
+  // One rule for the error and the applied value: the rounded bps (C-IN-02).
+  const bps = Math.round(Number(text) * 100);
+  const valid = text.trim() !== "" && bps >= 10 && bps <= 5_000;
   const error = valid ? undefined : "Enter a slippage from 0.1% to 50%.";
   const onChange = (v: string) => {
     setText(v);

@@ -51,7 +51,7 @@
 
 - [ ] **TRADE-01**: User can buy a coin with SOL, routed SOL to BONDR to coin through multi_hop_swap, in one Phantom signature
 - [ ] **TRADE-02**: User can sell a coin back to SOL the same way
-- [ ] **TRADE-03**: User sees a quote preview (tokens out, price impact, fees) and can set slippage before signing
+- [x] **TRADE-03**: User sees a quote preview (tokens out, price impact, fees) and can set slippage before signing
 - [ ] **TRADE-04**: Trading works before and after bond (curve and PumpSwap) with no platform fee added
 
 ### Fee engine (worker)
@@ -141,7 +141,7 @@
 | TOKEN-06 | Phase 3 | Complete |
 | TRADE-01 | Phase 4 | Pending |
 | TRADE-02 | Phase 4 | Pending |
-| TRADE-03 | Phase 4 | Pending |
+| TRADE-03 | Phase 4 | Complete |
 | TRADE-04 | Phase 4 | Pending |
 | FEE-01 | Phase 5 | Pending |
 | FEE-02 | Phase 5 | Pending |

@@ -65,7 +65,7 @@ The trade panel now has the full UI-SPEC controls: amount presets with live sess
 - `pnpm vitest run apps/web`: 64 passed, 1 skipped
 - `pnpm typecheck`, `pnpm lint`: pass
 - Acceptance greps: `tone` in ui-seg.tsx (3 lines); `aria-pressed` in trade-amount.tsx; `10_000_000` and "0.01 SOL" in trade-amount.tsx; one `<details` in trade-quote.tsx; no `95|30|25|150` outside comments in trade-quote.tsx; `bondr:slippage` only inside the try blocks; one `sessionWallet(req)` and no `.wallet` in the balance route; one `setInterval` (the quote loop) and `visibilitychange` in use-trade.ts
-- Sizes: trade-quote.tsx 226, trade-panel.tsx 34, trade-amount.tsx 151, use-trade.ts 256, use-route-quote.ts 61 lines
+- Sizes: trade-quote.tsx 226, trade-panel.tsx 34, trade-amount.tsx 142, use-trade.ts 256, use-route-quote.ts 61 lines
 - The 1440 coin screenshot showed the panel with the presets, slippage chips and Fees summary. Regenerated Phase 2 screenshots were restored before committing
 
 ## Deviations from Plan

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { eventsHandler, listening, publish } from "./events-route.ts";
+import { eventsHandler, listening, publish, skipId } from "./events-route.ts";
 import { start } from "./http.ts";
 
 const token = randomBytes(32).toString("hex");
@@ -58,4 +58,19 @@ test("an open stream gets a ping, then every published event once with increasin
   await new Promise((r) => setTimeout(r, 100));
   expect(listening()).toBe(0);
   publish(holders(3)); // no subscriber left: nothing to write to, nothing throws
+});
+
+test("a skipped id leaves a gap a reconnecting hub sees", async () => {
+  const ac = new AbortController();
+  const res = await fetch(`${base}/events`, {
+    headers: { authorization: `Bearer ${token}` },
+    signal: ac.signal,
+  });
+  const [hello] = await lines(res, 1);
+  const [epoch, seq] = String(hello.id).split("-").map(Number);
+  skipId();
+  publish(holders(4));
+  const got = (await lines(res, 2)).filter((l) => l.type !== "ping");
+  expect(got).toEqual([{ id: `${epoch}-${seq + 2}`, ...holders(4) }]);
+  ac.abort();
 });

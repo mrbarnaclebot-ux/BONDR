@@ -22,6 +22,12 @@ export function publish(e: LiveBody): void {
   for (const res of subscribers) res.write(line);
 }
 
+// A skipped id is a gap: every web hub resyncs its clients at the next ping, one refetch per open page. For
+// changes that are not live events, such as a gap fill's historical trades.
+export function skipId(): void {
+  seq++;
+}
+
 export function eventsHandler(req: IncomingMessage, res: ServerResponse, pingMs = PING_MS): void {
   res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store" });
   res.write(ping());

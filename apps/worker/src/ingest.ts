@@ -14,7 +14,7 @@ import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } fr
 import { type Connection, PublicKey } from "@solana/web3.js";
 import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { bondr, bondrPrice } from "./bondr-price.ts";
-import { listening, publish } from "./events-route.ts";
+import { listening, publish, skipId } from "./events-route.ts";
 import { touch } from "./holders.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
 
@@ -143,23 +143,32 @@ async function announce(inserted: Inserted[], bonded: ReadonlySet<string>, launc
   }
 }
 
-// Every coin with a new trade gets a (throttled) holder recount and its events, after the write has committed.
-async function arm(conn: Connection, inserted: Inserted[], bonded: Set<string>, launched?: string) {
+// Every coin with a new trade gets a (throttled) holder recount, after the write has committed. Live writes go
+// out as events. A gap fill's trades are history, not live ticks: it skips an id instead, so open pages resync.
+async function arm(
+  conn: Connection,
+  inserted: Inserted[],
+  bonded: Set<string>,
+  launched?: string,
+  live = true,
+) {
   for (const mint of new Set(inserted.map((t) => t.mint))) {
     const coin = knownCoins.get(mint);
     if (coin) touch(conn, coin);
   }
-  await announce(inserted, bonded, launched).catch(logged("publish"));
+  if (live) await announce(inserted, bonded, launched).catch(logged("publish"));
+  else if (inserted.length || bonded.size) skipId();
   return inserted;
 }
 
-export async function ingestTx(conn: Connection, sig: string): Promise<Inserted[]> {
+export async function ingestTx(conn: Connection, sig: string, live = true): Promise<Inserted[]> {
   const tx = await fetchTx(conn, sig);
   if (!tx) throw new Error(`tx ${sig} not visible`); // a miss is a failure, so it is kept and retried
   const parsed = parse(tx);
   if (!parsed.trades.length && !parsed.patches.length) return [];
   const bonded = new Set<string>();
-  return arm(conn, await db().transaction((t) => writeParsed(t, parsed, undefined, bonded)), bonded);
+  const inserted = await db().transaction((t) => writeParsed(t, parsed, undefined, bonded));
+  return arm(conn, inserted, bonded, undefined, live);
 }
 
 // The launch tx the settle already fetched: the coin row, its Launch rows, then the coin joins the registry
@@ -186,7 +195,7 @@ export async function ingestLaunch(
 }
 
 type Ingest = (conn: Connection, sig: string) => Promise<unknown>;
-const paced: Ingest = (conn, sig) => pace(BACKFILL_PACE_MS).then(() => ingestTx(conn, sig));
+const paced: Ingest = (conn, sig) => pace(BACKFILL_PACE_MS).then(() => ingestTx(conn, sig, false));
 const PAGE = 1000;
 
 // Live trades move last_sig past a signature that failed, so no later gap fill would reach it: it is kept here

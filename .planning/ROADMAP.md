@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Chain Spike** - Prove every pump assumption on a Surfpool mainnet fork, each step with a signature (completed 2026-10-19)
 - [x] **Phase 2: Launch Flow** - Phantom connect, consent, launch form, one-tx launch with server co-sign, bare token page (completed 2026-10-23)
 - [x] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards (completed 2026-10-24)
-- [ ] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond
+- [x] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond (completed 2026-10-24)
 - [ ] **Phase 5: Fee Engine and Public Ledger** - Worker runs split, forced bond, fallback burn, sweeps, finalize; ledger on the token page
 - [ ] **Phase 6: Admin Dashboard** - Owner-only recovery actions, kill switches, health, moderation, inspector, audit log, EVACUATE
 - [ ] **Phase 7: Go-Live** - Contract check, CI, scripts, mainnet config, BONDR token launch gating child launches
@@ -175,7 +175,7 @@ Plans:
   3. User sees tokens out, price impact and fees in a quote preview, and sets slippage before signing
   4. Buy and sell work on a curve coin and on a migrated PumpSwap coin, and the fees charged match pump's live FeeConfig with no platform fee added
 
-**Plans:** 12/13 plans executed
+**Plans:** 13/13 plans complete
 
 Plans:
 **Wave 1**
@@ -216,7 +216,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 04-13-PLAN.md - Staging deploy (worker then web), staging specs, one real devnet buy and sell on staging; real-Phantom trade as a manual check
+- [x] 04-13-PLAN.md - Staging deploy (worker then web), staging specs, one real devnet buy and sell on staging; real-Phantom trade as a manual check
 
 ### Phase 5: Fee Engine and Public Ledger
 
@@ -276,7 +276,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
 | 2. Launch Flow | 18/18 | Complete | 2026-10-23 |
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
-| 4. Trading | 12/13 | In Progress|  |
+| 4. Trading | 13/13 | Complete   | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |
 | 6. Admin Dashboard | 0/TBD | Not started | - |
 | 7. Go-Live | 0/TBD | Not started | - |

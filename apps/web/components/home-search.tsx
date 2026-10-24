@@ -1,7 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { type Ref, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type Ref, useEffect, useId, useRef, useState } from "react";
 import { BASE58_KEY } from "@/lib/guard";
 import { Button } from "./ui-button";
 import { Input } from "./ui-field";
@@ -40,6 +40,11 @@ export function useSearch(initial: string, run: (q: string) => void) {
 
 type BoxProps = { text: string; setText(t: string): void; clear(): void; ref: Ref<HTMLInputElement> };
 
+function onKeys(e: KeyboardEvent<HTMLInputElement>, clear: () => void) {
+  if (e.key === "Escape") clear();
+  if (e.key === "Enter") e.preventDefault();
+}
+
 /** The search input (LIST-05): Escape and the X clear it and keep focus in it; results are live, Enter does nothing. */
 export function SearchBox({ text, setText, clear, ref }: BoxProps) {
   const id = useId();
@@ -62,10 +67,7 @@ export function SearchBox({ text, setText, clear, ref }: BoxProps) {
           spellCheck={false}
           placeholder="Search name, symbol or mint"
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") clear();
-            if (e.key === "Enter") e.preventDefault();
-          }}
+          onKeyDown={(e) => onKeys(e, clear)}
           className="rounded-full pr-12 pl-10 text-[13px] md:pr-10 md:text-[15px] [&::-webkit-search-cancel-button]:appearance-none"
         />
       </label>

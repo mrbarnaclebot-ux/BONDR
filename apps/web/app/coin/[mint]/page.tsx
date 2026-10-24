@@ -56,6 +56,29 @@ function sentence(v: LaunchView): string {
   return `Deployer ${short(v.wallet)} chose insta ${v.exit}: the ${sol(v.solIn)} SOL dev buy${tokens} was ${fate} in the launch transaction.`;
 }
 
+type PanelProps = { v: LaunchView; net: Net; feed: Awaited<ReturnType<typeof firstPage>> };
+
+/** One column puts Bond and burn above Trades; at 1100px Trades take the wide column and Bond and burn the
+ * 380px right column, sticky under the header (UI-SPEC Token page layout). */
+function Panels({ v, net, feed }: PanelProps) {
+  return (
+    <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:gap-8">
+      <div className="min-[1100px]:sticky min-[1100px]:top-22 min-[1100px]:col-start-2 min-[1100px]:row-start-1 min-[1100px]:self-start">
+        <BondPanel symbol={v.symbol} net={net} />
+      </div>
+      <TradeFeed
+        initial={feed.trades}
+        more={feed.more}
+        mint={v.mint}
+        symbol={v.symbol}
+        net={net}
+        solIn={v.solIn}
+        exit={v.exit}
+      />
+    </div>
+  );
+}
+
 /** The bare token page: only a landed BONDR launch renders, everything else is a 404 (T-02-15-04). */
 export default async function CoinPage({ params }: Props) {
   const v = await landedCoin((await params).mint);
@@ -81,22 +104,7 @@ export default async function CoinPage({ params }: Props) {
             initial={chartInterval(coin?.launchedAt ?? v.createdAt)}
             launchMcap={coin?.launchMcapSol ?? null}
           />
-          {/* One column puts Bond and burn above Trades; at 1100px Trades take the wide column and Bond and burn
-            the 380px right column, sticky under the header (UI-SPEC Token page layout). */}
-          <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:gap-8">
-            <div className="min-[1100px]:sticky min-[1100px]:top-22 min-[1100px]:col-start-2 min-[1100px]:row-start-1 min-[1100px]:self-start">
-              <BondPanel symbol={v.symbol} net={net} />
-            </div>
-            <TradeFeed
-              initial={feed.trades}
-              more={feed.more}
-              mint={v.mint}
-              symbol={v.symbol}
-              net={net}
-              solIn={v.solIn}
-              exit={v.exit}
-            />
-          </div>
+          <Panels v={v} net={net} feed={feed} />
           <p className="text-[13px] text-muted-foreground">
             Trading and the public fee ledger for {v.symbol} arrive in a later BONDR update.
           </p>

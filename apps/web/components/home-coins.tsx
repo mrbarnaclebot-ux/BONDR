@@ -3,7 +3,7 @@
 import type { CoinRow } from "@bondr/core/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { type ComponentProps, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { BASE58_KEY } from "@/lib/guard";
 import { mergePage, type Sort } from "@/lib/live-list";
@@ -139,6 +139,16 @@ function ShowMore({ busy, failed, onClick }: { busy: Busy; failed: boolean; onCl
   );
 }
 
+type ControlsProps = { sort: Sort; pick(label: string): void; box: ComponentProps<typeof SearchBox> };
+
+/** Tabs left, search right; both full width below 560px. */
+const Controls = ({ sort, pick, box }: ControlsProps) => (
+  <div className="mb-6 flex flex-wrap items-center justify-between gap-3 max-[560px]:*:w-full">
+    <Seg label="Sort coins" options={OPTIONS} value={LABELS[sort]} onChange={pick} />
+    <SearchBox {...box} />
+  </div>
+);
+
 type ListingProps = { list: CoinPage | null; q: string; busy: Busy; retry(): void; clear(): void };
 
 /** The grid, or the error, no-coins or no-match state in its place. */
@@ -185,10 +195,7 @@ export function HomeCoins() {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 max-[560px]:*:w-full">
-        <Seg label="Sort coins" options={OPTIONS} value={LABELS[sort]} onChange={pick} />
-        <SearchBox {...search} clear={clear} ref={input} />
-      </div>
+      <Controls sort={sort} pick={pick} box={{ ...search, clear, ref: input }} />
       <MatchCount n={q && list && busy === null ? list.coins.length : null} />
       <Listing list={list} q={q} busy={busy} retry={() => void load(sort, 0, q)} clear={clear} />
       {list?.more && <ShowMore busy={busy} failed={moreFailed} onClick={() => void load(sort, pages, q)} />}

@@ -39,6 +39,17 @@ function Nodes({ ax, bx, cy, r, t, ring }: NodeProps) {
   );
 }
 
+/** The fill gradient, defined inside each SVG under its own id. */
+const Gradient = ({ id }: { id: string }) => (
+  <defs>
+    <linearGradient id={id} x1="0" x2="1">
+      <stop offset="0" style={{ stopColor: "var(--forest)" }} />
+      <stop offset="0.6" style={{ stopColor: "var(--leaf)" }} />
+      <stop offset="1" style={{ stopColor: "var(--mint)" }} />
+    </linearGradient>
+  </defs>
+);
+
 /**
  * Two nodes joined by the curve fill, ported from the mockup's bondGlyph(): node B moves closer as the curve
  * fills, pulses from 90 percent, and is filled once bonded. `p` runs 0..1; `ring` (default at 1) radiates
@@ -59,13 +70,7 @@ export function BondGlyph({ p, w, h, label, ring = p >= 1 }: Props) {
       aria-label={label}
       className="block h-auto w-full overflow-visible"
     >
-      <defs>
-        <linearGradient id={id} x1="0" x2="1">
-          <stop offset="0" style={{ stopColor: "var(--forest)" }} />
-          <stop offset="0.6" style={{ stopColor: "var(--leaf)" }} />
-          <stop offset="1" style={{ stopColor: "var(--mint)" }} />
-        </linearGradient>
-      </defs>
+      <Gradient id={id} />
       <line
         x1={ax}
         x2={bx}

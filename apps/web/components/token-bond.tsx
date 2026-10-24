@@ -2,7 +2,7 @@
 import type { CoinRow, Net } from "@bondr/core/api";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { flashClass } from "@/lib/flash";
+import { flashClass, type Side } from "@/lib/flash";
 import { age, curvePct, mcapSol, short, thousands } from "@/lib/format";
 import { BondGlyph } from "./bond-glyph";
 import { useCoinLive } from "./coin-live";
@@ -52,6 +52,29 @@ function Prose({ c, symbol, net }: { c: BondCoin; symbol: string; net: Net }) {
   );
 }
 
+type Flash = { side: Side; n: number } | null;
+
+/** "Curve filled", the big percentage (flashing on a trade) and the Bonded tag once on PumpSwap. */
+function Gauge({ c, pct, flash }: { c: BondCoin; pct: string; flash: Flash }) {
+  return (
+    <>
+      <div className="flex justify-between gap-2 text-sm">
+        <span className="font-semibold">Curve filled</span>
+        {c.venue === "curve" && <span className="text-xs text-muted-foreground">bonds at 100%</span>}
+      </div>
+      <div className="flex items-center gap-3">
+        <span
+          key={flash?.n}
+          className={cn("num rounded-sm text-[28px] leading-none", flash && flashClass(flash.side))}
+        >
+          {pct}
+        </span>
+        {c.venue === "pool" && <Tag tone="leaf">Bonded</Tag>}
+      </div>
+    </>
+  );
+}
+
 const CURVE_START: BondCoin = {
   venue: "curve",
   progress: 0,
@@ -69,7 +92,6 @@ const CURVE_START: BondCoin = {
 export function BondPanel({ symbol, net }: { symbol: string; net: Net }) {
   const live = useCoinLive();
   const c = live?.coin ?? CURVE_START;
-  const flash = live?.flash;
   const pct = curvePct(c.venue === "curve" ? c.progress : 1);
   return (
     <section
@@ -82,19 +104,7 @@ export function BondPanel({ symbol, net }: { symbol: string; net: Net }) {
         </h2>
         <span className="text-xs text-muted-foreground">Read from the pump curve on-chain.</span>
       </div>
-      <div className="flex justify-between gap-2 text-sm">
-        <span className="font-semibold">Curve filled</span>
-        {c.venue === "curve" && <span className="text-xs text-muted-foreground">bonds at 100%</span>}
-      </div>
-      <div className="flex items-center gap-3">
-        <span
-          key={flash?.n}
-          className={cn("num rounded-sm text-[28px] leading-none", flash && flashClass(flash.side))}
-        >
-          {pct}
-        </span>
-        {c.venue === "pool" && <Tag tone="leaf">Bonded</Tag>}
-      </div>
+      <Gauge c={c} pct={pct} flash={live?.flash ?? null} />
       <div className="mt-3 mb-2 max-w-[560px]">
         <BondGlyph
           p={c.venue === "curve" ? c.progress : 1}

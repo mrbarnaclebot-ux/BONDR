@@ -26,11 +26,30 @@ export const {
   PUMP_PROGRAM_ID,
   PUMP_AMM_PROGRAM_ID,
   PUMP_FEE_PROGRAM_ID,
+  PUMP_FEE_CONFIG_PDA,
   PUMP_EVENT_AUTHORITY_PDA,
+  normalizeQuoteMint,
   pumpIdl,
 } = pump;
-export const { PUMP_AMM_SDK, OnlinePumpAmmSdk, buyQuoteInput, pumpAmmJson, PUMP_AMM_EVENT_AUTHORITY_PDA } =
-  amm;
+export const {
+  PUMP_AMM_SDK,
+  OnlinePumpAmmSdk,
+  buyQuoteInput,
+  pumpAmmJson,
+  PUMP_AMM_EVENT_AUTHORITY_PDA,
+  multiHopSwapQuote,
+  resolveMultiHopRoute,
+  pumpPoolAuthorityPda,
+  GLOBAL_CONFIG_PDA,
+  PUMP_AMM_FEE_CONFIG_PDA,
+} = amm;
 export const computeAmmFeesBps = amm.computeFeesBps; // pool fees (lp, protocol, creator); same name as pump's
-export type { BondingCurve, Global, PumpQuoteAccounts } from "@pump-fun/pump-sdk"; // types only, erased at runtime
+export type { BondingCurve, FeeConfig, Global, PumpQuoteAccounts } from "@pump-fun/pump-sdk"; // types only, erased at runtime
+export type {
+  FeeConfig as AmmFeeConfig,
+  GlobalConfig,
+  MultiHopLegFees,
+  MultiHopQuoteHop,
+  Pool,
+} from "@pump-fun/pump-swap-sdk";
 export { BN }; // SDK amount arguments (bn.js 5.2.5, never anchor's BN)

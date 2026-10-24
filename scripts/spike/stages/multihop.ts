@@ -1,13 +1,17 @@
 // SPIKE-05: multi_hop_swap buy SOL -> Q -> C and sell C -> Q -> SOL, one signature each. Out amounts come
 // from the landed tx meta, so the row proves what the trader got, not what the simulation promised. One
 // factory serves both routes: devnet C0 with Q on its curve, and fork C3 with Q on its PumpSwap pool. The
-// SDK picks each hop's venue from chain.
+// SDK picks each hop's venue from chain. pureQuote is the worker's own route quote (quote-read + routeQuote) on
+// the pre-trade state, and the rule holds it to the landed amount within 1 base unit (RESEARCH A1).
 import { costToComplete, readCurve } from "@bondr/core/curve";
 import { BN, OnlinePumpSdk } from "@bondr/core/pump";
+import { routeQuote } from "@bondr/core/quote";
+import { hopInputs, readConfigs, readMintState } from "@bondr/core/quote-read";
 import { type Route, routeBuy, routeSell } from "@bondr/core/route";
-import { budget, fetchMeta, sendTx } from "@bondr/core/send";
+import { budget, fetchTx, sendTx } from "@bondr/core/send";
+import { lamportDelta, soldLamports, tokenDelta } from "@bondr/core/trade";
 import { getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
-import { type ConfirmedTransactionMeta, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { fundSol, paceMs } from "../fund.ts";
 import type { Ctx, Rule, Stage } from "../results.ts";
 
@@ -18,19 +22,8 @@ const TRADER_FLOAT = 0.02 * LAMPORTS_PER_SOL;
 type Online = InstanceType<typeof OnlinePumpSdk>;
 type Leg = { id: string; step: string; route: Route; amountIn: BN };
 type Hop = { ctx: Ctx; online: Online; Q: PublicKey; C: PublicKey; prefix: string; label: string };
-
-export function tokenDelta(meta: ConfirmedTransactionMeta, mint: PublicKey, owner: PublicKey): bigint {
-  const pick = (list: ConfirmedTransactionMeta["preTokenBalances"]) =>
-    BigInt(
-      list?.find((b) => b.mint === mint.toBase58() && b.owner === owner.toBase58())?.uiTokenAmount.amount ??
-        "0",
-    );
-  return pick(meta.postTokenBalances) - pick(meta.preTokenBalances);
-}
-
-// The trader is the fee payer (account 0), so adding the fee back leaves what the sell paid out.
-const lamportDelta = (meta: ConfirmedTransactionMeta): bigint =>
-  BigInt(meta.postBalances[0] - meta.preBalances[0] + meta.fee);
+type Side = "buy" | "sell";
+type Landed = NonNullable<Awaited<ReturnType<typeof fetchTx>>>;
 
 // Pitfall 1: a route that completed Q would block every child create (6107) before the plan wants it.
 // A migrated Q trades on its pool, so the guard only applies while Q is on its curve.
@@ -43,17 +36,46 @@ async function guardQ(online: Online, Q: PublicKey, amountIn: BN): Promise<void>
     );
 }
 
-async function send(ctx: Ctx, leg: Leg, out: (m: ConfirmedTransactionMeta) => bigint): Promise<boolean> {
+// The quote the panel would show, read the way the worker reads it, plus the live fee bps of each hop.
+async function pure(h: Hop, side: Side, amountIn: BN): Promise<Record<string, string | number>> {
+  const [cfg, bondr, coin] = await Promise.all([
+    readConfigs(h.ctx.conn),
+    readMintState(h.ctx.conn, h.Q, NATIVE_MINT),
+    readMintState(h.ctx.conn, h.C, h.Q),
+  ]);
+  const q = routeQuote({
+    side,
+    bondrMint: h.Q,
+    coinMint: h.C,
+    bondr: hopInputs(bondr, cfg),
+    coin: hopInputs(coin, cfg),
+    amountIn: BigInt(amountIn.toString()),
+    slippageBps: 0,
+    ammGlobalConfig: cfg.ammGlobalConfig,
+    ammFeeConfig: cfg.ammFeeConfig,
+  });
+  const { bondrHop: b, coinHop: c } = q.fees;
+  return {
+    pureQuote: q.amountOut,
+    bondrHopBps: `${b.venue} protocol ${b.protocolBps} creator ${b.creatorBps} lp ${b.lpBps}`,
+    coinHopBps: `${c.venue} protocol ${c.protocolBps} creator ${c.creatorBps} lp ${c.lpBps}`,
+  };
+}
+
+async function send(h: Hop, side: Side, leg: Leg, out: (tx: Landed) => bigint) {
+  const ctx = h.ctx;
+  const quoted = await pure(h, side, leg.amountIn);
   const trader = ctx.key("sim", "trader");
   const ixs = [...budget(CU), ...leg.route.ixs];
   const r = await sendTx({ conn: ctx.conn, payer: trader, ixs, paceMs: paceMs(ctx) });
-  const meta = r.ok && r.sig ? await fetchMeta(ctx.conn, r.sig) : undefined;
+  const tx = r.ok && r.sig ? await fetchTx(ctx.conn, r.sig) : undefined;
   const facts = {
     amountIn: leg.amountIn.toString(),
     expectedOut: leg.route.expectedOut.toString(),
     minAmountOut: leg.route.minAmountOut.toString(),
     venues: leg.route.venues,
-    ...(meta && { outAmount: out(meta).toString() }),
+    ...quoted,
+    ...(tx && { outAmount: out(tx).toString() }),
   };
   ctx.record({ id: leg.id, step: leg.step, ...r, cuLimit: CU, facts });
   return r.ok;
@@ -73,7 +95,8 @@ async function buy(h: Hop, amountIn: BN): Promise<void> {
   const route = await routeBuy({ ...opts, path: [NATIVE_MINT, h.Q, h.C] });
   const step = `multi_hop_swap buy SOL -> Q -> ${h.label}`;
   const leg = { id: `${h.prefix}multihop.buy`, step, route, amountIn };
-  if (!(await send(h.ctx, leg, (m) => tokenDelta(m, h.C, user)))) throw new Error("multihop buy failed");
+  if (!(await send(h, "buy", leg, (tx) => tokenDelta(tx.meta, h.C, user))))
+    throw new Error("multihop buy failed");
 }
 
 async function sell(h: Hop): Promise<void> {
@@ -89,7 +112,9 @@ async function sell(h: Hop): Promise<void> {
   });
   const step = `multi_hop_swap sell ${h.label} -> Q -> SOL`;
   const leg = { id: `${h.prefix}multihop.sell`, step, route, amountIn };
-  if (!(await send(h.ctx, leg, lamportDelta))) throw new Error("multihop sell failed");
+  // The panel's "Sold for" figure (S-CR-01), so the rule proves what the user sees.
+  const out = (tx: Landed) => soldLamports(tx, h.Q, user) ?? lamportDelta(tx.meta);
+  if (!(await send(h, "sell", leg, out))) throw new Error("multihop sell failed");
 }
 
 const legRule: Rule = (row) => {
@@ -98,7 +123,11 @@ const legRule: Rule = (row) => {
   if (f.outAmount === undefined) return "outAmount missing";
   const [out, min] = [BigInt(f.outAmount), BigInt(f.minAmountOut ?? 0)];
   if (min <= 0n) return `minAmountOut ${min} is not above 0`;
-  return out >= min ? null : `outAmount ${out} < minAmountOut ${min}`;
+  if (out < min) return `outAmount ${out} < minAmountOut ${min}`;
+  if (f.pureQuote === undefined) return null; // rows recorded before 04-09 carry no pureQuote
+  const p = BigInt(f.pureQuote);
+  const gap = p > out ? p - out : out - p;
+  return gap > 1n ? `pureQuote ${p} differs from outAmount ${out} by more than 1` : null;
 };
 
 // coinKey names the routed coin in file.state; idPrefix keeps devnet's ids ("") so passed rows still skip.

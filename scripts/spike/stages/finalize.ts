@@ -15,12 +15,11 @@ import {
   SHARING_CONFIG_SIZE,
   updateIxs,
 } from "@bondr/core/sharing";
-import { poolBuy, poolSell } from "@bondr/core/trade";
+import { poolBuy, poolSell, tokenDelta } from "@bondr/core/trade";
 import { type Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
 import { loadResults, type Rule, type Stage } from "../results.ts";
 import { CU, land, newRun, type Run, sigOk, topUp } from "./bond.ts";
 import { tokenAmount } from "./launch.ts";
-import { tokenDelta } from "./multihop.ts";
 import { rejectedRule, updateRule } from "./sharing.ts";
 
 const W_BUFFER = 0.01 * LAMPORTS_PER_SOL;

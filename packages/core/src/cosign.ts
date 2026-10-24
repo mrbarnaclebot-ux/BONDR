@@ -18,7 +18,7 @@ const SIG = 64;
 const BURN_CHECKED = 15; // Token-2022 instruction tag
 // The SDK's sell exit is the AMM program's multi_hop_swap; its IDL is not exported, so the anchor
 // discriminator is derived the way anchor does: sha256("global:<name>")[0..8].
-const MULTI_HOP_SWAP = createHash("sha256").update("global:multi_hop_swap").digest().subarray(0, 8);
+export const MULTI_HOP_SWAP = createHash("sha256").update("global:multi_hop_swap").digest().subarray(0, 8);
 
 export type CosignRefusal = "message_mismatch" | "bad_signature" | "exit_missing";
 type Addr = PublicKey | string;

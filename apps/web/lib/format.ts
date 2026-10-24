@@ -1,5 +1,5 @@
 // Display helpers for live values (UI-SPEC Live values). Pure, so the unit test can load them.
-import type { Net } from "@bondr/core/api";
+import type { Net, TradeSide } from "@bondr/core/api";
 
 /**
  * Lamports as SOL with at most `decimals` places, trailing zeros trimmed. `up` rounds up, for costs the dev
@@ -80,3 +80,14 @@ export function chartInterval(launchedAt: string, now = Date.now()): Interval {
   const hours = (now - Date.parse(launchedAt)) / 3_600_000;
   return hours < 6 ? "1m" : hours < 72 ? "5m" : "1h";
 }
+
+/** A quote's price impact fraction as "1.23%", "<0.01%" below that. */
+export const impactPct = (f: number): string => (f < 0.0001 ? "<0.01%" : `${(f * 100).toFixed(2)}%`);
+
+/** D-13: 5% up to 15% warns, over 15% is an error; under 5% has no band. */
+export const impactBand = (f: number): "warn" | "error" | null =>
+  f > 0.15 ? "error" : f >= 0.05 ? "warn" : null;
+
+/** A quote amount: a buy receives the coin (integer, thousands), a sell receives SOL (4 decimals). */
+export const outText = (side: TradeSide, base: string, symbol: string): string =>
+  side === "buy" ? `${thousands(BigInt(base) / 1_000_000n)} ${symbol}` : `${sol(base, 4)} SOL`;

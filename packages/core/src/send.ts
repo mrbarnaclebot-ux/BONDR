@@ -50,6 +50,9 @@ export type SendResult = {
   cu?: number;
   err?: string;
   code?: number;
+  // A preflight rejection's message and simulation logs, unsliced and unredacted, for the error map only.
+  // Worker-side: never sent to web or logged (S-WR-02).
+  preflight?: readonly string[];
 };
 
 // 1000 micro-lamports is enough on devnet and the fork. A contended mainnet completion (the forced bond
@@ -121,7 +124,7 @@ export async function pace(ms: number): Promise<void> {
 }
 
 // Anchor logs carry the readable name and the program logs carry the hex code; both make the row evidence.
-function fromLogs(logs: readonly string[] | null | undefined): { code?: number; name?: string } {
+export function fromLogs(logs: readonly string[] | null | undefined): { code?: number; name?: string } {
   const text = (logs ?? []).join("\n");
   const hex = text.match(/custom program error: (0x[0-9a-f]+)/i)?.[1];
   const num = text.match(/Error Number: (\d+)/)?.[1];
@@ -129,7 +132,7 @@ function fromLogs(logs: readonly string[] | null | undefined): { code?: number; 
   return { code, name: text.match(/Error Code: (\w+)/)?.[1] };
 }
 
-function customCode(err: unknown): number | undefined {
+export function customCode(err: unknown): number | undefined {
   const ie = (err as { InstructionError?: [number, unknown] } | null)?.InstructionError;
   const custom = (ie?.[1] as { Custom?: number } | undefined)?.Custom;
   return typeof custom === "number" ? custom : undefined;
@@ -198,7 +201,13 @@ async function unseen(conn: Connection, sig: string, lastValidBlockHeight: numbe
   }
 }
 
-async function settle(conn: Connection, sig: string, bytes: number, expectFail: boolean, bh: BlockhashInfo) {
+export async function settle(
+  conn: Connection,
+  sig: string,
+  bytes: number,
+  expectFail: boolean,
+  bh: BlockhashInfo,
+) {
   const lost = await unseen(conn, sig, bh.lastValidBlockHeight);
   if (lost) return result("unknown", { sig, bytes, err: `landed status unknown: ${lost}` });
   const meta = await fetchMeta(conn, sig);
@@ -216,13 +225,15 @@ export const preflightRejected = (e: unknown): boolean =>
   e instanceof SendTransactionError && Array.isArray(e.transactionError.logs);
 
 function thrown(e: unknown, bytes: number, sig: string, lastValidBlockHeight: number): SendResult {
-  const logs = fromLogs(e instanceof SendTransactionError ? e.transactionError.logs : undefined);
+  const te = e instanceof SendTransactionError ? e.transactionError : undefined;
+  const logs = fromLogs(te?.logs);
   const name = e instanceof Error ? e.name : "Error";
   const text = e instanceof Error ? e.message : String(e);
   const err = redact(`${logs.name ?? name}: ${text}`).slice(0, 400);
   const status = statusOf({ sent: !preflightRejected(e), expectFail: false });
   const seen = status === "unknown" ? { sig, lastValidBlockHeight } : {};
-  return result(status, { ...seen, bytes, err, code: logs.code });
+  const preflight = te?.logs && { preflight: [te.message, ...te.logs] };
+  return result(status, { ...seen, ...preflight, bytes, err, code: logs.code });
 }
 
 type BlockhashInfo = { blockhash: string; lastValidBlockHeight: number };

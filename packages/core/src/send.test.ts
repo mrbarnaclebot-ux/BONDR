@@ -120,6 +120,7 @@ describe("sendRaw", () => {
     const r = await sendRaw(throwing(e), new Uint8Array(1), opts);
     expect(r.status).toBe("failed");
     expect(r.sig).toBeUndefined();
+    expect(r.preflight).toEqual(["x", "Program log: Error: slippage"]);
   });
 
   test("a network error is unknown, with the signature and lastValidBlockHeight", async () => {

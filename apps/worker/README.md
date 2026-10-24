@@ -32,6 +32,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 | `POST /prepare` | bearer WORKER_TOKEN |
 | `POST /submit` | bearer WORKER_TOKEN |
 | `GET /events` | bearer WORKER_TOKEN |
+| `POST /trade/quote`, `/trade/balance`, `/trade/prepare`, `/trade/submit`, `/trade/view` | bearer WORKER_TOKEN |
 
 `POST /prepare` takes a `PrepareRequest` and returns a `PrepareResult` (see `@bondr/core/api`). Errors: 409 `paused`, 403 `consent_required`, 400 `invalid_input`, 503 `pool_empty`, 429 `rate_limited` (30 new tables an hour, worker-wide), 402 `insufficient_balance`, 500 `build_failed`. One prepare runs at a time.
 
@@ -87,4 +88,5 @@ Railway project `bondr`, environment `staging`, services `web` (public: https://
 - Redeploy from the local checkout, worker first: `railway up --service worker --environment staging --detach`, then the same with `--service web`. When a migration is new, deploy web first: its pre-deploy migrates, and the worker's backfill and indexer need the new tables. `.railwayignore` keeps `.planning` out of the upload.
 - Set a secret: `printf %s "$V" | railway variable set NAME --stdin --service worker --environment staging --skip-deploys`. One name per call. The seed and the Helius key go on the worker only; web refuses to boot holding them.
 - Deleting a variable does not redeploy: run `railway service redeploy --service <name> --environment staging --yes`.
+- Trade routes (Phase 4) need no new variable (`PRIORITY_FEE_MICROLAMPORTS` keeps its default) and no migration. Prepared and in-flight trades live in the worker's memory (D-07, no Postgres in the trade path), so run exactly one worker replica: a second one would 404 a submit or poll its sibling prepared.
 - Staging coins are all devnet test coins. The lists show every coins row and filter none of them (RESEARCH Open Question 4).

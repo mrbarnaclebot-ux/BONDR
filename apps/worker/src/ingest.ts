@@ -278,7 +278,10 @@ export async function backfillLaunches(conn: Connection): Promise<number> {
   let done = 0;
   for (const row of rows) {
     await pace(BACKFILL_PACE_MS);
-    const tx = row.signature ? await fetchTx(conn, row.signature) : undefined;
+    // A malformed signature (WrongSize) throws; it must skip this row, not fail the whole index boot.
+    const tx = row.signature
+      ? await fetchTx(conn, row.signature).catch(logged(`backfill ${row.id}`))
+      : undefined;
     if (!tx) {
       console.error(`backfill ${row.id}: tx not found`);
       continue;

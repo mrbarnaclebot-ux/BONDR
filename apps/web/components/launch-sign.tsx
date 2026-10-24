@@ -58,6 +58,8 @@ const FAULTS: Record<Code, Fault> = {
   build_failed: BUILD_FAILED,
   worker_unavailable: BUILD_FAILED,
   invalid_input: BUILD_FAILED,
+  slippage: BUILD_FAILED, // trade codes; a launch never gets them
+  message_changed: BUILD_FAILED,
   rejected: {
     text: "Phantom rejected the request. Nothing was sent and no SOL left your wallet. Your mint address stays reserved for 10 minutes.",
     action: "Try again",

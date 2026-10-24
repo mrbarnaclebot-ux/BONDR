@@ -7,7 +7,8 @@ import {
   TOKEN_2022_PROGRAM_ID as T22,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import type { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import type { ConfirmedTransactionMeta, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { type EventTx, innerEvents } from "./events.ts";
 import {
   type BN,
   buyQuoteInput,
@@ -128,4 +129,35 @@ export async function poolSell(o: Pool & { baseIn: BN; minQuoteOut: BN }): Promi
   const { state, buyback } = await poolState(o);
   const sell = await PUMP_AMM_SDK.sellV2Instructions(state, o.baseIn, o.minQuoteOut);
   return [buybackAtaIx(o.user, o.quoteMint, buyback), ...sell];
+}
+
+// Landed amounts read from a tx meta, so a result shows what the trader got, not what the simulation promised.
+export function tokenDelta(meta: ConfirmedTransactionMeta, mint: PublicKey, owner: PublicKey): bigint {
+  const pick = (list: ConfirmedTransactionMeta["preTokenBalances"]) =>
+    BigInt(
+      list?.find((b) => b.mint === mint.toBase58() && b.owner === owner.toBase58())?.uiTokenAmount.amount ??
+        "0",
+    );
+  return pick(meta.postTokenBalances) - pick(meta.preTokenBalances);
+}
+
+// The trader is the fee payer (account 0), so adding the fee back leaves what the sell paid out, plus the rent of
+// every account the tx closed and minus the rent of every one it created. Only a fallback for soldLamports.
+export const lamportDelta = (meta: ConfirmedTransactionMeta): bigint =>
+  BigInt(meta.postBalances[0] - meta.preBalances[0] + meta.fee);
+
+// SOL a sell paid out, from the BONDR to SOL leg's own event, so rent never counts (S-CR-01). Curve: quote
+// minus fee (the buyback is inside it) and creator fee. Pool: the event's net userQuoteAmountOut.
+export function soldLamports(tx: EventTx, bondrMint: PublicKey, user: PublicKey): bigint | undefined {
+  const [mint, owner] = [bondrMint.toBase58(), user.toBase58()];
+  const pool = canonicalPumpPoolPdaWithQuote(bondrMint, NATIVE_MINT).toBase58();
+  const leg = innerEvents(tx).findLast(
+    (e) =>
+      String(e.data.user) === owner &&
+      ((e.name === "TradeEvent" && e.data.mint === mint && e.data.isBuy === false) ||
+        (e.name === "SellEvent" && e.data.pool === pool)),
+  );
+  if (!leg) return undefined;
+  const n = (k: string) => BigInt(String(leg.data[k]));
+  return leg.name === "SellEvent" ? n("userQuoteAmountOut") : n("quoteAmount") - n("fee") - n("creatorFee");
 }

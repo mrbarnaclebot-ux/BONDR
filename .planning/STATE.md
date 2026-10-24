@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-14-PLAN.md
-last_updated: "2026-10-24T05:37:29.701Z"
+status: ready_to_plan
+stopped_at: Phase 4 complete (13/13) — ready to discuss Phase 5
+last_updated: 2026-10-24T20:14:02.109Z
 last_activity: 2026-10-24
 progress:
   total_phases: 7
-  completed_phases: 3
-  total_plans: 43
-  completed_plans: 43
-  percent: 43
+  completed_phases: 4
+  total_plans: 56
+  completed_plans: 56
+  percent: 57
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** A holder can verify on the token page that the dev holds no launch supply, and see that pre-bond fees went to forcing the bond and burning supply, never to the dev.
-**Current focus:** Phase 3 — Indexer, Lists and Token Page
+**Current focus:** Phase 5 — fee engine and public ledger
 
 ## Current Position
 
-Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 15 of 15
-Status: Phase complete — ready for verification
+Phase: 5
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-10-24
 
 Progress: [██████████] 100%
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 13
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -44,7 +44,7 @@ Progress: [██████████] 100%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 4 | 13 | - | - |
 
 **Recent Trend:**
 
@@ -88,6 +88,17 @@ Progress: [██████████] 100%
 | Phase 03 P12 | 27min | 2 tasks | 11 files |
 | Phase 03 P13 | 15min | 2 tasks | 15 files |
 | Phase 03 P14 | 35min | 2 tasks | 13 files |
+| Phase 04 P01 | 12 min | 2 tasks | 10 files |
+| Phase 04 P03 | 25 min | 2 tasks | 9 files |
+| Phase 04 P04 | 8 min | 2 tasks | 11 files |
+| Phase 04 P05 | 20 min | 3 tasks | 11 files |
+| Phase 04 P06 | 10 min | 2 tasks | 11 files |
+| Phase 04 P07 | 8 min | 2 tasks | 5 files |
+| Phase 04 P08 | 25 min | 2 tasks | 8 files |
+| Phase 04 P09 | 9 min | 2 tasks | 6 files |
+| Phase 04 P10 | 17 min | 3 tasks | 12 files |
+| Phase 04 P11 | 17min | 2 tasks | 11 files |
+| Phase 04 P13 | 12 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -191,6 +202,25 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-14: chart attributionLogo off; the footer "Charts by TradingView" link meets the license link requirement
 - [Phase 03]: 03-14: header Launch link stays an icon with the accessible name below 360px (label does not fit at 320)
 - [Phase 03]: 03-14: Top and Oldest pick up a new launch on reload or resync catch-up; Latest stays live (D-14)
+- [Phase 04]: 04-01: price impact is 1 - out/spotOut per hop in floats (reserveIn/(reserveIn+netIn), curve buys capped at real tokens), so tiny trades read about 0
+- [Phase 04]: 04-01: hop fee SOL is x*total/(10000+total) on a buy input and x*total/(10000-total) on a sell output; coin hop fees valued at BONDR spot
+- [Phase 04]: 04-03: the token page grid at 1100px uses rows auto 1fr with the right column spanning both, so a tall Trade plus Bond column never opens a gap between chart and Trades
+- [Phase 04]: 04-03: TRADE-03 and TRADE-04 stay open until slippage (04-05) and real trades (04-10) ship
+- [Phase 04]: 04-04: prepareTrade takes TradeCtx (Ctx & { net }), simulates at 1.4M CU with the env price, then asks the estimator once (mainnet only) and clamps for the final ceil(units*11/10) limit
+- [Phase 04]: 04-04: core trade-error.ts is the one error map for launch and trade; launch sims now map a dead blockhash to expired and 6004 to slippage
+- [Phase 04]: 04-05: stored slippage is read in a mount effect so server and first client render match; useRouteQuote lives in lib/use-route-quote.ts
+- [Phase 04]: 04-05: the 2 s refresh is a tick in the quote effect (no loading dim); balances load only on connect, visibilitychange and refreshBalance
+- [Phase 04]: 04-06: a refused trade submit (expired, message_changed) also fails the store entry; submit re-reads the entry after the block height await so concurrent submits cannot both broadcast
+- [Phase 04]: 04-07: trade submit forwards the session wallet with no web-side ownership read; the worker 404 and signer check decide, so web touches no database
+- [Phase 04]: 04-08: the Quick trade bar's bottom clearance pads the footer below 1100px (body:has([data-trade-bar]) footer), since the layout footer is the page's last content
+- [Phase 04]: 04-09: RESEARCH A1 closed, routeQuote equals the landed amount to the base unit on curve/pool, pool/curve and pool/pool fork routes; quote.ts unchanged
+- [Phase 04]: 04-09: TRADE-04 left pending until the UI signs trades (04-10)
+- [Phase 04]: 04-10: a trade the worker no longer knows (404 after a restart) is unknown with the last signature, not a failure (T8)
+- [Phase 04]: 04-10: runTrade detects an account switch through wallet.onAccountChange, since the WalletApi object is a render snapshot
+- [Phase 04]: 04-11: A non-submit trade button press calls preventDefault, since a refresh re-renders it as type submit before the click default runs
+- [Phase 04]: 04-11: The callout slot shows one callout: result, migration, impact, quote failed, in that order
+- [Phase 04]: 04-13: staging runs exactly one worker replica because prepared trades live in worker memory (D-07)
+- [Phase 04]: 04-13: on staging the devnet trade group takes the first curve coin of /api/coins?sort=top; the seeded trade panel group is local only
 
 ### Pending Todos
 
@@ -223,6 +253,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T05:37:29.695Z
-Stopped at: Completed 03-14-PLAN.md
+Last session: 2026-10-24T16:25:42.224Z
+Stopped at: Completed 04-13-PLAN.md
 Resume file: None

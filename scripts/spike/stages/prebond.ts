@@ -11,7 +11,7 @@ import {
   getSellSolAmountFromTokenAmount,
   OnlinePumpSdk,
 } from "@bondr/core/pump";
-import { buyExactIn, sellExactIn } from "@bondr/core/trade";
+import { buyExactIn, sellExactIn, tokenDelta } from "@bondr/core/trade";
 import { NATIVE_MINT, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
 import {
   type Keypair,
@@ -24,7 +24,6 @@ import { fundSol } from "../fund.ts";
 import type { Ctx, Rule, Stage } from "../results.ts";
 import { land, sigOk, wFloat } from "./bond.ts";
 import { tokenAmount } from "./launch.ts";
-import { tokenDelta } from "./multihop.ts";
 
 const CU = 300_000;
 const TRADER_SOL = 20 * LAMPORTS_PER_SOL;

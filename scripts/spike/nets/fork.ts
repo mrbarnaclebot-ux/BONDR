@@ -20,11 +20,15 @@ const stages: Stage[] = [
   bondStage,
   poolStage,
   finalizeStage,
+  // Q still on its curve, C2 on its PumpSwap pool: SOL -> Q curve -> C2 pool.
+  multihopStage("C2", "bonded."),
   completeStage,
   // Q is complete and unmigrated only between these two stages; the pool launches need it migrated.
   awaitingStage,
   migratedStage,
   poolLaunchStage,
   multihopStage("C3", "migrated."),
+  // Q migrated: SOL -> Q pool -> C2 pool, both hops on PumpSwap.
+  multihopStage("C2", "pooled."),
 ];
 export default stages;

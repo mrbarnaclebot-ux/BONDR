@@ -54,7 +54,7 @@ const SELL_SLIPPAGE_BPS = 300;
 const CID = /^[A-Za-z0-9]{1,100}$/;
 const LINK_KINDS = ["x", "telegram", "website"] as const;
 
-function walletOf(raw: unknown): string | null {
+export function walletOf(raw: unknown): string | null {
   if (typeof raw !== "string" || raw.length > 44) return null;
   try {
     return new PublicKey(raw).toBase58() === raw ? raw : null;

@@ -178,6 +178,16 @@
   html {
     -webkit-text-size-adjust: 100%;
   }
+  /* an open modal (trade sheet, consent) locks the page scroll behind it */
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
+  /* the token page's fixed Quick trade bar (68px) never covers the footer, the page's last content */
+  @media (width < 1100px) {
+    body:has([data-trade-bar]) footer {
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+  }
   body {
     min-height: 100dvh;
     display: flex;

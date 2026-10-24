@@ -17,6 +17,10 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `coins.test.ts`: windowed volume, 1h change from the last trade before the hour or the launch price, unknown mint, list orders with ties, paging and hero counts (Neon dev; skips without DATABASE_URL).
 - `trades.test.ts`: cursor parsing, and pages with no overlap and no gap down to the launch rows (Neon dev; skips without DATABASE_URL).
 - `format.test.ts`: the display formats.
+- `use-trade.ts`: `TradeProvider` and `useTrade()`, the trade panel's shared side, amount (as base units), slippage (localStorage `bondr:slippage`), the 2 s refresh with its 60 s pause, the session wallet's balances and phase, one state for every placement.
+- `use-route-quote.ts`: `useRouteQuote`, the debounced `/api/trade/quote` fetch; a refresh tick quotes at once without the loading dim.
+- `use-announce.ts`: `useAnnounce`, the trade panel's polite live region text (a user's quote once, "Quote paused.", the in-flight steps).
+- `trade-run.ts`: `runTrade`, one trade (prepare, one `signTransaction` raced against signBy, submit, 1 s poll) and its `Stop` codes; `trade-button.ts`: `buttonState`, the pure UI-SPEC submit state table (tested in `trade-button.test.ts`); `use-balance.ts`: the session wallet balances. `use-run.ts`: `useRun`, the panel's in-flight phase and last result (aborted on unmount).
 - `use-status.ts`: `useStatus()`, polls `/api/status` every 10 s.
 - `live-hub.ts`: server-only `hub`, the process's one upstream to the worker's `/events` NDJSON stream, with a 2,000-event replay ring and `resync` on a gap; `createHub`, `splitLines` and `Ring` are its pure parts.
 - `live-hub.test.ts`: line splitting, ring replay bounds, mint filter, client replay or resync, upstream gap resync, a failing subscriber dropped.

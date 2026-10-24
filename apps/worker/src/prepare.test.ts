@@ -91,7 +91,12 @@ test("sellFloor takes 300 bps off and never returns 0", () => {
 
 test("simError maps 6107 to paused, low funds to insufficient_balance, the rest to build_failed", () => {
   const custom = (n: number) => ({ InstructionError: [3, { Custom: n }] });
-  expect(simError(custom(6107), [])).toEqual({ error: "paused", paused: "awaiting_migration" });
+  const pump = (n: number) => [
+    `Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P failed: custom program error: 0x${n.toString(16)}`,
+  ];
+  expect(simError(custom(6107), pump(6107))).toEqual({ error: "paused", paused: "awaiting_migration" });
+  // Trade codes stay build_failed for a launch (S-WR-01): its UI has no slippage copy.
+  for (const n of [6002, 6004, 6005]) expect(simError(custom(n), pump(n))).toEqual({ error: "build_failed" });
   expect(simError(custom(1), [])).toEqual({ error: "insufficient_balance" });
   expect(simError(custom(0), ["Transfer: insufficient lamports 5, need 9"])).toEqual({
     error: "insufficient_balance",

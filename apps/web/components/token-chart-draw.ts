@@ -88,7 +88,7 @@ export function chartOptions(c: Colors, font: string, lib: Lib): DeepPartial<Cha
     timeScale: {
       borderVisible: false,
       secondsVisible: false,
-      rightOffset: 4,
+      rightOffsetPixels: 40, // clears half the "Bonded" label on the last bar, at any bar spacing
       tickMarkFormatter: (t: Time, type: number) => local(t, TICKS[type] ?? TICKS[3]),
     },
     handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
@@ -141,8 +141,9 @@ export function showCandles(api: ChartApi, rows: Candle[], seconds: number): Can
   api.volume.setData(rows.map((r) => volumeBar(api.colors, r)));
   const scale = api.chart.timeScale();
   scale.applyOptions({ timeVisible: seconds < 86_400 });
-  if (rows.length > 120) scale.setVisibleLogicalRange({ from: rows.length - 120, to: rows.length + 4 });
+  if (rows.length > 120) scale.setVisibleLogicalRange({ from: rows.length - 120, to: rows.length - 1 });
   else scale.fitContent();
+  scale.applyOptions({ rightOffsetPixels: 40 }); // a range or fit resets the offset in bars
   return rows.at(-1) ?? null;
 }
 

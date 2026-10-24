@@ -24,11 +24,27 @@ const EVENTS = {
   resync: "onResync",
 } as const;
 
+// Slow enough that a tab at the per-IP cap stays well under the 30 connects a minute limit.
+const REOPEN_MS = 15_000;
+
+function listen(es: EventSource, ref: { current: LiveHandlers }) {
+  for (const [type, key] of Object.entries(EVENTS)) {
+    es.addEventListener(type, (e) => {
+      let data: unknown;
+      try {
+        data = JSON.parse((e as MessageEvent<string>).data);
+      } catch {
+        return; // a malformed frame is dropped, never rendered (T-03-09-01)
+      }
+      (ref.current[key] as ((d: unknown) => void) | undefined)?.(data);
+    });
+  }
+}
+
 /**
  * One EventSource on /api/live (D-04: no polling). EventSource reconnects on its own and sends Last-Event-ID,
  * so the server replays or sends `resync`. Handlers are read through a ref, so re-renders never reopen it.
- * ponytail: a refused connect (429) closes the EventSource for good and the page stays "Reconnecting" until a
- * reload; reopen on a timer if that shows up in practice.
+ * A refused connect (429 at the per-IP cap) closes the EventSource for good, so that one is reopened on a timer.
  */
 export function useLive(handlers: LiveHandlers): LiveState {
   const ref = useRef(handlers);
@@ -38,21 +54,29 @@ export function useLive(handlers: LiveHandlers): LiveState {
   const [state, setState] = useState<LiveState>(null);
   const { mint } = handlers;
   useEffect(() => {
-    const es = new EventSource(mint ? `/api/live?mint=${encodeURIComponent(mint)}` : "/api/live");
-    es.onopen = () => setState("live");
-    es.onerror = () => setState("reconnecting");
-    for (const [type, key] of Object.entries(EVENTS)) {
-      es.addEventListener(type, (e) => {
-        let data: unknown;
-        try {
-          data = JSON.parse((e as MessageEvent<string>).data);
-        } catch {
-          return; // a malformed frame is dropped, never rendered (T-03-09-01)
-        }
-        (ref.current[key] as ((d: unknown) => void) | undefined)?.(data);
-      });
-    }
-    return () => es.close();
+    let es: EventSource;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let reopened = false;
+    const open = () => {
+      es = new EventSource(mint ? `/api/live?mint=${encodeURIComponent(mint)}` : "/api/live");
+      es.onopen = () => {
+        setState("live");
+        if (reopened) ref.current.onResync?.(); // a new EventSource has no Last-Event-ID, so no replay
+        reopened = false;
+      };
+      es.onerror = () => {
+        setState("reconnecting");
+        if (es.readyState !== EventSource.CLOSED) return;
+        reopened = true;
+        timer = setTimeout(open, REOPEN_MS);
+      };
+      listen(es, ref);
+    };
+    open();
+    return () => {
+      clearTimeout(timer);
+      es.close();
+    };
   }, [mint]);
   return state;
 }

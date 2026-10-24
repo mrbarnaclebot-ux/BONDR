@@ -95,7 +95,7 @@ export function BondPanel({ symbol, net }: { symbol: string; net: Net }) {
         </span>
         {c.venue === "pool" && <Tag tone="leaf">Bonded</Tag>}
       </div>
-      <div className="mt-3 mb-2">
+      <div className="mt-3 mb-2 max-w-[560px]">
         <BondGlyph
           p={c.venue === "curve" ? c.progress : 1}
           w={560}

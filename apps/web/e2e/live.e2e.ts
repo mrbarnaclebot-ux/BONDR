@@ -130,6 +130,18 @@ test.describe("stubbed", () => {
     await expect(head(page).getByText("Reconnecting", { exact: true })).toBeVisible();
   });
 
+  test("a refused stream (429) is reopened and goes Live", async ({ page }) => {
+    let refused = 0;
+    await page.route(
+      (u) => u.pathname === "/api/live",
+      (r) => (refused++ ? r.continue() : r.fulfill({ status: 429, body: "" })),
+    );
+    await page.goto(`/coin/${coin.mint}`);
+    await expect(head(page).getByText("Reconnecting", { exact: true })).toBeVisible();
+    await expect(head(page).getByText("Live", { exact: true })).toBeVisible({ timeout: 30_000 });
+    expect(refused).toBe(2);
+  });
+
   test.describe("reduced motion", () => {
     test.use({ reducedMotion: "reduce" });
     test("values update with no flash and rows with no rise", async ({ page }) => {

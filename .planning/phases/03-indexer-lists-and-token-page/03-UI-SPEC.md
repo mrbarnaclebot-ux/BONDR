@@ -357,7 +357,7 @@ Phase 2 identity bar, proof stamp and CA row stay. Changes:
 | `grid.horzLines` | color resolved `--line`, style dashed |
 | `crosshair` | lines `--line-strong`, label background `surface-3` |
 | `rightPriceScale.borderVisible` / `timeScale.borderVisible` | `false` |
-| `timeScale` | `timeVisible: true` for 1m, 5m, 1h; `secondsVisible: false`; `rightOffset: 4`; `fitContent()` when all candles fit, else the last 120 bars |
+| `timeScale` | `timeVisible: true` for 1m, 5m, 1h; `secondsVisible: false`; `rightOffsetPixels: 40` (clears the "Bonded" label); `fitContent()` when all candles fit, else the last 120 bars |
 | Candles | `upColor` / `borderUpColor` / `wickUpColor` leaf; down variants destructive |
 | Volume | same colors at 28% alpha |
 | Last value | `priceLineColor` mint, `priceLineStyle` dotted; last value label mint with ink text |

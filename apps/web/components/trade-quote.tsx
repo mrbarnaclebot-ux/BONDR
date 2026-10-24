@@ -199,7 +199,10 @@ export function TradeQuote() {
   };
   return (
     <div
-      className={cn("grid gap-2 text-xs transition-opacity duration-(--dur)", t.loading && q && "opacity-60")}
+      className={cn(
+        "grid gap-2 text-xs transition-opacity duration-(--dur)",
+        ((t.loading && q) || t.paused) && "opacity-60",
+      )}
     >
       <dl aria-busy={t.loading || undefined} className="grid gap-2">
         <Row label="You receive about" className="text-[15px]">

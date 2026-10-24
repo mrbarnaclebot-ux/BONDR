@@ -43,6 +43,19 @@ export const QUOTE_SELL: TradeQuote = {
   },
 };
 
+/** The coin on PumpSwap: the coin hop carries LP and creator, the BONDR hop protocol only. */
+export const QUOTE_POOL: TradeQuote = {
+  ...QUOTE_BUY,
+  route: { bondr: "curve", coin: "pool" },
+  fees: {
+    ...QUOTE_BUY.fees,
+    coinHop: { venue: "pool", protocolBps: 0, creatorBps: 5, lpBps: 20, sol: "1494701" },
+  },
+};
+
+/** "20.00%" impact, over the D-13 15% line. */
+export const QUOTE_IMPACT_HIGH: TradeQuote = { ...QUOTE_BUY, impact: 0.2 };
+
 /** "Balance 2.5000 SOL" and exactly the tokens QUOTE_BUY buys. */
 export const BALANCE: TradeBalance = { sol: "2500000000", tokens: "17234567000000" };
 

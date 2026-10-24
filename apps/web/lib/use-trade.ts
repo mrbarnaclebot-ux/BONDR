@@ -2,31 +2,52 @@
 
 // The trade panel's one state object (UI-SPEC useTrade): every placement (column panel, later the sheet and the
 // sticky bar) reads the same side, amount, slippage and quote, so switching placement never loses the input.
-import type { ApiError, TradeBalance, TradeErrorCode, TradeQuote, TradeSide } from "@bondr/core/api";
+import type { TradeBalance, TradeErrorCode, TradeQuote, TradeSide } from "@bondr/core/api";
 import { parseSol } from "@bondr/core/rules";
 import {
   createContext,
   createElement,
   type ReactNode,
-  type RefObject,
+  type RefCallback,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { useWallet } from "@/components/wallet";
+import { useRouteQuote } from "./use-route-quote";
 
+// Typing waits for the debounce; presets, side and slippage changes quote at once (UI-SPEC Quote refresh).
 const DEBOUNCE_MS = 400;
-const SLIPPAGE_KEY = "bondr:slippage";
+const REFRESH_MS = 2_000;
+const IDLE_MS = 60_000;
 const DEFAULT_BPS = 100;
 
 /** The stored slippage if it is a whole bps in the 0.1% to 50% range the worker accepts, else the 1% default. */
 function storedSlippage(): number {
   try {
-    const n = Number(localStorage.getItem(SLIPPAGE_KEY));
+    const n = Number(localStorage.getItem("bondr:slippage"));
     return Number.isInteger(n) && n >= 10 && n <= 5_000 ? n : DEFAULT_BPS;
   } catch {
     return DEFAULT_BPS; // storage blocked
   }
+}
+
+/** UI-SPEC Slippage: 1% by default and remembered; blocked storage keeps a choice for this page only. */
+function useSlippage(): [number, (bps: number) => void] {
+  const [bps, setBps] = useState(DEFAULT_BPS);
+  // Read after mount: the server render has no storage, and the first client render must match it.
+  useEffect(() => setBps(storedSlippage()), []);
+  const set = useCallback((n: number) => {
+    setBps(n);
+    try {
+      localStorage.setItem("bondr:slippage", String(n));
+    } catch {
+      // storage blocked
+    }
+  }, []);
+  return [bps, set];
 }
 
 export type TradePhase = "idle" | "preparing" | "signing" | "confirming";
@@ -47,6 +68,16 @@ export type Trade = {
   quoteError: TradeErrorCode | "failed" | null;
   phase: TradePhase;
   balance: BalanceState;
+  /** The 2 s refresh stopped after 60 s without input (D-12). */
+  paused: boolean;
+  /** Quotes once and restarts the refresh. */
+  resume(): void;
+  /** Refetches the balances; the trade result calls it (D-16). */
+  refreshBalance(): void;
+  /** The column panel registers here; the refresh runs only while it is in the viewport. */
+  panelRef: RefCallback<HTMLElement>;
+  /** A sheet sets its open state here, so an open sheet keeps the refresh running. */
+  setVisible(open: boolean): void;
   setSide(side: TradeSide): void;
   setAmount(text: string): void;
   /** A preset chip: quotes at once, no debounce. */
@@ -75,67 +106,115 @@ export function toUnits(side: TradeSide, text: string): bigint | null {
   return n && n > 0n ? n : null;
 }
 
-type QuoteState = Pick<Trade, "quote" | "loading" | "quoteError">;
-
-/** The debounced quote. The previous quote stays while the next loads (the panel dims it); stale requests abort. */
-function useRouteQuote(
-  side: TradeSide,
-  mint: string,
-  units: bigint | null,
-  slippageBps: number,
-  delay: RefObject<number>,
-) {
-  const [s, setS] = useState<QuoteState>({ quote: null, loading: false, quoteError: null });
+/** document.visibilityState as state: the refresh stops in a background tab. */
+function useTabVisible(): boolean {
+  const [shown, setShown] = useState(true);
   useEffect(() => {
-    if (units === null) {
-      setS({ quote: null, loading: false, quoteError: null });
-      return;
-    }
-    setS((p) => ({ ...p, loading: true }));
-    const abort = new AbortController();
-    const timer = setTimeout(() => {
-      fetch("/api/trade/quote", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ side, mint, amount: String(units), slippageBps }),
-        signal: abort.signal,
-      })
-        .then(async (r) => {
-          const body = (await r.json().catch(() => null)) as TradeQuote | ApiError | null;
-          if (r.ok && body && "amountOut" in body) setS({ quote: body, loading: false, quoteError: null });
-          else {
-            const code = body && "error" in body ? (body.error as TradeErrorCode) : "failed";
-            setS({ quote: null, loading: false, quoteError: code });
-          }
-        })
-        .catch(() => abort.signal.aborted || setS({ quote: null, loading: false, quoteError: "failed" }));
-    }, delay.current);
-    return () => {
-      clearTimeout(timer);
-      abort.abort();
-    };
-  }, [side, mint, units, slippageBps, delay]);
-  return s;
+    const on = () => setShown(document.visibilityState === "visible");
+    on();
+    document.addEventListener("visibilitychange", on);
+    return () => document.removeEventListener("visibilitychange", on);
+  }, []);
+  return shown;
 }
 
-export function TradeProvider({
-  mint,
-  symbol,
-  children,
-}: {
-  mint: string;
-  symbol: string;
-  children: ReactNode;
-}) {
+/** The panel is visible when the column panel intersects the viewport or a sheet says it is open. */
+function usePanelVisible() {
+  const [inView, setInView] = useState(false);
+  const [open, setVisible] = useState(false);
+  const panelRef = useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setInView(!!e?.isIntersecting));
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      setInView(false);
+    };
+  }, []);
+  return { visible: inView || open, panelRef, setVisible };
+}
+
+/**
+ * D-12: a tick every 2 s while `run` holds; after 60 s without panel input it pauses instead. `input(ms)`
+ * records input, sets the next quote's delay and lifts the pause.
+ */
+function useQuoteLoop(run: boolean) {
+  const [tick, setTick] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const lastInput = useRef(0);
+  const delay = useRef(DEBOUNCE_MS);
+  useEffect(() => {
+    if (!run || paused) return;
+    const timer = setInterval(() => {
+      if (Date.now() - lastInput.current >= IDLE_MS) setPaused(true);
+      else setTick((n) => n + 1);
+    }, REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [run, paused]);
+  const input = (ms: number) => {
+    delay.current = ms;
+    lastInput.current = Date.now();
+    setPaused(false);
+  };
+  const resume = () => {
+    input(0);
+    setTick((n) => n + 1);
+  };
+  return { tick, delay, paused, input, resume };
+}
+
+/**
+ * D-16: the session wallet's balances, fetched when a consented wallet connects, when the tab comes back and on
+ * refreshBalance. Never on a timer. A refetch keeps the shown value until the new one lands.
+ */
+function useBalance(mint: string) {
+  const w = useWallet();
+  const address = w.status === "connected" && w.consented ? w.address : null;
+  const [balance, setBalance] = useState<BalanceState>("unknown");
+  const reload = useRef(() => {});
+  useEffect(() => {
+    setBalance(address ? "loading" : "unknown");
+    if (!address) return;
+    let seq = 0;
+    const load = () => {
+      const id = ++seq;
+      fetch("/api/trade/balance", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mint }),
+      })
+        .then((r) => (r.ok ? (r.json() as Promise<TradeBalance>) : Promise.reject(r.status)))
+        .then(
+          (b) => id === seq && setBalance(b),
+          () => id === seq && setBalance("failed"),
+        );
+    };
+    const onShow = () => document.visibilityState === "visible" && load();
+    reload.current = load;
+    load();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      seq = -1; // a late answer for the old wallet is dropped
+      reload.current = () => {};
+      document.removeEventListener("visibilitychange", onShow);
+    };
+  }, [address, mint]);
+  return { balance, refreshBalance: useCallback(() => reload.current(), []) };
+}
+
+type ProviderProps = { mint: string; symbol: string; children: ReactNode };
+
+export function TradeProvider({ mint, symbol, children }: ProviderProps) {
   const [side, setSideState] = useState<TradeSide>("buy");
   const [amount, setAmountState] = useState("");
-  const [slippageBps, setSlippageState] = useState(DEFAULT_BPS);
-  // Read after mount: the server render has no storage, and the first client render must match it.
-  useEffect(() => setSlippageState(storedSlippage()), []);
-  // Typing waits for the debounce; side and slippage changes quote at once (UI-SPEC Quote refresh).
-  const delay = useRef(DEBOUNCE_MS);
+  const [slippageBps, setSlippage] = useSlippage();
   const units = toUnits(side, amount);
-  const q = useRouteQuote(side, mint, units, slippageBps, delay);
+  // 04-10 drives the phase once the panel runs trades.
+  const phase: TradePhase = "idle";
+  const panel = usePanelVisible();
+  const tab = useTabVisible();
+  const loop = useQuoteLoop(units !== null && phase === "idle" && tab && panel.visible);
+  const q = useRouteQuote(side, mint, units, slippageBps, loop.tick, loop.delay);
   const value: Trade = {
     mint,
     symbol,
@@ -144,31 +223,29 @@ export function TradeProvider({
     units,
     slippageBps,
     ...q,
-    // 04-10 drives the phase once the panel runs trades.
-    phase: "idle",
-    balance: "unknown",
+    phase,
+    ...useBalance(mint),
+    paused: loop.paused,
+    resume: loop.resume,
+    panelRef: panel.panelRef,
+    setVisible: panel.setVisible,
     setSide(next) {
-      delay.current = 0;
+      loop.input(0);
       setSideState(next);
       // Switching side clears the amount: a SOL figure is meaningless as a coin amount.
       if (next !== side) setAmountState("");
     },
     setAmount(text) {
-      delay.current = DEBOUNCE_MS;
+      loop.input(DEBOUNCE_MS);
       setAmountState(text);
     },
     pickAmount(text) {
-      delay.current = 0;
+      loop.input(0);
       setAmountState(text);
     },
     setSlippageBps(bps) {
-      delay.current = 0;
-      setSlippageState(bps);
-      try {
-        localStorage.setItem(SLIPPAGE_KEY, String(bps));
-      } catch {
-        // storage blocked: the choice lasts for this page only
-      }
+      loop.input(0);
+      setSlippage(bps);
     },
   };
   return createElement(Ctx.Provider, { value }, children);

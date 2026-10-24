@@ -13,6 +13,7 @@ export function TradePanel() {
   const h = useId();
   return (
     <section
+      ref={t.panelRef}
       aria-labelledby={h}
       className="grid gap-4 rounded-lg border border-line-strong bg-[radial-gradient(100%_50%_at_50%_0%,color-mix(in_oklch,var(--leaf)_10%,transparent),transparent_70%),linear-gradient(180deg,var(--surface-2),var(--surface))] p-4 shadow-elev-2 md:p-6"
     >

@@ -26,42 +26,53 @@ function chip(c: CoinRow, mode: TrendMode) {
 }
 
 /**
- * Mouse drag scrolls the region (touch and wheel scroll natively). Snap is off while dragging, and a drag over
- * 4px swallows the click that ends it so the card under the pointer does not open.
+ * The drag's pointer handlers on `el`. Snap is off while dragging, and a drag over 4px captures the pointer (so
+ * leaving the region does not stop it) and swallows the click that ends it, so the card under it does not open.
+ * Capture waits for the 4px, since a captured pointer's click lands on the region, not the card.
  */
+function dragHandlers(el: HTMLElement) {
+  let start: { x: number; left: number } | null = null;
+  let moved = 0;
+  const down = (e: PointerEvent) => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    start = { x: e.clientX, left: el.scrollLeft };
+    moved = 0;
+  };
+  const move = (e: PointerEvent) => {
+    if (!start) return;
+    moved = Math.max(moved, Math.abs(e.clientX - start.x));
+    if (moved <= 4) return;
+    if (!el.hasPointerCapture(e.pointerId)) el.setPointerCapture(e.pointerId);
+    el.style.scrollSnapType = "none";
+    el.scrollLeft = start.left - (e.clientX - start.x);
+  };
+  // pointercancel too: a native drag or a lost pointer ends the drag instead of leaving it stuck.
+  const up = (e: PointerEvent) => {
+    start = null;
+    if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    el.style.scrollSnapType = "";
+  };
+  const click = (e: MouseEvent) => {
+    if (moved > 4) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    moved = 0;
+  };
+  return { down, move, up, click };
+}
+
+/** Mouse drag scrolls the region; touch and wheel scroll natively. */
 function useDrag(ref: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    let start: { x: number; left: number } | null = null;
-    let moved = 0;
-    const down = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" || e.button !== 0) return;
-      start = { x: e.clientX, left: el.scrollLeft };
-      moved = 0;
-    };
-    const move = (e: PointerEvent) => {
-      if (!start) return;
-      moved = Math.max(moved, Math.abs(e.clientX - start.x));
-      if (moved <= 4) return;
-      el.style.scrollSnapType = "none";
-      el.scrollLeft = start.left - (e.clientX - start.x);
-    };
-    const up = () => {
-      start = null;
-      el.style.scrollSnapType = "";
-    };
-    const click = (e: MouseEvent) => {
-      if (moved > 4) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      moved = 0;
-    };
+    const { down, move, up, click } = dragHandlers(el);
     const on = [
       ["pointerdown", down],
       ["pointermove", move],
       ["pointerup", up],
+      ["pointercancel", up],
       ["pointerleave", up],
     ] as const;
     for (const [k, f] of on) el.addEventListener(k, f);

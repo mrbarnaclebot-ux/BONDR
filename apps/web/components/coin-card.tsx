@@ -26,12 +26,18 @@ const hide = (e: SyntheticEvent<HTMLImageElement>) => {
 const CHIP =
   "absolute z-[1] inline-flex min-h-6 items-center rounded-full border border-line bg-ink/85 px-2 text-xs";
 
+const IMG = {
+  loading: "lazy",
+  decoding: "async",
+  draggable: false,
+  className: "size-full object-cover",
+} as const;
+
 /** Art head: the blurred bleed and the avatar from the same gateway URL (the browser fetches it once). */
 function Art({ cid, variant }: { cid: string | null; variant: Variant }) {
   const src = imageUrl(cid);
-  const img = src && (
-    <img src={src} alt="" loading="lazy" decoding="async" onError={hide} className="size-full object-cover" />
-  );
+  // Not draggable: a press on the art would start a native image drag inside the Trending scroller.
+  const img = src && <img src={src} alt="" {...IMG} onError={hide} />;
   const grid = variant === "grid";
   return (
     <div
@@ -115,6 +121,46 @@ function Bond({ coin, flash }: { coin: CoinRow; flash: Flash }) {
   );
 }
 
+const Age = ({ at }: { at: string }) => (
+  <time dateTime={at} suppressHydrationWarning>
+    {age(at)}
+  </time>
+);
+
+/** The grid's age chip, the trending rank chip and the trending volume chip, over the art. */
+function Chips({
+  coin,
+  grid,
+  rank,
+  chip,
+}: {
+  coin: CoinRow;
+  grid: boolean;
+  rank?: number;
+  chip?: ReactNode;
+}) {
+  return (
+    <>
+      {grid && (
+        <span
+          className={cn(
+            CHIP,
+            "top-3 right-3 max-[560px]:top-auto max-[560px]:right-auto max-[560px]:bottom-2 max-[560px]:left-2",
+          )}
+        >
+          <Age at={coin.launchedAt} />
+        </span>
+      )}
+      {rank !== undefined && (
+        <span className={cn(CHIP, "top-3 left-3 px-2 py-0 font-display text-[15px] font-extrabold")}>
+          #{rank}
+        </span>
+      )}
+      {chip && <span className={cn(CHIP, "top-3 right-3")}>{chip}</span>}
+    </>
+  );
+}
+
 /**
  * One coin as a single link (UI-SPEC Coin card, LIST-04): art, name and symbol, market cap in SOL with the 1h
  * change, bond progress. Grid cards carry the age chip and turn horizontal below 560px; trending cards take a
@@ -126,11 +172,6 @@ export function CoinCard({ coin, variant = "grid", rank, chip }: Props) {
   const flash = live?.flash[coin.mint];
   const { key, fl } = lit(flash);
   const grid = variant === "grid";
-  const old = (
-    <time dateTime={coin.launchedAt} suppressHydrationWarning>
-      {age(coin.launchedAt)}
-    </time>
-  );
   return (
     <Link
       href={`/coin/${coin.mint}`}
@@ -152,28 +193,17 @@ export function CoinCard({ coin, variant = "grid", rank, chip }: Props) {
             <span key={key} data-field="mcap" className={cn("num rounded-sm text-lg", fl)}>
               {mcapSol(coin.mcapSol)} SOL
             </span>
-            {!grid && <span className="block text-xs text-muted-foreground">{old} old</span>}
+            {!grid && (
+              <span className="block text-xs text-muted-foreground">
+                <Age at={coin.launchedAt} /> old
+              </span>
+            )}
           </span>
           <Change f={coin.change1h} flash={flash} />
         </div>
         <Bond coin={coin} flash={flash} />
       </div>
-      {grid && (
-        <span
-          className={cn(
-            CHIP,
-            "top-3 right-3 max-[560px]:top-auto max-[560px]:right-auto max-[560px]:bottom-2 max-[560px]:left-2",
-          )}
-        >
-          {old}
-        </span>
-      )}
-      {rank !== undefined && (
-        <span className={cn(CHIP, "top-3 left-3 px-2 py-0 font-display text-[15px] font-extrabold")}>
-          #{rank}
-        </span>
-      )}
-      {chip && <span className={cn(CHIP, "top-3 right-3")}>{chip}</span>}
+      <Chips coin={coin} grid={grid} rank={rank} chip={chip} />
     </Link>
   );
 }

@@ -69,7 +69,7 @@ Not in Phase 5:
 
 ### Sweep, buyback and treasury
 - **D-12:** FEE-04: at a window end, collect and split first. Then W's whole BONDR budget is split 90% to the buyback wallet and 10% to the treasury, in one transaction W signs. W stays the creator. A window with a zero budget writes no row. A coin older than one window when the engine first starts is swept at its next window end, with no retroactive windows.
-- **D-13:** The buyback wallet is a new derived role, `buyback` (keys.ts Role). The daily batch burns its entire BONDR balance in one transaction, logged as one ledger row of kind `buyback_burn`, with no mint (the platform row). Each coin's own ledger shows its `sweep_buyback` rows. The site totals show the burns.
+- **D-13:** The buyback wallet is a new derived role, `buyback` (keys.ts Role). The daily batch burns its entire BONDR balance in one transaction, logged as one ledger row of kind `buyback_burn`, with no mint (the platform row). Each coin's own ledger shows its `sweep_buyback` rows. Site-wide burn totals and the home ledger tape are deferred (UI-SPEC scope, owner-delegated 2026-10-25); per-coin totals cover TOKEN-05.
 - **D-14:** Split arithmetic stays exactly as proven: treasury = floor(amount / 10), sized from the transaction's own balance delta, never from W's balance (PROJECT.md item 4). The 24h sweep uses the same floor rule over W's BONDR balance at sweep time, which is all budget after the split.
 
 ### Forced bond and fallback
@@ -189,6 +189,7 @@ Not in Phase 5:
 - Collecting BONDR's own creator fees for the treasury: Phase 7 (BONDR does not exist on mainnet yet).
 - An admin kill switch, held-finalize release UI and reconciliation view: Phase 6.
 - Helius Sender on mainnet first runs at go-live: Phase 7, owner-gated.
+- Site-wide burn totals and the home ledger tape from home.html: a later phase.
 - A leader lock for multiple worker replicas: only if the worker scales out.
 
 </deferred>

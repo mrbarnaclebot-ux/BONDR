@@ -7,7 +7,7 @@ import { type Trade, useTrade } from "@/lib/use-trade";
 import { useCoinLive } from "./coin-live";
 import { TradeAmount } from "./trade-amount";
 import { TradeQuote } from "./trade-quote";
-import { TradeResult } from "./trade-result";
+import { TradeCallouts } from "./trade-result";
 import { Button } from "./ui-button";
 import { Seg } from "./ui-seg";
 import { useWallet, type WalletApi } from "./wallet";
@@ -133,10 +133,14 @@ export function TradePanel({ placement = "column", labelId }: Props) {
           {s.hint && <p className="-mt-2 text-xs text-muted-foreground">{s.hint}</p>}
           <TradeQuote size={size} />
         </fieldset>
-        <TradeResult />
+        <TradeCallouts />
         <Submit s={s} run={run} />
       </form>
       <p className="text-xs text-muted-foreground">One Phantom signature. Quote refreshes every 2 seconds.</p>
+      {/* UI-SPEC Accessibility: the one polite region for the quote, the pause and the in-flight steps. */}
+      <p aria-live="polite" className="sr-only">
+        {t.announce}
+      </p>
     </section>
   );
 }

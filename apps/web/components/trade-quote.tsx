@@ -1,8 +1,8 @@
 "use client";
-import type { HopFee, HopVenue, TradeQuote as Quote, TradeSide } from "@bondr/core/api";
+import type { HopFee, HopVenue, TradeQuote as Quote } from "@bondr/core/api";
 import { Fragment, type ReactNode, useId, useState } from "react";
 import { cn } from "@/lib/cn";
-import { pct, sol, thousands } from "@/lib/format";
+import { impactBand, impactPct, outText, pct, sol } from "@/lib/format";
 import { useTrade } from "@/lib/use-trade";
 import { Chips } from "./trade-amount";
 import { FieldError, Input } from "./ui-field";
@@ -20,13 +20,11 @@ const HIGH_BPS = 500;
 
 /** Fee SOL with 4 decimals, "<0.0001" below that (UI-SPEC Fees breakdown). */
 const feeSol = (l: string) => (BigInt(l) > 0n && BigInt(l) < 100_000n ? "<0.0001" : sol(l, 4));
-const impactPct = (f: number) => (f < 0.0001 ? "<0.01%" : `${(f * 100).toFixed(2)}%`);
-// Under 5% foreground, 5% up to 15% warn, over 15% destructive (D-13).
-const impactTone = (f: number) => (f > 0.15 ? "text-destructive" : f >= 0.05 ? "text-warn" : undefined);
-
-/** A buy receives the coin (integer, thousands), a sell receives SOL (4 decimals). */
-const outText = (side: TradeSide, base: string, symbol: string) =>
-  side === "buy" ? `${thousands(BigInt(base) / 1_000_000n)} ${symbol}` : `${sol(base, 4)} SOL`;
+const TONE = { warn: "text-warn", error: "text-destructive" } as const;
+const impactTone = (f: number) => {
+  const b = impactBand(f);
+  return b ? TONE[b] : undefined;
+};
 
 function Route({ q, symbol }: { q: Quote; symbol: string }) {
   const buy = ["SOL", `BONDR ${VENUE[q.route.bondr]}`, `${symbol} ${VENUE[q.route.coin]}`];

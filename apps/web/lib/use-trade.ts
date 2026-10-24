@@ -17,6 +17,7 @@ import {
 } from "react";
 import { useWallet } from "@/components/wallet";
 import { type Code, runTrade, Stop } from "./trade-run";
+import { useAnnounce } from "./use-announce";
 import { type BalanceState, useBalance } from "./use-balance";
 import { useRouteQuote } from "./use-route-quote";
 
@@ -80,6 +81,8 @@ export type Trade = {
   submit(): void;
   clearResult(): void;
   balance: BalanceState;
+  /** The panel's polite live region text: a user's quote once, "Quote paused." and the in-flight steps. */
+  announce: string;
   /** The 2 s refresh stopped after 60 s without input (D-12). */
   paused: boolean;
   /** Quotes once and restarts the refresh. */
@@ -229,6 +232,7 @@ export function TradeProvider({ mint, symbol, net, children }: ProviderProps) {
   const tab = useTabVisible();
   const loop = useQuoteLoop(units !== null && run.phase === "idle" && tab && panel.visible);
   const q = useRouteQuote(side, mint, units, slippageBps, loop.tick, loop.delay);
+  const announce = useAnnounce({ ...q, paused: loop.paused, phase: run.phase }, symbol);
   // Any panel input ends the shown result (UI-SPEC Results).
   const input = (ms: number) => {
     loop.input(ms);
@@ -239,6 +243,7 @@ export function TradeProvider({ mint, symbol, net, children }: ProviderProps) {
     ...q,
     ...run,
     ...bal,
+    announce,
     paused: loop.paused,
     resume: loop.resume,
     panelRef: panel.panelRef,

@@ -36,7 +36,7 @@ export const view = (state: string, extra: object = {}) => ({
   ...extra,
 });
 
-async function fulfill(route: Route, r: Reply) {
+export async function fulfill(route: Route, r: Reply) {
   if (r.delayMs) await new Promise((done) => setTimeout(done, r.delayMs));
   // A reload aborts a delayed request; answering it then is a no-op, not a test failure.
   await route.fulfill({ status: r.status ?? 200, json: r.json }).catch(() => undefined);

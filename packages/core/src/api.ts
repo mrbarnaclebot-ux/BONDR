@@ -31,7 +31,10 @@ export type LaunchErrorCode =
   | "cosign_refused"
   | "not_found"
   | "worker_unavailable"
-  | "pin_failed";
+  | "pin_failed"
+  | "slippage"
+  | "message_changed"
+  | "onchain";
 
 export type ApiError = { error: LaunchErrorCode; paused?: PauseReason };
 
@@ -135,3 +138,41 @@ export type LiveEvent = { id: string } & (
   | { type: "bond"; data: { mint: string; venue: Venue; bondSig: string | null; bondedAt: string | null } }
   | { type: "holders"; data: { mint: string; holders: number } }
 );
+
+// Trading (Phase 4). One error vocabulary for launches and trades.
+export type TradeErrorCode = LaunchErrorCode;
+export type TradeSide = "buy" | "sell";
+export type HopVenue = "curve" | "pool";
+
+// amount: lamports for a buy, coin base units for a sell. No wallet: quotes are public (D-10).
+export type TradeQuoteRequest = { side: TradeSide; mint: string; amount: string; slippageBps: number };
+
+// The masked rates one hop of the route charges and their value in lamports (RESEARCH Pattern 2).
+export type HopFee = { venue: HopVenue; protocolBps: number; creatorBps: number; lpBps: number; sol: string };
+
+export type TradeQuote = {
+  side: TradeSide;
+  amountIn: string;
+  amountOut: string;
+  minAmountOut: string;
+  // 1 - out / spot out, a fraction. Display only: it never feeds an amount.
+  impact: number;
+  route: { bondr: HopVenue; coin: HopVenue };
+  fees: { bondrHop: HopFee; coinHop: HopFee; platformFee: "0"; totalSol: string; networkMax: string };
+  // Devnet only, while BONDR is on its curve: larger buys would bond it (RESEARCH Pitfall 4).
+  maxSolIn?: string;
+};
+
+export type TradeBalance = { sol: string; tokens: string };
+
+export type TradePrepareResult = {
+  tradeId: string;
+  // base64 wire with one empty signature slot, the trader's.
+  tx: string;
+  signBy: number; // seconds
+  expectedOut: string;
+  minAmountOut: string;
+};
+
+export type TradeSubmitRequest = { tradeId: string; signed: string };
+export type TradeView = { state: LaunchState; signature?: string; amountOut?: string; code?: TradeErrorCode };

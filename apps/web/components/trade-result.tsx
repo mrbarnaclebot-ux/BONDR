@@ -79,19 +79,22 @@ function Landed({ r }: { r: Extract<RunResult, { kind: "landed" }> }) {
   );
 }
 
-/** The impact callout for the shown quote; keyed by band, so a refresh inside the band never remounts it (D-13). */
+/**
+ * The impact callout for the shown quote (D-13). The live percentage sits under aria-live="off", so a 2 s
+ * refresh that moves it never re-announces the callout (C-WR-03); the callout itself mounts once per band.
+ */
 function Impact({ impact }: { impact: number }) {
   const band = impactBand(impact);
-  const p = impactPct(impact);
+  const p = <span aria-live="off">{impactPct(impact)}</span>;
   if (band === "warn")
     return (
-      <Callout key="warn" variant="warn" title="High price impact.">
+      <Callout variant="warn" title="High price impact.">
         This trade moves the price {p}. A smaller amount fills closer to the current price.
       </Callout>
     );
   if (band === "error")
     return (
-      <Callout key="error" variant="error" title="Very high price impact.">
+      <Callout variant="error" title="Very high price impact.">
         This trade moves the price {p}, so you receive far less than the current price suggests. Check the
         amounts before you continue.
       </Callout>

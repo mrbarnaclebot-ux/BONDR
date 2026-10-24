@@ -59,6 +59,8 @@ test.describe("results and callouts", () => {
     await expect(warn).toHaveText(
       "High price impact. This trade moves the price 10.00%. A smaller amount fills closer to the current price.",
     );
+    // The refreshed percentage is outside the announced text (C-WR-03).
+    await expect(warn.locator('[aria-live="off"]')).toHaveText("10.00%");
     // A remount would drop this attribute, which React does not manage.
     await warn.evaluate((el) => el.setAttribute("data-first", ""));
     for (const n of [2, 3]) {

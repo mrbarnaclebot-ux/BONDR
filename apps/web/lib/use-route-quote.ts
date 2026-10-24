@@ -26,7 +26,8 @@ async function fetchQuote(
 }
 
 /**
- * The debounced quote. The previous quote stays while the next loads (the panel dims it); stale requests abort.
+ * The debounced quote. The previous quote stays while the next loads (the panel dims it) and through a failed
+ * refresh; stale requests abort.
  * A `tick` change is the 2 s refresh: it quotes at once and replaces values in place, with no dim.
  */
 export function useRouteQuote(
@@ -54,7 +55,8 @@ export function useRouteQuote(
           // C-WR-04: an aborted request (a newer input, or unmount) never writes, even mid-json.
           if (abort.signal.aborted) return;
           if (typeof a === "object") setS({ quote: a, loading: false, quoteError: null });
-          else setS({ quote: null, loading: false, quoteError: a });
+          // A failed refresh keeps the shown quote, so one blip never unmounts its callouts (C-WR-03).
+          else setS((p) => ({ quote: refresh ? p.quote : null, loading: false, quoteError: a }));
         });
       },
       refresh ? 0 : delay.current,

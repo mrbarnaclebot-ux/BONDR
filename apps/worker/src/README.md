@@ -23,4 +23,5 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `trade-quote.ts`: POST /trade/quote (`parseTrade`, `quoteTrade`, devnet `maxSolIn`) and POST /trade/balance (`tradeBalance`).
 - `trade-store.ts`: prepared trades in memory (exact message bytes, state), 120 s TTL, 5,000 cap.
 - `trade-prepare.ts`: `prepareTrade`, the unsigned simulated and budgeted trade tx (`cuLimitFor`, `priorityMicroLamports`, devnet buy cap).
+- `trade-submit.ts`: POST /trade/submit (`submitTrade`: byte compare against the stored message, one paced send, background settle with the landed amount) and POST /trade/view (`viewTrade`).
 - `*.test.ts`: vitest checks; DB-backed ones skip without DATABASE_URL.

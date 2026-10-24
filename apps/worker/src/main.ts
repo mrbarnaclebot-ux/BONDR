@@ -19,7 +19,9 @@ import { resumeLaunches } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
 import { backoff, startStream } from "./stream.ts";
 import { submit } from "./submit.ts";
+import { prepareTrade } from "./trade-prepare.ts";
 import { quoteTrade, tradeBalance } from "./trade-quote.ts";
+import { submitTrade, viewTrade } from "./trade-submit.ts";
 
 const failed = (what: string) => (e: unknown) =>
   console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
@@ -57,6 +59,9 @@ async function main() {
       "POST /kill-switch": (body) => setSwitch(body),
       "POST /trade/quote": (body) => quoteTrade(tctx, body),
       "POST /trade/balance": (body) => tradeBalance(ctx, body),
+      "POST /trade/prepare": (body) => prepareTrade(tctx, body),
+      "POST /trade/submit": (body) => submitTrade(tctx, body),
+      "POST /trade/view": async (body) => viewTrade(body),
       // OPS-01 check: the 500 path logs this through redact and Sentry must show [addr], not the address.
       "POST /sentry-test": async () => {
         throw new Error(`sentry test from worker: wallet ${SAMPLE_ADDR}`);

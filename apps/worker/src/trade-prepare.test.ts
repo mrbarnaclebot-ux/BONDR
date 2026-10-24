@@ -180,3 +180,53 @@ describe("prepareTrade", () => {
     });
   });
 });
+
+// A real devnet build: TRADE_LIVE=1 pnpm vitest run apps/worker/src/trade-prepare.test.ts -t live. It reads the
+// dev branch database once and simulates the prepared buy; nothing is signed or sent.
+const CU_BUDGET = new PublicKey("ComputeBudget111111111111111111111111111111");
+test.skipIf(process.env.TRADE_LIVE !== "1")(
+  "live: a 0.01 SOL devnet buy for the sim dev simulates with err null",
+  async () => {
+    process.loadEnvFile(new URL("../../../.env", import.meta.url));
+    for (const mod of ["@bondr/core/route", "./trade-state.ts", "./trade-quote.ts"]) vi.doUnmock(mod);
+    vi.resetModules();
+    const { prepareTrade: live } = await import("./trade-prepare.ts");
+    const { knownCoins: known } = await import("./ingest.ts");
+    const { close, db } = await import("@bondr/core/db");
+    const { connect } = await import("@bondr/core/net");
+    const { derive, readSeed } = await import("@bondr/core/keys");
+    const { OnlinePumpSdk } = await import("@bondr/core/pump");
+    // The newest real curve coin on the dev branch, as live.e2e.ts picks it (E2E rows are fakes).
+    const rows = await db().$client<{ mint: string; bonding_curve: string; pool: string; irtr: string }[]>`
+      select c.mint, c.bonding_curve, c.pool, c.initial_real_token_reserves::text as irtr from coins c
+      join launches l on l.mint = c.mint
+      where l.state = 'landed' and c.venue = 'curve' and l.name not like 'E2E %'
+      order by l.created_at desc limit 1`;
+    await close();
+    const coin = rows[0];
+    if (!coin) throw new Error("no curve coin in the dev branch database");
+    const { mint, bonding_curve: bondingCurve, pool, irtr: initialRealTokenReserves } = coin;
+    known.set(mint, { mint, bondingCurve, pool, initialRealTokenReserves });
+    const conn = await connect("devnet");
+    const Q = new PublicKey(process.env.BONDR_QUOTE_MINT ?? "");
+    const ctx = { conn, online: new OnlinePumpSdk(conn), Q, priorityFee: 1_000, net: "devnet" as const };
+    const dev = derive(readSeed(process.env.MASTER_SEED_FILE ?? ""), "sim", "devnet", "dev");
+    const r = await live(ctx, { ...body, wallet: dev.publicKey.toBase58(), mint, amount: "10000000" });
+    const wire = Buffer.from(r.tx, "base64");
+    const tx = VersionedTransaction.deserialize(wire);
+    const sim = await conn.simulateTransaction(tx, { sigVerify: false });
+    const budgetIx = (tag: number) =>
+      tx.message.compiledInstructions.find(
+        (ix) => tx.message.staticAccountKeys[ix.programIdIndex]?.equals(CU_BUDGET) && ix.data[0] === tag,
+      );
+    const cuLimit = Buffer.from(budgetIx(2)?.data ?? []).readUInt32LE(1);
+    const price = Buffer.from(budgetIx(3)?.data ?? []).readBigUInt64LE(1);
+    const bytes = { wire: wire.length, message: tx.message.serialize().length };
+    const facts = { mint, cuLimit, units: sim.value.unitsConsumed, price: String(price), ...bytes };
+    process.stderr.write(`${JSON.stringify(facts)}\n`); // vitest hides console output of passing tests
+    expect(sim.value.err).toBeNull();
+    expect(wire.length).toBeLessThanOrEqual(1232);
+    expect(cuLimit).toBeGreaterThan(sim.value.unitsConsumed ?? Infinity);
+  },
+  60_000,
+);

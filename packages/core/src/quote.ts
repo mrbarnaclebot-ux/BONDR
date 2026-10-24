@@ -185,6 +185,25 @@ const feeRow = (h: HopInput, r: Rates, sol: bigint): HopFee => ({
   sol: String(sol),
 });
 
+// The BONDR hop trades the SOL end in lamports; the coin hop trades BONDR (mid), valued at BONDR's spot.
+function feesFor(
+  a: RouteArgs,
+  bondrRates: Rates,
+  coinRates: Rates,
+  mid: bigint,
+  out: bigint,
+): RouteQuote["fees"] {
+  const isBuy = a.side === "buy";
+  const bondrFee = hopFee(isBuy ? a.amountIn : out, bondrRates, isBuy);
+  const coinFee = toSol(hopFee(mid, coinRates, isBuy), bondrSol(a.bondr));
+  return {
+    bondrHop: feeRow(a.bondr, bondrRates, bondrFee),
+    coinHop: feeRow(a.coin, coinRates, coinFee),
+    platformFee: "0",
+    totalSol: String(bondrFee + coinFee),
+  };
+}
+
 /** The SOL to BONDR to coin route (a sell walks it back), priced from pre-trade state with no wallet. */
 export function routeQuote(a: RouteArgs): RouteQuote {
   const isBuy = a.side === "buy";
@@ -205,9 +224,6 @@ export function routeQuote(a: RouteArgs): RouteQuote {
   const [mid, out] = q.hopAmountsOut.map(big);
   const rates = ordered.map((o, i) => hopRates(o.h, legs[i], a));
   const [bondrRates, coinRates] = isBuy ? rates : [rates[1], rates[0]];
-  // The BONDR hop trades the SOL end in lamports; the coin hop trades BONDR (mid), valued at BONDR's spot.
-  const bondrFee = hopFee(isBuy ? a.amountIn : out, bondrRates, isBuy);
-  const coinFee = toSol(hopFee(mid, coinRates, isBuy), bondrSol(a.bondr));
   return {
     side: a.side,
     amountIn: String(a.amountIn),
@@ -220,11 +236,6 @@ export function routeQuote(a: RouteArgs): RouteQuote {
       isBuy,
     ),
     route: { bondr: a.bondr.kind, coin: a.coin.kind },
-    fees: {
-      bondrHop: feeRow(a.bondr, bondrRates, bondrFee),
-      coinHop: feeRow(a.coin, coinRates, coinFee),
-      platformFee: "0",
-      totalSol: String(bondrFee + coinFee),
-    },
+    fees: feesFor(a, bondrRates, coinRates, mid, out),
   };
 }

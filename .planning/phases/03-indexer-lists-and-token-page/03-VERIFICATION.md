@@ -8,6 +8,7 @@ human_verification:
   - test: "Redeploy HEAD (27dfeb6) of phase-03-indexer-lists to staging, then re-run the staging specs (responsive-lists.e2e.ts, og.e2e.ts), one live devnet buy on an open token page, and the 10-minute Neon idle check"
     expected: "Same results as 03-15: 24 passed / 3 skipped, the buy shows on the page in a few seconds without a reload, Neon suspends while / sits idle"
     why_human: "Staging and the owner sign-off ran on the c749f01-era build. About 30 review-fix commits came after it, and they rewrote the indexer recovery paths (S-CR-01..03, S-WR-01..07), the holder recount trigger, the hub watchdog and the first-connect replay (11e2a1b). None of those has run against real devnet or real Neon. The verifier may not deploy."
+    result: "Done 2026-10-24 with owner approval: web 198f6c51 and worker 2820ea7e deployed at d4dfd1c (SUCCESS, stream subscribed). Staging specs 24 passed, 4 skipped (3 coin-bonded: no bonded coin; 1 og cache test needs seeding). Live devnet buy 3AwHZsri...7JpSyn on the open page 2591 ms after blockTime. Ops balance unchanged at 2.750788 SOL. Neon idle check left to the owner."
   - test: "First bonded coin (mainnet, or any network where a child can complete): watch the open token page and home cards through the CompleteEvent, the migration, and the first PumpSwap buy and sell"
     expected: "Venue goes curve -> complete -> pool, the Bonded tag and the chart's Bonded marker appear, pool trades land in the feed with sensible SOL and market cap values, and the bonded count in the hero goes up"
     why_human: "The PumpSwap path (CreatePoolEvent, BuyEvent, SellEvent, pool price from post-trade balances plus virtual quote reserves) is proven only by 4 fixtures captured on the Surfpool fork. Devnet cannot bond a child (A8: it needs about 752M BONDR, BONDR's curve holds 723M). Staging has no bonded coin, so the 3 coin-bonded staging specs were skipped."
@@ -126,7 +127,7 @@ No requirement mapped to Phase 3 is orphaned.
 
 ### Human Verification Required
 
-1. **Redeploy HEAD to staging and re-run the staging checks.** All staging evidence (2.9 s live buy, Neon idle, staging specs, card sign-off) predates about 30 review-fix commits that changed the indexer recovery, holder, hub and replay code.
+1. **Redeploy HEAD to staging and re-run the staging checks.** Done 2026-10-24: 24 passed, 4 skipped, live buy in 2.6 s. All staging evidence (2.9 s live buy, Neon idle, staging specs, card sign-off) predates about 30 review-fix commits that changed the indexer recovery, holder, hub and replay code.
 2. **First real bond and PumpSwap trades.** Only the fork fixtures prove the pool path. Devnet cannot bond a child (A8), and staging has no bonded coin.
 3. **Review the S-CR-01 retry and marks logic,** which the fixer flagged for a human check. Done: the orchestrator read it on 2026-10-24 and agrees.
 

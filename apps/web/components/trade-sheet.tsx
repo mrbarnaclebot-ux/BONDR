@@ -14,8 +14,9 @@ import { Button } from "./ui-button";
 // min(560px, 100%) from 768px; the page around it hides both from 1100px, where the column panel shows.
 const DIALOG =
   "fixed inset-x-0 top-auto bottom-0 m-0 max-h-[calc(100dvh-24px)] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-[24px] border-t border-line-strong text-foreground animate-sheet " +
-  "bg-[radial-gradient(90%_50%_at_50%_0%,color-mix(in_oklch,var(--leaf)_12%,transparent),transparent_70%),linear-gradient(180deg,var(--surface-2),var(--surface))] " +
-  "shadow-[var(--elev-2),0_0_0_1px_color-mix(in_oklch,var(--leaf)_18%,transparent)] backdrop:bg-ink/60 backdrop:backdrop-blur-[4px] " +
+  // The column panel's fill and leaf 10% top glow (UI-SPEC Shape); no leaf ring, leaf is reserved (Color 16-19).
+  "bg-[radial-gradient(100%_50%_at_50%_0%,color-mix(in_oklch,var(--leaf)_10%,transparent),transparent_70%),linear-gradient(180deg,var(--surface-2),var(--surface))] " +
+  "shadow-elev-2 backdrop:bg-ink/60 backdrop:backdrop-blur-[4px] " +
   "md:mx-auto md:w-[min(560px,100%)]";
 
 const WIDE = "(min-width: 1100px)";

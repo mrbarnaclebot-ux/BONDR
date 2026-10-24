@@ -46,6 +46,23 @@ async function pay(s: Locator) {
   await s.getByRole("textbox", { name: "You pay" }).fill("0.5");
   await expect(row(s, "You receive about")).toHaveText(`17,234,567 ${coin.symbol}`);
 }
+type Shift = PerformanceEntry & { value: number; hadRecentInput: boolean; sources: { node: Node | null }[] };
+/** The trade panel's layout shift score (CLS rules) over 2.5 s, which spans at least one quote refresh. */
+const shift = (s: Locator) =>
+  s.evaluate(
+    (panel) =>
+      new Promise<number>((done) => {
+        let score = 0;
+        new PerformanceObserver((l) => {
+          // As in CLS, a shift within 500 ms of the user's last input (the quote for the typed amount) is no
+          // shift; the chart's own redraws are outside the panel and not this check's subject.
+          for (const e of l.getEntries() as Shift[])
+            if (!e.hadRecentInput && e.sources.some((x) => x.node && panel.contains(x.node)))
+              score += e.value;
+        }).observe({ type: "layout-shift" });
+        setTimeout(() => done(score), 2_500);
+      }),
+  );
 const ready = () => `Buy ${coin.symbol} with 0.50 SOL`;
 
 const STATES: Record<string, State> = {
@@ -60,6 +77,11 @@ const STATES: Record<string, State> = {
     reach: async (s, go) => {
       await pay(s);
       await expect(go).toHaveText(ready());
+      // UI-SPEC: the 2 s refresh replaces values in place, so a refresh window has no layout shift.
+      expect(await shift(s)).toBe(0);
+      // The fee rows open, so axe and the Designer see the breakdown too.
+      await s.getByText("Fees 0.0062 SOL").click();
+      await expect(s.getByText("BONDR platform fee", { exact: true })).toBeVisible();
     },
   },
   "trade-sell": {
@@ -142,6 +164,10 @@ for (const width of [390, 768, 1440]) {
           await expect(go).toHaveText("Enter an amount");
         }
         await st.reach(s, go);
+        // The chart chunk loads lazily; a shot before it draws shows "Loading chart…".
+        await expect(
+          page.getByRole("region", { name: "Market cap chart" }).locator("canvas").first(),
+        ).toBeAttached();
         await gate(page, name, width, PHASE4_SHOTS);
       });
     }

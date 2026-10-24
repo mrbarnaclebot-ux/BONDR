@@ -26,5 +26,7 @@ export async function gate(page: Page, name: string, width: number, dir = SHOTS)
   expect(scroll, `horizontal scroll from ${wide.join(" | ")}`).toBe(client);
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
-  await page.screenshot({ path: `${dir}${name}-${width}${SUFFIX}.png`, fullPage: true });
+  // An open sheet is fixed to the viewport, so a full-page shot would draw it mid-page over unblurred content.
+  const fullPage = (await page.locator("dialog[open]").count()) === 0;
+  await page.screenshot({ path: `${dir}${name}-${width}${SUFFIX}.png`, fullPage });
 }

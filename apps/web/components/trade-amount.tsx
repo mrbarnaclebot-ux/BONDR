@@ -21,7 +21,7 @@ export function Chips(props: {
   size?: "sheet";
 }) {
   return (
-    <fieldset className="m-0 flex min-w-0 gap-2 border-0 p-0">
+    <fieldset className="m-0 flex min-w-0 flex-1 gap-2 border-0 p-0">
       <legend className="sr-only">{props.legend}</legend>
       {props.items.map((c) => (
         <button

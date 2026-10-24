@@ -16,6 +16,18 @@ import {
 } from "react";
 
 const DEBOUNCE_MS = 400;
+const SLIPPAGE_KEY = "bondr:slippage";
+const DEFAULT_BPS = 100;
+
+/** The stored slippage if it is a whole bps in the 0.1% to 50% range the worker accepts, else the 1% default. */
+function storedSlippage(): number {
+  try {
+    const n = Number(localStorage.getItem(SLIPPAGE_KEY));
+    return Number.isInteger(n) && n >= 10 && n <= 5_000 ? n : DEFAULT_BPS;
+  } catch {
+    return DEFAULT_BPS; // storage blocked
+  }
+}
 
 export type TradePhase = "idle" | "preparing" | "signing" | "confirming";
 
@@ -117,7 +129,9 @@ export function TradeProvider({
 }) {
   const [side, setSideState] = useState<TradeSide>("buy");
   const [amount, setAmountState] = useState("");
-  const [slippageBps, setSlippageState] = useState(100);
+  const [slippageBps, setSlippageState] = useState(DEFAULT_BPS);
+  // Read after mount: the server render has no storage, and the first client render must match it.
+  useEffect(() => setSlippageState(storedSlippage()), []);
   // Typing waits for the debounce; side and slippage changes quote at once (UI-SPEC Quote refresh).
   const delay = useRef(DEBOUNCE_MS);
   const units = toUnits(side, amount);
@@ -150,6 +164,11 @@ export function TradeProvider({
     setSlippageBps(bps) {
       delay.current = 0;
       setSlippageState(bps);
+      try {
+        localStorage.setItem(SLIPPAGE_KEY, String(bps));
+      } catch {
+        // storage blocked: the choice lasts for this page only
+      }
     },
   };
   return createElement(Ctx.Provider, { value }, children);

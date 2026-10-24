@@ -7,6 +7,7 @@ The shared chain library. Phase 1 spike scripts call it, and Phase 2 apps import
 - `keys.ts`: `derive(master, role, net, id)` HMAC key derivation.
 - `config.ts`: reads the live pump Global, FeeConfig and AMM FeeConfig as JSON-safe facts.
 - `send.ts`: the one send path: program allowlist (`checkMessage`), `budget`, `wireSize`, paced `sendTx`; `sendRaw` sends an already signed wire with the same landed / failed / unknown semantics, and `broadcast` is its send-only first half (the worker settles launches itself).
+- `trade-error.ts`: `tradeError(err, logs)` and `textError(message)`, the one map from a simulation, preflight or on-chain failure to a contract code (6004 slippage, low funds insufficient_balance, 6107 / 6005 / no tradable venue paused, dead blockhash expired) for launch and trade.
 - `cosign.ts`: sign order A (D-12): `sameMessage` (raw byte compare), `slot`, `signatureOk` (re-exported from sig.ts), `exitPresent` (BurnChecked or multi_hop_swap in the message), `cosign` (adds the mint signature only when all pass). Worker-only: it loads pump.ts.
 - `sig.ts`: `signatureOk`, the node:crypto Ed25519 check. No web3.js, so web's consent route can load it.
 - `alt.ts`: per-coin lookup tables: `tableKeys`, `sharedKeys`, `createTable` with warm-up wait.

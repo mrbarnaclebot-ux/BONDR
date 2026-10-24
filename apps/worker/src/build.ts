@@ -2,11 +2,11 @@
 // simulation. Only the worker runs these, because the mint and W keys derive from the seed here (FEE-10).
 
 import { createTable, tableKeys } from "@bondr/core/alt";
-import type { ApiError } from "@bondr/core/api";
 import { exitPresent } from "@bondr/core/cosign";
 import { AwaitingMigration, buildLaunch, type LaunchOpts } from "@bondr/core/launch";
 import { redact } from "@bondr/core/net";
 import { checkMessage, messageSize, PACKET_LIMIT } from "@bondr/core/send";
+import { tradeError } from "@bondr/core/trade-error";
 import {
   type AddressLookupTableAccount,
   type Connection,
@@ -28,8 +28,6 @@ const TABLE_PACE_MS = 1100;
 // Below this ops pays for no new table: what is left stays for fee and recovery txs. buildFailed logs it, so
 // Sentry tells the owner to top ops up by hand (01-10).
 const OPS_FLOOR_LAMPORTS = 0.05 * LAMPORTS_PER_SOL;
-// pump: a child create on a complete, unmigrated BONDR (the 6107 window, 01-05).
-const AWAITING_CODE = 6107;
 
 const buildFailed = (why: string) => {
   console.error(`prepare build failed: ${redact(why)}`);
@@ -102,20 +100,8 @@ export async function buildMessage(o: LaunchOpts, table: AddressLookupTableAccou
   return { ...built, msg: compileLaunch(o, built.ixs, table, blockhash) };
 }
 
-function customCode(err: unknown): number | undefined {
-  const ie = (err as { InstructionError?: [number, { Custom?: number }] } | null)?.InstructionError;
-  return typeof ie?.[1]?.Custom === "number" ? ie[1].Custom : undefined;
-}
-
-// Pure, so the mapping is unit tested. Token program custom 1 is its InsufficientFunds.
-export function simError(err: unknown, logs: readonly string[] | null): ApiError {
-  const code = customCode(err);
-  if (code === AWAITING_CODE) return { error: "paused", paused: "awaiting_migration" };
-  const text = `${JSON.stringify(err)} ${(logs ?? []).join(" ")}`;
-  if (/insufficient (lamports|funds)|InsufficientFunds|AccountNotFound/i.test(text) || code === 1)
-    return { error: "insufficient_balance" };
-  return { error: "build_failed" };
-}
+// The launch name for the shared map, so launch callers and tests stay unchanged.
+export { tradeError as simError };
 
 // Lamports the dev's balance drops by, read from the simulation's post state of the dev (agencybook build.ts).
 export async function simulateLaunch(
@@ -134,7 +120,7 @@ export async function simulateLaunch(
   ]);
   const { err, logs } = sim.value;
   if (err !== null) {
-    const out = simError(err, logs);
+    const out = tradeError(err, logs);
     if (out.error === "build_failed") throw buildFailed(`${JSON.stringify(err)} ${(logs ?? []).slice(-6)}`);
     throw fail(out);
   }

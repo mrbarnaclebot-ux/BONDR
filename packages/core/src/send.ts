@@ -121,7 +121,7 @@ export async function pace(ms: number): Promise<void> {
 }
 
 // Anchor logs carry the readable name and the program logs carry the hex code; both make the row evidence.
-function fromLogs(logs: readonly string[] | null | undefined): { code?: number; name?: string } {
+export function fromLogs(logs: readonly string[] | null | undefined): { code?: number; name?: string } {
   const text = (logs ?? []).join("\n");
   const hex = text.match(/custom program error: (0x[0-9a-f]+)/i)?.[1];
   const num = text.match(/Error Number: (\d+)/)?.[1];
@@ -129,7 +129,7 @@ function fromLogs(logs: readonly string[] | null | undefined): { code?: number; 
   return { code, name: text.match(/Error Code: (\w+)/)?.[1] };
 }
 
-function customCode(err: unknown): number | undefined {
+export function customCode(err: unknown): number | undefined {
   const ie = (err as { InstructionError?: [number, unknown] } | null)?.InstructionError;
   const custom = (ie?.[1] as { Custom?: number } | undefined)?.Custom;
   return typeof custom === "number" ? custom : undefined;

@@ -143,16 +143,20 @@ test("390: an in-flight trade keeps the sheet open", async ({ page }) => {
   await page.keyboard.press("Escape");
   await page.mouse.click(195, 4); // the backdrop
   await expect(sheet(page)).toBeVisible();
+  // Crossing 1100px mid-trade does not close it either (C-WR-01).
+  await page.setViewportSize({ width: 1200, height: 844 });
+  await expect(page.locator("dialog")).toHaveAttribute("open", "");
+  await page.setViewportSize({ width: 390, height: 844 });
   await expect(go).toHaveText("Preparing trade…");
-  await expect(
-    sheet(page)
-      .getByRole("status")
-      .filter({ hasText: `Bought 17,234,567 ${coin.symbol}.` }),
-  ).toBeVisible({
-    timeout: 15_000,
-  });
+  const done = sheet(page)
+    .getByRole("status")
+    .filter({ hasText: `Bought 17,234,567 ${coin.symbol}.` });
+  await expect(done).toBeVisible({ timeout: 15_000 });
   await expect(close).not.toHaveAttribute("aria-disabled");
   await close.click();
   await expect(sheet(page)).toBeHidden();
   await expect(buy).toBeFocused();
+  // The result outlives closing: reopening shows it again.
+  await buy.click();
+  await expect(done).toBeVisible();
 });

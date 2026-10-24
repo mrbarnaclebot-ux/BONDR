@@ -24,7 +24,7 @@ const WIDE = "(min-width: 1100px)";
 /** The sticky Buy / Sell bar and the sheet that hosts the trade panel; both share useTrade with the column. */
 export function TradeSheet() {
   const t = useTrade();
-  const { setSide, setVisible, clearResult } = t;
+  const { setSide, setVisible } = t;
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -38,25 +38,27 @@ export function TradeSheet() {
     if (!d.open) d.showModal();
     d.querySelector("input")?.focus();
     setVisible(true);
+    // The result outlives the sheet (C-WR-01): an unknown trade's "Check Solscan" must not vanish on close.
     return () => {
       d.close();
       setVisible(false);
-      clearResult(); // a result lasts until the sheet closes (UI-SPEC Results)
       opener.current?.focus();
     };
-  }, [open, setVisible, clearResult]);
+  }, [open, setVisible]);
 
-  // Crossing up to the wide layout closes the sheet; the column panel shows the same state.
+  // Crossing up to the wide layout closes the sheet, once no trade is in flight; the column shows the same state.
   useEffect(() => {
     const mq = matchMedia(WIDE);
-    const on = () => mq.matches && setOpen(false);
+    const on = () => mq.matches && !busy && setOpen(false);
+    on();
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
-  }, []);
+  }, [busy]);
 
+  // Reopening never flips the side mid-trade or over an unknown result (setSide clears the result).
   const show = (side: TradeSide, el: HTMLElement) => {
     opener.current = el;
-    setSide(side);
+    if (side !== t.side && t.phase === "idle" && t.result?.kind !== "unknown") setSide(side);
     setOpen(true);
   };
   const close = () => !busy && setOpen(false);
@@ -73,8 +75,8 @@ export function TradeSheet() {
           e.preventDefault();
           close();
         }}
-        // A close the cancel event could not stop (a repeated Escape) keeps the state in step.
-        onClose={() => setOpen(false)}
+        // A close the cancel event could not stop (a repeated Escape, Android back) reopens while busy.
+        onClose={() => (busy ? dialog.current?.showModal() : setOpen(false))}
         onClick={(e) => e.target === e.currentTarget && close()}
       >
         {open && <SheetBody busy={busy} labelId={labelId} onClose={close} />}

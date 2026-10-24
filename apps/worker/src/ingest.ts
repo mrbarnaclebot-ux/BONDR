@@ -186,7 +186,10 @@ export async function ingestLaunch(
   const bonded = new Set<string>();
   const inserted = await db().transaction((t) => writeParsed(t, parsed, { id: row.id, pool }, bonded));
   const init = parsed.created?.initialRealTokenReserves;
-  if (!init) return inserted;
+  if (!init) {
+    console.error(`launch ${row.id}: no CreateEvent, coin not indexed`);
+    return inserted;
+  }
   const bondingCurve = bondingCurvePda(mint).toBase58();
   knownCoins.set(row.mint, { mint: row.mint, bondingCurve, pool, initialRealTokenReserves: init });
   await arm(conn, inserted, bonded, row.mint);
@@ -251,7 +254,8 @@ export async function lastSigs(): Promise<Marks> {
   return new Map(rows.map((r) => [r.mint, r.lastSig]));
 }
 
-// Every known coin from its mark, one coin at a time.
+// Every known coin from its mark, one coin at a time. ponytail: one getSignaturesForAddress per coin per
+// reconnect, quiet coins included (D-05); skip coins with no trade since the disconnect once coins number hundreds.
 export async function gapFillAll(conn: Connection, marks: Marks): Promise<number> {
   let n = 0;
   for (const [mint, lastSig] of marks) {

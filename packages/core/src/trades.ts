@@ -109,7 +109,7 @@ function bondrPrice(c: Ctx, e: PumpEvent): number | null {
 }
 
 // The BONDR event nearest to this one (a multi-hop buy is followed by, a sell followed by, its own BONDR
-// leg), else the last known price.
+// leg), else the last known price. ponytail: a gap-filled old tx with no BONDR leg gets today's price.
 function priceAt(c: Ctx, ix: number): number | null {
   let best: Ctx["prices"][number] | undefined;
   for (const p of c.prices) if (!best || Math.abs(p.ix - ix) < Math.abs(best.ix - ix)) best = p;

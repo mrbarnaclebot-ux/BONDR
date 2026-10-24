@@ -15,12 +15,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { useWallet } from "@/components/wallet";
 import { currentQuote } from "./trade-button";
-import { type Code, runTrade, type Settled, Stop } from "./trade-run";
 import { useAnnounce } from "./use-announce";
 import { type BalanceState, useBalance } from "./use-balance";
 import { useRouteQuote } from "./use-route-quote";
+import { type RunResult, type TradePhase, useRun } from "./use-run";
 
 export type { BalanceState };
 
@@ -56,13 +55,7 @@ function useSlippage(): [number, (bps: number) => void] {
   return [bps, set];
 }
 
-export type TradePhase = "idle" | "preparing" | "signing" | "confirming";
-
-/** A finished trade, shown in the callout slot until the next panel input, a side change or the sheet closing. */
-export type RunResult =
-  | { kind: "landed"; side: TradeSide; amountOut?: string; signature: string }
-  | { kind: "unknown"; signature: string }
-  | { kind: "failed"; code: Code; signature?: string };
+export type { RunResult, TradePhase } from "./use-run";
 
 export type Trade = {
   mint: string;
@@ -182,62 +175,31 @@ function useQuoteLoop(run: boolean) {
   return { tick, delay, paused, input, resume };
 }
 
-function toResult(side: TradeSide, v: Settled): RunResult {
-  if (v.state === "landed") return { kind: "landed", side, amountOut: v.amountOut, signature: v.signature };
-  if (v.state === "failed") return { kind: "failed", code: v.code ?? "onchain", signature: v.signature };
-  return { kind: "unknown", signature: v.signature }; // never observed failing (C-WR-05)
-}
+type Setters = Pick<Trade, "setSide" | "setAmount" | "pickAmount" | "setSlippageBps">;
+type Raw = { side(s: TradeSide): void; amount(text: string): void; bps(n: number): void };
 
-type RunArgs = { mint: string; side: TradeSide; units: bigint | null; slippageBps: number };
-
-/** The in-flight phase and the last result; a done run refetches the balances and reports landed to `onLanded`. */
-function useRun(a: RunArgs, refreshBalance: () => void, onLanded: () => void) {
-  const wallet = useWallet();
-  const [phase, setPhase] = useState<TradePhase>("idle");
-  const [result, setResult] = useState<RunResult | null>(null);
-  const busy = useRef(false);
-  const live = useRef(wallet.address);
-  live.current = wallet.address;
-  // C-CR-02: leaving the page aborts the run's requests and its poll.
-  const ctrl = useRef<AbortController>(null);
-  useEffect(() => () => ctrl.current?.abort(), []);
-  const submit = async () => {
-    if (busy.current || a.units === null) return;
-    busy.current = true;
-    setResult(null);
-    setPhase("preparing");
-    ctrl.current = new AbortController();
-    const { signal } = ctrl.current;
-    const input = {
-      ...a,
-      amount: String(a.units),
-      wallet,
-      onPhase: setPhase,
-      signal,
-      address: () => live.current,
-    };
-    try {
-      const v = await runTrade(input);
-      setResult(toResult(a.side, v));
-      if (v.state === "landed") {
-        onLanded();
-        // One bounded second read: the worker's balance RPC can lag the confirmation (C-WR-09, D-16).
-        setTimeout(refreshBalance, 2_000);
-      }
-    } catch (e) {
-      const code = e instanceof Stop ? e.code : "worker_unavailable";
-      // The server has no session for this wallet: back to "Accept terms to trade" and the consent dialog.
-      if (code === "consent_required") wallet.forgetConsent();
-      else setResult({ kind: "failed", code });
-    } finally {
-      busy.current = false;
-      setPhase("idle");
-      refreshBalance();
-    }
+/** The panel's input setters: each records input (the next quote's delay, the idle clock) before it sets. */
+function setters(side: TradeSide, input: (ms: number) => void, set: Raw): Setters {
+  return {
+    setSide(next) {
+      input(0);
+      set.side(next);
+      // Switching side clears the amount: a SOL figure is meaningless as a coin amount.
+      if (next !== side) set.amount("");
+    },
+    setAmount(text) {
+      input(DEBOUNCE_MS);
+      set.amount(text);
+    },
+    pickAmount(text) {
+      input(0);
+      set.amount(text);
+    },
+    setSlippageBps(bps) {
+      input(0);
+      set.bps(bps);
+    },
   };
-  // Stable: the sheet's open effect depends on it.
-  const clearResult = useCallback(() => setResult(null), []);
-  return { phase, result, submit: () => void submit(), clearResult };
 }
 
 type ProviderProps = { mint: string; symbol: string; net: Net; children: ReactNode };
@@ -259,6 +221,7 @@ export function TradeProvider({ mint, symbol, net, children }: ProviderProps) {
     loop.input(ms);
     run.clearResult();
   };
+  const set = { side: setSideState, amount: setAmountState, bps: setSlippage };
   const value: Trade = {
     ...{ mint, symbol, net, side, amount, units, slippageBps },
     ...q,
@@ -273,24 +236,7 @@ export function TradeProvider({ mint, symbol, net, children }: ProviderProps) {
     },
     panelRef: panel.panelRef,
     setVisible: panel.setVisible,
-    setSide(next) {
-      input(0);
-      setSideState(next);
-      // Switching side clears the amount: a SOL figure is meaningless as a coin amount.
-      if (next !== side) setAmountState("");
-    },
-    setAmount(text) {
-      input(DEBOUNCE_MS);
-      setAmountState(text);
-    },
-    pickAmount(text) {
-      input(0);
-      setAmountState(text);
-    },
-    setSlippageBps(bps) {
-      input(0);
-      setSlippage(bps);
-    },
+    ...setters(side, input, set),
   };
   return createElement(Ctx.Provider, { value }, children);
 }

@@ -89,6 +89,27 @@ function FeeRow({
 
 const hopPct = (h: HopFee) => pct(h.protocolBps + h.creatorBps + h.lpBps, true);
 
+/** "Fees {total} SOL", "no BONDR platform fee" and the + / − marker. */
+function FeesSummary({ q }: { q: Quote | null }) {
+  return (
+    <summary className="flex cursor-pointer list-none flex-wrap justify-between gap-x-3 gap-y-1 py-2 [&::-webkit-details-marker]:hidden">
+      <span>
+        <span className="text-[13px] font-semibold">Fees</span>{" "}
+        <span className="num">{q ? `${feeSol(q.fees.totalSol)} SOL` : NONE}</span>
+      </span>
+      <span className="flex gap-2 text-muted-foreground">
+        no BONDR platform fee
+        <span aria-hidden="true" className="num group-open:hidden">
+          +
+        </span>
+        <span aria-hidden="true" className="num hidden group-open:inline">
+          {"−"}
+        </span>
+      </span>
+    </summary>
+  );
+}
+
 /** UI-SPEC Fees breakdown: every rate and value from the quote, none from the web app. */
 function Fees({ q, symbol }: { q: Quote | null; symbol: string }) {
   const coin = q?.fees.coinHop;
@@ -96,21 +117,7 @@ function Fees({ q, symbol }: { q: Quote | null; symbol: string }) {
   const pair = q?.side === "sell" ? "BONDR to SOL" : "SOL to BONDR";
   return (
     <details className="group border-t border-dashed border-line-strong">
-      <summary className="flex cursor-pointer list-none flex-wrap justify-between gap-x-3 gap-y-1 py-2 [&::-webkit-details-marker]:hidden">
-        <span>
-          <span className="text-[13px] font-semibold">Fees</span>{" "}
-          <span className="num">{q ? `${feeSol(q.fees.totalSol)} SOL` : NONE}</span>
-        </span>
-        <span className="flex gap-2 text-muted-foreground">
-          no BONDR platform fee
-          <span aria-hidden="true" className="num group-open:hidden">
-            +
-          </span>
-          <span aria-hidden="true" className="num hidden group-open:inline">
-            {"−"}
-          </span>
-        </span>
-      </summary>
+      <FeesSummary q={q} />
       {q && coin && bondr && (
         <dl className="grid gap-2 pt-1">
           <FeeRow
@@ -139,19 +146,45 @@ function Fees({ q, symbol }: { q: Quote | null; symbol: string }) {
   );
 }
 
+/** Custom slippage text as bps in 0.1% to 50%, else null: one rule for the error and the value (C-IN-02). */
+function customBps(text: string): number | null {
+  const bps = Math.round(Number(text) * 100);
+  return text.trim() !== "" && bps >= 10 && bps <= 5_000 ? bps : null;
+}
+
+type PercentProps = { id: string; value: string; error?: string; onChange(v: string): void };
+
+/** The 120px custom slippage input with its "%" suffix. */
+function PercentInput({ id, value, error, onChange }: PercentProps) {
+  return (
+    <div className="relative w-[120px]">
+      <Input
+        id={id}
+        inputMode="decimal"
+        autoComplete="off"
+        className="num min-h-10 py-2 pr-8 text-xs"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+      />
+      <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground">
+        %
+      </span>
+    </div>
+  );
+}
+
 /** The custom slippage row: 0.1% to 50%; an invalid value shows the error and keeps the last valid one. */
 function CustomSlippage() {
   const t = useTrade();
   const id = useId();
   const [text, setText] = useState(String(t.slippageBps / 100));
-  // One rule for the error and the applied value: the rounded bps (C-IN-02).
-  const bps = Math.round(Number(text) * 100);
-  const valid = text.trim() !== "" && bps >= 10 && bps <= 5_000;
-  const error = valid ? undefined : "Enter a slippage from 0.1% to 50%.";
+  const error = customBps(text) === null ? "Enter a slippage from 0.1% to 50%." : undefined;
   const onChange = (v: string) => {
     setText(v);
-    const bps = Math.round(Number(v) * 100);
-    if (v.trim() !== "" && bps >= 10 && bps <= 5_000) t.setSlippageBps(bps);
+    const bps = customBps(v);
+    if (bps !== null) t.setSlippageBps(bps);
   };
   return (
     <div className="grid gap-2">
@@ -159,21 +192,7 @@ function CustomSlippage() {
         <label htmlFor={id} className="font-semibold">
           Custom slippage
         </label>
-        <div className="relative w-[120px]">
-          <Input
-            id={id}
-            inputMode="decimal"
-            autoComplete="off"
-            className="num min-h-10 py-2 pr-8 text-xs"
-            value={text}
-            onChange={(e) => onChange(e.target.value)}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${id}-error` : undefined}
-          />
-          <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground">
-            %
-          </span>
-        </div>
+        <PercentInput id={id} value={text} error={error} onChange={onChange} />
       </div>
       <FieldError id={`${id}-error`} message={error} />
       {t.slippageBps > HIGH_BPS && (
@@ -182,6 +201,23 @@ function CustomSlippage() {
         </p>
       )}
     </div>
+  );
+}
+
+type SlippageProps = { custom: boolean; bps: number; onPick(v: string): void; size?: "sheet" };
+
+/** The Slippage row's chips; Custom stays pressed while the custom row is open. */
+function SlippageRow({ custom, bps, onPick, size }: SlippageProps) {
+  return (
+    <Row label="Slippage" className="min-w-0 flex-1">
+      <Chips
+        legend="Slippage"
+        items={[...SLIPPAGE, { label: "Custom", value: CUSTOM }]}
+        pressed={custom ? CUSTOM : String(bps)}
+        onPick={onPick}
+        size={size}
+      />
+    </Row>
   );
 }
 
@@ -212,15 +248,7 @@ export function TradeQuote({ size }: { size?: "sheet" }) {
         <Row label="Price impact" className={q ? impactTone(q.impact) : undefined}>
           {q ? impactPct(q.impact) : NONE}
         </Row>
-        <Row label="Slippage" className="min-w-0 flex-1">
-          <Chips
-            legend="Slippage"
-            items={[...SLIPPAGE, { label: "Custom", value: CUSTOM }]}
-            pressed={custom ? CUSTOM : String(t.slippageBps)}
-            onPick={pick}
-            size={size}
-          />
-        </Row>
+        <SlippageRow custom={custom} bps={t.slippageBps} onPick={pick} size={size} />
         <Row label="Minimum received">{q ? outText(q.side, q.minAmountOut, t.symbol) : NONE}</Row>
       </dl>
       {custom && <CustomSlippage />}

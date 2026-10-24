@@ -92,6 +92,20 @@ function errorText(t: Trade, cap: bigint | null): string | undefined {
   return undefined;
 }
 
+/** The label row: "You pay" or "You sell" left, the balance hint right. */
+function LabelRow({ id, buy, hint }: { id: string; buy: boolean; hint: string | null }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <Label htmlFor={id}>{buy ? "You pay" : "You sell"}</Label>
+      {hint && (
+        <span id={`${id}-hint`} className="num text-xs text-muted-foreground">
+          {hint}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** UI-SPEC Amount field: label row with the balance hint, the input with its unit, the D-14 presets. */
 export function TradeAmount({ size }: { size?: "sheet" }) {
   const t = useTrade();
@@ -104,14 +118,7 @@ export function TradeAmount({ size }: { size?: "sheet" }) {
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ");
   return (
     <div className="grid gap-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <Label htmlFor={id}>{buy ? "You pay" : "You sell"}</Label>
-        {hint && (
-          <span id={`${id}-hint`} className="num text-xs text-muted-foreground">
-            {hint}
-          </span>
-        )}
-      </div>
+      <LabelRow id={id} buy={buy} hint={hint} />
       <div className="relative">
         <Input
           id={id}

@@ -21,17 +21,14 @@ const DIALOG =
 
 const WIDE = "(min-width: 1100px)";
 
-/** The sticky Buy / Sell bar and the sheet that hosts the trade panel; both share useTrade with the column. */
-export function TradeSheet() {
-  const t = useTrade();
-  const { setSide, setVisible } = t;
+/**
+ * The sheet's open state: showModal, focus and visibility while open, focus back to the opener on close, and a
+ * crossing up to the wide layout closes it once no trade is in flight (the column shows the same state).
+ */
+function useSheet(busy: boolean, setVisible: (open: boolean) => void) {
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
-  const labelId = useId();
-  // An in-flight trade keeps the sheet open, so its result is never lost from view (T-04-08-01).
-  const busy = t.phase !== "idle";
-
   useEffect(() => {
     const d = dialog.current;
     if (!open || !d) return;
@@ -45,8 +42,6 @@ export function TradeSheet() {
       opener.current?.focus();
     };
   }, [open, setVisible]);
-
-  // Crossing up to the wide layout closes the sheet, once no trade is in flight; the column shows the same state.
   useEffect(() => {
     const mq = matchMedia(WIDE);
     const on = () => mq.matches && !busy && setOpen(false);
@@ -54,11 +49,21 @@ export function TradeSheet() {
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
   }, [busy]);
+  return { dialog, opener, open, setOpen };
+}
+
+/** The sticky Buy / Sell bar and the sheet that hosts the trade panel; both share useTrade with the column. */
+export function TradeSheet() {
+  const t = useTrade();
+  const labelId = useId();
+  // An in-flight trade keeps the sheet open, so its result is never lost from view (T-04-08-01).
+  const busy = t.phase !== "idle";
+  const { dialog, opener, open, setOpen } = useSheet(busy, t.setVisible);
 
   // Reopening never flips the side mid-trade or over an unknown result (setSide clears the result).
   const show = (side: TradeSide, el: HTMLElement) => {
     opener.current = el;
-    if (side !== t.side && t.phase === "idle" && t.result?.kind !== "unknown") setSide(side);
+    if (side !== t.side && t.phase === "idle" && t.result?.kind !== "unknown") t.setSide(side);
     setOpen(true);
   };
   const close = () => !busy && setOpen(false);
@@ -108,30 +113,37 @@ function SheetBody({ busy, labelId, onClose }: BodyProps) {
 
 type BarProps = { symbol: string; onOpen(side: TradeSide, el: HTMLElement): void };
 
-/** The Quick trade bar: the live Mcap (flashing by the trade side, D-15) and the Buy and Sell openers. */
-function Bar({ symbol, onOpen }: BarProps) {
+/** The live Mcap, flashing by the trade side (D-15). */
+function BarMcap() {
   const live = useCoinLive();
   const c = live?.coin ?? null;
   const flash = live?.flash;
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-semibold tracking-[0.09em] text-muted-foreground uppercase">Mcap</p>
+      <p
+        key={flash?.n}
+        className={cn(
+          "num truncate rounded-sm text-[15px]",
+          !c && "text-muted-foreground",
+          flash && flashClass(flash.side),
+        )}
+      >
+        {c ? `${mcapSol(c.mcapSol)} SOL` : "–"}
+      </p>
+    </div>
+  );
+}
+
+/** The Quick trade bar: the live Mcap and the Buy and Sell openers. */
+function Bar({ symbol, onOpen }: BarProps) {
   return (
     <section
       aria-label="Quick trade"
       data-trade-bar
       className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-[1fr_auto_auto] items-center gap-2 border-t border-line-strong bg-background/85 px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] backdrop-blur-[14px]"
     >
-      <div className="min-w-0">
-        <p className="text-xs font-semibold tracking-[0.09em] text-muted-foreground uppercase">Mcap</p>
-        <p
-          key={flash?.n}
-          className={cn(
-            "num truncate rounded-sm text-[15px]",
-            !c && "text-muted-foreground",
-            flash && flashClass(flash.side),
-          )}
-        >
-          {c ? `${mcapSol(c.mcapSol)} SOL` : "–"}
-        </p>
-      </div>
+      <BarMcap />
       <Button
         variant="primary"
         aria-label={`Buy ${symbol}`}

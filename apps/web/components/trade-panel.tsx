@@ -1,6 +1,6 @@
 "use client";
 import { LoaderCircle, RefreshCw, Wallet } from "lucide-react";
-import { type Ref, useId, useRef } from "react";
+import { type FormEvent, type Ref, useId, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { type ButtonState, buttonState } from "@/lib/trade-button";
 import { type Trade, useTrade } from "@/lib/use-trade";
@@ -47,27 +47,22 @@ function useButton(t: Trade, w: WalletApi): ButtonState {
   });
 }
 
-function Submit({ s, run, ref }: { s: ButtonState; run(): void; ref: Ref<HTMLButtonElement> }) {
-  const Icon = s.icon && ICONS[s.icon];
-  const icon = Icon && (
-    <Icon
-      className={cn(s.icon === "loader" && "motion-safe:animate-spin")}
-      strokeWidth={1.5}
-      aria-hidden="true"
-    />
+/** The Get Phantom and Open BONDR in Phantom states: a link styled as the button. */
+function PhantomLink({ s }: { s: ButtonState }) {
+  const external = s.href === "https://phantom.com/download";
+  return (
+    <Button asChild variant={s.variant} size="lg" className="w-full">
+      <a href={s.href} {...(external && { target: "_blank", rel: "noopener" })}>
+        {s.label}
+        {external && <span className="sr-only"> (opens in a new tab)</span>}
+      </a>
+    </Button>
   );
-  const cls = "w-full";
-  if (s.action === "link") {
-    const external = s.href === "https://phantom.com/download";
-    return (
-      <Button asChild variant={s.variant} size="lg" className={cls}>
-        <a href={s.href} {...(external && { target: "_blank", rel: "noopener" })}>
-          {s.label}
-          {external && <span className="sr-only"> (opens in a new tab)</span>}
-        </a>
-      </Button>
-    );
-  }
+}
+
+function Submit({ s, run, ref }: { s: ButtonState; run(): void; ref: Ref<HTMLButtonElement> }) {
+  if (s.action === "link") return <PhantomLink s={s} />;
+  const Icon = s.icon && ICONS[s.icon];
   // Only a submit-ready button is type submit, so Enter in the amount field never connects or refreshes.
   // preventDefault: a refresh press re-renders this button as type submit before the click's default action
   // runs, which would submit the form and start a trade. Never native disabled, so it keeps focus through a
@@ -78,7 +73,7 @@ function Submit({ s, run, ref }: { s: ButtonState; run(): void; ref: Ref<HTMLBut
       type={s.action === "submit" ? "submit" : "button"}
       variant={s.variant}
       size="lg"
-      className={cls}
+      className="w-full"
       aria-disabled={s.disabled || s.ariaDisabled || undefined}
       data-off={s.disabled || undefined}
       onClick={
@@ -90,9 +85,49 @@ function Submit({ s, run, ref }: { s: ButtonState; run(): void; ref: Ref<HTMLBut
             }
       }
     >
-      {icon}
+      {Icon && (
+        <Icon
+          className={cn(s.icon === "loader" && "motion-safe:animate-spin")}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+      )}
       {s.label}
     </Button>
+  );
+}
+
+/** Items 1-3 and the not-enough hint; in flight the fieldset locks them, the button stays focusable outside. */
+function PanelInputs({ t, hint, sheet }: { t: Trade; hint?: string; sheet: boolean }) {
+  const size = sheet ? "sheet" : undefined;
+  return (
+    <fieldset disabled={t.phase !== "idle"} className="m-0 grid min-w-0 gap-4 border-0 p-0">
+      {/* In the sheet the side seg stops short of the close button in the top right corner. */}
+      <div className={cn("grid", sheet && "pr-12")}>
+        <Seg
+          label="Trade side"
+          options={SIDES}
+          value={t.side === "buy" ? "Buy" : "Sell"}
+          onChange={(v) => t.setSide(v === "Buy" ? "buy" : "sell")}
+          tone={t.side === "sell" ? "danger" : "mint"}
+        />
+      </div>
+      <TradeAmount size={size} />
+      {hint && <p className="-mt-2 text-xs text-muted-foreground">{hint}</p>}
+      <TradeQuote size={size} />
+    </fieldset>
+  );
+}
+
+/** Item 7, the fine print, and the panel's one polite live region (UI-SPEC Accessibility). */
+function PanelFooter({ announce }: { announce: string }) {
+  return (
+    <>
+      <p className="text-xs text-muted-foreground">One Phantom signature. Quote refreshes every 2 seconds.</p>
+      <p aria-live="polite" className="sr-only">
+        {announce}
+      </p>
+    </>
   );
 }
 
@@ -104,13 +139,18 @@ export function TradePanel({ placement = "column", labelId }: Props) {
   const own = useId();
   const h = labelId ?? own;
   const sheet = placement === "sheet";
-  const size = sheet ? "sheet" : undefined;
   const go = useRef<HTMLButtonElement>(null);
   const run = () => {
     if (s.action === "connect") void w.connect();
     else if (s.action === "consent") w.forgetConsent();
     else if (s.action === "refresh") t.resume();
     else if (s.action === "submit") t.submit();
+  };
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    // Enter in the amount field: focus moves to the button before the fieldset locks (C-WR-07).
+    go.current?.focus();
+    if (s.action === "submit") run();
   };
   return (
     <section
@@ -121,40 +161,12 @@ export function TradePanel({ placement = "column", labelId }: Props) {
       <h2 id={h} className="sr-only">
         Trade {t.symbol}
       </h2>
-      <form
-        noValidate
-        className="grid gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          // Enter in the amount field: focus moves to the button before the fieldset locks (C-WR-07).
-          go.current?.focus();
-          if (s.action === "submit") run();
-        }}
-      >
-        {/* In flight every input is locked; the button stays focusable (aria-disabled) outside it. */}
-        <fieldset disabled={t.phase !== "idle"} className="m-0 grid min-w-0 gap-4 border-0 p-0">
-          {/* In the sheet the side seg stops short of the close button in the top right corner. */}
-          <div className={cn("grid", sheet && "pr-12")}>
-            <Seg
-              label="Trade side"
-              options={SIDES}
-              value={t.side === "buy" ? "Buy" : "Sell"}
-              onChange={(v) => t.setSide(v === "Buy" ? "buy" : "sell")}
-              tone={t.side === "sell" ? "danger" : "mint"}
-            />
-          </div>
-          <TradeAmount size={size} />
-          {s.hint && <p className="-mt-2 text-xs text-muted-foreground">{s.hint}</p>}
-          <TradeQuote size={size} />
-        </fieldset>
+      <form noValidate className="grid gap-4" onSubmit={onSubmit}>
+        <PanelInputs t={t} hint={s.hint} sheet={sheet} />
         <TradeCallouts />
         <Submit s={s} run={run} ref={go} />
       </form>
-      <p className="text-xs text-muted-foreground">One Phantom signature. Quote refreshes every 2 seconds.</p>
-      {/* UI-SPEC Accessibility: the one polite region for the quote, the pause and the in-flight steps. */}
-      <p aria-live="polite" className="sr-only">
-        {t.announce}
-      </p>
+      <PanelFooter announce={t.announce} />
     </section>
   );
 }

@@ -31,6 +31,19 @@ test.describe("hero", () => {
     await expect(page.getByText("Next to bond")).toHaveCount(0); // D-08
   });
 
+  test("Pause animation holds the hero video and motes; reduced motion has neither (WCAG 2.2.2)", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Pause animation" }).click();
+    await expect(page.getByRole("button", { name: "Play animation" })).toBeVisible();
+    expect(await page.locator(".hero-art video").evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+    await expect(page.locator(".motes i").first()).toHaveCSS("animation-play-state", "paused");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.reload();
+    await expect(page.getByRole("button", { name: /animation$/ })).toHaveCount(0);
+  });
+
   for (const path of ["/", "/terms"]) {
     test(`the header links to /launch on ${path}`, async ({ page }) => {
       await page.goto(path);

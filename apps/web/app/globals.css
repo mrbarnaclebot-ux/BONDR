@@ -343,6 +343,10 @@
     padding-block: 128px 48px;
   }
 }
+/* WCAG 2.2.2: the hero's Pause animation button holds the art's breathe, the motes and the live dot. */
+.hero[data-paused] :is(.hero-art video, .motes i, .animate-live) {
+  animation-play-state: paused;
+}
 @media (prefers-reduced-motion: reduce) {
   .motes {
     display: none;

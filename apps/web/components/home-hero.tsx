@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { thousands } from "@/lib/format";
 import { useHome } from "./home-live";
 import { Button, buttonVariants } from "./ui-button";
@@ -19,15 +19,34 @@ const MOTES = Array.from({ length: 16 }, (_, i) => {
   } as CSSProperties;
 });
 
-/** The video loops only when motion is allowed; reduced motion (and the server render) keeps the still. */
-function HeroArt() {
+/** Motion is allowed (never under reduced motion, nor in the server render) and not paused by the viewer. */
+function useHeroMotion() {
   const [motion, setMotion] = useState(false);
+  const [paused, setPaused] = useState(false);
   useEffect(() => setMotion(!matchMedia("(prefers-reduced-motion: reduce)").matches), []);
+  return { motion, paused, toggle: () => setPaused((p) => !p) };
+}
+
+/** The video loops only when motion is allowed; reduced motion (and the server render) keeps the still. */
+function HeroArt({ motion, paused }: { motion: boolean; paused: boolean }) {
+  const video = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (paused) video.current?.pause();
+    else void video.current?.play().catch(() => {}); // autoplay refused: the poster stays
+  }, [paused]);
   return (
     <>
       <div aria-hidden="true" className="hero-art">
         {motion ? (
-          <video autoPlay muted loop playsInline preload="metadata" poster="/art/hero-bond-poster.jpg">
+          <video
+            ref={video}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/art/hero-bond-poster.jpg"
+          >
             <source src="/art/hero-bond.mp4" type="video/mp4" />
           </video>
         ) : (
@@ -71,11 +90,35 @@ function Pulse() {
   );
 }
 
-/** Home hero (UI-SPEC Hero): headline, lede, Launch a coin and See all coins, the D-09 pulse line, the art. */
-export function HomeHero({ paused }: { paused: boolean }) {
+/** Launch a coin (or the disabled Launches paused) and See all coins. */
+function Ctas({ paused }: { paused: boolean }) {
   return (
-    <section aria-labelledby="hero-h" className="hero">
-      <HeroArt />
+    <div className="mt-8 flex flex-wrap gap-3">
+      {paused ? (
+        <Button variant="primary" size="lg" disabled>
+          Launches paused
+        </Button>
+      ) : (
+        <Link href="/launch" className={buttonVariants({ variant: "primary", size: "lg" })}>
+          Launch a coin
+        </Link>
+      )}
+      <a href="#all-coins" className={buttonVariants({ variant: "quiet", size: "lg" })}>
+        See all coins
+      </a>
+    </div>
+  );
+}
+
+/**
+ * Home hero (UI-SPEC Hero): headline, lede, Launch a coin and See all coins, the D-09 pulse line, the art. The
+ * looping art gets a Pause animation toggle (WCAG 2.2.2); under reduced motion nothing moves, so there is none.
+ */
+export function HomeHero({ paused }: { paused: boolean }) {
+  const art = useHeroMotion();
+  return (
+    <section aria-labelledby="hero-h" className="hero" data-paused={art.paused || undefined}>
+      <HeroArt motion={art.motion} paused={art.paused} />
       <div className="hero-in mx-auto w-full max-w-[1440px] px-(--gutter)">
         <div>
           <h1 id="hero-h" className="hero-h1 display">
@@ -87,21 +130,13 @@ export function HomeHero({ paused }: { paused: boolean }) {
             own curve to completion and burn what they buy. If a day passes without a bond, those fees buy and
             burn BONDR instead.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {paused ? (
-              <Button variant="primary" size="lg" disabled>
-                Launches paused
-              </Button>
-            ) : (
-              <Link href="/launch" className={buttonVariants({ variant: "primary", size: "lg" })}>
-                Launch a coin
-              </Link>
-            )}
-            <a href="#all-coins" className={buttonVariants({ variant: "quiet", size: "lg" })}>
-              See all coins
-            </a>
-          </div>
+          <Ctas paused={paused} />
           <Pulse />
+          {art.motion && (
+            <Button className="mt-4 px-3 text-xs" onClick={art.toggle}>
+              {art.paused ? "Play animation" : "Pause animation"}
+            </Button>
+          )}
         </div>
       </div>
     </section>

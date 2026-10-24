@@ -150,7 +150,10 @@ test("resyncFeed merges a page that overlaps the loaded rows and replaces one th
   expect(sigs(overlap.rows)).toEqual(["s6.0", "s5.0", "s4.0", "s3.0", "s2.0"]);
   expect(overlap.more).toBe(false);
   const gap = { rows: [trade(60), trade(59)], more: true };
-  expect(resyncFeed(feed, gap)).toBe(gap);
+  expect(resyncFeed(feed, gap)).toEqual(gap);
+  // A stale page never drops a live row newer than it; live rows inside the hole go with the old rows.
+  const live = { rows: [trade(70, 0, "buy"), trade(5, 0, "buy"), trade(3)], more: false };
+  expect(sigs(resyncFeed(live, gap).rows)).toEqual(["s70.0", "s60.0", "s59.0"]);
   expect(sigs(resyncFeed(feed, { rows: [trade(9), trade(8)], more: false }).rows)).toEqual([
     "s9.0",
     "s8.0",

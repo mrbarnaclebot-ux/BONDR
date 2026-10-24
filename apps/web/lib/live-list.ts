@@ -110,11 +110,15 @@ export function addTrades<T extends Trade>(rows: T[], add: T[]): T[] {
 }
 
 /**
- * A resync's refetched first page. With older trades beyond it and no server-loaded row (not `fresh`) inside it,
- * a hole may sit below it, so it replaces the feed and Load more fills down from it; otherwise it merges.
+ * A resync's refetched first page (kept up to 10 s, so live rows may be newer). With older trades beyond it and
+ * no server-loaded row (not `fresh`) inside it, a hole may sit below it: the page replaces the rows older than
+ * its newest, live rows newer than its oldest stay, and Load more fills down from it. Otherwise it merges.
  */
 export function resyncFeed<T extends Trade>(feed: Feed<T>, page: Feed<T>): Feed<T> {
   const keys = new Set(page.rows.map(tradeKey));
   const joined = feed.rows.some((r) => !r.fresh && keys.has(tradeKey(r)));
-  return page.more && !joined ? page : { ...feed, rows: addTrades(feed.rows, page.rows) };
+  const oldest = page.rows.at(-1);
+  if (joined || !page.more || !oldest) return { ...feed, rows: addTrades(feed.rows, page.rows) };
+  const live = feed.rows.filter((r) => r.fresh && newestFirst(r, oldest) < 0);
+  return { rows: addTrades(page.rows, live), more: true };
 }

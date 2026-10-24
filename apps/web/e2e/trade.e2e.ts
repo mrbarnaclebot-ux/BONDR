@@ -1,11 +1,14 @@
 // The trade panel on a seeded curve coin, with /api/trade/* stubbed (trade-stubs.ts), so the asserted values
 // are the fixtures' literals. The panel is the column one: Desktop Chrome is 1280 wide, above the 1100 switch.
-// The devnet group (E2E_DEVNET=1) quotes a real coin through the local web and worker; nothing is signed.
-import { expect, type Page, test } from "@playwright/test";
+// The devnet group (E2E_DEVNET=1) quotes a real coin, then buys 0.01 SOL and sells it all through the panel,
+// signed by the fake Phantom with the sim dev key (owner pre-approved devnet spend, at most 0.05 SOL).
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import postgres from "postgres";
 import { row } from "./coin.ts";
-import { dropCoin, type Seeded, seedCoin } from "./fixtures.ts";
-import { injectPhantom, newTestAccount, preConsent, rootEnv } from "./phantom.ts";
+import { blockTime, dropCoin, type Seeded, seedCoin } from "./fixtures.ts";
+import { injectPhantom, newTestAccount, preConsent, rootEnv, signIn, simDevAccount } from "./phantom.ts";
 import { BALANCE, QUOTE_BUY, QUOTE_IMPACT_HIGH, QUOTE_POOL, QUOTE_SELL, stubTrade } from "./trade-stubs.ts";
 
 const url = rootEnv().DATABASE_URL;
@@ -192,24 +195,100 @@ test.describe("trade panel", () => {
   });
 });
 
+// The newest real curve coin on the dev branch, as live.e2e.ts picks it.
+async function devnetCoin() {
+  const [c] = await db()<{ mint: string; symbol: string }[]>`select c.mint, l.symbol from coins c
+    join launches l on l.mint = c.mint
+    where l.state = 'landed' and c.venue = 'curve' and l.name not like 'E2E %'
+    order by l.created_at desc limit 1`;
+  expect(c, "an indexed curve coin").toBeTruthy();
+  return c as { mint: string; symbol: string };
+}
+
+const lamports = async (address: string): Promise<number> => {
+  const body = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "getBalance",
+    params: [address, { commitment: "confirmed" }],
+  };
+  const res = await fetch("https://api.devnet.solana.com", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return ((await res.json()) as { result: { value: number } }).result.value;
+};
+
+/** Waits for the result line, then for its row in the feed; returns the signature and seconds from blockTime. */
+async function landed(page: Page, trade: Locator, text: string, side: string) {
+  const line = trade.getByRole("status").filter({ hasText: text });
+  await line.waitFor({ timeout: 60_000 });
+  const href = (await line.getByRole("link").getAttribute("href")) as string;
+  const sig = (href.match(/\/tx\/(\w+)/) as RegExpMatchArray)[1] as string;
+  const row = page.getByRole("table").locator("tbody tr", { has: page.locator(`a[href*="${sig}"]`) });
+  await expect(row).toContainText(side, { timeout: 15_000 });
+  const lag = (Date.now() - (await blockTime(sig)) * 1000) / 1000;
+  console.log(
+    `devnet ${side.toLowerCase()} ${sig}: "${await line.textContent()}", feed row ${lag} s after blockTime`,
+  );
+  expect(lag).toBeLessThanOrEqual(15);
+  return sig;
+}
+
 test.describe("devnet", () => {
-  test.skip(process.env.E2E_DEVNET !== "1" || !sql, "a real quote from the local worker: set E2E_DEVNET=1");
-  test.describe.configure({ timeout: 60_000 });
+  test.skip(process.env.E2E_DEVNET !== "1" || !sql, "a real quote, buy and sell: set E2E_DEVNET=1");
+  test.describe.configure({ timeout: 240_000 });
+  // --fund tops the sim dev up from ops only when it holds under 0.03 SOL.
+  test.beforeAll(() => {
+    execFileSync("node", ["--env-file=.env", "scripts/devnet-launch.ts", "--fund"], {
+      cwd: fileURLToPath(new URL("../../../", import.meta.url)),
+      stdio: "inherit",
+      env: { ...process.env, VANITY_THREADS: "0" },
+    });
+  });
+  // signIn wrote the consent row; it stays while the sim dev's launches reference it (wallets FK).
+  test.afterAll(async () => {
+    await db()`delete from wallets w where w.address = ${simDevAccount().address}
+      and not exists (select 1 from launches l where l.wallet = w.address)`;
+  });
 
   test("devnet quote", async ({ page }) => {
-    // The newest real curve coin on the dev branch, as live.e2e.ts picks it.
-    const [c] = await db()<{ mint: string; symbol: string }[]>`select c.mint, l.symbol from coins c
-      join launches l on l.mint = c.mint
-      where l.state = 'landed' and c.venue = 'curve' and l.name not like 'E2E %'
-      order by l.created_at desc limit 1`;
-    expect(c, "an indexed curve coin").toBeTruthy();
-    await page.goto(`/coin/${c?.mint}`);
-    const trade = page.getByRole("region", { name: `Trade ${c?.symbol}` });
+    const c = await devnetCoin();
+    await page.goto(`/coin/${c.mint}`);
+    const trade = page.getByRole("region", { name: `Trade ${c.symbol}` });
     await trade.getByRole("textbox", { name: "You pay" }).fill("0.01");
-    await expect(row(trade, "Route")).toHaveText(`SOL to BONDR curve to ${c?.symbol} curve`, {
+    await expect(row(trade, "Route")).toHaveText(`SOL to BONDR curve to ${c.symbol} curve`, {
       timeout: 20_000,
     });
     await expect(row(trade, "You receive about")).not.toHaveText("–");
-    await expect(row(trade, "You receive about")).toContainText(` ${c?.symbol}`);
+    await expect(row(trade, "You receive about")).toContainText(` ${c.symbol}`);
+  });
+
+  test("devnet buy and sell through the panel", async ({ page }) => {
+    const [c, sim] = [await devnetCoin(), simDevAccount()];
+    const before = await lamports(sim.address);
+    await injectPhantom(page, sim);
+    expect((await signIn(page.request, sim)).status()).toBe(204); // a real session for prepare and submit
+    await page.goto(`/coin/${c.mint}`);
+    const trade = panel(page, c.symbol);
+    const go = trade.locator("form > button");
+    await go.click(); // Connect Phantom to trade
+    await chip(page, c.symbol, "1%").click();
+    await trade.getByRole("textbox", { name: "You pay" }).fill("0.01");
+    await expect(go).toHaveText(`Buy ${c.symbol} with 0.01 SOL`, { timeout: 30_000 });
+    await go.click();
+    const buy = await landed(page, trade, "Bought", "Buy");
+
+    await trade.getByRole("button", { name: "Sell", exact: true }).click();
+    await chip(page, c.symbol, "100%").click();
+    // A sell of the whole balance through two curves can pass 15% impact: then it is the "anyway" press (D-13).
+    const ready = new RegExp(`^Sell ([\\d,.]+ ${c.symbol}|anyway, [\\d.]+% price impact)$`);
+    await expect(go).toHaveText(ready, { timeout: 30_000 });
+    await go.click();
+    const sell = await landed(page, trade, "Sold for", "Sell");
+    const spent = (before - (await lamports(sim.address))) / 1e9;
+    console.log(`devnet trade run: buy ${buy}, sell ${sell}, sim dev spent ${spent} SOL`);
+    expect(spent).toBeLessThanOrEqual(0.05);
   });
 });

@@ -4,8 +4,8 @@
 import { expect, type Page, request, test } from "@playwright/test";
 import postgres from "postgres";
 import { dropCoin, type Seeded, seedCoin } from "./fixtures.ts";
-import { rootEnv } from "./phantom.ts";
-import { stubTrade } from "./trade-stubs.ts";
+import { injectPhantom, newTestAccount, preConsent, rootEnv } from "./phantom.ts";
+import { PREPARED, stubTrade } from "./trade-stubs.ts";
 
 const STAGING = process.env.E2E_BASE_URL;
 const url = STAGING ? undefined : rootEnv().DATABASE_URL;
@@ -116,4 +116,39 @@ test("crossing 1100px closes the sheet and the column keeps side and amount", as
     "aria-pressed",
     "true",
   );
+});
+
+test("390: an in-flight trade keeps the sheet open", async ({ page }) => {
+  test.skip(!!STAGING, "the fake Phantom's consent needs the local stubs");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await stubTrade(page, { prepare: { json: PREPARED, delayMs: 5_000 } });
+  const account = newTestAccount();
+  await injectPhantom(page, account);
+  await preConsent(page, account.address);
+  await page.goto(`/coin/${coin.mint}`);
+  const buy = bar(page).getByRole("button", { name: `Buy ${coin.symbol}` });
+  await buy.click();
+  const go = sheet(page).locator("form > button");
+  await go.click(); // Connect Phantom to trade
+  await sheet(page).getByRole("textbox", { name: "You pay" }).fill("0.5");
+  await expect(go).toHaveText(`Buy ${coin.symbol} with 0.50 SOL`);
+  await go.click();
+  await expect(go).toHaveText("Preparing trade…");
+  const close = sheet(page).getByRole("button", { name: "Close trade panel" });
+  await expect(close).toHaveAttribute("aria-disabled", "true");
+  await page.keyboard.press("Escape");
+  await page.mouse.click(195, 4); // the backdrop
+  await expect(sheet(page)).toBeVisible();
+  await expect(go).toHaveText("Preparing trade…");
+  await expect(
+    sheet(page)
+      .getByRole("status")
+      .filter({ hasText: `Bought 17,234,567 ${coin.symbol}.` }),
+  ).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(close).not.toHaveAttribute("aria-disabled");
+  await close.click();
+  await expect(sheet(page)).toBeHidden();
+  await expect(buy).toBeFocused();
 });

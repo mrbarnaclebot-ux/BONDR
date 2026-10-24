@@ -2,7 +2,7 @@
 phase: 4
 slug: trading
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-10-24
 ---
@@ -37,6 +37,26 @@ created: 2026-10-24
 ## Per-Task Verification Map
 
 The planner fills task ids. Requirement-to-test map from research:
+
+### Plan and task map
+| Test | Created in | Run by |
+|------|------------|--------|
+| `packages/core/src/quote.test.ts` | 04-01 T2 | 04-01 T2, 04-08 T2 |
+| `apps/web/e2e/trade-stubs.ts`, `trade.e2e.ts` (quote preview, red) | 04-01 T1 | 04-02 T3 (green), 04-03 T1-T3, 04-07 T3, 04-09 T1-T2 |
+| `apps/worker/src/trade-state.test.ts` | 04-02 T1 | 04-02 T1-T2 |
+| `apps/worker/src/trade-quote.test.ts` (request parsing, maxSolIn, balance) | 04-02 T2 | 04-02 T2 |
+| `trade.e2e.ts -g "devnet quote"` (no spend) | 04-02 T3 | 04-02 T3 |
+| `packages/core/src/trade-error.test.ts` | 04-04 T1 | 04-04 T1 |
+| `apps/worker/src/trade-store.test.ts`, `trade-prepare.test.ts` (CU, priority clamp, devnet cap, message shape; `TRADE_LIVE=1` devnet simulation) | 04-04 T2-T3 | 04-04 T2-T3 |
+| `apps/web/e2e/trade-sheet.e2e.ts` | 04-05 T2 | 04-05 T2, 04-07 T3, 04-11 T2 |
+| `apps/worker/src/trade-submit.test.ts` | 04-06 T1 | 04-06 T1-T2 |
+| `apps/web/lib/trade-button.test.ts` | 04-07 T2 | 04-07 T2 |
+| `trade.e2e.ts -g devnet` (real buy and sell, at most 0.05 SOL) | 04-07 T3 | 04-07 T3, 04-11 T2 (staging) |
+| Fork rows `bonded.multihop.*`, `pooled.multihop.*` with `pureQuote` | 04-08 T1 | 04-08 T2 |
+| `apps/web/e2e/responsive-trade.e2e.ts` | 04-10 T1 | 04-10 T1-T2, 04-11 T2 (staging) |
+| Bundle gate `pnpm check:bundle` | exists | 04-02 T3, 04-06 T2, 04-10 T2 |
+
+Note: the request-parsing row below lives in `trade-quote.test.ts` (04-02), because `parseTrade` is shared by quote and prepare; the devnet `maxSolIn` refusal is in `trade-prepare.test.ts` (04-04).
 
 ### Phase Requirements to Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |

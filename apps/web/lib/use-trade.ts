@@ -164,8 +164,9 @@ function useQuoteLoop(run: boolean) {
   useEffect(() => {
     if (!run || paused) return;
     const timer = setInterval(() => {
-      if (Date.now() - lastInput.current >= IDLE_MS) setPaused(true);
-      else setTick((n) => n + 1);
+      const since = Date.now() - lastInput.current;
+      if (since >= IDLE_MS) setPaused(true);
+      else if (since >= DEBOUNCE_MS) setTick((n) => n + 1); // never cut a typing debounce short (C-IN-04)
     }, REFRESH_MS);
     return () => clearInterval(timer);
   }, [run, paused]);

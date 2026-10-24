@@ -81,6 +81,12 @@ test("no amount", () => {
   expect(at({ units: null })).toMatchObject({ label: "Enter an amount", disabled: true });
 });
 
+test("a buy over the devnet cap (C-WR-02)", () => {
+  const capped = { ...QUOTE, maxSolIn: "700000000" };
+  expect(at({ quote: capped })).toMatchObject({ label: "Enter an amount", disabled: true, action: null });
+  expect(at({ quote: capped, units: 700_000_000n }).label).toBe("Buy GRUB with 0.70 SOL");
+});
+
 test("a buy over balance minus 0.01 SOL", () => {
   const s = at({ units: 2_495_000_000n });
   expect(s).toMatchObject({ label: "Not enough SOL", disabled: true });

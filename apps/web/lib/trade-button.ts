@@ -76,6 +76,10 @@ export const currentQuote = (
   loading: boolean,
 ) => (!loading && q?.side === side && units !== null && q.amountIn === String(units) ? q : null);
 
+/** 04-03 Note: devnet's buy cap while BONDR is on its curve, from the last buy quote; else null. */
+export const devnetCap = (side: TradeSide, q: TradeQuote | null) =>
+  side === "buy" && q?.side === "buy" && q.maxSolIn ? BigInt(q.maxSolIn) : null;
+
 function walletRow(i: ButtonInput): ButtonState | null {
   if (i.wallet === "loading" || (i.wallet === "connected" && i.consented === null))
     return off("Checking wallet…");
@@ -108,6 +112,9 @@ function idleState(i: ButtonInput): ButtonState {
   if (w) return w;
   if (i.coinComplete || i.quoteError === "paused") return off("Trading paused");
   if (i.units === null) return off("Enter an amount");
+  // Over the devnet cap the field shows its error and the worker would refuse (C-WR-02).
+  const cap = devnetCap(i.side, i.quote);
+  if (cap !== null && i.units > cap) return off("Enter an amount");
   const b = balanceRow(i, i.units);
   if (b) return b;
   const q = currentQuote(i.quote, i.side, i.units, i.loading);

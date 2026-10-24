@@ -2,6 +2,7 @@
 import { useId } from "react";
 import { cn } from "@/lib/cn";
 import { sol } from "@/lib/format";
+import { devnetCap } from "@/lib/trade-button";
 import { type Trade, toUnits, useTrade } from "@/lib/use-trade";
 import { FieldError, Input, Label } from "./ui-field";
 
@@ -99,7 +100,7 @@ export function TradeAmount({ size }: { size?: "sheet" }) {
   const id = useId();
   const buy = t.side === "buy";
   // Devnet only, while BONDR is on its curve (04-03 Note): the worker's cap from the last buy quote.
-  const cap = buy && t.quote?.side === "buy" && t.quote.maxSolIn ? BigInt(t.quote.maxSolIn) : null;
+  const cap = devnetCap(t.side, t.quote);
   const hint = hintText(t);
   const error = errorText(t, cap);
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ");

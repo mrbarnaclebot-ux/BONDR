@@ -20,10 +20,14 @@ const fixture = (name: string): TradeTx =>
 const DEV = "F9DVpqKqC3yFCZCLPYXdRMTxMkkMommj1ue1uXAPbndr"; // the launch-burn and curve-buy fixtures' coin
 const BONDR = { mint: "4Jw2pr67qmpMi7DQGNZBwKF5Trgse5tNszLkpCnFEovA", pool: "unused" };
 
-test("the BONDR price is null until set, then the set value", () => {
+test("the BONDR price is null until set, then moves only forward in slots", () => {
   expect(bondrPrice.get()).toBeNull();
-  bondrPrice.set(3e-7);
+  bondrPrice.set(3e-7, 100);
   expect(bondrPrice.get()).toBe(3e-7);
+  bondrPrice.set(1e-7, 99); // a gap-filled tx from an older slot
+  expect(bondrPrice.get()).toBe(3e-7);
+  bondrPrice.set(2e-7, 100);
+  expect(bondrPrice.get()).toBe(2e-7);
 });
 
 // The landed launch of DEV on this branch, or a test one (negative idx never collides with the grinder).

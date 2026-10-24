@@ -107,7 +107,7 @@ function parse(tx: TradeTx, launch?: { mint: string; exit: "burn" | "sell" }): P
   const b = bondr();
   if (!b) throw new Error("BONDR price not seeded");
   const parsed = parseTx(tx, knownCoins, b, launch);
-  if (parsed.bondr !== null) bondrPrice.set(parsed.bondr);
+  if (parsed.bondr !== null) bondrPrice.set(parsed.bondr, tx.slot);
   for (const name of parsed.unknown.filter((n) => !warned.has(n))) {
     warned.add(name);
     console.warn(`unknown pump event on a known coin: ${redact(name)}`);

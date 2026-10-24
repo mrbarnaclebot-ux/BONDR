@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 context gathered
-last_updated: "2026-10-24T10:48:48.598Z"
+last_updated: "2026-10-24T14:25:08.970Z"
 last_activity: 2026-10-24
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 56
-  completed_plans: 45
+  completed_plans: 46
   percent: 43
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 4 (Trading) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
 Last activity: 2026-10-24
 
-Progress: [████████░░] 80%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -89,6 +89,7 @@ Progress: [████████░░] 80%
 | Phase 03 P13 | 15min | 2 tasks | 15 files |
 | Phase 03 P14 | 35min | 2 tasks | 13 files |
 | Phase 04 P01 | 12 min | 2 tasks | 10 files |
+| Phase 04 P03 | 25 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -194,6 +195,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-14: Top and Oldest pick up a new launch on reload or resync catch-up; Latest stays live (D-14)
 - [Phase 04]: 04-01: price impact is 1 - out/spotOut per hop in floats (reserveIn/(reserveIn+netIn), curve buys capped at real tokens), so tiny trades read about 0
 - [Phase 04]: 04-01: hop fee SOL is x*total/(10000+total) on a buy input and x*total/(10000-total) on a sell output; coin hop fees valued at BONDR spot
+- [Phase 04]: 04-03: the token page grid at 1100px uses rows auto 1fr with the right column spanning both, so a tall Trade plus Bond column never opens a gap between chart and Trades
+- [Phase 04]: 04-03: TRADE-03 and TRADE-04 stay open until slippage (04-05) and real trades (04-10) ship
 
 ### Pending Todos
 
@@ -226,6 +229,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T10:48:48.593Z
-Stopped at: Phase 4 context gathered
+Last session: 2026-10-24T14:25:06.020Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None

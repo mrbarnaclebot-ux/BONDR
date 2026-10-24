@@ -175,7 +175,7 @@ Plans:
   3. User sees tokens out, price impact and fees in a quote preview, and sets slippage before signing
   4. Buy and sell work on a curve coin and on a migrated PumpSwap coin, and the fees charged match pump's live FeeConfig with no platform fee added
 
-**Plans:** 2/13 plans executed
+**Plans:** 3/13 plans executed
 
 Plans:
 **Wave 1**
@@ -188,7 +188,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-03-PLAN.md - Quote on the token page: web quote route, shared trade state, first trade panel, page grid, UI-SPEC note
+- [x] 04-03-PLAN.md - Quote on the token page: web quote route, shared trade state, first trade panel, page grid, UI-SPEC note
 - [ ] 04-04-PLAN.md - Prepare in the worker: shared error map, in-memory trade store, simulated and budgeted v0 build, devnet cap
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -276,7 +276,7 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 1. Chain Spike | 10/10 | Complete | 2026-10-19 |
 | 2. Launch Flow | 18/18 | Complete | 2026-10-23 |
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
-| 4. Trading | 2/13 | In Progress|  |
+| 4. Trading | 3/13 | In Progress|  |
 | 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |
 | 6. Admin Dashboard | 0/TBD | Not started | - |
 | 7. Go-Live | 0/TBD | Not started | - |

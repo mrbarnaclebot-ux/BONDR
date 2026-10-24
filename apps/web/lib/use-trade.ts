@@ -2,7 +2,7 @@
 
 // The trade panel's one state object (UI-SPEC useTrade): every placement (column panel, later the sheet and the
 // sticky bar) reads the same side, amount, slippage and quote, so switching placement never loses the input.
-import type { ApiError, TradeErrorCode, TradeQuote, TradeSide } from "@bondr/core/api";
+import type { ApiError, TradeBalance, TradeErrorCode, TradeQuote, TradeSide } from "@bondr/core/api";
 import { parseSol } from "@bondr/core/rules";
 import {
   createContext,
@@ -19,7 +19,10 @@ const DEBOUNCE_MS = 400;
 
 export type TradePhase = "idle" | "preparing" | "signing" | "confirming";
 
-type Trade = {
+/** The wallet's balances (D-16): unknown without a consented wallet. */
+export type BalanceState = TradeBalance | "unknown" | "loading" | "failed";
+
+export type Trade = {
   mint: string;
   symbol: string;
   side: TradeSide;
@@ -31,8 +34,11 @@ type Trade = {
   loading: boolean;
   quoteError: TradeErrorCode | "failed" | null;
   phase: TradePhase;
+  balance: BalanceState;
   setSide(side: TradeSide): void;
   setAmount(text: string): void;
+  /** A preset chip: quotes at once, no debounce. */
+  pickAmount(text: string): void;
   setSlippageBps(bps: number): void;
 };
 
@@ -126,6 +132,7 @@ export function TradeProvider({
     ...q,
     // 04-10 drives the phase once the panel runs trades.
     phase: "idle",
+    balance: "unknown",
     setSide(next) {
       delay.current = 0;
       setSideState(next);
@@ -134,6 +141,10 @@ export function TradeProvider({
     },
     setAmount(text) {
       delay.current = DEBOUNCE_MS;
+      setAmountState(text);
+    },
+    pickAmount(text) {
+      delay.current = 0;
       setAmountState(text);
     },
     setSlippageBps(bps) {

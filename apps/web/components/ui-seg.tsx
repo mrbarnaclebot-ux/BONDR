@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 /**
- * Segmented control (UI-SPEC Seg): a group of native aria-pressed buttons over a pill track. The mint indicator
+ * Segmented control (UI-SPEC Seg): a group of native aria-pressed buttons over a pill track. The indicator
  * slides by CSS alone: equal-width buttons, so its offset is the pressed index times its own width.
  */
 export function Seg<T extends string>(props: {
@@ -9,9 +9,15 @@ export function Seg<T extends string>(props: {
   options: readonly T[];
   value: T;
   onChange(v: T): void;
+  /** The indicator color: mint by default, destructive for the Sell side (UI-SPEC Trade panel item 1). */
+  tone?: "mint" | "danger";
 }) {
   const { options, value } = props;
-  const style = { "--i": options.indexOf(value), "--n": options.length } as CSSProperties;
+  const style = {
+    "--i": options.indexOf(value),
+    "--n": options.length,
+    "--tone": props.tone === "danger" ? "var(--destructive)" : "var(--mint)",
+  } as CSSProperties;
   return (
     // A fieldset is a native role="group"; aria-label names it without a visible legend.
     <fieldset
@@ -21,7 +27,7 @@ export function Seg<T extends string>(props: {
     >
       <span
         aria-hidden
-        className="absolute inset-y-1 left-1 w-[calc((100%_-_8px)/var(--n))] translate-x-[calc(var(--i)*100%)] rounded-full bg-[linear-gradient(180deg,color-mix(in_oklch,var(--mint),var(--foreground)_18%),var(--mint))] shadow-[var(--hi)] transition-[translate] duration-[520ms] ease-(--ease-spring)"
+        className="absolute inset-y-1 left-1 w-[calc((100%_-_8px)/var(--n))] translate-x-[calc(var(--i)*100%)] rounded-full bg-[linear-gradient(180deg,color-mix(in_oklch,var(--tone),var(--foreground)_18%),var(--tone))] shadow-[var(--hi)] transition-[translate] duration-[520ms] ease-(--ease-spring)"
       />
       {options.map((o) => (
         <button

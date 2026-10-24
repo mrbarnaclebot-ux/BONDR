@@ -4,7 +4,7 @@ import { Fragment, type ReactNode, useId } from "react";
 import { cn } from "@/lib/cn";
 import { sol, thousands } from "@/lib/format";
 import { useTrade } from "@/lib/use-trade";
-import { Input, Label } from "./ui-field";
+import { TradeAmount } from "./trade-amount";
 import { Seg } from "./ui-seg";
 
 const SIDES = ["Buy", "Sell"] as const;
@@ -75,31 +75,6 @@ function QuoteRows() {
   );
 }
 
-function AmountField() {
-  const t = useTrade();
-  const id = useId();
-  const unit = t.side === "buy" ? "SOL" : t.symbol;
-  return (
-    <div className="grid gap-2">
-      <Label htmlFor={id}>{t.side === "buy" ? "You pay" : "You sell"}</Label>
-      <div className="relative">
-        <Input
-          id={id}
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="0"
-          className={cn("num min-h-14 text-xl", t.side === "buy" ? "pr-16" : "pr-28")}
-          value={t.amount}
-          onChange={(e) => t.setAmount(e.target.value)}
-        />
-        <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
-          {unit}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 /** UI-SPEC Trade panel items 1-4 and 7: side, amount, quote rows with the fees line, fine print. */
 export function TradePanel() {
   const t = useTrade();
@@ -117,8 +92,9 @@ export function TradePanel() {
         options={SIDES}
         value={t.side === "buy" ? "Buy" : "Sell"}
         onChange={(v) => t.setSide(v === "Buy" ? "buy" : "sell")}
+        tone={t.side === "sell" ? "danger" : "mint"}
       />
-      <AmountField />
+      <TradeAmount />
       <QuoteRows />
       <p className="text-xs text-muted-foreground">One Phantom signature. Quote refreshes every 2 seconds.</p>
     </section>

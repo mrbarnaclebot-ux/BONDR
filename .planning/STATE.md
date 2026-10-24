@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 04-08-PLAN.md
-last_updated: "2026-10-24T15:08:52.377Z"
+last_updated: "2026-10-24T15:13:22.759Z"
 last_activity: 2026-10-24
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 56
-  completed_plans: 51
+  completed_plans: 52
   percent: 43
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 4 (Trading) — EXECUTING
-Plan: 9 of 13
+Plan: 10 of 13
 Status: Ready to execute
 Last activity: 2026-10-24
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -95,6 +95,7 @@ Progress: [█████████░] 91%
 | Phase 04 P06 | 10 min | 2 tasks | 11 files |
 | Phase 04 P07 | 8 min | 2 tasks | 5 files |
 | Phase 04 P08 | 25 min | 2 tasks | 8 files |
+| Phase 04 P09 | 9 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-06: a refused trade submit (expired, message_changed) also fails the store entry; submit re-reads the entry after the block height await so concurrent submits cannot both broadcast
 - [Phase 04]: 04-07: trade submit forwards the session wallet with no web-side ownership read; the worker 404 and signer check decide, so web touches no database
 - [Phase 04]: 04-08: the Quick trade bar's bottom clearance pads the footer below 1100px (body:has([data-trade-bar]) footer), since the layout footer is the page's last content
+- [Phase 04]: 04-09: RESEARCH A1 closed, routeQuote equals the landed amount to the base unit on curve/pool, pool/curve and pool/pool fork routes; quote.ts unchanged
+- [Phase 04]: 04-09: TRADE-04 left pending until the UI signs trades (04-10)
 
 ### Pending Todos
 
@@ -241,6 +244,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T15:08:49.720Z
+Last session: 2026-10-24T15:13:19.348Z
 Stopped at: Completed 04-08-PLAN.md
 Resume file: None

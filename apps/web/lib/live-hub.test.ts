@@ -98,3 +98,18 @@ test("a subscriber whose write throws is dropped, the others keep receiving", as
   await vi.waitFor(() => expect(good).toHaveLength(2));
   expect(bad).toHaveBeenCalledOnce();
 });
+
+test("an upstream silent for the stall time is aborted and reopened", async () => {
+  const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+  async function* silent(signal: AbortSignal): AsyncGenerator<Uint8Array> {
+    yield enc.encode(`${JSON.stringify(ping("1-0"))}\n`);
+    await new Promise((_, fail) => signal.addEventListener("abort", () => fail(signal.reason)));
+  }
+  const open = vi.fn(async (signal: AbortSignal) => silent(signal));
+  let waits = 0;
+  const wait = () => (waits++ ? new Promise(() => {}) : Promise.resolve());
+  createHub(open, wait, 20).subscribe(() => {});
+  await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(2));
+  expect(quiet).toHaveBeenCalledWith("live upstream failed: upstream silent");
+  quiet.mockRestore();
+});

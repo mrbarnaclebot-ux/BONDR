@@ -8,7 +8,7 @@ import type { LiveEvent } from "@bondr/core/api";
 export type HubEvent = LiveEvent | { type: "resync"; id?: string };
 type Write = (e: HubEvent) => void;
 type Line = LiveEvent | { type: "ping"; id: string };
-type Open = () => Promise<AsyncIterable<Uint8Array>>;
+type Open = (signal: AbortSignal) => Promise<AsyncIterable<Uint8Array>>;
 
 /** Parsed NDJSON objects from a byte stream; a line may span chunks, a malformed line is skipped. */
 export async function* splitLines(body: AsyncIterable<Uint8Array>): AsyncGenerator<unknown> {
@@ -98,12 +98,30 @@ function take(h: State, line: Line): void {
   fan(h, line);
 }
 
-async function run(h: State, open: Open, wait: (fails: number) => Promise<unknown>): Promise<never> {
+const STALL_MS = 45_000; // the worker pings every 15 s
+
+// One upstream connection's lines. A link dropped with no FIN or RST would hang here forever, so a connection
+// silent for `stallMs` is aborted; the loop reconnects, and the first ping resyncs clients if anything was missed.
+async function* upstream(open: Open, stallMs: number): AsyncGenerator<Line> {
+  const ac = new AbortController();
+  const stall = setTimeout(() => ac.abort(new Error("upstream silent")), stallMs);
+  try {
+    for await (const value of splitLines(await open(ac.signal))) {
+      stall.refresh();
+      const line = value as Line;
+      if (typeof line?.id === "string") yield line;
+    }
+  } finally {
+    clearTimeout(stall);
+  }
+}
+
+type Wait = (fails: number) => Promise<unknown>;
+
+async function run(h: State, open: Open, wait: Wait, stallMs: number): Promise<never> {
   for (let fails = 0; ; ) {
     try {
-      for await (const value of splitLines(await open())) {
-        const line = value as Line;
-        if (typeof line?.id !== "string") continue;
+      for await (const line of upstream(open, stallMs)) {
         fails = 0;
         take(h, line);
       }
@@ -114,7 +132,7 @@ async function run(h: State, open: Open, wait: (fails: number) => Promise<unknow
   }
 }
 
-export function createHub(open: Open, wait: (fails: number) => Promise<unknown> = backoff) {
+export function createHub(open: Open, wait: Wait = backoff, stallMs = STALL_MS) {
   const h: State = { ring: new Ring(), subs: new Set() };
   let started = false;
   return {
@@ -128,21 +146,23 @@ export function createHub(open: Open, wait: (fails: number) => Promise<unknown> 
       h.subs.add(sub);
       if (!started) {
         started = true;
-        void run(h, open, wait);
+        void run(h, open, wait, stallMs);
       }
       return () => void h.subs.delete(sub);
     },
   };
 }
 
-// No timeout: the stream is meant to stay open (worker.ts call() would abort it after 15 s).
-async function openWorker(): Promise<AsyncIterable<Uint8Array>> {
+// No fixed timeout: the stream is meant to stay open (worker.ts call() would abort it after 15 s); the hub
+// aborts it through `signal` only when it goes silent.
+async function openWorker(signal: AbortSignal): Promise<AsyncIterable<Uint8Array>> {
   const base = process.env.WORKER_URL;
   const token = process.env.WORKER_TOKEN;
   if (!base || !token) throw new Error("WORKER_URL or WORKER_TOKEN missing");
   const res = await fetch(new URL("/events", base), {
     headers: { authorization: `Bearer ${token}` },
     cache: "no-store",
+    signal,
   });
   if (!res.ok || !res.body) throw new Error(`events answered ${res.status}`);
   return res.body;

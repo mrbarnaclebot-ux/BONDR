@@ -1,7 +1,8 @@
 ---
 phase: 4
 slug: trading
-status: draft
+status: approved
+reviewed_at: 2026-10-24
 shadcn_initialized: false
 preset: none
 created: 2026-10-24
@@ -126,12 +127,14 @@ Departure (auto-selected, owner-delegated): the mockup tints price impact under 
 
 ## Breakpoints and Layout
 
+Focal point: the trade panel's submit button at 1100px and up; the sticky bar's Buy below 1100px.
+
 Verification widths: 390, 768, 1440 (plus 1100 for the switch). No horizontal page scroll from 320px up.
 
 | Width | Trade surface | Page layout |
 |-------|---------------|-------------|
 | below 1100px | Sticky Buy / Sell bar fixed to the bottom; the trade panel opens in a bottom sheet. Sheet width 100% below 768px; `min(560px, 100%)` centered from 768px to 1099px | One column: identity bar, CA row, chart, Bond and burn, Trades, note. Bottom padding 80px + safe area |
-| 1100px and up | Trade panel inline, top of the 380px right column. No bar, no sheet | Grid `minmax(0,1fr) 380px`, 32px column gap, 16px row gap. Left column: chart, then Trades. Right column (spans both rows, `align-self: start`): Trade panel, then Bond and burn, 16px apart |
+| 1100px and up | Trade panel inline, top of the 380px right column. No bar, no sheet | Grid `minmax(0,1fr) 380px`, 32px column gap, 16px row gap. The identity bar and CA row stay full width above this grid. Left column: chart, then Trades. Right column (spans both rows, `align-self: start`): Trade panel, then Bond and burn, 16px apart |
 
 Grid placement at 1100px and up: chart at column 1 row 1, Trades at column 1 row 2, the right column wrapper at column 2 rows 1 to 2. DOM order is chart, right column wrapper, Trades, so below 1100px the one-column order (chart, Bond and burn, Trades) falls out with no `order` rules, and the desktop Tab order is chart, trade panel, Bond and burn, Trades.
 
@@ -182,7 +185,7 @@ Rows are Caption, `dt` muted, `dd` mono right-aligned, 12px inner gap, 8px row g
 |-----|-------|
 | You receive about | Buy: "{tokens} {SYMBOL}" (integer, thousands separators). Sell: "{sol} SOL" (4 decimals). Body size, foreground |
 | Route | Steps separated by 16px rules: buy "SOL", "BONDR {venue}", "{SYMBOL} {venue}"; sell reversed. Venue words: "curve" or "PumpSwap". Accessible text joins steps with " to " in an sr-only span, rules `aria-hidden`. Wraps if long |
-| Price impact | 2 decimals, "<0.01%" below that. Under 5% foreground; 5% to 15% warn; over 15% destructive |
+| Price impact | 2 decimals, "<0.01%" below that. Under 5% foreground; 5% up to 15% warn; over 15% destructive |
 | Slippage | Chips "0.5%", "1%", "3%", "Custom" in a `<fieldset>` with sr-only legend "Slippage". Default 1%, remembered in `localStorage` key `bondr:slippage` (blocked storage falls back to 1%) |
 | Minimum received | Quote output times (1 minus slippage), same format as You receive |
 
@@ -222,7 +225,7 @@ Existing `Callout` component, in the callout slot above the submit button.
 
 | Condition | Variant | Copy |
 |-----------|---------|------|
-| Impact over 5%, up to 15% (D-13) | warn | **"High price impact."** "This trade moves the price {pct}%. A smaller amount fills closer to the current price." |
+| Impact 5% up to 15% (D-13) | warn | **"High price impact."** "This trade moves the price {pct}%. A smaller amount fills closer to the current price." |
 | Impact over 15% (D-13) | error | **"Very high price impact."** "This trade moves the price {pct}%, so you receive far less than the current price suggests. Check the amounts before you continue." |
 | Coin complete, not yet on PumpSwap | warn | "Trading pauses for a few seconds while {SYMBOL} moves to PumpSwap." |
 | BONDR complete, not yet on PumpSwap | warn | "Trading pauses for a few seconds while BONDR moves to PumpSwap." |

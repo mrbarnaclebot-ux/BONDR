@@ -13,6 +13,7 @@ import {
   QUOTE_IMPACT_HIGH,
   QUOTE_SELL,
   stubTrade,
+  type TradeStubs,
   tradeView,
 } from "./trade-stubs.ts";
 
@@ -113,4 +114,21 @@ test("button states", async ({ page }) => {
   await trade.getByRole("textbox", { name: "You pay" }).fill("0.5");
   await expect(go).toHaveText("Buy anyway, 20.00% price impact");
   await expect(go).toHaveClass(/bg-destructive/);
+});
+
+test("a quote for an older amount never arms the button (C-CR-01)", async ({ page }) => {
+  const stubs: TradeStubs = {};
+  const calls = await stubTrade(page, stubs);
+  await openPanel(page, coin);
+  const input = panel(page, coin.symbol).getByRole("textbox", { name: "You pay" });
+  const go = button(page, coin.symbol);
+  await input.fill("0.5");
+  await expect(go).toHaveText(`Buy ${coin.symbol} with 0.50 SOL`);
+  // The next amount's quote is slow and over 15%: until it lands, the 0.5 SOL quote must not arm a 1 SOL buy.
+  stubs.quote = { json: QUOTE_IMPACT_HIGH, delayMs: 1_500 };
+  await input.fill("1");
+  await expect(go).toHaveText("Getting quote…");
+  await input.press("Enter");
+  await expect(go).toHaveText("Buy anyway, 20.00% price impact");
+  expect(calls.prepare).toHaveLength(0);
 });

@@ -23,7 +23,13 @@ const READY: ButtonInput = {
   paused: false,
   phase: "idle",
 };
-const at = (o: Partial<ButtonInput>) => buttonState({ ...READY, ...o });
+// A quote without amountIn is for the input's amount; a test of a stale quote sets its own.
+const at = (o: Partial<ButtonInput>) => {
+  const i = { ...READY, ...o };
+  return buttonState(
+    i.quote?.amountIn ? i : { ...i, quote: i.quote && { ...i.quote, amountIn: String(i.units) } },
+  );
+};
 
 test("wallet loading or consent being read", () => {
   expect(at({ wallet: "loading" })).toMatchObject({ label: "Checking wallet…", disabled: true });
@@ -118,9 +124,19 @@ test("impact over 15% asks for anyway", () => {
   expect(at({ quote: { ...QUOTE, impact: 0.15 } }).label).toBe("Buy GRUB with 1.00 SOL");
 });
 
+test("a quote for another amount or side, or one being replaced, never arms the button (C-CR-01)", () => {
+  const old = { ...QUOTE, amountIn: "500000000" };
+  expect(at({ quote: old })).toMatchObject({ label: "Getting quote…", disabled: true, action: null });
+  // The over-15% quote for 0.5 SOL never stands in for 1 SOL either way.
+  expect(at({ quote: { ...old, impact: 0.2 } }).action).toBeNull();
+  expect(at({ quote: old, quoteError: "failed" })).toMatchObject({ label: "No quote yet", action: null });
+  expect(at({ side: "sell", quote: QUOTE }).action).toBeNull();
+  expect(at({ loading: true })).toMatchObject({ label: "Getting quote…", action: null });
+});
+
 test("ready buy", () => {
   expect(READY.phase).toBe("idle");
-  expect(buttonState(READY)).toMatchObject({
+  expect(at({})).toMatchObject({
     label: "Buy GRUB with 1.00 SOL",
     variant: "primary",
     action: "submit",

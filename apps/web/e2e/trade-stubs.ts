@@ -92,8 +92,12 @@ export type TradeCalls = {
 export async function stubTrade(page: Page, s: TradeStubs): Promise<TradeCalls> {
   const calls: TradeCalls = { quote: [], balance: 0, prepare: [], submit: [], view: 0 };
   await page.route("**/api/trade/quote", (r) => {
-    calls.quote.push(r.request().postDataJSON());
-    return fulfill(r, s.quote ?? { json: QUOTE_BUY });
+    const req = r.request().postDataJSON() as { amount: string };
+    calls.quote.push(req);
+    // A quote answers for the amount asked, as the worker's does (amountIn is the request's amount).
+    const reply = s.quote ?? { json: QUOTE_BUY };
+    const q = reply.json as Partial<TradeQuote>;
+    return fulfill(r, q.amountIn ? { ...reply, json: { ...q, amountIn: req.amount } } : reply);
   });
   await page.route("**/api/trade/balance", (r) => {
     calls.balance++;

@@ -39,7 +39,7 @@ function useButton(t: Trade, w: WalletApi): ButtonState {
     symbol: t.symbol,
     units: t.units,
     balance: t.balance,
-    quote: t.quote?.side === t.side ? t.quote : null,
+    quote: t.quote,
     loading: t.loading,
     quoteError: t.quoteError,
     paused: t.paused,

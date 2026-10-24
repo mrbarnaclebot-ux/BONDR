@@ -23,7 +23,7 @@ export type ButtonInput = {
   symbol: string;
   units: bigint | null;
   balance: BalanceState;
-  /** The quote for the current side, else null. */
+  /** The last quote; only a current one (currentQuote) arms the button. */
   quote: TradeQuote | null;
   loading: boolean;
   quoteError: string | null;
@@ -65,6 +65,17 @@ function tokenLabel(units: bigint): string {
   return frac ? `${whole}.${frac}` : whole;
 }
 
+/**
+ * C-CR-01: only a quote for exactly this side and amount, and not being replaced, may arm a trade. A quote for an
+ * older amount would skip the D-13 "anyway" press for a bigger trade.
+ */
+export const currentQuote = (
+  q: TradeQuote | null,
+  side: TradeSide,
+  units: bigint | null,
+  loading: boolean,
+) => (!loading && q?.side === side && units !== null && q.amountIn === String(units) ? q : null);
+
 function walletRow(i: ButtonInput): ButtonState | null {
   if (i.wallet === "loading" || (i.wallet === "connected" && i.consented === null))
     return off("Checking wallet…");
@@ -99,7 +110,7 @@ function idleState(i: ButtonInput): ButtonState {
   if (i.units === null) return off("Enter an amount");
   const b = balanceRow(i, i.units);
   if (b) return b;
-  const q = i.quote;
+  const q = currentQuote(i.quote, i.side, i.units, i.loading);
   if (!q && i.quoteError && !i.loading) return off("No quote yet");
   if (!q) return off("Getting quote…");
   if (i.paused)

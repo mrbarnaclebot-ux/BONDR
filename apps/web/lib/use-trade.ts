@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 import { useWallet } from "@/components/wallet";
+import { currentQuote } from "./trade-button";
 import { type Code, runTrade, Stop } from "./trade-run";
 import { useAnnounce } from "./use-announce";
 import { type BalanceState, useBalance } from "./use-balance";
@@ -246,6 +247,10 @@ export function TradeProvider({ mint, symbol, net, children }: ProviderProps) {
     announce,
     paused: loop.paused,
     resume: loop.resume,
+    // C-CR-01: Enter or a click on a stale render never trades on a quote for another amount.
+    submit() {
+      if (currentQuote(q.quote, side, units, q.loading)) run.submit();
+    },
     panelRef: panel.panelRef,
     setVisible: panel.setVisible,
     setSide(next) {

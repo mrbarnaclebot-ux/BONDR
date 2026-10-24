@@ -282,7 +282,7 @@ export function parseTx(
   const patches = new Map<string, CoinPatch>();
   for (const e of events) {
     const { trade, patch } = handle(c, e);
-    if (trade) trades.push(trade);
+    if (trade && big(trade.tokenAmount) > 0n) trades.push(trade); // trades_token_amount: 0 tokens is no trade
     if (patch) patches.set(patch.mint, { ...patches.get(patch.mint), ...patch });
   }
   const created = create ? newCoin(c, create, patches.get(String(create.data.mint))) : null;

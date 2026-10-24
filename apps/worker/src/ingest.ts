@@ -111,6 +111,9 @@ function parse(tx: TradeTx, launch?: { mint: string; exit: "burn" | "sell" }): P
   const b = bondr();
   if (!b) throw new Error("BONDR price not seeded");
   const parsed = parseTx(tx, knownCoins, b, launch);
+  // trades_burn_sol would fail the whole tx with an opaque check error; this is kept and retried instead.
+  if (parsed.trades.some((t) => t.side !== "burn" && t.sol === null))
+    throw new Error(`no BONDR price for ${tx.transaction.signatures[0]}`);
   if (parsed.bondr !== null) bondrPrice.set(parsed.bondr, tx.slot);
   for (const name of parsed.unknown.filter((n) => !warned.has(n))) {
     warned.add(name);

@@ -17,18 +17,25 @@ import { type PrepareCtx, prepare } from "./prepare.ts";
 import { flush } from "./sentry.ts";
 import { resumeLaunches } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
-import { startStream } from "./stream.ts";
+import { backoff, startStream } from "./stream.ts";
 import { submit } from "./submit.ts";
 
 const failed = (what: string) => (e: unknown) =>
   console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
 
 // The coin registry and BONDR's price in memory, a one-time pass over launches not indexed yet, then the
-// live stream (which gap fills every coin on open).
-async function bootIndex(ctx: Ctx, net: Net): Promise<void> {
-  await seedBondrPrice(ctx);
-  await loadCoins(db());
-  console.log(`backfilled ${await backfillLaunches(ctx.conn)} launches`);
+// live stream (which gap fills every coin on open). A failure retries with the stream's capped backoff: every
+// step is idempotent, and exiting instead would also stop launches once Railway's restart retries run out.
+async function bootIndex(ctx: Ctx, net: Net, attempt = 0): Promise<void> {
+  try {
+    await seedBondrPrice(ctx);
+    await loadCoins(db());
+    console.log(`backfilled ${await backfillLaunches(ctx.conn)} launches`);
+  } catch (e) {
+    failed("index boot")(e);
+    setTimeout(() => void bootIndex(ctx, net, attempt + 1), backoff(attempt));
+    return;
+  }
   startStream(ctx, net);
 }
 
@@ -58,7 +65,7 @@ async function main() {
   server.on("listening", () => {
     console.log(`worker listening on ${env.net}`);
     void startRefill(env);
-    bootIndex(ctx, env.net).catch(failed("index boot"));
+    void bootIndex(ctx, env.net);
     resumeLaunches(conn).catch(failed("resume"));
   });
   process.once("SIGTERM", () => {

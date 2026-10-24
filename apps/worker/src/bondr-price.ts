@@ -1,7 +1,6 @@
 // BONDR's SOL price (lamports per BONDR base unit), held in memory only so open pages never wake Neon (D-04).
 // Seeded from chain at boot, then moved by BONDR events the ingest sees, only forward in slots: a gap fill or
 // the boot backfill re-parses old txs, and their price must not become the price of the next live trade.
-import { redact } from "@bondr/core/net";
 import { curvePrice, poolPrice } from "@bondr/core/price";
 import { canonicalPumpPoolPdaWithQuote, OnlinePumpAmmSdk } from "@bondr/core/pump";
 import { poolState } from "@bondr/core/trade";
@@ -38,13 +37,10 @@ async function readPrice(ctx: Ctx): Promise<number> {
   return poolPrice(big(s.poolQuoteAmount) + big(s.pool.virtualQuoteReserves), big(s.poolBaseAmount));
 }
 
-// The identity is set before the first await, so an ingest racing the boot read still knows BONDR.
+// The identity is set before the first await, so an ingest racing the boot read still knows BONDR. A failed
+// read throws: with no price every trade without a BONDR leg would be unpriced, so the boot fails instead.
 export async function seedBondrPrice(ctx: Ctx): Promise<void> {
   id = { mint: ctx.Q.toBase58(), pool: canonicalPumpPoolPdaWithQuote(ctx.Q, NATIVE_MINT).toBase58() };
-  try {
-    const slot = await ctx.conn.getSlot("confirmed"); // before the read, so a newer live price still wins
-    bondrPrice.set(await readPrice(ctx), slot);
-  } catch (e) {
-    console.error(`bondr price seed failed: ${redact(e instanceof Error ? e.message : String(e))}`);
-  }
+  const slot = await ctx.conn.getSlot("confirmed"); // before the read, so a newer live price still wins
+  bondrPrice.set(await readPrice(ctx), slot);
 }

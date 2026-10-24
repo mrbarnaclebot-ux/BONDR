@@ -16,7 +16,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 - `stream.ts`: the live indexer. One websocket, one log subscription on the BONDR mint; pure `isPumpInvoke`, `shouldIngest`, `backoff`.
 - `holders.ts`: `countHolders` (pure) and `touch`, the throttled holder recount; publishes a `holders` event after each recount write.
 - `events-route.ts`: `GET /events`, the live NDJSON stream web's hub holds (one per web process). `publish` stamps ids `<epoch>-<seq>` (epoch is boot time); a `{"type":"ping","id":<current id>}` line opens the stream and repeats every 15 s, so a reconnecting hub knows whether it missed anything. `ingest.ts` publishes `launch`, `trade` (with the coin's `coinRow` numbers from `@bondr/core/coin-row`, one read per coin per write and none when nobody listens) and `bond` (a venue move) after each commit that inserted rows.
-- `bondr-price.ts`: BONDR's SOL price in memory only (never stored, D-04). `seedBondrPrice` reads BONDR's curve, or its BONDR/SOL pool once migrated; every BONDR event the ingest sees moves it.
+- `bondr-price.ts`: BONDR's SOL price in memory only (never stored, D-04). `seedBondrPrice` reads BONDR's curve, or its BONDR/SOL pool once migrated; BONDR events the ingest sees move it, only forward in slots. A failed seed fails the index boot, which retries with backoff.
 - `status.ts`: `liveStatus` (`GET /status`, cached 5 s) and `quote` (`POST /quote`); `pauseReason` and `networkFee` are pure.
 - `vanity.ts`: the bndr mint pool. `mintKey`, `isBndr` (grinder fast path), `mintKeyFor` (re-derives and checks before signing), `reserve`, `release` (only when `canRelease`), `markUsed`, `vanityRow`, `poolSize`.
 - `grind.ts`: worker_threads grinder, `startRefill` and the pre-fill CLI.

@@ -175,7 +175,7 @@ Plans:
   3. User sees tokens out, price impact and fees in a quote preview, and sets slippage before signing
   4. Buy and sell work on a curve coin and on a migrated PumpSwap coin, and the fees charged match pump's live FeeConfig with no platform fee added
 
-**Plans:** 11 plans
+**Plans:** 13 plans
 
 Plans:
 **Wave 1**
@@ -184,35 +184,39 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-02-PLAN.md - Quote slice: core reader, 2 s worker cache, quote and balance handlers, web quote route, first trade panel, token page grid, UI-SPEC note
+- [ ] 04-02-PLAN.md - Worker quote: core reader and hopInputs, 2 s per-coin cache, quote and balance handlers
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-03-PLAN.md - Panel controls: presets and Max, slippage, fee breakdown, 2 s refresh and 60 s pause, session balances
-- [ ] 04-04-PLAN.md - Prepare: shared error map, in-memory trade store, simulated and budgeted v0 build, devnet cap, web prepare route
+- [ ] 04-03-PLAN.md - Quote on the token page: web quote route, shared trade state, first trade panel, page grid, UI-SPEC note
+- [ ] 04-04-PLAN.md - Prepare in the worker: shared error map, in-memory trade store, simulated and budgeted v0 build, devnet cap
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04-05-PLAN.md - Mobile Quick trade bar and bottom sheet sharing the panel state
-- [ ] 04-06-PLAN.md - Submit: byte compare, send once, background settle, landed amounts, web submit and poll routes
+- [ ] 04-05-PLAN.md - Panel controls: presets and Max, slippage, fee breakdown, 2 s refresh and 60 s pause, session balances
+- [ ] 04-06-PLAN.md - Submit in the worker: byte compare, send once, background settle, landed amounts, trade routes, live devnet prepare
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 04-07-PLAN.md - Buy and sell end to end: trade run, button state table, result slot, one real devnet buy and sell
-- [ ] 04-08-PLAN.md - Surfpool fork rows for the PumpSwap path with pureQuote checked against landed amounts (TRADE-04)
+- [ ] 04-07-PLAN.md - Web prepare, submit and poll routes with an unstubbed guard spec (CSRF, session, body wallet, 429)
+- [ ] 04-08-PLAN.md - Mobile Quick trade bar and bottom sheet sharing the panel state
+- [ ] 04-09-PLAN.md - Surfpool fork rows for the PumpSwap path with pureQuote checked against landed amounts (TRADE-04)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 04-09-PLAN.md - Every D-17 result, impact and migration callouts, quote failure, the live region
+- [ ] 04-10-PLAN.md - Buy and sell end to end: trade run, button state table, result slot, one real devnet buy and sell
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 04-10-PLAN.md - Responsive and axe matrix at 390, 768, 1440 with Designer critique and fixes
+- [ ] 04-11-PLAN.md - Every D-17 result, impact and migration callouts, quote failure, the live region
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 04-11-PLAN.md - Staging deploy (web then worker), staging specs, one real devnet buy and sell on staging; real-Phantom trade as a manual check
-**UI hint**: yes
+- [ ] 04-12-PLAN.md - Responsive and axe matrix at 390, 768, 1440 with Designer critique and fixes
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 04-13-PLAN.md - Staging deploy (worker then web), staging specs, one real devnet buy and sell on staging; real-Phantom trade as a manual check
 
 ### Phase 5: Fee Engine and Public Ledger
 

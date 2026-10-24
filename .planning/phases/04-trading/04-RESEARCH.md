@@ -507,20 +507,20 @@ await signIn(page.request, sim);   // real consent session; the spec deletes the
 | A5 | Phantom does not alter a devnet trade message under `signTransaction` | Pitfall 9 | Every submit refused with the "did not match" copy; proven for launches, assumed for trades until the owner's real-Phantom trade |
 | A6 | 2 s staleness of quote state is acceptable to the owner as "live" for the preview | Pattern 3 | Owner may want stream-fed reserves; upgrade path documented |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Fee breakdown copy (UI-SPEC amendment).**
+1. **Fee breakdown copy (UI-SPEC amendment).** RESOLVED (2026-10-24, owner-delegated, as recommended): masked rows, the pump protocol fee on the BONDR hop; UI-SPEC note in 04-03.
    - What we know: on a two-hop route the coin hop never charges the pump protocol fee, and the BONDR hop never charges creator or LP (fixture plus SDK `multiHopLegFees`).
    - What's unclear: the approved rows list "Pump protocol {p}%" under the coin hop and treat the BONDR hop as a separate fee.
    - Recommendation: keep the row structure but feed masked values and hide zero sub-rows: coin hop "Fees on the GRUB curve, 0.30%" with "Creator 0.30%, to the GRUB fee wallet" (plus "LP" on PumpSwap); BONDR hop "SOL to BONDR on the BONDR curve, 0.95%" with sub-row "Pump protocol 0.95%". The planner adds a one-line UI-SPEC note in the first UI task; it is owner-delegated (auto mode), so no stop is needed.
-2. **BONDR earns no creator fee on routed trades.**
+2. **BONDR earns no creator fee on routed trades.** OWNER FLAG (not Phase 4 scope): raised in the 04-13 phase summary.
    - What we know: the SOL to BONDR hop charged creator 0 on the fixture; a migrated BONDR pool hop would charge no LP.
    - Impact: not Phase 4 scope, but PROJECT.md economics for BONDR's own launch (Phase 7) should not count routed volume toward BONDR's creator fees. Flag to the owner in the phase summary.
-3. **Coin buy that crosses the coin's completion.**
+3. **Coin buy that crosses the coin's completion.** RESOLVED (as recommended): accept; the high price impact shown is the warning.
    - What we know: the program spends the whole input and buys on from the pool-to-be; the preview caps at the remaining supply.
    - Recommendation: accept (Phase 5's forced bond is the normal completion path); the impact number will look high, which is the right warning.
 
-4. **Devnet buy cap while BONDR is on its curve (UI copy).**
+4. **Devnet buy cap while BONDR is on its curve (UI copy).** RESOLVED (as recommended): devnet-only maxSolIn with the field error copy; UI-SPEC note in 04-03.
    - What we know: a route buy above 0.809 SOL bonds BONDR on devnet and succeeds (simulated). The D-14 "1" preset is above it.
    - What's unclear: the UI-SPEC has no copy for a cap.
    - Recommendation: devnet-only `maxSolIn` in the quote; the panel shows a field error "On devnet, buys stay under {max} SOL so BONDR stays on its curve." and disables chips above it. Owner-delegated, so the planner adds it to the UI-SPEC note with Open Question 1. On mainnet no cap.

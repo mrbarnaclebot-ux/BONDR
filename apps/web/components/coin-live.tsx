@@ -22,6 +22,8 @@ type Ctx = {
 const LiveCtx = createContext<Ctx | null>(null);
 export const useCoinLive = () => useContext(LiveCtx);
 
+const stamp = (c: CoinLive) => (c.lastTradeAt ? Date.parse(c.lastTradeAt) : 0);
+
 type Page = { trades: TradeRow[]; more: boolean; coin?: CoinRow | null };
 
 export function CoinLiveProvider(props: { mint: string; initial: LiveCoin | null; children: ReactNode }) {
@@ -48,7 +50,8 @@ export function CoinLiveProvider(props: { mint: string; initial: LiveCoin | null
         .then((r) => (r.ok ? (r.json() as Promise<Page>) : Promise.reject(r.status)))
         .then(
           (page) => {
-            if (page.coin) setCoin(page.coin);
+            const row = page.coin; // kept up to 10 s, so a live copy with a newer trade wins
+            if (row) setCoin((p) => (p && stamp(p) > stamp(row) ? p : row));
             emit({ trades: page.trades, more: page.more });
           },
           () => {}, // the next trade event carries the numbers again

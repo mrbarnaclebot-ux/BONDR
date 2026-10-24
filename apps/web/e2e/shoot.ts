@@ -1,14 +1,15 @@
-// The Phase 3 UI gate for one surface at one width: no horizontal scroll, 0 axe violations, a full-page shot.
+// The UI gate for one surface at one width: no horizontal scroll, 0 axe violations, a full-page shot.
 import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 
-const SHOTS = fileURLToPath(
-  new URL("../../../.planning/phases/03-indexer-lists-and-token-page/screenshots/", import.meta.url),
-);
+const shots = (phase: string) =>
+  fileURLToPath(new URL(`../../../.planning/phases/${phase}/screenshots/`, import.meta.url));
+const SHOTS = shots("03-indexer-lists-and-token-page");
+export const PHASE4_SHOTS = shots("04-trading");
 const SUFFIX = process.env.E2E_BASE_URL ? "-staging" : "";
 
-export async function gate(page: Page, name: string, width: number): Promise<void> {
+export async function gate(page: Page, name: string, width: number, dir = SHOTS): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   // The dev-only Next indicator is not the app; a shot taken mid-scroll draws the sticky header over content.
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
@@ -25,5 +26,5 @@ export async function gate(page: Page, name: string, width: number): Promise<voi
   expect(scroll, `horizontal scroll from ${wide.join(" | ")}`).toBe(client);
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
-  await page.screenshot({ path: `${SHOTS}${name}-${width}${SUFFIX}.png`, fullPage: true });
+  await page.screenshot({ path: `${dir}${name}-${width}${SUFFIX}.png`, fullPage: true });
 }

@@ -2,7 +2,7 @@
 
 // The trade panel's one state object (UI-SPEC useTrade): every placement (column panel, later the sheet and the
 // sticky bar) reads the same side, amount, slippage and quote, so switching placement never loses the input.
-import type { Net, TradeErrorCode, TradeQuote, TradeSide, TradeView } from "@bondr/core/api";
+import type { Net, TradeErrorCode, TradeQuote, TradeSide } from "@bondr/core/api";
 import { parseSol } from "@bondr/core/rules";
 import {
   createContext,
@@ -17,7 +17,7 @@ import {
 } from "react";
 import { useWallet } from "@/components/wallet";
 import { currentQuote } from "./trade-button";
-import { type Code, runTrade, Stop } from "./trade-run";
+import { type Code, runTrade, type Settled, Stop } from "./trade-run";
 import { useAnnounce } from "./use-announce";
 import { type BalanceState, useBalance } from "./use-balance";
 import { useRouteQuote } from "./use-route-quote";
@@ -179,11 +179,10 @@ function useQuoteLoop(run: boolean) {
   return { tick, delay, paused, input, resume };
 }
 
-function toResult(side: TradeSide, v: TradeView): RunResult {
-  if (v.state === "landed")
-    return { kind: "landed", side, amountOut: v.amountOut, signature: v.signature ?? "" };
-  if (v.state === "unknown" && v.signature) return { kind: "unknown", signature: v.signature };
-  return { kind: "failed", code: v.code ?? "onchain", signature: v.signature };
+function toResult(side: TradeSide, v: Settled): RunResult {
+  if (v.state === "landed") return { kind: "landed", side, amountOut: v.amountOut, signature: v.signature };
+  if (v.state === "failed") return { kind: "failed", code: v.code ?? "onchain", signature: v.signature };
+  return { kind: "unknown", signature: v.signature }; // never observed failing (C-WR-05)
 }
 
 type RunArgs = { mint: string; side: TradeSide; units: bigint | null; slippageBps: number };

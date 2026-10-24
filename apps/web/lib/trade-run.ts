@@ -44,11 +44,23 @@ async function signWithin(wallet: WalletApi, prep: TradePrepareResult): Promise<
   }
 }
 
+// Answers to a posted wire that prove the worker never sent it. Any other error leaves the outcome open, so the
+// row decides and the panel never says "Nothing was sent" for a trade that may land (C-WR-05).
+const REFUSED = new Set<Code>([
+  "slippage",
+  "insufficient_balance",
+  "paused",
+  "expired",
+  "rate_limited",
+  "message_changed",
+  "consent_required",
+]);
+
 // D-16: once posted, a lost answer is settled by polling, never by a fresh signature. A repeat of the same
 // wire is a read at the worker, so a row still "prepared" gets the same wire again.
 const submit = (tradeId: string, signed: string, signal: AbortSignal) =>
   call<TradeView>("/api/trade/submit", { tradeId, signed }, signal).catch((e: Stop) =>
-    e.code === "worker_unavailable" ? null : Promise.reject(e),
+    REFUSED.has(e.code) ? Promise.reject(e) : null,
   );
 
 /** The trader's slot 0 signature is the transaction id, so Solscan can find the trade even with no answer. */
@@ -61,15 +73,12 @@ async function getView(id: string, signal: AbortSignal): Promise<TradeView | "no
   return res?.ok ? ((await res.json().catch(() => null)) as TradeView | null) : null;
 }
 
-async function poll(id: string, signed: string, signal: AbortSignal, sig?: string): Promise<TradeView> {
+async function poll(id: string, signed: string, signal: AbortSignal, sig: string): Promise<TradeView> {
   const start = Date.now();
   while (!signal.aborted) {
     const v = await getView(id, signal);
-    // The worker lost its memory (a restart): with a signature the trade may still land, so it is unknown (T8).
-    if (v === "not_found") {
-      if (sig) return { state: "unknown", signature: sig };
-      throw new Stop("not_found");
-    }
+    // The worker lost its memory (a restart): the posted trade may still land, so it is unknown (T8).
+    if (v === "not_found") return { state: "unknown", signature: sig };
     if (v?.state === "landed" || v?.state === "failed" || v?.state === "unknown") return v;
     sig = v?.signature ?? sig;
     const late = Date.now() - start > DEADLINE_MS;
@@ -93,8 +102,11 @@ export type RunInput = {
   signal: AbortSignal;
 };
 
+/** A final row of a posted trade; the signature is always known from slot 0. */
+export type Settled = TradeView & { signature: string };
+
 /** Runs one trade; resolves with the final row (landed, failed or unknown), throws Stop before anything is sent. */
-export async function runTrade(r: RunInput): Promise<TradeView> {
+export async function runTrade(r: RunInput): Promise<Settled> {
   if (!r.wallet.address) throw new Stop("switched");
   let switched = false;
   const off = r.wallet.onAccountChange(() => {
@@ -108,9 +120,11 @@ export async function runTrade(r: RunInput): Promise<TradeView> {
     const signed = await signWithin(r.wallet, prep);
     if (switched) throw new Stop("switched");
     r.onPhase("confirming");
+    const sig = txId(signed);
     const out = await submit(prep.tradeId, signed, r.signal);
-    if (out && out.state !== "prepared" && out.state !== "signed" && out.state !== "sent") return out;
-    return await poll(prep.tradeId, signed, r.signal, out?.signature ?? txId(signed));
+    const final = out && out.state !== "prepared" && out.state !== "signed" && out.state !== "sent";
+    const v = final ? out : await poll(prep.tradeId, signed, r.signal, out?.signature ?? sig);
+    return { ...v, signature: v.signature ?? sig };
   } finally {
     off();
   }

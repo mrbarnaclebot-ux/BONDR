@@ -119,6 +119,29 @@ test.describe("results and callouts", () => {
     expect(calls.submit).toHaveLength(0);
   });
 
+  // C-WR-05: after the signed wire is posted, an error that proves nothing is never "Nothing was sent".
+  for (const [name, stubs] of [
+    [
+      "worker lost the trade",
+      { submit: fail(502, "worker_unavailable"), view: () => fail(404, "not_found") },
+    ],
+    ["submit error without copy", { submit: fail(500, "build_failed"), view: () => fail(404, "not_found") }],
+  ] as [string, TradeStubs][])
+    test(`result: ${name} after posting is unknown`, async ({ page }) => {
+      await stubTrade(page, stubs);
+      await openPanel(page, coin);
+      await buy(page, coin);
+      const warn = panel(page, coin.symbol).getByRole("status").filter({
+        hasText: "Your trade was sent but is not confirmed yet. Check Solscan before you trade again.",
+      });
+      // The slot 0 signature is the transaction id, so the link works with no answer from the worker.
+      await expect(warn.getByRole("link", { name: /View on Solscan/ })).toHaveAttribute(
+        "href",
+        /\/tx\/[1-9A-HJ-NP-Za-km-z]{80,}\?/,
+      );
+      await expect(panel(page, coin.symbol).getByText(/nothing was sent/i)).toHaveCount(0);
+    });
+
   test("result: sent, confirmation unknown", async ({ page }) => {
     const submit = { json: { state: "sent" }, delayMs: 800 };
     await stubTrade(page, { submit, view: () => ({ json: tradeView("unknown") }) });

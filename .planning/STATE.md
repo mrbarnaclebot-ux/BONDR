@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-10-24T14:48:13.527Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-10-24T14:57:42.627Z"
 last_activity: 2026-10-24
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 56
-  completed_plans: 48
+  completed_plans: 49
   percent: 43
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 4 (Trading) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
 Last activity: 2026-10-24
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -92,6 +92,7 @@ Progress: [█████████░] 86%
 | Phase 04 P03 | 25 min | 2 tasks | 9 files |
 | Phase 04 P04 | 8 min | 2 tasks | 11 files |
 | Phase 04 P05 | 20 min | 3 tasks | 11 files |
+| Phase 04 P06 | 10 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -203,6 +204,7 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-04: core trade-error.ts is the one error map for launch and trade; launch sims now map a dead blockhash to expired and 6004 to slippage
 - [Phase 04]: 04-05: stored slippage is read in a mount effect so server and first client render match; useRouteQuote lives in lib/use-route-quote.ts
 - [Phase 04]: 04-05: the 2 s refresh is a tick in the quote effect (no loading dim); balances load only on connect, visibilitychange and refreshBalance
+- [Phase 04]: 04-06: a refused trade submit (expired, message_changed) also fails the store entry; submit re-reads the entry after the block height await so concurrent submits cannot both broadcast
 
 ### Pending Todos
 
@@ -235,6 +237,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T14:48:13.521Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-10-24T14:57:42.622Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None

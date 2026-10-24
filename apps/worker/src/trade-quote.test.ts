@@ -129,12 +129,36 @@ describe("maxSolIn (Pitfall 4)", () => {
       curveBaseTokenBalance: curve.realTokenReserves,
     });
     expect(full.gtn(0)).toBe(true);
-    expect(maxSolIn("devnet", curveState(Q), cfg)).toBe(full.muln(9).divn(10).toString());
+    expect(maxSolIn("devnet", curveState(Q), poolState(COIN), cfg)).toBe(full.muln(9).divn(10).toString());
+  });
+
+  test("devnet: a nearly complete coin curve caps lower than BONDR's, at its cost to complete less 10% (S-WR-04)", () => {
+    const bondrCap = BigInt(maxSolIn("devnet", curveState(Q), poolState(COIN), cfg) ?? 0);
+    const left = new BN(1_000_000_000_000); // 1M coin tokens left on the coin's curve
+    const nearly = {
+      ...curveState(COIN),
+      curve: { ...curve, realTokenReserves: left },
+    } as QuoteRead.MintState;
+    const cost = (s: QuoteRead.MintState, amount: BN) =>
+      s.venue === "curve"
+        ? getBuyV3QuoteAmountFromTokenAmount({
+            global,
+            feeConfig,
+            mintSupply: s.curve.tokenTotalSupply,
+            bondingCurve: s.curve,
+            amount,
+            curveBaseTokenBalance: s.curveTokenBalance,
+          })
+        : new BN(0);
+    const want = cost(curveState(Q), cost(nearly, left)).muln(9).divn(10);
+    const cap = maxSolIn("devnet", curveState(Q), nearly, cfg);
+    expect(cap).toBe(want.toString());
+    expect(BigInt(cap ?? 0)).toBeLessThan(bondrCap);
   });
 
   test("none on mainnet or once BONDR is on its pool", () => {
-    expect(maxSolIn("mainnet", curveState(Q), cfg)).toBeUndefined();
-    expect(maxSolIn("devnet", poolState(Q), cfg)).toBeUndefined();
+    expect(maxSolIn("mainnet", curveState(Q), curveState(COIN), cfg)).toBeUndefined();
+    expect(maxSolIn("devnet", poolState(Q), curveState(COIN), cfg)).toBeUndefined();
   });
 });
 
@@ -163,7 +187,7 @@ describe("quoteTrade", () => {
     });
     expect(args.bondr).toEqual(vi.mocked(hopInputs).mock.results[0].value);
     expect(q.fees.networkMax).toBe("505000");
-    expect(q.maxSolIn).toBe(maxSolIn("devnet", curveState(Q), cfg));
+    expect(q.maxSolIn).toBe(maxSolIn("devnet", curveState(Q), curveState(COIN), cfg));
     expect(q.fees.totalSol).toBe("3");
   });
 

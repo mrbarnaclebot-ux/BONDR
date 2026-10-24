@@ -2,7 +2,7 @@
 // of a wallet's SOL and coin balance. Web passes requests through, so everything is re-parsed here (T1).
 import type { TradeBalance, TradeQuote, TradeSide } from "@bondr/core/api";
 import type { Net } from "@bondr/core/keys";
-import { getBuyV3QuoteAmountFromTokenAmount } from "@bondr/core/pump";
+import { BN, getBuyV3QuoteAmountFromTokenAmount } from "@bondr/core/pump";
 import { routeQuote } from "@bondr/core/quote";
 import { type Configs, hopInputs, type MintState } from "@bondr/core/quote-read";
 import {
@@ -46,19 +46,29 @@ export function parseTrade(body: unknown, Q: PublicKey): TradeReq {
   return { side, mint: knownMint(b.mint), amount, slippageBps: s };
 }
 
-// ponytail: devnet-only guard keyed on net so a friend's 1 SOL buy cannot bond BONDR's shared devnet curve
-// (Pitfall 4); mainnet uncapped (Phase 7 confirms).
-export function maxSolIn(net: TradeNet, bondr: MintState, c: Configs): string | undefined {
-  if (net !== "devnet" || bondr.venue !== "curve") return undefined;
-  const full = getBuyV3QuoteAmountFromTokenAmount({
+type Curve = Extract<MintState, { venue: "curve" }>;
+
+// The quote a curve charges for `amount` of its base, fees included.
+const curveCost = (c: Configs, s: Curve, amount: BN): BN =>
+  getBuyV3QuoteAmountFromTokenAmount({
     global: c.global,
     feeConfig: c.feeConfig,
-    mintSupply: bondr.curve.tokenTotalSupply,
-    bondingCurve: bondr.curve,
-    amount: bondr.curve.realTokenReserves,
-    curveBaseTokenBalance: bondr.curveTokenBalance,
+    mintSupply: s.curve.tokenTotalSupply,
+    bondingCurve: s.curve,
+    amount,
+    curveBaseTokenBalance: s.curveTokenBalance,
   });
-  return full.muln(9).divn(10).toString();
+
+// ponytail: devnet-only guard keyed on net so a friend's 1 SOL buy cannot bond BONDR's shared devnet curve
+// (Pitfall 4), nor the coin's own curve, which devnet can never migrate (S-WR-04). Both keep a 10% margin and
+// the smaller wins; the coin's is its BONDR cost to complete, priced on BONDR's curve (each hop's fees count,
+// so it errs high). Mainnet uncapped (Phase 7 confirms); a devnet BONDR on its pool is uncapped too.
+export function maxSolIn(net: TradeNet, bondr: MintState, coin: MintState, c: Configs): string | undefined {
+  if (net !== "devnet" || bondr.venue !== "curve") return undefined;
+  const full = curveCost(c, bondr, bondr.curve.realTokenReserves);
+  const coinFull =
+    coin.venue === "curve" ? curveCost(c, bondr, curveCost(c, coin, coin.curve.realTokenReserves)) : full;
+  return BN.min(full, coinFull).muln(9).divn(10).toString();
 }
 
 export async function quoteTrade(ctx: QuoteCtx, body: unknown): Promise<TradeQuote> {
@@ -81,7 +91,7 @@ export async function quoteTrade(ctx: QuoteCtx, body: unknown): Promise<TradeQuo
     ammGlobalConfig: cfg.ammGlobalConfig,
     ammFeeConfig: cfg.ammFeeConfig,
   });
-  const max = maxSolIn(ctx.net, bondr, cfg);
+  const max = maxSolIn(ctx.net, bondr, coin, cfg);
   return { ...q, fees: { ...q.fees, networkMax: NETWORK_MAX }, ...(max && { maxSolIn: max }) };
 }
 

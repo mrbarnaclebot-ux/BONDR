@@ -118,6 +118,7 @@ describe("prepareTrade", () => {
       body: { error: "invalid_input" },
     });
     expect(routeBuy).not.toHaveBeenCalled();
+    expect(vi.mocked(maxSolIn).mock.calls[0]).toHaveLength(4); // BONDR's and the coin's state (S-WR-04)
     const main = ctxWith({ err: null }, "mainnet").ctx;
     vi.stubGlobal(
       "fetch",

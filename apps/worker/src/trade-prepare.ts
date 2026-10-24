@@ -91,11 +91,16 @@ function refuse(out: ApiError, why: string) {
   return fail(out);
 }
 
-// Pitfall 4: on devnet, while BONDR is on its curve, a buy past maxSolIn would bond BONDR's shared curve.
+// Pitfall 4, S-WR-04: on devnet, while BONDR is on its curve, a buy past maxSolIn would complete BONDR's shared
+// curve or the coin's own. Both states are the quote's cached reads.
 async function capDevnetBuy(ctx: TradeCtx, req: TradeReq): Promise<void> {
   if (ctx.net !== "devnet" || req.side !== "buy") return;
-  const [cfg, bondr] = await Promise.all([configs(ctx), mintState(ctx, ctx.Q, NATIVE_MINT)]);
-  const max = maxSolIn(ctx.net, bondr, cfg);
+  const [cfg, bondr, coin] = await Promise.all([
+    configs(ctx),
+    mintState(ctx, ctx.Q, NATIVE_MINT),
+    mintState(ctx, req.mint, ctx.Q),
+  ]);
+  const max = maxSolIn(ctx.net, bondr, coin, cfg);
   if (max !== undefined && req.amount > BigInt(max)) throw fail({ error: "invalid_input" });
 }
 

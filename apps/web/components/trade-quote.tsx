@@ -30,7 +30,8 @@ function Route({ q, symbol }: { q: Quote; symbol: string }) {
   const buy = ["SOL", `BONDR ${VENUE[q.route.bondr]}`, `${symbol} ${VENUE[q.route.coin]}`];
   const steps = q.side === "buy" ? buy : buy.reverse();
   return steps.map((s, i) => (
-    <Fragment key={s}>
+    // Keyed by position: "BONDR curve" repeats for a coin named BONDR (C-IN-06).
+    <Fragment key={i}>
       {i > 0 && (
         <>
           <span aria-hidden="true" className="h-px w-4 bg-muted-foreground" />

@@ -3,7 +3,7 @@
 // TOKEN-01 market cap chart (UI-SPEC Market cap chart). lightweight-charts loads by dynamic import inside an
 // effect, so it never reaches the server or the first-load bundle. Candles come from the candles route once per
 // load or interval switch; after that each live trade updates the last candle or appends one (no polling).
-import type { Candle } from "@bondr/core/api";
+import type { Candle, TradeRow } from "@bondr/core/api";
 import { CircleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
@@ -58,40 +58,84 @@ function useChart(el: React.RefObject<HTMLDivElement | null>, onHover: (c: Ohlc 
   return api;
 }
 
+/** The Bonded marker: the live bond time once a bond event lands, else the candles route's. */
+function useBondMarker(api: ChartApi | null, seconds: number | null, fallback: number | null) {
+  const bondedAt = useCoinLive()?.coin?.bondedAt;
+  const bond = bondedAt ? Math.floor(Date.parse(bondedAt) / 1000) : fallback;
+  useEffect(() => {
+    if (api && seconds) placeBond(api, seconds, bond);
+  }, [api, seconds, bond]);
+}
+
 /**
  * Draws the loaded candles and the Bonded marker, then applies live trades: a trade in the current or a newer
- * bucket updates or appends, an older one is dropped (D-16). Returns the last candle.
+ * bucket updates or appends, an older one is dropped (D-16). Trades that land before the chart and its candles
+ * are ready wait and replay on the first draw. Returns the last candle.
+ * ponytail: a waiting trade the candle read already counted adds its volume to that bar twice; a per-trade
+ * watermark from the candles route would make the replay exact.
  */
 function useDrawn(api: ChartApi | null, data: Loaded | null, launchMcap: number | null, resync: () => void) {
   const [last, setLast] = useState<Candle | null>(null);
   const lastRef = useRef<Candle | null>(null);
-  const live = useCoinLive();
-  const bondedAt = live?.coin?.bondedAt;
-  const bond = bondedAt ? Math.floor(Date.parse(bondedAt) / 1000) : (data?.bondTime ?? null);
+  const early = useRef<TradeRow[]>([]);
   const seconds = data && SECONDS[data.iv];
+  useBondMarker(api, seconds, data?.bondTime ?? null);
+  const apply = useRef<(t: TradeRow) => void>(() => {});
+  apply.current = (t: TradeRow) => {
+    const bar = api && seconds ? liveBar(lastRef.current, t, seconds, launchMcap) : null;
+    if (!api || !bar) return;
+    api.update(bar);
+    lastRef.current = bar;
+    setLast(bar);
+  };
   useEffect(() => {
     if (!api || !data) return;
     lastRef.current = showCandles(api, data.candles, SECONDS[data.iv]);
     setLast(lastRef.current);
+    for (const t of early.current.splice(0)) apply.current(t);
   }, [api, data]);
-  useEffect(() => {
-    if (api && seconds) placeBond(api, seconds, bond);
-  }, [api, seconds, bond]);
-  const subscribe = live?.subscribe;
+  const subscribe = useCoinLive()?.subscribe;
   const onResync = useRef(resync);
   onResync.current = resync;
+  const ready = !!api && !!seconds;
   useEffect(() => {
-    if (!api || !seconds || !subscribe) return;
+    if (!subscribe) return;
     return subscribe((e) => {
       if ("trades" in e) return onResync.current(); // a resync: the last candle refetches once
-      const bar = liveBar(lastRef.current, e.trade, seconds, launchMcap);
-      if (!bar) return;
-      api.update(bar);
-      lastRef.current = bar;
-      setLast(bar);
+      if (ready) apply.current(e.trade);
+      else early.current.push(e.trade);
     });
-  }, [api, seconds, subscribe, launchMcap]);
+  }, [subscribe, ready]);
   return last;
+}
+
+type FrameProps = {
+  el: React.RefObject<HTMLDivElement | null>;
+  label: string;
+  busy: boolean;
+  data: Loaded | null;
+  last: Candle | null;
+  failed: boolean;
+};
+
+/** The canvas host, its text summary for screen readers and the state note. */
+function ChartFrame({ el, label, busy, data, last, failed }: FrameProps) {
+  return (
+    <div className="relative h-[280px] md:h-[380px]">
+      <div
+        ref={el}
+        className={cn(
+          "absolute inset-0 touch-pan-y",
+          busy && data && "opacity-50",
+          data && !last && "invisible",
+        )}
+      />
+      {/* The text summary sits over the canvas instead of around it, so the library's DOM stays outside the
+        img role (axe nested-interactive if it ever renders a link). */}
+      <div role="img" aria-label={label} aria-busy={busy} className="pointer-events-none absolute inset-0" />
+      <ChartNote failed={failed} loading={!data} empty={!!data && !last} />
+    </div>
+  );
 }
 
 export function McapChart(props: {
@@ -123,25 +167,7 @@ export function McapChart(props: {
         <Seg label="Candle interval" options={INTERVALS} value={iv} onChange={pick} />
         {shown && <Readout c={shown} />}
       </div>
-      <div className="relative h-[280px] md:h-[380px]">
-        <div
-          ref={el}
-          className={cn(
-            "absolute inset-0 touch-pan-y",
-            busy && data && "opacity-50",
-            data && !last && "invisible",
-          )}
-        />
-        {/* The text summary sits over the canvas instead of around it, so the library's DOM stays outside the
-          img role (axe nested-interactive if it ever renders a link). */}
-        <div
-          role="img"
-          aria-label={label}
-          aria-busy={busy}
-          className="pointer-events-none absolute inset-0"
-        />
-        <ChartNote failed={failed} loading={!data} empty={!!data && !last} />
-      </div>
+      <ChartFrame el={el} label={label} busy={busy} data={data} last={last} failed={failed} />
     </section>
   );
 }

@@ -2,12 +2,10 @@
 import { useId } from "react";
 import { cn } from "@/lib/cn";
 import { sol } from "@/lib/format";
-import { devnetCap } from "@/lib/trade-button";
+import { devnetCap, RESERVE } from "@/lib/trade-button";
 import { type Trade, toUnits, useTrade } from "@/lib/use-trade";
 import { FieldError, Input, Label } from "./ui-field";
 
-// D-14: Max keeps 0.01 SOL back for fees and a first-buy token account rent.
-const RESERVE = 10_000_000n;
 const BUY_PRESETS = ["0.1", "0.5", "1"];
 const SELL_PERCENTS = [25n, 50n, 75n, 100n];
 

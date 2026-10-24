@@ -7,7 +7,7 @@ import type { BalanceState } from "./use-balance";
 import type { TradePhase } from "./use-trade";
 
 // D-14: a buy keeps 0.01 SOL back for fees and a first-buy token account rent.
-const RESERVE = 10_000_000n;
+export const RESERVE = 10_000_000n;
 // D-13: above this impact the button asks for "anyway".
 const HIGH_IMPACT = 0.15;
 

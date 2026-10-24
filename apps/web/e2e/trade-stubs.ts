@@ -4,6 +4,7 @@
 import type { TradeBalance, TradePrepareResult, TradeQuote } from "@bondr/core/api";
 import type { Page } from "@playwright/test";
 import { fulfill, ID, type Reply, SIG } from "./launch-stubs.ts";
+import { injectPhantom, newTestAccount, preConsent, type TestAccount } from "./phantom.ts";
 
 // One empty signature slot (the trader's), then a dummy message; signWire signs slot 0 of it.
 const TX = Buffer.concat([Buffer.from([1]), Buffer.alloc(64), Buffer.alloc(600, 7)]).toString("base64");
@@ -52,6 +53,9 @@ export const QUOTE_POOL: TradeQuote = {
     coinHop: { venue: "pool", protocolBps: 0, creatorBps: 5, lpBps: 20, sol: "1494701" },
   },
 };
+
+/** "10.00%" impact, inside the D-13 5% to 15% warn band. */
+export const QUOTE_IMPACT: TradeQuote = { ...QUOTE_BUY, impact: 0.1 };
 
 /** "20.00%" impact, over the D-13 15% line. */
 export const QUOTE_IMPACT_HIGH: TradeQuote = { ...QUOTE_BUY, impact: 0.2 };
@@ -107,4 +111,24 @@ export async function stubTrade(page: Page, s: TradeStubs): Promise<TradeCalls> 
     fulfill(r, s.view?.(++calls.view) ?? { json: tradeView("landed", { amountOut: QUOTE_BUY.amountOut }) }),
   );
   return calls;
+}
+
+export const panel = (page: Page, symbol: string) => page.getByRole("region", { name: `Trade ${symbol}` });
+export const button = (page: Page, symbol: string) => panel(page, symbol).locator("form > button");
+
+/**
+ * A fake Phantom (refusing every signature with `reject`) and a consent session the page believes in; `connect`
+ * presses the panel's own button.
+ */
+export async function openPanel(
+  page: Page,
+  coin: { mint: string; symbol: string },
+  o: { connect?: boolean; reject?: boolean } = {},
+): Promise<TestAccount> {
+  const account = newTestAccount();
+  await injectPhantom(page, account, { reject: o.reject });
+  await preConsent(page, account.address);
+  await page.goto(`/coin/${coin.mint}`);
+  if (o.connect ?? true) await button(page, coin.symbol).getByText("Connect Phantom to trade").click();
+  return account;
 }

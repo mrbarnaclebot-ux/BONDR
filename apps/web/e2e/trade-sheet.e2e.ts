@@ -91,10 +91,15 @@ test("768: the sheet is a centered 560px card on the bottom edge", async ({ page
   await bar(page)
     .getByRole("button", { name: `Buy ${coin.symbol}` })
     .click();
+  // Polled: even under reduced motion the sheet keyframe starts one frame at translateY(100%).
+  const bottom = async () => {
+    const b = await sheet(page).boundingBox();
+    return b && Math.round(b.y + b.height);
+  };
+  await expect.poll(bottom).toBe(844);
   const box = await sheet(page).boundingBox();
   expect(box?.width).toBe(560);
   expect(box?.x).toBe(104);
-  expect(box && Math.round(box.y + box.height)).toBe(844);
 });
 
 test("1440: the panel is inline and no bar renders", async ({ page }) => {

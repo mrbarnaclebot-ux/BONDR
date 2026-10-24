@@ -4,23 +4,20 @@ import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
 import { dropCoin, type Seeded, seedCoin } from "./fixtures.ts";
 import { SIG } from "./launch-stubs.ts";
-import { injectPhantom, newTestAccount, preConsent, rootEnv } from "./phantom.ts";
-import { PREPARED, QUOTE_IMPACT_HIGH, QUOTE_SELL, stubTrade, tradeView } from "./trade-stubs.ts";
+import { rootEnv } from "./phantom.ts";
+import {
+  button,
+  openPanel,
+  PREPARED,
+  panel,
+  QUOTE_IMPACT_HIGH,
+  QUOTE_SELL,
+  stubTrade,
+  tradeView,
+} from "./trade-stubs.ts";
 
 const url = rootEnv().DATABASE_URL;
 const sql = url ? postgres(url, { max: 1, idle_timeout: 5, onnotice: () => {} }) : undefined;
-
-const panel = (page: Page, symbol: string) => page.getByRole("region", { name: `Trade ${symbol}` });
-const button = (page: Page, symbol: string) => panel(page, symbol).locator("form > button");
-
-/** A fake Phantom with a consent session the page believes in; `connect` presses the panel's own button. */
-async function open(page: Page, mint: string, symbol: string, connect = true) {
-  const account = newTestAccount();
-  await injectPhantom(page, account);
-  await preConsent(page, account.address);
-  await page.goto(`/coin/${mint}`);
-  if (connect) await button(page, symbol).getByText("Connect Phantom to trade").click();
-}
 
 /** Every label the submit button shows from now on, in order, without repeats. */
 async function recordLabels(page: Page, symbol: string): Promise<() => Promise<string[]>> {
@@ -52,7 +49,7 @@ test("buy happy path", async ({ page }) => {
     prepare: { json: PREPARED, delayMs: 800 },
     submit: { json: { state: "sent", signature: SIG }, delayMs: 800 },
   });
-  await open(page, coin.mint, coin.symbol);
+  await openPanel(page, coin);
   const trade = panel(page, coin.symbol);
   const go = button(page, coin.symbol);
   await trade.getByRole("textbox", { name: "You pay" }).fill("0.5");
@@ -89,7 +86,7 @@ test("sell happy path", async ({ page }) => {
     quote: { json: QUOTE_SELL },
     view: () => ({ json: tradeView("landed", { amountOut: QUOTE_SELL.amountOut }) }),
   });
-  await open(page, coin.mint, coin.symbol);
+  await openPanel(page, coin);
   const trade = panel(page, coin.symbol);
   await trade.getByRole("button", { name: "Sell", exact: true }).click();
   await trade.getByRole("button", { name: "100%", exact: true }).click();
@@ -103,7 +100,7 @@ test("sell happy path", async ({ page }) => {
 test("button states", async ({ page }) => {
   const stubs = { quote: { json: QUOTE_IMPACT_HIGH } };
   await stubTrade(page, stubs);
-  await open(page, coin.mint, coin.symbol, false);
+  await openPanel(page, coin, { connect: false });
   const trade = panel(page, coin.symbol);
   const go = button(page, coin.symbol);
   await expect(go).toHaveText("Connect Phantom to trade");

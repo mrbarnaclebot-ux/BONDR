@@ -69,6 +69,8 @@ function Submit({ s, run }: { s: ButtonState; run(): void }) {
     );
   }
   // Only a submit-ready button is type submit, so Enter in the amount field never connects or refreshes.
+  // preventDefault: a refresh press re-renders this button as type submit before the click's default action
+  // runs, which would submit the form and start a trade.
   return (
     <Button
       type={s.action === "submit" ? "submit" : "button"}
@@ -77,7 +79,14 @@ function Submit({ s, run }: { s: ButtonState; run(): void }) {
       className={cls}
       disabled={s.disabled}
       aria-disabled={s.ariaDisabled || undefined}
-      onClick={s.action === "submit" ? undefined : run}
+      onClick={
+        s.action === "submit"
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              run();
+            }
+      }
     >
       {icon}
       {s.label}

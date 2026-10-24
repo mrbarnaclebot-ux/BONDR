@@ -1,6 +1,6 @@
 import type { Connection } from "@solana/web3.js";
 import { afterEach, expect, test, vi } from "vitest";
-import { countHolders, INCINERATOR, schedule, touch } from "./holders.ts";
+import { countHolders, due, INCINERATOR, touch } from "./holders.ts";
 
 const MIN = 60_000;
 
@@ -19,25 +19,34 @@ test("countHolders: positive balances, one per owner, never the curve, the pool 
   expect(countHolders([], exclude)).toBe(0);
 });
 
-test("schedule: now when never counted or counted 5 min ago, else 5 min after the last count", () => {
+test("due: when never counted or counted 5 min ago or more, never inside the window", () => {
   const now = 100 * MIN;
-  expect(schedule(undefined, now)).toBe(now);
-  expect(schedule(now - 5 * MIN, now)).toBe(now);
-  expect(schedule(now - 6 * MIN, now)).toBe(now);
-  expect(schedule(now - 2 * MIN, now)).toBe(now + 3 * MIN);
+  expect(due(undefined, now)).toBe(true);
+  expect(due(now - 5 * MIN, now)).toBe(true);
+  expect(due(now - 6 * MIN, now)).toBe(true);
+  expect(due(now - 2 * MIN, now)).toBe(false);
 });
 
 afterEach(() => {
-  vi.clearAllTimers();
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
-test("touch: a second trade while a recount is pending arms nothing", () => {
+test("touch: the first trade recounts at once, trades inside 5 min recount nothing and arm no timer", async () => {
   vi.useFakeTimers();
+  vi.spyOn(console, "error").mockImplementation(() => {});
   const coin = { mint: "m", bondingCurve: "c", pool: "p", initialRealTokenReserves: "1" };
-  const conn = {} as Connection;
+  const reads = vi.fn(async () => {
+    throw new Error("rpc down"); // stops before the database write
+  });
+  const conn = { getProgramAccounts: reads } as unknown as Connection;
   touch(conn, coin);
   touch(conn, coin);
+  vi.advanceTimersByTime(4 * MIN);
   touch(conn, coin);
-  expect(vi.getTimerCount()).toBe(1);
+  expect(reads).toHaveBeenCalledOnce();
+  expect(vi.getTimerCount()).toBe(0);
+  vi.advanceTimersByTime(MIN);
+  touch(conn, coin);
+  expect(reads).toHaveBeenCalledTimes(2);
 });

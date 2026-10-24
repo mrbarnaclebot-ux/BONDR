@@ -23,8 +23,9 @@ type QuoteCtx = { conn: Connection; Q: PublicKey; net: TradeNet };
 export type TradeReq = { side: TradeSide; mint: PublicKey; amount: bigint; slippageBps: number };
 
 const U64 = 2n ** 64n;
+export const MAX_PRIORITY_LAMPORTS = 500_000; // D-08: 0.0005 SOL a trade
 // One signature plus the D-08 priority fee cap, in lamports.
-const NETWORK_MAX = String(5_000 + 500_000);
+const NETWORK_MAX = String(5_000 + MAX_PRIORITY_LAMPORTS);
 
 // Registered coins only, which also bounds the quote cache (T6).
 function knownMint(raw: unknown): PublicKey {

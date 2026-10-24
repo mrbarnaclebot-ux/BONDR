@@ -29,14 +29,13 @@ import {
 import { fail } from "./http.ts";
 import { signBy, walletOf } from "./prepare.ts";
 import type { Ctx } from "./status.ts";
-import { maxSolIn, parseTrade, type TradeNet, type TradeReq } from "./trade-quote.ts";
+import { MAX_PRIORITY_LAMPORTS, maxSolIn, parseTrade, type TradeNet, type TradeReq } from "./trade-quote.ts";
 import { configs, mintState } from "./trade-state.ts";
 import { putTrade } from "./trade-store.ts";
 
 export type TradeCtx = Ctx & { net: TradeNet };
 
 const SIM_CU = 1_400_000;
-const MAX_PRIORITY_LAMPORTS = 500_000; // D-08: 0.0005 SOL a trade
 const ESTIMATE_TIMEOUT_MS = 3_000;
 
 // Integer math: units * 1.1 in floats rounds 10 up to 12.

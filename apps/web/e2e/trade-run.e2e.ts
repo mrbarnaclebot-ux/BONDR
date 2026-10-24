@@ -131,4 +131,11 @@ test("a quote for an older amount never arms the button (C-CR-01)", async ({ pag
   await input.press("Enter");
   await expect(go).toHaveText("Buy anyway, 20.00% price impact");
   expect(calls.prepare).toHaveLength(0);
+  // Enter on the ready button trades, and focus stays on the button through the landed result (C-WR-07).
+  await input.press("Enter");
+  await expect(go).toBeFocused();
+  await expect(panel(page, coin.symbol).getByRole("status").filter({ hasText: "Bought" })).toBeVisible();
+  await expect(go).toHaveText("Enter an amount");
+  await expect(go).toBeFocused();
+  expect(calls.prepare).toHaveLength(1);
 });

@@ -8,7 +8,9 @@ export const buttonVariants = cva(
   "relative inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border font-semibold whitespace-nowrap no-underline " +
     "[transition:translate_420ms_var(--ease-spring),scale_80ms,background-color_var(--dur),border-color_var(--dur),color_var(--dur),box-shadow_300ms_var(--ease-out)] " +
     "hover:-translate-y-px active:translate-y-px active:scale-99 [&_svg]:size-4 [&_svg]:flex-none " +
-    "disabled:cursor-not-allowed disabled:translate-y-0 disabled:scale-100 disabled:border-dashed disabled:border-line-strong disabled:bg-none disabled:bg-transparent disabled:text-[color-mix(in_oklch,var(--foreground)_50%,var(--background))] disabled:shadow-none",
+    "disabled:cursor-not-allowed disabled:translate-y-0 disabled:scale-100 disabled:border-dashed disabled:border-line-strong disabled:bg-none disabled:bg-transparent disabled:text-[color-mix(in_oklch,var(--foreground)_50%,var(--background))] disabled:shadow-none " +
+    // data-off: the same look on an aria-disabled button that keeps focus (the trade submit, UI-SPEC).
+    "data-off:cursor-not-allowed data-off:translate-y-0 data-off:scale-100 data-off:border-dashed data-off:border-line-strong data-off:bg-none data-off:bg-transparent data-off:text-[color-mix(in_oklch,var(--foreground)_50%,var(--background))] data-off:shadow-none",
   {
     variants: {
       variant: {

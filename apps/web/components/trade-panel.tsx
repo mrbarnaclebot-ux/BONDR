@@ -1,6 +1,6 @@
 "use client";
 import { LoaderCircle, RefreshCw, Wallet } from "lucide-react";
-import { useId } from "react";
+import { type Ref, useId, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { type ButtonState, buttonState } from "@/lib/trade-button";
 import { type Trade, useTrade } from "@/lib/use-trade";
@@ -47,7 +47,7 @@ function useButton(t: Trade, w: WalletApi): ButtonState {
   });
 }
 
-function Submit({ s, run }: { s: ButtonState; run(): void }) {
+function Submit({ s, run, ref }: { s: ButtonState; run(): void; ref: Ref<HTMLButtonElement> }) {
   const Icon = s.icon && ICONS[s.icon];
   const icon = Icon && (
     <Icon
@@ -70,15 +70,17 @@ function Submit({ s, run }: { s: ButtonState; run(): void }) {
   }
   // Only a submit-ready button is type submit, so Enter in the amount field never connects or refreshes.
   // preventDefault: a refresh press re-renders this button as type submit before the click's default action
-  // runs, which would submit the form and start a trade.
+  // runs, which would submit the form and start a trade. Never native disabled, so it keeps focus through a
+  // trade and after a landed one clears the amount (C-WR-07); data-off draws the disabled look.
   return (
     <Button
+      ref={ref}
       type={s.action === "submit" ? "submit" : "button"}
       variant={s.variant}
       size="lg"
       className={cls}
-      disabled={s.disabled}
-      aria-disabled={s.ariaDisabled || undefined}
+      aria-disabled={s.disabled || s.ariaDisabled || undefined}
+      data-off={s.disabled || undefined}
       onClick={
         s.action === "submit"
           ? undefined
@@ -103,6 +105,7 @@ export function TradePanel({ placement = "column", labelId }: Props) {
   const h = labelId ?? own;
   const sheet = placement === "sheet";
   const size = sheet ? "sheet" : undefined;
+  const go = useRef<HTMLButtonElement>(null);
   const run = () => {
     if (s.action === "connect") void w.connect();
     else if (s.action === "consent") w.forgetConsent();
@@ -123,6 +126,8 @@ export function TradePanel({ placement = "column", labelId }: Props) {
         className="grid gap-4"
         onSubmit={(e) => {
           e.preventDefault();
+          // Enter in the amount field: focus moves to the button before the fieldset locks (C-WR-07).
+          go.current?.focus();
           if (s.action === "submit") run();
         }}
       >
@@ -143,7 +148,7 @@ export function TradePanel({ placement = "column", labelId }: Props) {
           <TradeQuote size={size} />
         </fieldset>
         <TradeCallouts />
-        <Submit s={s} run={run} />
+        <Submit s={s} run={run} ref={go} />
       </form>
       <p className="text-xs text-muted-foreground">One Phantom signature. Quote refreshes every 2 seconds.</p>
       {/* UI-SPEC Accessibility: the one polite region for the quote, the pause and the in-flight steps. */}

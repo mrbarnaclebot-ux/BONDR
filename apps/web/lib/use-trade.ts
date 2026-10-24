@@ -193,6 +193,8 @@ function useRun(a: RunArgs, refreshBalance: () => void, onLanded: () => void) {
   const [phase, setPhase] = useState<TradePhase>("idle");
   const [result, setResult] = useState<RunResult | null>(null);
   const busy = useRef(false);
+  const live = useRef(wallet.address);
+  live.current = wallet.address;
   // C-CR-02: leaving the page aborts the run's requests and its poll.
   const ctrl = useRef<AbortController>(null);
   useEffect(() => () => ctrl.current?.abort(), []);
@@ -202,7 +204,15 @@ function useRun(a: RunArgs, refreshBalance: () => void, onLanded: () => void) {
     setResult(null);
     setPhase("preparing");
     ctrl.current = new AbortController();
-    const input = { ...a, amount: String(a.units), wallet, onPhase: setPhase, signal: ctrl.current.signal };
+    const { signal } = ctrl.current;
+    const input = {
+      ...a,
+      amount: String(a.units),
+      wallet,
+      onPhase: setPhase,
+      signal,
+      address: () => live.current,
+    };
     try {
       const v = await runTrade(input);
       setResult(toResult(a.side, v));

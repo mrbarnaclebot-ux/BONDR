@@ -18,13 +18,12 @@ function workerDown() {
   return fetch;
 }
 
-function input(signal: AbortSignal): RunInput {
-  const wallet = {
-    address: "Trader1111111111111111111111111111111111111",
-    signTransaction: async () => SIGNED,
-    onAccountChange: () => () => {},
-  } as unknown as WalletApi;
-  return { wallet, mint: "M", side: "buy", amount: "1", slippageBps: 100, onPhase: () => {}, signal };
+const TRADER = "Trader1111111111111111111111111111111111111";
+
+function input(signal: AbortSignal, o: Partial<RunInput> = {}): RunInput {
+  const wallet = { address: TRADER, signTransaction: async () => SIGNED } as unknown as WalletApi;
+  const base = { wallet, mint: "M", side: "buy", amount: "1", slippageBps: 100, onPhase: () => {} } as const;
+  return { ...base, signal, address: () => TRADER, ...o };
 }
 
 afterEach(() => {
@@ -52,4 +51,14 @@ test("an abort stops the poll and its requests (C-CR-02)", async () => {
   const calls = fetch.mock.calls.length;
   await vi.advanceTimersByTimeAsync(10_000);
   expect(fetch.mock.calls.length).toBe(calls);
+});
+
+test("a switch or disconnect while Phantom is open is switched, not declined (C-WR-06)", async () => {
+  workerDown();
+  const wallet = { address: TRADER, signTransaction: () => Promise.reject(new Error("no account")) };
+  const run = (address: () => string | null) =>
+    runTrade(input(new AbortController().signal, { wallet: wallet as unknown as WalletApi, address }));
+  await expect(run(() => "Other111111111111111111111111111111111111111")).rejects.toThrow("switched");
+  await expect(run(() => null)).rejects.toThrow("switched");
+  await expect(run(() => TRADER)).rejects.toThrow("rejected");
 });

@@ -100,6 +100,8 @@ export type RunInput = {
   onPhase(p: RunPhase): void;
   /** Aborted when the panel unmounts: every request and the poll stop. */
   signal: AbortSignal;
+  /** The wallet's address now; `wallet` is the press-time snapshot. */
+  address(): string | null;
 };
 
 /** A final row of a posted trade; the signature is always known from slot 0. */
@@ -107,25 +109,22 @@ export type Settled = TradeView & { signature: string };
 
 /** Runs one trade; resolves with the final row (landed, failed or unknown), throws Stop before anything is sent. */
 export async function runTrade(r: RunInput): Promise<Settled> {
-  if (!r.wallet.address) throw new Stop("switched");
-  let switched = false;
-  const off = r.wallet.onAccountChange(() => {
-    switched = true;
-  });
-  try {
-    // No wallet in the body: the consent session names it (T2).
-    const body = { side: r.side, mint: r.mint, amount: r.amount, slippageBps: r.slippageBps };
-    const prep = await call<TradePrepareResult>("/api/trade/prepare", body, r.signal);
-    r.onPhase("signing");
-    const signed = await signWithin(r.wallet, prep);
-    if (switched) throw new Stop("switched");
-    r.onPhase("confirming");
-    const sig = txId(signed);
-    const out = await submit(prep.tradeId, signed, r.signal);
-    const final = out && out.state !== "prepared" && out.state !== "signed" && out.state !== "sent";
-    const v = final ? out : await poll(prep.tradeId, signed, r.signal, out?.signature ?? sig);
-    return { ...v, signature: v.signature ?? sig };
-  } finally {
-    off();
-  }
+  const who = r.wallet.address;
+  if (!who) throw new Stop("switched");
+  // C-WR-06: the live address, so a switch or a disconnect mid-trade is "switched", never "declined".
+  const moved = () => r.address() !== who;
+  // No wallet in the body: the consent session names it (T2).
+  const body = { side: r.side, mint: r.mint, amount: r.amount, slippageBps: r.slippageBps };
+  const prep = await call<TradePrepareResult>("/api/trade/prepare", body, r.signal);
+  r.onPhase("signing");
+  const signed = await signWithin(r.wallet, prep).catch((e: Stop) =>
+    Promise.reject(moved() ? new Stop("switched") : e),
+  );
+  if (moved()) throw new Stop("switched");
+  r.onPhase("confirming");
+  const sig = txId(signed);
+  const out = await submit(prep.tradeId, signed, r.signal);
+  const final = out && out.state !== "prepared" && out.state !== "signed" && out.state !== "sent";
+  const v = final ? out : await poll(prep.tradeId, signed, r.signal, out?.signature ?? sig);
+  return { ...v, signature: v.signature ?? sig };
 }

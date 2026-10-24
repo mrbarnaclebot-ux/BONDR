@@ -35,7 +35,10 @@ async function readFonts() {
 
 /** Renders a 1200x630 card; extra headers (a short cache-control) replace ImageResponse's defaults. */
 async function render(card: ReactNode, headers?: Record<string, string>): Promise<ImageResponse> {
-  fonts ??= readFonts();
+  fonts ??= readFonts().catch((e) => {
+    fonts = undefined; // a failed read is retried by the next card, not cached for the life of the process
+    throw e;
+  });
   return new ImageResponse(
     <div
       style={{ display: "flex", width: "100%", height: "100%", position: "relative", backgroundColor: BG }}
@@ -52,7 +55,10 @@ const heroUri = async () =>
 
 /** The site card: hero art on the right 60% fading into the background, "Built to bond." on the left. */
 export async function siteCard(headers?: Record<string, string>): Promise<ImageResponse> {
-  hero ??= heroUri();
+  hero ??= heroUri().catch((e) => {
+    hero = undefined;
+    throw e;
+  });
   const fade = `linear-gradient(90deg, ${BG} 0%, rgba(26, 26, 26, 0) 55%)`;
   return render(
     <>

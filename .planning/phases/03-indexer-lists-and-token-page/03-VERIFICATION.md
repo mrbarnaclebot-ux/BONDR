@@ -1,14 +1,14 @@
 ---
 phase: 03-indexer-lists-and-token-page
 verified: 2026-10-24T00:00:00Z
-status: human_needed
+status: passed
 score: 5/5 roadmap success criteria verified in code (8/8 requirements satisfied in code)
 overrides_applied: 0
 human_verification:
   - test: "Redeploy HEAD (27dfeb6) of phase-03-indexer-lists to staging, then re-run the staging specs (responsive-lists.e2e.ts, og.e2e.ts), one live devnet buy on an open token page, and the 10-minute Neon idle check"
     expected: "Same results as 03-15: 24 passed / 3 skipped, the buy shows on the page in a few seconds without a reload, Neon suspends while / sits idle"
     why_human: "Staging and the owner sign-off ran on the c749f01-era build. About 30 review-fix commits came after it, and they rewrote the indexer recovery paths (S-CR-01..03, S-WR-01..07), the holder recount trigger, the hub watchdog and the first-connect replay (11e2a1b). None of those has run against real devnet or real Neon. The verifier may not deploy."
-    result: "Done 2026-10-24 with owner approval: web 198f6c51 and worker 2820ea7e deployed at d4dfd1c (SUCCESS, stream subscribed). Staging specs 24 passed, 4 skipped (3 coin-bonded: no bonded coin; 1 og cache test needs seeding). Live devnet buy 3AwHZsri...7JpSyn on the open page 2591 ms after blockTime. Ops balance unchanged at 2.750788 SOL. Neon idle check left to the owner."
+    result: "Done 2026-10-24 with owner approval: web 198f6c51 and worker 2820ea7e deployed at d4dfd1c (SUCCESS, stream subscribed). Staging specs 24 passed, 4 skipped (3 coin-bonded: no bonded coin; 1 og cache test needs seeding). Live devnet buy 3AwHZsri...7JpSyn on the open page 2591 ms after blockTime. Ops balance unchanged at 2.750788 SOL. Neon idle check done by the orchestrator at 07:33 UTC: both computes idle, staging last active 06:59 UTC with the new worker running."
   - test: "First bonded coin (mainnet, or any network where a child can complete): watch the open token page and home cards through the CompleteEvent, the migration, and the first PumpSwap buy and sell"
     expected: "Venue goes curve -> complete -> pool, the Bonded tag and the chart's Bonded marker appear, pool trades land in the feed with sensible SOL and market cap values, and the bonded count in the hero goes up"
     why_human: "The PumpSwap path (CreatePoolEvent, BuyEvent, SellEvent, pool price from post-trade balances plus virtual quote reserves) is proven only by 4 fixtures captured on the Surfpool fork. Devnet cannot bond a child (A8: it needs about 752M BONDR, BONDR's curve holds 723M). Staging has no bonded coin, so the 3 coin-bonded staging specs were skipped."

@@ -4,7 +4,7 @@
 // signed by the fake Phantom with the sim dev key (owner pre-approved devnet spend, at most 0.05 SOL).
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { type APIRequestContext, expect, type Locator, type Page, test } from "@playwright/test";
 import postgres from "postgres";
 import { row } from "./coin.ts";
 import { blockTime, dropCoin, type Seeded, seedCoin } from "./fixtures.ts";
@@ -12,6 +12,7 @@ import { injectPhantom, newTestAccount, preConsent, rootEnv, signIn, simDevAccou
 import { BALANCE, QUOTE_BUY, QUOTE_IMPACT_HIGH, QUOTE_POOL, QUOTE_SELL, stubTrade } from "./trade-stubs.ts";
 
 const url = rootEnv().DATABASE_URL;
+const STAGING = process.env.E2E_BASE_URL;
 // idle_timeout instead of end() in afterAll, as in coin.e2e.ts (a worker may come back to this module).
 const sql = url ? postgres(url, { max: 1, idle_timeout: 5, onnotice: () => {} }) : undefined;
 const db = () => sql as postgres.Sql;
@@ -31,7 +32,7 @@ async function connect(page: Page, mint: string) {
 
 test.describe("trade panel", () => {
   test.describe.configure({ timeout: 60_000 }); // a Neon cold start can take several seconds
-  test.skip(!sql, "needs DATABASE_URL in the root .env");
+  test.skip(!sql || !!STAGING, "seeds a coin in the dev branch: local only");
   let coin: Seeded;
   test.beforeAll(async () => {
     coin = await seedCoin(db(), { trades: 2 });
@@ -195,14 +196,17 @@ test.describe("trade panel", () => {
   });
 });
 
-// The newest real curve coin on the dev branch, as live.e2e.ts picks it.
-async function devnetCoin() {
-  const [c] = await db()<{ mint: string; symbol: string }[]>`select c.mint, l.symbol from coins c
-    join launches l on l.mint = c.mint
+// The newest real curve coin on the dev branch, or staging's first curve coin, as live.e2e.ts picks it.
+type Coin = { mint: string; symbol: string; venue?: string };
+async function devnetCoin(api: APIRequestContext) {
+  const top = async () => ((await (await api.get("/api/coins?sort=top")).json()) as { coins: Coin[] }).coins;
+  const [c] = STAGING
+    ? (await top()).filter((x) => x.venue === "curve")
+    : await db()<Coin[]>`select c.mint, l.symbol from coins c join launches l on l.mint = c.mint
     where l.state = 'landed' and c.venue = 'curve' and l.name not like 'E2E %'
     order by l.created_at desc limit 1`;
   expect(c, "an indexed curve coin").toBeTruthy();
-  return c as { mint: string; symbol: string };
+  return c as Coin;
 }
 
 const lamports = async (address: string): Promise<number> => {
@@ -247,14 +251,15 @@ test.describe("devnet", () => {
       env: { ...process.env, VANITY_THREADS: "0" },
     });
   });
-  // signIn wrote the consent row; it stays while the sim dev's launches reference it (wallets FK).
+  // signIn's consent row stays while the sim's launches reference it (wallets FK), and always on staging.
   test.afterAll(async () => {
+    if (STAGING) return;
     await db()`delete from wallets w where w.address = ${simDevAccount().address}
       and not exists (select 1 from launches l where l.wallet = w.address)`;
   });
 
   test("devnet quote", async ({ page }) => {
-    const c = await devnetCoin();
+    const c = await devnetCoin(page.request);
     await page.goto(`/coin/${c.mint}`);
     const trade = page.getByRole("region", { name: `Trade ${c.symbol}` });
     await trade.getByRole("textbox", { name: "You pay" }).fill("0.01");
@@ -266,7 +271,7 @@ test.describe("devnet", () => {
   });
 
   test("devnet buy and sell through the panel", async ({ page }) => {
-    const [c, sim] = [await devnetCoin(), simDevAccount()];
+    const [c, sim] = [await devnetCoin(page.request), simDevAccount()];
     const before = await lamports(sim.address);
     await injectPhantom(page, sim);
     expect((await signIn(page.request, sim)).status()).toBe(204); // a real session for prepare and submit

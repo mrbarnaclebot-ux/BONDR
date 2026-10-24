@@ -3,6 +3,7 @@
 import "server-only";
 import type { Candle, TradeRow } from "@bondr/core/api";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { coinByMint } from "./coins";
 import { coins, db, trades } from "./db";
 
 export const PAGE = 50;
@@ -88,23 +89,35 @@ async function read(mint: string, seconds: number): Promise<Candle[]> {
   return rows.map((r) => ({ ...r, time: Number(r.time) }));
 }
 
-// ponytail: scans every trade of the coin per (mint, interval) every 10 s; store rollups past about 100k trades
-// per coin. The per-process map is cleared at 1000 entries.
-const kept = new Map<string, { at: number; v: Promise<Candle[]> }>();
+// Kept 10 s per key, so every open page answering one resync (a worker restart) is one Neon read (D-04); a
+// failed read is not kept. ponytail: per-process map cleared at 1000 entries, the same shape as lib/coins.ts.
+const seen = new Map<string, { at: number; v: Promise<unknown> }>();
 
-export async function candles(mint: string, seconds: number): Promise<Candle[]> {
-  const key = `${mint}:${seconds}`;
-  const hit = kept.get(key);
-  if (hit && Date.now() - hit.at < 10_000) return hit.v;
-  const v = read(mint, seconds);
-  if (kept.size >= 1000) kept.clear();
-  kept.set(key, { at: Date.now(), v });
-  v.catch(() => kept.delete(key)); // a failed read is not kept
+function kept<T>(key: string, read: () => Promise<T>): Promise<T> {
+  const hit = seen.get(key);
+  if (hit && Date.now() - hit.at < 10_000) return hit.v as Promise<T>;
+  const v = read();
+  if (seen.size >= 1000) seen.clear();
+  seen.set(key, { at: Date.now(), v });
+  v.catch(() => seen.delete(key));
   return v;
 }
 
+// ponytail: scans every trade of the coin per (mint, interval) every 10 s; store rollups past about 100k trades
+// per coin.
+export const candles = (mint: string, seconds: number): Promise<Candle[]> =>
+  kept(`candles:${mint}:${seconds}`, () => read(mint, seconds));
+
 /** The bond time in UTC seconds for the chart's Bonded marker, or null on the curve or before indexing. */
-export async function bondTime(mint: string): Promise<number | null> {
-  const [r] = await db().select({ at: coins.bondedAt }).from(coins).where(eq(coins.mint, mint)).limit(1);
-  return r?.at ? Math.floor(r.at.getTime() / 1000) : null;
-}
+export const bondTime = (mint: string): Promise<number | null> =>
+  kept(`bond:${mint}`, async () => {
+    const [r] = await db().select({ at: coins.bondedAt }).from(coins).where(eq(coins.mint, mint)).limit(1);
+    return r?.at ? Math.floor(r.at.getTime() / 1000) : null;
+  });
+
+/** The token page's resync: the first page plus the coin row, so the stats catch up too. */
+export const resyncPage = (mint: string) =>
+  kept(`resync:${mint}`, async () => {
+    const [page, coin] = await Promise.all([tradesPage(mint), coinByMint(mint)]);
+    return { ...page, coin };
+  });

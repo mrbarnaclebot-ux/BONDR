@@ -186,7 +186,7 @@ function CustomSlippage() {
 }
 
 /** UI-SPEC Quote list, slippage and fees. "–" until a quote for this side exists. */
-export function TradeQuote() {
+export function TradeQuote({ size }: { size?: "sheet" }) {
   const t = useTrade();
   const q = t.quote?.side === t.side ? t.quote : null;
   const preset = SLIPPAGE.some((s) => s.value === String(t.slippageBps));
@@ -218,6 +218,7 @@ export function TradeQuote() {
             items={[...SLIPPAGE, { label: "Custom", value: CUSTOM }]}
             pressed={custom ? CUSTOM : String(t.slippageBps)}
             onPick={pick}
+            size={size}
           />
         </Row>
         <Row label="Minimum received">{q ? outText(q.side, q.minAmountOut, t.symbol) : NONE}</Row>

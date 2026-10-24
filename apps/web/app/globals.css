@@ -178,6 +178,10 @@
   html {
     -webkit-text-size-adjust: 100%;
   }
+  /* an open modal (trade sheet, consent) locks the page scroll behind it */
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
   body {
     min-height: 100dvh;
     display: flex;

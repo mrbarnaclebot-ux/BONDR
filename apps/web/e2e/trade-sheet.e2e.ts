@@ -124,7 +124,6 @@ test("crossing 1100px closes the sheet and the column keeps side and amount", as
 });
 
 test("390: an in-flight trade keeps the sheet open", async ({ page }) => {
-  test.skip(!!STAGING, "the fake Phantom's consent needs the local stubs");
   await page.setViewportSize({ width: 390, height: 844 });
   await stubTrade(page, { prepare: { json: PREPARED, delayMs: 5_000 } });
   const account = newTestAccount();

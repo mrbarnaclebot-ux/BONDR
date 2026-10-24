@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 04-08-PLAN.md
-last_updated: "2026-10-24T15:13:22.759Z"
+last_updated: "2026-10-24T15:28:20.303Z"
 last_activity: 2026-10-24
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 56
-  completed_plans: 52
+  completed_plans: 53
   percent: 43
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 4 (Trading) — EXECUTING
-Plan: 10 of 13
+Plan: 11 of 13
 Status: Ready to execute
 Last activity: 2026-10-24
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -96,6 +96,7 @@ Progress: [█████████░] 93%
 | Phase 04 P07 | 8 min | 2 tasks | 5 files |
 | Phase 04 P08 | 25 min | 2 tasks | 8 files |
 | Phase 04 P09 | 9 min | 2 tasks | 6 files |
+| Phase 04 P10 | 17 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-08: the Quick trade bar's bottom clearance pads the footer below 1100px (body:has([data-trade-bar]) footer), since the layout footer is the page's last content
 - [Phase 04]: 04-09: RESEARCH A1 closed, routeQuote equals the landed amount to the base unit on curve/pool, pool/curve and pool/pool fork routes; quote.ts unchanged
 - [Phase 04]: 04-09: TRADE-04 left pending until the UI signs trades (04-10)
+- [Phase 04]: 04-10: a trade the worker no longer knows (404 after a restart) is unknown with the last signature, not a failure (T8)
+- [Phase 04]: 04-10: runTrade detects an account switch through wallet.onAccountChange, since the WalletApi object is a render snapshot
 
 ### Pending Todos
 
@@ -244,6 +247,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T15:13:19.348Z
+Last session: 2026-10-24T15:28:13.861Z
 Stopped at: Completed 04-08-PLAN.md
 Resume file: None

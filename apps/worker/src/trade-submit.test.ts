@@ -135,6 +135,20 @@ describe("submitTrade sends once (D-06)", () => {
     expect(m.settle).toHaveBeenCalledTimes(1);
   });
 
+  test("two concurrent submits send once: the second re-reads after the await (S-WR-05)", async () => {
+    let height: (h: number) => void = () => {};
+    conn.getBlockHeight.mockReturnValue(new Promise<number>((r) => (height = r)));
+    const { e, tx } = prepared();
+    const signed = signedBy(tx);
+    const both = Promise.all([submitTrade(ctx, body(e.id, signed)), submitTrade(ctx, body(e.id, signed))]);
+    height(1_000);
+    const results = await both;
+    expect(m.broadcast).toHaveBeenCalledTimes(1);
+    const states = results.map((r) => r.state).sort();
+    expect(states).toEqual(["sent", "signed"]);
+    expect(results.every((r) => r.signature === signatureOf(Buffer.from(signed, "base64")))).toBe(true);
+  });
+
   test("a preflight rejection fails with the mapped code (6004 is slippage)", async () => {
     m.broadcast.mockResolvedValue({
       ok: false,

@@ -38,6 +38,7 @@
                       "!@bondr/core/math",
                       "!@bondr/core/rules",
                       "!@bondr/core/db",
+                      "!@bondr/core/coin-row",
                       "!@bondr/core/schema",
                       "!@bondr/core/api",
                       "!@bondr/core/scrub",

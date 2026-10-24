@@ -5,9 +5,14 @@ import {
   boolean,
   check,
   customType,
+  doublePrecision,
+  index,
   integer,
   jsonb,
+  numeric,
   pgTable,
+  primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -88,5 +93,86 @@ export const launches = pgTable(
     uniqueIndex("launches_landed_mint").on(sql`mint`).where(sql`state = 'landed'`),
     // And only one may be in flight: a second co-signed launch of it could only fail on chain at the dev's cost.
     uniqueIndex("launches_inflight_mint").on(sql`mint`).where(sql`state in ('signed','sent','unknown')`),
+  ],
+);
+
+// int8 as a decimal string, as postgres-js returns it, so base-unit amounts pass through without BigInt.
+const big = customType<{ data: string; driverData: string }>({ dataType: () => "bigint" });
+const dbl = () => doublePrecision();
+
+// One row per landed BONDR launch (D-03). Reserves are the curve's; mcap and bond values are SOL at the last
+// trade's BONDR price, over a fixed 1B supply (D-22).
+export const coins = pgTable(
+  "coins",
+  {
+    mint: text()
+      .primaryKey()
+      .references(() => vanityMints.pubkey),
+    launchId: text()
+      .notNull()
+      .unique()
+      .references(() => launches.id),
+    launchedAt: tstz().notNull(),
+    bondingCurve: text().notNull(),
+    pool: text().notNull(),
+    venue: text().notNull().default("curve"),
+    initialRealTokenReserves: big().notNull(),
+    realTokenReserves: big().notNull(),
+    realQuoteReserves: big().notNull(),
+    virtualTokenReserves: big().notNull(),
+    virtualQuoteReserves: numeric().notNull(),
+    mcapSol: dbl().notNull(),
+    launchMcapSol: dbl().notNull(),
+    progress: dbl().notNull().default(0),
+    bondrAtBond: numeric(),
+    bondSol: dbl(),
+    lastTradeAt: tstz(),
+    lastSig: text(),
+    lastSlot: big(), // the slot of the trade that set the state above; older trades never move it back
+    holders: integer(),
+    holdersAt: tstz(),
+    bondSig: text(),
+    bondedAt: tstz(),
+  },
+  (t) => [
+    check("coins_venue", sql`venue in ('curve','complete','pool')`),
+    check("coins_bonded", sql`(venue = 'curve') = (bonded_at is null)`),
+    check("coins_progress", sql`progress between 0 and 1`),
+    check("coins_holders", sql`holders >= 0`),
+    index("coins_launched_at").on(t.launchedAt.desc()),
+    index("coins_mcap_sol").on(t.mcapSol.desc()),
+  ],
+);
+
+// Every trade of a known coin, keyed by (signature, ix) so any replay is a no-op. seq orders trades in a slot.
+export const trades = pgTable(
+  "trades",
+  {
+    signature: text().notNull(),
+    ix: smallint().notNull(),
+    seq: bigint({ mode: "number" }).generatedAlwaysAsIdentity(),
+    mint: text()
+      .notNull()
+      .references(() => coins.mint),
+    slot: big().notNull(),
+    at: tstz().notNull(),
+    side: text().notNull(),
+    launch: boolean().notNull().default(false),
+    venue: text().notNull(),
+    trader: text().notNull(),
+    tokenAmount: big().notNull(),
+    quoteAmount: big(),
+    sol: big(),
+    bondrSol: dbl(),
+    mcapSol: dbl(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.signature, t.ix] }),
+    check("trades_side", sql`side in ('buy','sell','burn')`),
+    check("trades_venue", sql`venue in ('curve','pool')`),
+    check("trades_token_amount", sql`token_amount > 0`),
+    check("trades_burn_sol", sql`(side = 'burn') = (sol is null)`),
+    index("trades_mint_slot_seq").on(t.mint, t.slot.desc(), t.seq.desc()),
+    index("trades_at").on(t.at),
   ],
 );

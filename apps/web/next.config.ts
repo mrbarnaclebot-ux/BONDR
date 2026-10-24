@@ -16,6 +16,7 @@ export const WEB_ENV = [
   "NEXT_PUBLIC_SENTRY_DSN",
   "SENTRY_TEST_ROUTE",
   "SESSION_SECRET",
+  "SITE_URL",
 ] as const;
 
 // Local only: Railway has no file and sets each web variable on the service.
@@ -65,10 +66,6 @@ const config: NextConfig = {
   env: {
     NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT_NAME ?? "local",
     PINATA_GATEWAY: process.env.PINATA_GATEWAY ?? "",
-  },
-  async redirects() {
-    // ponytail: Phase 3 replaces / with the home lists
-    return [{ source: "/", destination: "/launch", permanent: false }];
   },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];

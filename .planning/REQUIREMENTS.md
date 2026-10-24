@@ -32,20 +32,20 @@
 
 ### Discovery
 
-- [ ] **LIST-01**: User sees a separate Trending section on the home page: a horizontal side-scroller of coin cards ranked by quote volume in the last hour
-- [ ] **LIST-02**: User sees a Top list ranked by market cap
-- [ ] **LIST-03**: User sees Latest (newest launches first) and Oldest, in tabs alongside Top, each shown as a card grid of at most 5 cards per row
-- [ ] **LIST-04**: Each coin card shows image, name, symbol, market cap, 1h change, bond progress and age, and updates live without a reload
-- [ ] **LIST-05**: User can search BONDR coins by name, symbol or mint
+- [x] **LIST-01**: User sees a separate Trending section on the home page: a horizontal side-scroller of coin cards ranked by quote volume in the last hour
+- [x] **LIST-02**: User sees a Top list ranked by market cap
+- [x] **LIST-03**: User sees Latest (newest launches first) and Oldest, in tabs alongside Top, each shown as a card grid of at most 5 cards per row
+- [x] **LIST-04**: Each coin card shows image, name, symbol, market cap, 1h change, bond progress and age, and updates live without a reload
+- [x] **LIST-05**: User can search BONDR coins by name, symbol or mint
 
 ### Token page
 
-- [ ] **TOKEN-01**: User sees a price chart (lightweight-charts) with 1m, 5m, 1h and 1d candles
-- [ ] **TOKEN-02**: User sees a live trade feed and holder count
+- [x] **TOKEN-01**: User sees a price chart (lightweight-charts) with 1m, 5m, 1h and 1d candles
+- [x] **TOKEN-02**: User sees a live trade feed and holder count
 - [ ] **TOKEN-03**: User sees bond progress, burn budget vs cost to complete the curve, and the time left in the current 24h window
 - [ ] **TOKEN-04**: User sees the fee ledger: every collection, split, sweep, forced-bond buy, burn and finalize, with amount, time and a transaction link
 - [ ] **TOKEN-05**: User sees totals: burned supply %, fees to burn, fees to buyback, fees to treasury, and the post-bond deployer share once finalized
-- [ ] **TOKEN-06**: Shared token links render a preview card (OG image) on X and Telegram
+- [x] **TOKEN-06**: Shared token links render a preview card (OG image) on X and Telegram
 
 ### Trading
 
@@ -128,17 +128,17 @@
 | LAUNCH-05 | Phase 2 | Complete |
 | LAUNCH-06 | Phase 2 | Complete |
 | LAUNCH-07 | Phase 2 | Complete |
-| LIST-01 | Phase 3 | Pending |
-| LIST-02 | Phase 3 | Pending |
-| LIST-03 | Phase 3 | Pending |
-| LIST-04 | Phase 3 | Pending |
-| LIST-05 | Phase 3 | Pending |
-| TOKEN-01 | Phase 3 | Pending |
-| TOKEN-02 | Phase 3 | Pending |
+| LIST-01 | Phase 3 | Complete |
+| LIST-02 | Phase 3 | Complete |
+| LIST-03 | Phase 3 | Complete |
+| LIST-04 | Phase 3 | Complete |
+| LIST-05 | Phase 3 | Complete |
+| TOKEN-01 | Phase 3 | Complete |
+| TOKEN-02 | Phase 3 | Complete |
 | TOKEN-03 | Phase 5 | Pending |
 | TOKEN-04 | Phase 5 | Pending |
 | TOKEN-05 | Phase 5 | Pending |
-| TOKEN-06 | Phase 3 | Pending |
+| TOKEN-06 | Phase 3 | Complete |
 | TRADE-01 | Phase 4 | Pending |
 | TRADE-02 | Phase 4 | Pending |
 | TRADE-03 | Phase 4 | Pending |

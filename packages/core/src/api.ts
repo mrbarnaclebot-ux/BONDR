@@ -81,3 +81,57 @@ export type LaunchView = {
   wallet: string;
   createdAt: string;
 };
+
+// Lists, token page and live updates (Phase 3). Market caps and SOL values are numbers (display only).
+export type Venue = "curve" | "complete" | "pool";
+
+// The fields a trade can change: what the live stream carries for a coin.
+export type CoinLive = {
+  mint: string;
+  venue: Venue;
+  mcapSol: number;
+  progress: number;
+  vol1h: number;
+  vol24h: number;
+  change1h: number | null;
+  lastTradeAt: string | null;
+  bondSol: number | null;
+  bondrAtBond: string | null;
+  realQuoteReserves: string;
+  holders: number | null;
+};
+
+export type CoinRow = CoinLive & {
+  name: string;
+  symbol: string;
+  imageCid: string | null;
+  exit: Exit;
+  launchedAt: string;
+  launchMcapSol: number;
+  bondSig: string | null;
+  bondedAt: string | null;
+};
+
+export type TradeRow = {
+  signature: string;
+  ix: number;
+  side: "buy" | "sell" | "burn";
+  launch: boolean;
+  venue: "curve" | "pool";
+  trader: string;
+  tokenAmount: string;
+  sol: string | null;
+  mcapSol: number | null;
+  at: string;
+  slot: string;
+  seq: string;
+};
+
+export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number };
+
+export type LiveEvent = { id: string } & (
+  | { type: "trade"; data: { trade: TradeRow & { mint: string }; coin: CoinLive } }
+  | { type: "launch"; data: CoinRow }
+  | { type: "bond"; data: { mint: string; venue: Venue; bondSig: string | null; bondedAt: string | null } }
+  | { type: "holders"; data: { mint: string; holders: number } }
+);

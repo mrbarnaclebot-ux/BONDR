@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-18-PLAN.md
-last_updated: "2026-10-22T16:40:00.000Z"
-last_activity: 2026-10-22
+status: verifying
+stopped_at: Completed 03-14-PLAN.md
+last_updated: "2026-10-24T05:37:29.701Z"
+last_activity: 2026-10-24
 progress:
   total_phases: 7
-  completed_phases: 2
-  total_plans: 28
-  completed_plans: 28
-  percent: 14
+  completed_phases: 3
+  total_plans: 43
+  completed_plans: 43
+  percent: 43
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** A holder can verify on the token page that the dev holds no launch supply, and see that pre-bond fees went to forcing the bond and burning supply, never to the dev.
-**Current focus:** Phase 2 — Launch Flow
+**Current focus:** Phase 3 — Indexer, Lists and Token Page
 
 ## Current Position
 
-Phase: 2 (Launch Flow) — EXECUTING
-Plan: 18 of 18
-Status: Phase 2 complete (verified), PR next
-Last activity: 2026-10-22
+Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
+Plan: 15 of 15
+Status: Phase complete — ready for verification
+Last activity: 2026-10-24
 
 Progress: [██████████] 100%
 
@@ -78,6 +78,16 @@ Progress: [██████████] 100%
 | Phase 02 P14 | 14 min | 2 tasks | - |
 | Phase 02 P15 | 13 min | 2 tasks | - |
 | Phase 02 P16 | 67 min | 3 tasks | - |
+| Phase 03 P01 | 12 min | 3 tasks | 18 files |
+| Phase 03 P03 | 14 min | 2 tasks | 18 files |
+| Phase 03 P04 | 12 min | 3 tasks | 13 files |
+| Phase 03 P05 | 11 min | 3 tasks | 14 files |
+| Phase 03 P07 | 16 min | 3 tasks | 15 files |
+| Phase 03 P10 | 19min | 2 tasks | 15 files |
+| Phase 03 P11 | 18min | 3 tasks | 21 files |
+| Phase 03 P12 | 27min | 2 tasks | 11 files |
+| Phase 03 P13 | 15min | 2 tasks | 15 files |
+| Phase 03 P14 | 35min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -156,6 +166,31 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-17: staging launch CyR56jVf...bndr landed; staging matrix 37/37. ipfs.io now 429s our images (service-worker-only gateway), so coin images and on-chain metadata image links need a new gateway
 - [Phase 02]: Coin images and on-chain metadata links use the owner's Pinata dedicated gateway (PINATA_GATEWAY, set on staging web 2026-10-23, inlined into the client at build); ipfs.io is the fallback. Links die with the Pinata account. Coins launched before (CyR56jVf...bndr) keep ipfs.io links
 - [Phase 02]: Coin page reads are cached per process: a landed coin with facts for an hour, a miss or a coin without facts for a minute
+- [Phase 03]: 03-01: A1 and A2 hold on devnet: Helius logsSubscribe mentions [BONDR] notified launches (BONDR loaded from the per-coin table), curve, multi-hop and BONDR-only trades, and getSignaturesForAddress(mint) listed them all; the 03-07 stream design stands
+- [Phase 03]: 03-01: A8 fails on devnet: a child needs about 752M BONDR to complete, more than BONDR's curve holds (723M), so pool-trade and migration fixtures come from the Surfpool fork and devnet pool trades are fixture-only
+- [Phase 03]: 03-01: devnet-trades --complete is a refuse-only gate (exit 2); the buy-out and pool path is not built because it cannot run on devnet
+- [Phase 03]: 03-03: coin card route sets cache-control itself (immutable for a landed coin, max-age=300 site card) and is force-dynamic
+- [Phase 03]: 03-03: landedCoin in lib/launches.ts is the one cached landed lookup for page, metadata and share card
+- [Phase 03]: 03-04: int8 amount columns are a string customType (drizzle 0.45 bigint has no string mode)
+- [Phase 03]: 03-04: BONDR identity (mint, pool) lives in worker bondr-price.ts; seedBondrPrice sets it before its first await and ingest reads bondr()
+- [Phase 03]: 03-04: a coin patch applies when its mint got a newly inserted trade, or when the tx has no trade of that mint (CreatePoolEvent); no slot-order guard yet
+- [Phase 03]: 03-05: the feed cursor is the last row's slot.seq; parseCursor refuses values past int8 max so a bad cursor is a 400
+- [Phase 03]: 03-05: Load more ends on more=false from the server (limit 51), not on spotting the launch rows client-side
+- [Phase 03]: 03-05: seeded e2e coins (e2e/fixtures.ts) have launches.created_at a year back so newest-landed-launch specs never pick one
+- [Phase 03]: 03-07: coin state applies only when the trade's slot >= coins.last_slot (migration 0004); same-slot ties apply in arrival order; venue only advances
+- [Phase 03]: 03-07: ingestLaunch(conn, row, tx) gap fills each new coin; the stream gap fills every coin on each websocket open
+- [Phase 03]: 03-07: holder recount armed only by inserted trades, at most once per coin every 5 min; last count time in memory
+- [Phase 03]: 03-10: the chart's role=img summary overlays the canvas (attribution link inside the chart breaks axe nested-interactive)
+- [Phase 03]: 03-10: default candle interval is computed on the server from coins.launched_at; oklch CSS tokens go to rgba through a 1px canvas for lightweight-charts
+- [Phase 03]: 03-11: list rows reuse core coinRow's select and mapping (coinRows), so cards, the token page and live events read the same numbers
+- [Phase 03]: 03-11: header Launch link is an icon below 360px and the wordmark hides below 440px so the devnet header fits at 320 and 390
+- [Phase 03]: 03-12: a full mint searches through listCoins q; the client opens /coin/{mint} only on an exact mint in the result (no searchByMint)
+- [Phase 03]: 03-12: trending is one query ordered by 1h volume, 24h volume, newest launch; mode read from the first row; list not filtered (up to 10 cards)
+- [Phase 03]: 03-13: the re-rank hold is a CSS :hover/:focus-within check on data-hold regions at tick time, re-checked after pointerleave and blur
+- [Phase 03]: 03-13: home resync is one GET /api/coins?trending=1; page 0 merges in front of loaded coins, Trending is replaced
+- [Phase 03]: 03-14: chart attributionLogo off; the footer "Charts by TradingView" link meets the license link requirement
+- [Phase 03]: 03-14: header Launch link stays an icon with the accessible name below 360px (label does not fit at 320)
+- [Phase 03]: 03-14: Top and Oldest pick up a new launch on reload or resync catch-up; Latest stays live (D-14)
 
 ### Pending Todos
 
@@ -188,6 +223,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-22T16:40:00.000Z
-Stopped at: Completed 02-18-PLAN.md
+Last session: 2026-10-24T05:37:29.695Z
+Stopped at: Completed 03-14-PLAN.md
 Resume file: None

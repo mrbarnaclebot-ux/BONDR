@@ -13,10 +13,20 @@ export function redact(text: string): string {
   return out.replace(/api-key=[^&\s"']*/gi, "api-key=<redacted>");
 }
 
+function heliusKey(): string {
+  if (!process.env.helius_api_key) throw new Error("helius_api_key missing in .env");
+  return process.env.helius_api_key;
+}
+
 function rpcUrl(net: Net): string {
   if (net === "fork") return process.env.SPIKE_FORK_URL || "http://127.0.0.1:18899";
-  if (!process.env.helius_api_key) throw new Error("helius_api_key missing in .env");
-  return `https://devnet.helius-rpc.com/?api-key=${process.env.helius_api_key}`;
+  return `https://devnet.helius-rpc.com/?api-key=${heliusKey()}`;
+}
+
+// Same rules as rpcUrl; Net has no mainnet member, so mainnet cannot be asked for.
+export function wsUrl(net: Net): string {
+  if (net === "fork") return process.env.SPIKE_FORK_WS_URL || "ws://127.0.0.1:18900";
+  return `wss://devnet.helius-rpc.com/?api-key=${heliusKey()}`;
 }
 
 // A local tunnel to a real mainnet RPC passes the host and genesis checks; only Surfpool answers its own

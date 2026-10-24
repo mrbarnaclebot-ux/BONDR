@@ -1,5 +1,6 @@
-// The only web file that talks to the worker or reads WORKER_TOKEN. server-only fails the build if a client
-// component imports it, so the token can never reach a browser bundle (T-02-08-01).
+// The worker's request/response calls. Only this file and live-hub.ts (the /events stream) read WORKER_TOKEN;
+// server-only fails the build if a client component imports either, so the token never reaches a browser
+// bundle (T-02-08-01).
 import "server-only";
 import type { ApiError } from "@bondr/core/api";
 

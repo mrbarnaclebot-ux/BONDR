@@ -85,6 +85,56 @@
       box-shadow: 0 0 0 7px transparent;
     }
   }
+  /* bond glyph (UI-SPEC Motion): the fill draws in once, node B pulses from 90%, a ring leaves it once bonded */
+  --animate-bond-draw: bond-draw 1400ms var(--ease-spring) both;
+  @keyframes bond-draw {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  --animate-near: near 1.8s var(--ease-out) infinite;
+  @keyframes near {
+    50% {
+      stroke: var(--leaf);
+      filter: drop-shadow(0 0 6px var(--leaf));
+    }
+  }
+  --animate-ring: ring 2.4s var(--ease-out) infinite;
+  @keyframes ring {
+    from {
+      opacity: 0.8;
+      transform: scale(0.6);
+    }
+    to {
+      opacity: 0;
+      transform: scale(2.4);
+    }
+  }
+  /* live values (UI-SPEC Motion, D-15): the trade side's 32% tint fades out; flash.ts skips it under reduced
+     motion. A new feed row (D-18) rises with the same tint. */
+  --animate-flash-up: flash-up 800ms var(--ease-out);
+  --animate-flash-down: flash-down 800ms var(--ease-out);
+  --animate-row-up: rise 640ms var(--ease-spring) both, flash-up 800ms var(--ease-out);
+  --animate-row-down: rise 640ms var(--ease-spring) both, flash-down 800ms var(--ease-out);
+  @keyframes flash-up {
+    from {
+      background-color: color-mix(in oklch, var(--leaf) 32%, transparent);
+    }
+  }
+  @keyframes flash-down {
+    from {
+      background-color: color-mix(in oklch, var(--destructive) 32%, transparent);
+    }
+  }
+  /* a launch that just slid into Latest (UI-SPEC Motion, D-14): rise, then --glow held 3 s and faded over 600 ms.
+     home-live.tsx drops the class after 3.6 s; under reduced motion the glow is static for that time (below). */
+  --animate-launch: rise 700ms var(--ease-spring) both, glow 3.6s linear;
+  @keyframes glow {
+    0%,
+    83% {
+      box-shadow: var(--glow);
+    }
+  }
   /* consent bottom sheet below 768px; ease-out, because a spring overshoot would lift it off the edge */
   --animate-sheet: sheet 620ms var(--ease-out) both;
   @keyframes sheet {
@@ -188,5 +238,159 @@
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
     /* biome-ignore-end lint/complexity/noImportantStyles: end of the reduced-motion override */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-launch {
+    box-shadow: var(--glow);
+  }
+}
+
+/* Home hero (UI-SPEC Hero, Motion, Breakpoints). The art sits behind the copy under two masks; below 1080px it
+   is a 560px box on the right, below 560px a 420px box above the copy. */
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  align-items: center;
+}
+.hero-art {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: -1;
+  height: 560px;
+  opacity: 0.75;
+  mask-image:
+    linear-gradient(90deg, transparent 35%, #000 90%), linear-gradient(0deg, transparent 2%, #000 40%);
+  mask-composite: intersect;
+}
+.hero-art img,
+.hero-art video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 86% 50%;
+  animation: breathe 14s ease-in-out infinite alternate;
+}
+.motes {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.motes i {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 10px var(--leaf);
+  opacity: 0;
+  animation: mote var(--d) linear infinite;
+  animation-delay: var(--dl);
+}
+.hero-in {
+  display: grid;
+  gap: 32px;
+  padding-block: 64px 64px;
+}
+.hero-h1 {
+  font-size: clamp(4.25rem, 10vw, 9.5rem);
+  line-height: 0.82;
+  letter-spacing: -0.005em;
+  text-shadow: 0 10px 50px color-mix(in oklch, var(--background) 80%, transparent);
+}
+.hero-h1 em {
+  font-style: normal;
+  color: var(--leaf);
+  text-shadow: 0 0 60px color-mix(in oklch, var(--leaf) 45%, transparent);
+}
+@media (width >= 1080px) {
+  .hero-art {
+    inset: 0;
+    height: auto;
+    opacity: 1;
+    mask-image:
+      linear-gradient(90deg, transparent 12%, #000 52%), linear-gradient(0deg, transparent 2%, #000 34%);
+  }
+  /* the right column stays empty in Phase 3 so the art shows through (D-08) */
+  .hero-in {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 48px;
+    align-items: end;
+    padding-block: 96px 64px;
+  }
+}
+@media (width >= 1200px) {
+  .hero {
+    min-height: 660px;
+  }
+}
+@media (width < 560px) {
+  .hero-art {
+    inset: 0 -40% auto 0;
+    height: 420px;
+    opacity: 0.7;
+    mask-image: linear-gradient(0deg, transparent 8%, #000 70%);
+  }
+  .hero-art img,
+  .hero-art video {
+    object-position: 64% 40%;
+  }
+  .hero-in {
+    padding-block: 128px 48px;
+  }
+}
+/* WCAG 2.2.2: the hero's Pause animation button holds the art's breathe, the motes and the live dot. */
+.hero[data-paused] :is(.hero-art video, .motes i, .animate-live) {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .motes {
+    display: none;
+  }
+  .hero-art img,
+  .hero-art video {
+    animation: none;
+  }
+}
+@keyframes breathe {
+  from {
+    transform: scale(1.02) translateX(0);
+  }
+  to {
+    transform: scale(1.08) translateX(-1.5%);
+  }
+}
+@keyframes mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), -120px);
+  }
+}
+
+/* Section heads fade and rise as they scroll in; fully visible without support or with reduced motion. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+  }
+}
+@keyframes reveal {
+  from {
+    opacity: 0;
+    translate: 0 18px;
   }
 }

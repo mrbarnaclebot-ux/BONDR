@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { checkUri, normalizeLink } from "@bondr/core/rules";
 import { expect, test, vi } from "vitest";
-import { gatewayHost, ipfsUri, metadataJson, pinFile } from "./pinata";
+import { fetchCardImage, gatewayHost, imageUrl, ipfsUri, metadataJson, pinFile } from "./pinata";
 
 const CID = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"; // a 59-char CIDv1
 const IMG = "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
@@ -31,6 +31,37 @@ test("ipfsUri of a CIDv1 is 80 chars on ipfs.io and passes checkUri on either ga
   expect(gatewayHost(" https://my-gw.mypinata.cloud/ipfs/ ")).toBe("my-gw.mypinata.cloud");
   expect(gatewayHost("")).toBe("ipfs.io");
   expect(checkUri(ipfsUri(CID, gatewayHost("my-gw.mypinata.cloud"))).ok).toBe(true);
+});
+
+test("imageUrl accepts only an alphanumeric CID", () => {
+  vi.stubEnv("PINATA_GATEWAY", "");
+  expect(imageUrl(CID)).toBe(`https://ipfs.io/ipfs/${CID}`);
+  for (const bad of [null, "", `${CID}/x`, `${CID}?x=1`, `${CID}.png`, "../etc"])
+    expect(imageUrl(bad)).toBeNull();
+});
+
+test("fetchCardImage embeds a small PNG from the gateway and refuses everything else", async () => {
+  const png = new Uint8Array([137, 80, 78, 71]);
+  const calls: [string, RequestInit][] = [];
+  const serve = (body: BodyInit, type: string) =>
+    (async (u: string, i: RequestInit) => {
+      calls.push([u, i]);
+      return new Response(body, { headers: { "content-type": type } });
+    }) as unknown as typeof fetch;
+  vi.stubEnv("PINATA_GATEWAY", "");
+  expect(await fetchCardImage(IMG, serve(png, "image/png"))).toBeNull(); // no gateway, no server fetch
+  vi.stubEnv("PINATA_GATEWAY", "my-gw.mypinata.cloud");
+  expect(await fetchCardImage(IMG, serve(png, "image/png"))).toBe("data:image/png;base64,iVBORw==");
+  expect(calls[0][0]).toBe(`https://my-gw.mypinata.cloud/ipfs/${IMG}`);
+  expect(calls[0][1].redirect).toBe("error");
+  expect(await fetchCardImage(`${IMG}/x`, serve(png, "image/png"))).toBeNull();
+  expect(await fetchCardImage(IMG, serve(png, "image/webp"))).toBeNull();
+  expect(await fetchCardImage(IMG, serve(new Uint8Array(2 * 1024 * 1024 + 1), "image/png"))).toBeNull();
+  const thrown = (async () => {
+    throw new Error("down");
+  }) as unknown as typeof fetch;
+  expect(await fetchCardImage(IMG, thrown)).toBeNull();
+  vi.unstubAllEnvs();
 });
 
 test("pinFile posts the file publicly with the bearer JWT and returns data.cid", async () => {

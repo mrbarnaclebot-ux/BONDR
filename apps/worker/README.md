@@ -4,14 +4,19 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## src
 
-- `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
+- `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`, then the index boot: `seedBondrPrice`, `loadCoins`, `backfillLaunches`, `startStream`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
 - `env.ts`: `loadEnv` and `launchNet` (refuses mainnet in Phase 2, D-02); `ops` and `treasury` keys with the Phase 1 ids.
-- `http.ts`: node:http server, `authorized` (timingSafeEqual), `readJson` (16 KB cap), `Fail` for contract errors.
+- `http.ts`: node:http server, `authorized` (timingSafeEqual), `readJson` (16 KB cap), `Fail` for contract errors; `Streams` are long-lived handlers behind the same bearer check.
 - `prepare.ts`: `POST /prepare`. Guards (pause, consent, rules, hourly table cap, balance) run before any spend, then reserve, W, table, build, simulate, store `prepared`. `prepareGuard`, `parseRequest`, `signBy` and `sellFloor` are pure.
 - `submit.ts`: `POST /submit`. Pause and expiry re-checked, then `cosign` (core) against the stored message, exit and mint; only then `signed` is stored and the wire is sent.
 - `settle.ts`: the state machine. Pure `nextState` and `resumeAction`; `settleLaunch` polls the signature, marks `landed` at confirmation (then facts), rechecks with history 3 times past expiry before `failed expired`; `resumeLaunches` on boot.
 - `build.ts`: `unionTableKeys` (both exits in one table), `ensureTable` (reuse or ops-paid create), `compileLaunch` and `buildMessage` (v0, dev pays, mint second signer, allowlist, exit present, 1232 bytes), `simulateLaunch`, pure `simError` and `previewCosts`.
 - `launches.ts`: launch rows. `insertPrepared`, `insertFailed`, `advance` (guarded `UPDATE ... WHERE state = from`), `getLaunch`, `unsettled`, `tableFor`, `newTablesLastHour`, `newTablesToday` (the per-wallet daily table cap), `consented`.
+- `ingest.ts`: the one write path for the indexer. `writeParsed` writes a `parseTx` result in the caller's transaction: the new coin (on conflict do nothing), trades with `on conflict (signature, ix) do nothing returning`, and coin patches only for a mint that got a new trade. `ingestTx(conn, sig)` fetches, parses and writes one tx; `ingestLaunch(conn, row, tx)` writes a landed launch's coin and Launch rows, adds it to `knownCoins` and gap fills it; `gapFill`/`gapFillAll` ingest every signature after a coin's `last_sig`; `loadCoins` fills `knownCoins` at boot; `backfillLaunches` indexes every landed launch without a coin row, once per boot, paced.
+- `stream.ts`: the live indexer. One websocket, one log subscription on the BONDR mint; pure `isPumpInvoke`, `shouldIngest`, `backoff`.
+- `holders.ts`: `countHolders` (pure) and `touch`, the holder recount on a trade when the last one is 5 min old (no timer); publishes a `holders` event after each recount write.
+- `events-route.ts`: `GET /events`, the live NDJSON stream web's hub holds (one per web process). `publish` stamps ids `<epoch>-<seq>` (epoch is boot time); a `{"type":"ping","id":<current id>}` line opens the stream and repeats every 15 s, so a reconnecting hub knows whether it missed anything. `ingest.ts` publishes `launch`, `trade` (with the coin's `coinRow` numbers from `@bondr/core/coin-row`, one read per coin per write and none when nobody listens) and `bond` (a venue move) after each commit that inserted rows.
+- `bondr-price.ts`: BONDR's SOL price in memory only (never stored, D-04). `seedBondrPrice` reads BONDR's curve, or its BONDR/SOL pool once migrated; BONDR events the ingest sees move it, only forward in slots. A failed seed fails the index boot, which retries with backoff.
 - `status.ts`: `liveStatus` (`GET /status`, cached 5 s) and `quote` (`POST /quote`); `pauseReason` and `networkFee` are pure.
 - `vanity.ts`: the bndr mint pool. `mintKey`, `isBndr` (grinder fast path), `mintKeyFor` (re-derives and checks before signing), `reserve`, `release` (only when `canRelease`), `markUsed`, `vanityRow`, `poolSize`.
 - `grind.ts`: worker_threads grinder, `startRefill` and the pre-fill CLI.
@@ -26,6 +31,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 | `POST /quote` | bearer WORKER_TOKEN |
 | `POST /prepare` | bearer WORKER_TOKEN |
 | `POST /submit` | bearer WORKER_TOKEN |
+| `GET /events` | bearer WORKER_TOKEN |
 
 `POST /prepare` takes a `PrepareRequest` and returns a `PrepareResult` (see `@bondr/core/api`). Errors: 409 `paused`, 403 `consent_required`, 400 `invalid_input`, 503 `pool_empty`, 429 `rate_limited` (30 new tables an hour, worker-wide), 402 `insufficient_balance`, 500 `build_failed`. One prepare runs at a time.
 
@@ -34,6 +40,24 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 ## Launch states
 
 `prepared -> signed -> sent -> landed | failed | unknown`, and `unknown -> landed | failed`. `prepared -> failed` on pause, expiry or a refused co-sign. Every change is one guarded UPDATE. `signed` holds the fully signed wire before the send, so a restart resends it while the blockhash is valid (same signature, Solana dedupes). `sent` and `unknown` are never resent (D-16): past the blockhash they are rechecked with history, 3 times 10 s apart, then `failed` with `expired`. `landed` marks the mint used; `failed` releases it. Facts on a landed row: `tokens` (bought), `devChildAfter` (expected "0"), and for sell `solBack`.
+
+## Index tables
+
+`coins` holds one row per landed launch: curve reserves, `venue` (`curve`, `complete`, `pool`), `mcap_sol`, `launch_mcap_sol`, `progress`, `bondr_at_bond`, `bond_sol`, `last_sig`, `last_trade_at`, holders and bond facts. `trades` holds every trade of a known coin, keyed by `(signature, ix)`, with `seq` ordering trades inside a slot. A launch writes its dev buy and its exit (`sell`, or a synthetic `burn` row at ix 1000), both `launch = true`. Postgres enforces the venue and side enums, `sol is null` exactly for burns, `bonded_at` set exactly off the curve, and `progress` in 0..1.
+
+`coins.last_slot` is the slot of the trade that set the coin's state. A trade from an older slot (a gap fill landing after the stream) inserts its row but leaves the coin alone; same-slot txs have no known order, so the later write wins. The venue only advances (curve, complete, pool).
+
+`settle.ts` calls `ingestLaunch` with the tx it already fetched for the facts; a failure there is logged and never undoes `landed`, and the next boot's backfill picks the launch up.
+
+## Indexer
+
+- **One subscription.** `startStream` opens one websocket (`wsUrl`, key never logged) and sends one `logsSubscribe { mentions: [BONDR mint] }` at `confirmed` (D-05). Every BONDR coin trade, on the curve or on PumpSwap, names the BONDR mint. A notification with an error, or without a pump or PumpSwap invoke (a plain BONDR transfer), is dropped before any fetch. The rest are queued by signature, de-duplicated and ingested one at a time.
+- **Keepalive and reconnect.** A JSON-RPC ping every 30 s. On close: reconnect after 1 s doubling to 30 s with 20 percent jitter; a connection healthy for 60 s resets the backoff.
+- **Gap fill.** Every open subscribes first, then runs `gapFillAll`: one read of `coins`, then `getSignaturesForAddress(mint, until: last_sig)` per coin, oldest first. Each new coin is gap filled at registration too, so a sniper trade the stream saw before the coin was known is caught (Pitfall 3).
+- **Holders.** Each inserted trade calls `touch(coin)`. A recount runs at most once per coin every 5 min, only for coins that traded. It counts Token-2022 accounts of the mint with a positive balance, one per owner, excluding the curve, the pool and the incinerator.
+- **Helius credits.** One websocket. Gap fill and the stream fetch one `getTransaction` per tx, paced at 10 a second in gap fill. A recount is one `getProgramAccounts` (10 credits). Switch to `getProgramAccountsV2` if credits pass 80 percent.
+- **Neon.** Nothing reads Postgres on a timer: the database is touched only when a trade lands, on a websocket open, or by a recount a trade armed. A quiet devnet lets Neon scale to zero. A local worker indexes only while it runs; on its next start the gap fill catches up.
+- **Reorgs.** Not handled: `confirmed` blocks are not expected to roll back, and the `(signature, ix)` key keeps any re-ingest safe.
 
 ## Env
 
@@ -60,6 +84,7 @@ From the repo root:
 
 Railway project `bondr`, environment `staging`, services `web` (public: https://web-staging-72bad.up.railway.app) and `worker` (no public domain; web reaches it at `http://${{worker.RAILWAY_PRIVATE_DOMAIN}}:${{worker.PORT}}`). Build, start, pre-deploy (web runs `node packages/core/src/migrate.ts`) and healthchecks live in the service settings, not in a file: Railway no longer reads railway.json for new services. Both run in US East, next to Neon.
 
-- Redeploy from the local checkout, worker first: `railway up --service worker --environment staging --detach`, then the same with `--service web`. `.railwayignore` keeps `.planning` out of the upload.
+- Redeploy from the local checkout, worker first: `railway up --service worker --environment staging --detach`, then the same with `--service web`. When a migration is new, deploy web first: its pre-deploy migrates, and the worker's backfill and indexer need the new tables. `.railwayignore` keeps `.planning` out of the upload.
 - Set a secret: `printf %s "$V" | railway variable set NAME --stdin --service worker --environment staging --skip-deploys`. One name per call. The seed and the Helius key go on the worker only; web refuses to boot holding them.
 - Deleting a variable does not redeploy: run `railway service redeploy --service <name> --environment staging --yes`.
+- Staging coins are all devnet test coins. The lists show every coins row and filter none of them (RESEARCH Open Question 4).

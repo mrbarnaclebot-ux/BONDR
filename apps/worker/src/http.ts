@@ -35,6 +35,8 @@ export const fail = (body: ApiError): Fail => new Fail(STATUS[body.error] ?? 500
 
 export type Handler = (body: unknown) => Promise<unknown>;
 export type Routes = Record<string, Handler>; // keyed "METHOD /path"
+// A long-lived response the handler writes itself (GET /events); same bearer check as Routes.
+export type Streams = Record<string, (req: IncomingMessage, res: ServerResponse) => void>;
 
 // Code Example 4: timingSafeEqual needs equal lengths, and the length check leaks only the length.
 export function authorized(header: string | undefined, token: string): boolean {
@@ -69,11 +71,18 @@ function send(res: ServerResponse, status: number, body: unknown): void {
   res.end(text);
 }
 
-async function handle(routes: Routes, token: string, req: IncomingMessage, res: ServerResponse) {
+async function handle(
+  routes: Routes,
+  streams: Streams,
+  token: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+) {
   const key = `${req.method} ${new URL(req.url ?? "/", "http://worker").pathname}`;
   try {
     if (key === "GET /healthz") return send(res, 200, { ok: true });
     if (!authorized(req.headers.authorization, token)) return send(res, 401, { error: "unauthorized" });
+    if (streams[key]) return streams[key](req, res);
     const route = routes[key];
     if (!route) return send(res, 404, { error: "not_found" });
     const body = req.method === "POST" ? await readJson(req) : undefined;
@@ -86,8 +95,8 @@ async function handle(routes: Routes, token: string, req: IncomingMessage, res: 
 }
 
 // No host argument: Node binds dual-stack ::, which Railway private networking needs.
-export function start(routes: Routes, token: string, port?: number): Server {
-  const server = createServer((req, res) => void handle(routes, token, req, res));
+export function start(routes: Routes, token: string, port?: number, streams: Streams = {}): Server {
+  const server = createServer((req, res) => void handle(routes, streams, token, req, res));
   server.listen(port ?? Number(process.env.WORKER_PORT || process.env.PORT || 8080));
   return server;
 }

@@ -1,17 +1,14 @@
-import type { LaunchView, Links } from "@bondr/core/api";
+import type { LaunchView, Links, Venue } from "@bondr/core/api";
 import type { ReactNode } from "react";
 import { age } from "@/lib/format";
-import { ipfsUri } from "@/lib/pinata";
+import { imageUrl } from "@/lib/pinata";
+import { VenueTag } from "./coin-live";
 import { CopyChip } from "./copy-chip";
 
-// The gateway the on-chain URI uses (pinata.ts). A CSS background, not
+// The coin image is the gateway the on-chain URI uses (pinata.ts imageUrl). A CSS background, not
 // next/image: a failed load (ipfs.io answers 429 under load) leaves the surface block instead of a broken
 // image glyph, and each browser fetches it, not one server IP for every visitor.
 // ponytail: unoptimized; route through next/image once a dedicated gateway is set (Phase 3 lists).
-function imageUrl(cid: string | null): string | null {
-  if (!cid || !/^[A-Za-z0-9]+$/.test(cid)) return null;
-  return ipfsUri(cid);
-}
 
 // Links were normalized to https at pin time (rules.ts); anything else is dropped here, not rendered.
 type MetaLink = { href: string; text: string; label?: string };
@@ -25,14 +22,11 @@ function linkList(symbol: string, links: Links): MetaLink[] {
   return out.filter((l) => l.href.startsWith("https://"));
 }
 
-function Meta({ v }: { v: LaunchView }) {
+function Meta({ v, venue }: { v: LaunchView; venue: Venue }) {
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px] text-muted-foreground">
       <CopyChip mint={v.mint} />
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-mint/40 bg-mint-wash px-2 py-1 text-xs font-semibold tracking-[0.05em] text-mint uppercase">
-        <span aria-hidden="true" className="size-[7px] animate-live rounded-full bg-current" />
-        On curve
-      </span>
+      <VenueTag venue={venue} />
       <time dateTime={v.createdAt}>{age(v.createdAt)} old</time>
       {linkList(v.symbol, v.links).map((l) => (
         <a
@@ -50,8 +44,13 @@ function Meta({ v }: { v: LaunchView }) {
   );
 }
 
-/** Token page identity bar: avatar bleed, name, symbol and meta row; `children` is the proof on the right. */
-export function CoinIdentity({ v, children }: { v: LaunchView; children: ReactNode }) {
+type Props = { v: LaunchView; venue?: Venue; stats?: ReactNode; children: ReactNode };
+
+/**
+ * Token page identity bar: avatar bleed, name, symbol, meta row with the venue tag ("curve" until the coin is
+ * indexed) and the stats row; `children` is the proof on the right.
+ */
+export function CoinIdentity({ v, venue = "curve", stats, children }: Props) {
   const src = imageUrl(v.imageCid);
   const bg = src ? { backgroundImage: `url("${src}")` } : undefined;
   return (
@@ -73,7 +72,8 @@ export function CoinIdentity({ v, children }: { v: LaunchView; children: ReactNo
           <h1 className="display text-[28px] [overflow-wrap:anywhere] md:text-[44px]">
             {v.name} <span className="text-[0.6em] text-muted-foreground">{v.symbol}</span>
           </h1>
-          <Meta v={v} />
+          <Meta v={v} venue={venue} />
+          {stats}
         </div>
       </div>
       {children}

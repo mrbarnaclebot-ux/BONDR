@@ -37,3 +37,69 @@ test("completeEvents finds exactly one CompleteEvent for the forced-bonded child
   expect(events[0]?.mint).toBe(mint);
   expect(completeEvents(fixture("launch-20261008.json"))).toEqual([]);
 });
+
+// 03-02: every event carries its program and a running index (the trades (signature, ix) key).
+const childTrades = (name: string) => {
+  const { mint } = load(name);
+  return innerEvents(fixture(name)).filter((e) => e.name === "TradeEvent" && e.data.mint === mint);
+};
+
+test("curve-buy: one child buy paid in BONDR, with ix and program pump", () => {
+  const [t, ...rest] = childTrades("curve-buy.json");
+  expect(rest).toEqual([]);
+  expect(t?.program).toBe("pump");
+  expect(typeof t?.ix).toBe("number");
+  expect(t?.data.isBuy).toBe(true);
+  expect(BigInt(String(t?.data.quoteAmount))).toBeGreaterThan(0n);
+  expect(t?.data.solAmount).toBe("0");
+});
+
+test("multihop-buy: a BONDR TradeEvent and a child TradeEvent with distinct ix", () => {
+  const { mint } = load("multihop-buy.json");
+  const trades = innerEvents(fixture("multihop-buy.json")).filter((e) => e.name === "TradeEvent");
+  expect(trades.map((e) => e.data.mint)).toContain(mint);
+  expect(trades.some((e) => e.data.mint !== mint)).toBe(true);
+  expect(new Set(trades.map((e) => e.ix)).size).toBe(trades.length);
+});
+
+test("pool-buy and pool-sell: PumpSwap BuyEvent and SellEvent decoded from program amm", () => {
+  for (const [file, name] of [
+    ["pool-buy.json", "BuyEvent"],
+    ["pool-sell.json", "SellEvent"],
+  ] as const) {
+    const e = innerEvents(fixture(file)).find((x) => x.name === name);
+    expect(e?.program).toBe("amm");
+    expect(e?.data.pool).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+    expect(BigInt(String(e?.data.baseAmountOut ?? e?.data.baseAmountIn))).toBeGreaterThan(0n);
+    expect(BigInt(String(e?.data.quoteAmountIn ?? e?.data.quoteAmountOut))).toBeGreaterThan(0n);
+  }
+});
+
+test("create-pool: CreatePoolEvent with baseMint = the child", () => {
+  const { mint } = load("create-pool.json");
+  const e = innerEvents(fixture("create-pool.json")).find((x) => x.name === "CreatePoolEvent");
+  expect(e?.program).toBe("amm");
+  expect(e?.data.baseMint).toBe(mint);
+});
+
+test("complete: CompleteEvent and a decoded PostCompleteBuyEvent", () => {
+  const events = innerEvents(fixture("complete.json"));
+  expect(events.some((e) => e.name === "CompleteEvent")).toBe(true);
+  const post = events.find((e) => e.name === "PostCompleteBuyEvent");
+  expect(post?.program).toBe("pump");
+  expect(Object.keys(post?.data ?? {}).length).toBeGreaterThan(0);
+});
+
+test("ix is the running index of accepted events", () => {
+  expect(innerEvents(fixture("launch-burn.json")).map((e) => e.ix)).toEqual(
+    innerEvents(fixture("launch-burn.json")).map((_, i) => i),
+  );
+});
+
+test("forged authority on a pump or PumpSwap self-CPI yields no events", () => {
+  for (const file of ["curve-buy.json", "pool-buy.json"]) {
+    const tx = fixture(file);
+    for (const g of tx.meta?.innerInstructions ?? []) for (const ix of g.instructions) ix.accounts[0] = 0;
+    expect(innerEvents(tx)).toEqual([]);
+  }
+});

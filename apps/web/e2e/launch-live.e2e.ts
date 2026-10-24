@@ -5,6 +5,7 @@ import { createPublicKey, verify } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { current } from "./coin.ts";
+import { blockTime } from "./fixtures.ts";
 import {
   back,
   FACTS,
@@ -265,22 +266,3 @@ test.describe("devnet", () => {
     await expect(page.getByRole("link", { name: `Open ${symbol}` })).toHaveAttribute("href", `/coin/${mint}`);
   });
 });
-
-// The public devnet RPC, so the e2e process needs no Helius key; blockTime has 1 s resolution.
-async function blockTime(signature: string): Promise<number> {
-  for (let i = 0; i < 15; i++) {
-    const res = await fetch("https://api.devnet.solana.com", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTransaction",
-        params: [signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
-      }),
-    }).then((r) => r.json() as Promise<{ result?: { blockTime?: number } | null }>);
-    if (res.result?.blockTime) return res.result.blockTime;
-    await new Promise((done) => setTimeout(done, 1000));
-  }
-  throw new Error(`no blockTime for ${signature}`);
-}

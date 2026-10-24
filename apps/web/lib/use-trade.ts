@@ -110,13 +110,15 @@ export function useTrade(): Trade {
 }
 
 /** A positive amount in base units, or null: buys are SOL (9 decimals), sells the coin (6 decimals, pump). */
-export function toUnits(side: TradeSide, text: string): bigint | null {
+export function toUnits(side: TradeSide, raw: string): bigint | null {
+  // Thousands separators, as the sell hint "like 1,000" shows, and a bare ".5" (C-WR-08).
+  const text = raw.trim().replace(/,/g, "").replace(/^\./, "0.");
   let n: bigint | null = null;
   if (side === "buy") {
     const r = parseSol(text);
     n = r.ok ? r.value : null;
   } else {
-    const m = /^(\d+)(?:\.(\d{1,6}))?$/.exec(text.trim());
+    const m = /^(\d+)(?:\.(\d{1,6}))?$/.exec(text);
     if (m?.[1]) n = BigInt(m[1]) * 1_000_000n + BigInt((m[2] ?? "").padEnd(6, "0"));
   }
   return n && n > 0n ? n : null;

@@ -74,6 +74,8 @@ test.describe("trade panel", () => {
     await expect(chip(page, coin.symbol, "1 SOL")).toHaveAttribute("aria-pressed", "false");
     await input.fill("abc");
     await expect(trade.getByText("Enter an amount in SOL, like 0.5.")).toBeVisible();
+    await input.fill(".5"); // C-WR-08
+    await expect(trade.getByText("Enter an amount in SOL, like 0.5.")).toHaveCount(0);
   });
 
   test("sell 100% is the raw balance", async ({ page }) => {
@@ -87,6 +89,11 @@ test.describe("trade panel", () => {
     await expect
       .poll(() => (calls.quote.at(-1) as { amount?: string } | undefined)?.amount)
       .toBe(BALANCE.tokens);
+    // The error hint's own "1,000" parses (C-WR-08).
+    await trade.getByRole("textbox", { name: "You sell" }).fill("1,000");
+    await expect
+      .poll(() => (calls.quote.at(-1) as { amount?: string } | undefined)?.amount)
+      .toBe("1000000000");
   });
 
   test("slippage persists", async ({ page }) => {

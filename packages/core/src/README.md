@@ -17,6 +17,8 @@ The shared chain library. Phase 1 spike scripts call it, and Phase 2 apps import
 - `trade.ts`: v3 curve trades `buyExactIn`, `buyExactOut`, `sellExactIn`, each with the idempotent ATAs it needs; PumpSwap v2 `poolBuy` / `poolSell`, `poolState` (the one pool state fetch, pinned buyback wallet) and `poolBaseFor` (base out for a quote, fees included).
 - `collect.ts`: `collectIxs` (W's quote ATA, sweep, collect_creator_fee_v2) and `splitIxs` (10% to the treasury).
 - `route.ts`: `routeBuy` / `routeSell`: multi_hop_swap through the SDK route resolver, simulated min out, and the venue of each hop (curve or pool).
+- `quote.ts`: `routeQuote`, the wallet-free route quote: the SDK's `multiHopSwapQuote` with `curveHop` (pump v3 math charging only the fees the hop's legs name) for curve hops, the masked per-hop fee breakdown in SOL, price impact and the slippage floor; `curveRates` reads a curve's live rates. Worker-only: it loads pump.ts.
+- `quote.test.ts`: both hops of the devnet multihop fixtures to the base unit, the fee masks for both sides and all four venue pairs, impact, floor and the supply cap.
 - `sharing.ts`: `finalizeIxs` (sweep, config, the one 80/20 update), `updateIxs`, `readSharing`, `distributeIxs` (the SDK's sweeps, consolidation and distribute_creator_fees_v2, order untouched).
 - `curve.ts`: `readCurve` and `costToComplete` (SDK v3 quote for the rest of a curve).
 - `bond.ts`: `forcedBondIxs` (simulated buy then BurnChecked), `exactBondIxs`, `migrateIxs`, `poolBuyBurnIxs`, `poolBaseOut`.

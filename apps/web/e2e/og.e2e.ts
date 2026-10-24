@@ -25,8 +25,8 @@ test.afterAll(async () => {
   }
 });
 
-/** A landed insta-burn launch on a fresh fake mint with no image (the letter fallback), removed in afterAll. */
-async function landed(): Promise<string> {
+/** A landed insta-burn launch on a fresh fake mint, with no image by default (the letter fallback). */
+async function landed(cid: string | null = null): Promise<string> {
   const mint = fakeMint();
   fixtures.push(mint);
   // Not a seeded "E2E" coin's wallet: dropCoin deletes that wallet, and this row would block it.
@@ -34,9 +34,10 @@ async function landed(): Promise<string> {
     where name not like 'E2E %' limit 1`;
   const idx = -(2n ** 61n) - BigInt(randomInt(1_000_000));
   await db()`insert into vanity_mints (idx, pubkey, used_at) values (${idx.toString()}, ${mint}, now())`;
-  await db()`insert into launches (id, wallet, mint, w, state, name, symbol, links, uri, sol_in, exit, signature)
+  await db()`insert into launches (id, wallet, mint, w, state, name, symbol, links, uri, image_cid, sol_in, exit,
+      signature)
     values (${randomBytes(16).toString("hex")}, ${wallet}, ${mint}, 'e2e', 'landed', 'BONDR e2e card', 'BCARD',
-      ${db().json({})}, 'https://ipfs.io/ipfs/x', 2500000, 'burn', ${randomBytes(48).toString("hex")})`;
+      ${db().json({})}, 'https://ipfs.io/ipfs/x', ${cid}, 2500000, 'burn', ${randomBytes(48).toString("hex")})`;
   return mint;
 }
 
@@ -76,6 +77,16 @@ test("a landed coin's page carries its card, served as an immutable 1200x630 PNG
   expect(await meta(page, "og:image:alt")).toBe(`${name} (${symbol}) on BONDR. Dev holds 0 launch supply.`);
   const cache = await png(request, path(image));
   expect(cache).toContain("immutable");
+});
+
+test("a coin whose image did not embed gets a short cache, so the crawler retries it", async ({
+  request,
+}) => {
+  test.skip(!!STAGING, "seeds a fixture");
+  const mint = await landed(`bafy${randomBytes(20).toString("hex")}`); // a CID no gateway has
+  const cache = await png(request, `/coin/${mint}/opengraph-image/card`);
+  expect(cache).toContain("max-age=300");
+  expect(cache).not.toContain("immutable");
 });
 
 test("an unknown mint's card is the site card with a 5 minute cache", async ({ request }) => {

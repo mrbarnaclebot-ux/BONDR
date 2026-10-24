@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 4 context gathered
-last_updated: "2026-10-24T07:36:02.332Z"
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-10-24T10:37:03.236Z"
 last_activity: 2026-10-24
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 43
-  completed_plans: 43
+  total_plans: 56
+  completed_plans: 44
   percent: 43
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** A holder can verify on the token page that the dev holds no launch supply, and see that pre-bond fees went to forcing the bond and burning supply, never to the dev.
-**Current focus:** Phase 3 — Indexer, Lists and Token Page
+**Current focus:** Phase 4 — Trading
 
 ## Current Position
 
-Phase: 3 (Indexer, Lists and Token Page) — EXECUTING
-Plan: 15 of 15
-Status: Phase complete — ready for verification
+Phase: 4 (Trading) — EXECUTING
+Plan: 2 of 13
+Status: Executing; 04-01 complete
 Last activity: 2026-10-24
 
-Progress: [██████████] 100%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
@@ -88,6 +88,7 @@ Progress: [██████████] 100%
 | Phase 03 P12 | 27min | 2 tasks | 11 files |
 | Phase 03 P13 | 15min | 2 tasks | 15 files |
 | Phase 03 P14 | 35min | 2 tasks | 13 files |
+| Phase 04 P01 | 12 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-14: chart attributionLogo off; the footer "Charts by TradingView" link meets the license link requirement
 - [Phase 03]: 03-14: header Launch link stays an icon with the accessible name below 360px (label does not fit at 320)
 - [Phase 03]: 03-14: Top and Oldest pick up a new launch on reload or resync catch-up; Latest stays live (D-14)
+- [Phase 04]: 04-01: price impact is 1 - out/spotOut per hop in floats (reserveIn/(reserveIn+netIn), curve buys capped at real tokens), so tiny trades read about 0
+- [Phase 04]: 04-01: hop fee SOL is x*total/(10000+total) on a buy input and x*total/(10000-total) on a sell output; coin hop fees valued at BONDR spot
 
 ### Pending Todos
 
@@ -223,6 +226,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T07:36:02.321Z
+Last session: 2026-10-24T10:36:49.617Z
 Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-trading/04-CONTEXT.md
+Resume file: None

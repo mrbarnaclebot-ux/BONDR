@@ -6,6 +6,7 @@ import { costToComplete, readCurve } from "@bondr/core/curve";
 import { BN, OnlinePumpSdk } from "@bondr/core/pump";
 import { type Route, routeBuy, routeSell } from "@bondr/core/route";
 import { budget, fetchMeta, sendTx } from "@bondr/core/send";
+import { lamportDelta, tokenDelta } from "@bondr/core/trade";
 import { getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
 import { type ConfirmedTransactionMeta, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { fundSol, paceMs } from "../fund.ts";
@@ -18,19 +19,6 @@ const TRADER_FLOAT = 0.02 * LAMPORTS_PER_SOL;
 type Online = InstanceType<typeof OnlinePumpSdk>;
 type Leg = { id: string; step: string; route: Route; amountIn: BN };
 type Hop = { ctx: Ctx; online: Online; Q: PublicKey; C: PublicKey; prefix: string; label: string };
-
-export function tokenDelta(meta: ConfirmedTransactionMeta, mint: PublicKey, owner: PublicKey): bigint {
-  const pick = (list: ConfirmedTransactionMeta["preTokenBalances"]) =>
-    BigInt(
-      list?.find((b) => b.mint === mint.toBase58() && b.owner === owner.toBase58())?.uiTokenAmount.amount ??
-        "0",
-    );
-  return pick(meta.postTokenBalances) - pick(meta.preTokenBalances);
-}
-
-// The trader is the fee payer (account 0), so adding the fee back leaves what the sell paid out.
-const lamportDelta = (meta: ConfirmedTransactionMeta): bigint =>
-  BigInt(meta.postBalances[0] - meta.preBalances[0] + meta.fee);
 
 // Pitfall 1: a route that completed Q would block every child create (6107) before the plan wants it.
 // A migrated Q trades on its pool, so the guard only applies while Q is on its curve.

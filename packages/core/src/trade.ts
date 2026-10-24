@@ -7,7 +7,7 @@ import {
   TOKEN_2022_PROGRAM_ID as T22,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import type { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import type { ConfirmedTransactionMeta, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import {
   type BN,
   buyQuoteInput,
@@ -129,3 +129,17 @@ export async function poolSell(o: Pool & { baseIn: BN; minQuoteOut: BN }): Promi
   const sell = await PUMP_AMM_SDK.sellV2Instructions(state, o.baseIn, o.minQuoteOut);
   return [buybackAtaIx(o.user, o.quoteMint, buyback), ...sell];
 }
+
+// Landed amounts read from a tx meta, so a result shows what the trader got, not what the simulation promised.
+export function tokenDelta(meta: ConfirmedTransactionMeta, mint: PublicKey, owner: PublicKey): bigint {
+  const pick = (list: ConfirmedTransactionMeta["preTokenBalances"]) =>
+    BigInt(
+      list?.find((b) => b.mint === mint.toBase58() && b.owner === owner.toBase58())?.uiTokenAmount.amount ??
+        "0",
+    );
+  return pick(meta.postTokenBalances) - pick(meta.preTokenBalances);
+}
+
+// The trader is the fee payer (account 0), so adding the fee back leaves what the sell paid out.
+export const lamportDelta = (meta: ConfirmedTransactionMeta): bigint =>
+  BigInt(meta.postBalances[0] - meta.preBalances[0] + meta.fee);

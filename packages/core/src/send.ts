@@ -198,7 +198,13 @@ async function unseen(conn: Connection, sig: string, lastValidBlockHeight: numbe
   }
 }
 
-async function settle(conn: Connection, sig: string, bytes: number, expectFail: boolean, bh: BlockhashInfo) {
+export async function settle(
+  conn: Connection,
+  sig: string,
+  bytes: number,
+  expectFail: boolean,
+  bh: BlockhashInfo,
+) {
   const lost = await unseen(conn, sig, bh.lastValidBlockHeight);
   if (lost) return result("unknown", { sig, bytes, err: `landed status unknown: ${lost}` });
   const meta = await fetchMeta(conn, sig);

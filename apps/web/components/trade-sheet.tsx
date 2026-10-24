@@ -23,7 +23,7 @@ const WIDE = "(min-width: 1100px)";
 /** The sticky Buy / Sell bar and the sheet that hosts the trade panel; both share useTrade with the column. */
 export function TradeSheet() {
   const t = useTrade();
-  const { setSide, setVisible } = t;
+  const { setSide, setVisible, clearResult } = t;
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -40,9 +40,10 @@ export function TradeSheet() {
     return () => {
       d.close();
       setVisible(false);
+      clearResult(); // a result lasts until the sheet closes (UI-SPEC Results)
       opener.current?.focus();
     };
-  }, [open, setVisible]);
+  }, [open, setVisible, clearResult]);
 
   // Crossing up to the wide layout closes the sheet; the column panel shows the same state.
   useEffect(() => {

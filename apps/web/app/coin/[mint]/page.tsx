@@ -109,7 +109,7 @@ export default async function CoinPage({ params }: Props) {
     // One provider, so one EventSource serves the venue tag, stats, bond panel and feed (D-18); one trade state
     // serves every trade placement.
     <CoinLiveProvider mint={v.mint} initial={coin} last={feed.head}>
-      <TradeProvider mint={v.mint} symbol={v.symbol}>
+      <TradeProvider mint={v.mint} symbol={v.symbol} net={net}>
         <div className="overflow-x-clip">
           <div className="mx-auto grid w-full max-w-[1440px] gap-4 px-(--gutter) pb-12">
             <CoinIdentity v={v} venue={coin?.venue} stats={<TokenStats />}>

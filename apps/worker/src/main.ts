@@ -19,6 +19,7 @@ import { resumeLaunches } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
 import { backoff, startStream } from "./stream.ts";
 import { submit } from "./submit.ts";
+import { quoteTrade, tradeBalance } from "./trade-quote.ts";
 
 const failed = (what: string) => (e: unknown) =>
   console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
@@ -46,6 +47,7 @@ async function main() {
   const conn = await connect(env.net);
   const ctx: Ctx = { conn, online: new OnlinePumpSdk(conn), Q: env.quoteMint, priorityFee: env.priorityFee };
   const pctx: PrepareCtx = { ...ctx, env };
+  const tctx = { ...ctx, net: env.net };
   const server = start(
     {
       "GET /status": () => liveStatus(ctx),
@@ -53,6 +55,8 @@ async function main() {
       "POST /prepare": (body) => prepare(pctx, body),
       "POST /submit": (body) => submit(pctx, body),
       "POST /kill-switch": (body) => setSwitch(body),
+      "POST /trade/quote": (body) => quoteTrade(tctx, body),
+      "POST /trade/balance": (body) => tradeBalance(ctx, body),
       // OPS-01 check: the 500 path logs this through redact and Sentry must show [addr], not the address.
       "POST /sentry-test": async () => {
         throw new Error(`sentry test from worker: wallet ${SAMPLE_ADDR}`);

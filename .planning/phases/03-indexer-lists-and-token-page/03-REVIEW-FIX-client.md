@@ -44,7 +44,7 @@ server-side change outside this fixer's files. Fixed info items: C-IN-01, C-IN-0
 ### C-WR-02: trades between the cached token page render and the first stream connect
 
 - **Fixed, chart half (a139993):** `useDrawn` buffers live trades that land before the chart library and the candles are ready, and replays them through `liveBar` on the first draw. A `ponytail:` note names the edge case: a buffered trade the candle read already counted adds its volume to that bar twice.
-- **Skipped, feed half:** the first EventSource can't send a `Last-Event-ID` header. Opening `/api/live?mint=…&last=<id>` needs `apps/web/app/api/live/route.ts` to read a `last` query param as a fallback for the header. That file belongs to the server fixer. Once it does, the client side is two lines:
+- **Fixed later by the orchestrator, feed half:** `/api/live` now takes `last` as a fallback for Last-Event-ID; `page.tsx` takes `hub.head()` before its kept read and the first EventSource sends it, so the hub replays trades that landed after the render. Originally skipped: the first EventSource can't send a `Last-Event-ID` header. Opening `/api/live?mint=…&last=<id>` needs `apps/web/app/api/live/route.ts` to read a `last` query param as a fallback for the header. That file belongs to the server fixer. Once it does, the client side is two lines:
   - `page.tsx` captures `hub.head()` inside its `kept` read and passes it down.
   - `use-live.ts` appends it to the first URL.
 

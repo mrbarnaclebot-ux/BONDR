@@ -6,6 +6,8 @@ type Data<T extends LiveEvent["type"]> = Extract<LiveEvent, { type: T }>["data"]
 
 export type LiveHandlers = {
   mint?: string;
+  /** The hub id the page was rendered at; the first connect replays what landed after it. */
+  last?: string | null;
   onTrade?(d: Data<"trade">): void;
   onLaunch?(d: Data<"launch">): void;
   onBond?(d: Data<"bond">): void;
@@ -58,7 +60,9 @@ export function useLive(handlers: LiveHandlers): LiveState {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let reopened = false;
     const open = () => {
-      es = new EventSource(mint ? `/api/live?mint=${encodeURIComponent(mint)}` : "/api/live");
+      const q = new URLSearchParams(mint ? { mint } : {});
+      if (ref.current.last && !reopened) q.set("last", ref.current.last);
+      es = new EventSource(`/api/live${q.size ? `?${q}` : ""}`);
       es.onopen = () => {
         setState("live");
         if (reopened) ref.current.onResync?.(); // a new EventSource has no Last-Event-ID, so no replay

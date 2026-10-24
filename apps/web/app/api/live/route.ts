@@ -63,13 +63,16 @@ function stream(ip: string, signal: AbortSignal, mint?: string, lastId?: string)
 }
 
 export function GET(req: Request): Response {
-  const mint = new URL(req.url).searchParams.get("mint") ?? undefined;
+  const q = new URL(req.url).searchParams;
+  const mint = q.get("mint") ?? undefined;
   if (mint !== undefined && !BASE58_KEY.test(mint)) return refuse(400, "invalid_input");
+  // A first EventSource can't send Last-Event-ID, so the page passes the hub id it rendered at as `last`.
+  const lastId = req.headers.get("last-event-id") ?? q.get("last") ?? undefined;
+  if (lastId && lastId.length > 64) return refuse(400, "invalid_input");
   const ip = clientIp(req) ?? "unknown";
   const n = open.get(ip) ?? 0;
   if (n >= MAX_PER_IP) return refuse(429, "rate_limited");
   open.set(ip, n + 1);
-  const lastId = req.headers.get("last-event-id") ?? undefined;
   return new Response(stream(ip, req.signal, mint, lastId), {
     headers: {
       "content-type": "text/event-stream",

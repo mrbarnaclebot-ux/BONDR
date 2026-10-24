@@ -26,7 +26,12 @@ const stamp = (c: CoinLive) => (c.lastTradeAt ? Date.parse(c.lastTradeAt) : 0);
 
 type Page = { trades: TradeRow[]; more: boolean; coin?: CoinRow | null };
 
-export function CoinLiveProvider(props: { mint: string; initial: LiveCoin | null; children: ReactNode }) {
+export function CoinLiveProvider(props: {
+  mint: string;
+  initial: LiveCoin | null;
+  last: string | null;
+  children: ReactNode;
+}) {
   const { mint } = props;
   const [coin, setCoin] = useState(props.initial);
   const [flash, setFlash] = useState<Ctx["flash"]>(null);
@@ -36,6 +41,7 @@ export function CoinLiveProvider(props: { mint: string; initial: LiveCoin | null
   };
   const state = useLive({
     mint,
+    last: props.last,
     onTrade: ({ trade, coin: c }) => {
       const side: Side = trade.side === "buy" ? "buy" : "sell";
       setCoin((p) => ({ bondSig: null, bondedAt: null, ...p, ...c }));

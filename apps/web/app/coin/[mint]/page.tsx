@@ -12,6 +12,7 @@ import { TradeFeed } from "@/components/token-trades";
 import { coinByMint } from "@/lib/coins";
 import { chartInterval, compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
+import { hub } from "@/lib/live-hub";
 import { tradesPage } from "@/lib/trades";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +47,11 @@ function kept<T>(read: (mint: string) => Promise<T>) {
   };
 }
 
-const firstPage = kept((mint) => tradesPage(mint));
+// The hub id is taken before the read, so the stream replays anything that lands after it.
+const firstPage = kept(async (mint) => {
+  const head = hub.head();
+  return { ...(await tradesPage(mint)), head };
+});
 const coinRow = kept(coinByMint);
 
 /** UI-SPEC token page proof sentence; the token count is left out until the facts are written. */
@@ -87,7 +92,7 @@ export default async function CoinPage({ params }: Props) {
   const [feed, coin] = await Promise.all([firstPage(v.mint), coinRow(v.mint)]);
   return (
     // One provider, so one EventSource serves the venue tag, stats, bond panel and feed (D-18).
-    <CoinLiveProvider mint={v.mint} initial={coin}>
+    <CoinLiveProvider mint={v.mint} initial={coin} last={feed.head}>
       <div className="overflow-x-clip">
         <div className="mx-auto grid w-full max-w-[1440px] gap-4 px-(--gutter) pb-12">
           <CoinIdentity v={v} venue={coin?.venue} stats={<TokenStats />}>

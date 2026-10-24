@@ -24,9 +24,11 @@ function parts(err: unknown, logs: readonly string[] | null) {
   return { code, key: `${raisedBy(logs)}:${code}`, text };
 }
 
-// Token program custom 1 is its InsufficientFunds; System custom 1 logs "insufficient lamports".
-const lowFunds = (p: ReturnType<typeof parts>): boolean =>
-  /insufficient (lamports|funds)|InsufficientFunds|AccountNotFound/i.test(p.text) || p.code === 1;
+// Token program custom 1 is its InsufficientFunds; System custom 1 logs "insufficient lamports". A fee payer
+// with no SOL fails preflight with "...found no record of a prior credit" (AccountNotFound).
+const LOW_FUNDS =
+  /insufficient (lamports|funds)|InsufficientFunds|AccountNotFound|no record of a prior credit/i;
+const lowFunds = (p: ReturnType<typeof parts>): boolean => LOW_FUNDS.test(p.text) || p.code === 1;
 
 export function tradeError(err: unknown, logs: readonly string[] | null): ApiError {
   const p = parts(err, logs);

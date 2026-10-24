@@ -50,6 +50,9 @@ export type SendResult = {
   cu?: number;
   err?: string;
   code?: number;
+  // A preflight rejection's message and simulation logs, unsliced and unredacted, for the error map only.
+  // Worker-side: never sent to web or logged (S-WR-02).
+  preflight?: readonly string[];
 };
 
 // 1000 micro-lamports is enough on devnet and the fork. A contended mainnet completion (the forced bond
@@ -222,13 +225,15 @@ export const preflightRejected = (e: unknown): boolean =>
   e instanceof SendTransactionError && Array.isArray(e.transactionError.logs);
 
 function thrown(e: unknown, bytes: number, sig: string, lastValidBlockHeight: number): SendResult {
-  const logs = fromLogs(e instanceof SendTransactionError ? e.transactionError.logs : undefined);
+  const te = e instanceof SendTransactionError ? e.transactionError : undefined;
+  const logs = fromLogs(te?.logs);
   const name = e instanceof Error ? e.name : "Error";
   const text = e instanceof Error ? e.message : String(e);
   const err = redact(`${logs.name ?? name}: ${text}`).slice(0, 400);
   const status = statusOf({ sent: !preflightRejected(e), expectFail: false });
   const seen = status === "unknown" ? { sig, lastValidBlockHeight } : {};
-  return result(status, { ...seen, bytes, err, code: logs.code });
+  const preflight = te?.logs && { preflight: [te.message, ...te.logs] };
+  return result(status, { ...seen, ...preflight, bytes, err, code: logs.code });
 }
 
 type BlockhashInfo = { blockhash: string; lastValidBlockHeight: number };

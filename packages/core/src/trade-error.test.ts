@@ -33,6 +33,9 @@ test("low funds are insufficient_balance", () => {
   expect(tradeError(custom(1, 1), lamports)).toEqual({ error: "insufficient_balance" });
   expect(tradeError("AccountNotFound", null)).toEqual({ error: "insufficient_balance" });
   expect(tradeError("InsufficientFundsForFee", [])).toEqual({ error: "insufficient_balance" });
+  const noCredit =
+    "Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.";
+  expect(tradeError(null, [noCredit])).toEqual({ error: "insufficient_balance" });
 });
 
 test("6107, 6005 and no tradable venue are paused awaiting_migration", () => {

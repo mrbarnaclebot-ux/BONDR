@@ -82,8 +82,9 @@ async function send(ctx: SubmitCtx, e: TradeEntry, wire: Uint8Array): Promise<Tr
   updateTrade(e.id, { state: "signed", signature });
   const o = { sig: signature, bytes: wire.length, blockhash: e.blockhash, paceMs: SEND_PACE_MS };
   const r = await broadcast(ctx.conn, wire, { ...o, lastValidBlockHeight: e.lastValidBlockHeight });
-  // Preflight rejected it, so nothing went out.
-  if (r?.status === "failed") return finish(e, textError(r.err ?? "").error);
+  // Preflight rejected it, so nothing went out. Mapped from its own message and logs, not the cut err text.
+  if (r?.status === "failed")
+    return finish(e, (r.preflight ? tradeError(null, r.preflight) : textError(r.err ?? "")).error);
   // Accepted, or a throw after which it may have gone out: both are settled by status, never resent.
   const sent = updateTrade(e.id, { state: "sent" });
   void settleTrade(ctx, e, signature, wire.length).catch(logged(e.id));

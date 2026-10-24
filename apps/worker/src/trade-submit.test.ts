@@ -147,6 +147,35 @@ describe("submitTrade sends once (D-06)", () => {
     expect(r).toMatchObject({ state: "failed", code: "slippage" });
     expect(m.settle).not.toHaveBeenCalled();
   });
+
+  test("a preflight rejection maps from its message and logs, not the cut err text (S-WR-02)", async () => {
+    const reject = (preflight: string[]) =>
+      m.broadcast.mockResolvedValue({
+        ok: false,
+        status: "failed",
+        bytes: 1,
+        err: "x".repeat(400),
+        preflight,
+      });
+    const cases: [string[], string][] = [
+      [
+        ["Transaction simulation failed: Attempt to debit an account but found no record of a prior credit."],
+        "insufficient_balance",
+      ],
+      [
+        [
+          "Transaction simulation failed: Error processing Instruction 2: custom program error: 0x1773",
+          `Program ${PUMP} failed: custom program error: 0x1773`,
+        ],
+        "slippage",
+      ],
+    ];
+    for (const [lines, code] of cases) {
+      reject(lines);
+      const { e, tx } = prepared();
+      expect(await submitTrade(ctx, body(e.id, signedBy(tx)))).toMatchObject({ state: "failed", code });
+    }
+  });
 });
 
 describe("settle in the background", () => {

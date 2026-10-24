@@ -34,10 +34,12 @@ async function landed(cid: string | null = null): Promise<string> {
     where name not like 'E2E %' limit 1`;
   const idx = -(2n ** 61n) - BigInt(randomInt(1_000_000));
   await db()`insert into vanity_mints (idx, pubkey, used_at) values (${idx.toString()}, ${mint}, now())`;
+  // A year back, so coin.e2e.ts's "newest landed launch" never picks this row while afterAll deletes it.
   await db()`insert into launches (id, wallet, mint, w, state, name, symbol, links, uri, image_cid, sol_in, exit,
-      signature)
+      signature, created_at)
     values (${randomBytes(16).toString("hex")}, ${wallet}, ${mint}, 'e2e', 'landed', 'BONDR e2e card', 'BCARD',
-      ${db().json({})}, 'https://ipfs.io/ipfs/x', ${cid}, 2500000, 'burn', ${randomBytes(48).toString("hex")})`;
+      ${db().json({})}, 'https://ipfs.io/ipfs/x', ${cid}, 2500000, 'burn', ${randomBytes(48).toString("hex")},
+      now() - interval '1 year')`;
   return mint;
 }
 

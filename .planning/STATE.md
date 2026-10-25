@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-15-PLAN.md
+stopped_at: Completed 06-19-PLAN.md
 last_updated: "2026-10-25T16:43:20.271Z"
-last_activity: 2026-10-25 -- Completed 06-15 (admin fork gate)
+last_activity: 2026-10-25 -- Completed 06-19 (moderation worker and core)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 84
+  completed_plans: 85
   percent: 71
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 16 of 26 (06-15 complete)
+Plan: 17 of 26 (06-19 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-15 (admin fork gate)
+Last activity: 2026-10-25 -- Completed 06-19 (moderation worker and core)
 
 Progress: [█████████░] 88%
 
@@ -121,6 +121,7 @@ Progress: [█████████░] 88%
 | Phase 06 P13 | 12 min | 2 tasks | 8 files |
 | Phase 06 P14 | 25 min | 2 tasks | 12 files |
 | Phase 06 P15 | 35 min | 1 tasks | 8 files |
+| Phase 06 P19 | 25 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -303,6 +304,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-14: AuditLog remounts on overview.loadedAt, so any reload drops older pages; AdminOverview gains net for Solscan links
 - [Phase 06]: 06-15: the fork admin stage drives simulateAction/executeAction with a one-coin engine stub (no Postgres), memoryAudit and ctx.key("sim", "admin"); it plays the indexer between actions (venue, finalize done)
 - [Phase 06]: 06-15: Retry forced bond on the fork runs as one tx (feesUnclaimed 0, feeBudget = TOP-UP) so simulated equals landed exactly; all five admin.* rows pass with 0 base units off
+- [Phase 06]: 06-19: moderation audits before the change, so block/unblock read isBlocked first; block still inserts on conflict do nothing returning as the race guard
+- [Phase 06]: 06-19: unhide/unblock of nothing answer no_match; an exact mint beats symbol matches; the route caps strings at 200 (400), reasons over 120 answer no_reason
+- [Phase 06]: 06-19: coinRows ANDs isNull(coins.hiddenAt); coinRow and the web admin W table query stay unfiltered; prepare refuses blocked wallets (403) inside the existing admission Promise.all
 
 ### Pending Todos
 
@@ -336,5 +340,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-10-25T16:43:20.266Z
-Stopped at: Completed 06-15-PLAN.md
+Stopped at: Completed 06-19-PLAN.md
 Resume file: None

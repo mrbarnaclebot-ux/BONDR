@@ -311,7 +311,7 @@ Plans:
 
 - [x] 06-14-PLAN.md - Kill switches panel and audit log panel with keyset paging
 - [x] 06-15-PLAN.md - Fork gate: retry forced bond, run migrate, burn W tokens, finalize split, distribute now through the money path
-- [ ] 06-19-PLAN.md - Moderation worker and core: hide and block with audit, hidden list filter, blocked launch refusal
+- [x] 06-19-PLAN.md - Moderation worker and core: hide and block with audit, hidden list filter, blocked launch refusal
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 15/26 | In Progress|  |
+| 6. Admin Dashboard | 16/26 | In Progress|  |
 | 7. Go-Live | 0/TBD | Not started | - |

@@ -8,7 +8,7 @@ import { CircleAlert } from "lucide-react";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { age, explorer, short } from "@/lib/format";
-import { type Copy, launchCopy, ledgerCopy } from "@/lib/ledger-copy";
+import { type Copy, known, launchCopy, ledgerCopy } from "@/lib/ledger-copy";
 import { addLedger } from "@/lib/live-list";
 import { useCoinLive } from "./coin-live";
 import { Totals } from "./ledger-totals";
@@ -90,7 +90,7 @@ function useLiveRows(mint: string, symbol: string, setPage: Dispatch<SetStateAct
     };
     const off = subscribe((e) => {
       if ("rows" in e) {
-        pending.push(...e.rows);
+        pending.push(...e.rows.filter(known));
         frame ||= requestAnimationFrame(flush);
         return;
       }

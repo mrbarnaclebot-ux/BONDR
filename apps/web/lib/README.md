@@ -17,7 +17,7 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `coins.test.ts`: windowed volume, 1h change from the last trade before the hour or the launch price, unknown mint, list orders with ties, paging and hero counts (Neon dev; skips without DATABASE_URL).
 - `ledger.ts`: server-only `ledgerPage(mint, before?)`, the Fee ledger's landed public rows (`state = 'landed'` and `PUBLIC_KINDS`, detail copied key by key) paged 20 at a time by a (landed ms, id) keyset, `parseLedgerCursor`, and `firstLedgerPage` (the resync read) kept 10 s per mint and hub head; the token page reads its first ledger page with its trades under one head.
 - `ledger.test.ts`: cursor parsing, internal and other-coin rows never returned, pages with no duplicate (Neon dev; skips without DATABASE_URL).
-- `ledger-copy.ts`: `COPY`, the tag, tone, description and amount cell of each public ledger kind, `ledgerCopy(row, symbol)` and `launchCopy` for the launch row; tested in `ledger-copy.test.ts`.
+- `ledger-copy.ts`: `COPY`, the tag, tone, description and amount cell of each public ledger kind, `ledgerCopy(row, symbol)`, `known` (drops a live row whose kind this build has no copy for) and `launchCopy` for the launch row; tested in `ledger-copy.test.ts`.
 - `trades.test.ts`: cursor parsing, and pages with no overlap and no gap down to the launch rows (Neon dev; skips without DATABASE_URL).
 - `format.test.ts`: the display formats.
 - `use-trade.ts`: `TradeProvider` and `useTrade()`, the trade panel's shared side, amount (as base units), slippage (localStorage `bondr:slippage`), the 2 s refresh with its 60 s pause, the session wallet's balances and phase, one state for every placement.

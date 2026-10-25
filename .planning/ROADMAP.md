@@ -266,7 +266,7 @@ Plans:
   4. Owner flips per-job kill switches (launches, forced bond, sweeps, finalize, buyback burn), hides a coin from lists, blocks a deployer from launching, and inspects any pasted signature's decoded instructions, error and explorer link
   5. Owner runs EVACUATE by typing the phrase and signing; all jobs pause and every W balance moves to the treasury
 
-**Plans:** 6/26 plans executed
+**Plans:** 7/26 plans executed
 
 Plans:
 
@@ -290,7 +290,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 06-07-PLAN.md - Five kill switches in worker memory and settings, job gates, last-run marks
+- [x] 06-07-PLAN.md - Five kill switches in worker memory and settings, job gates, last-run marks
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 6/26 | In Progress|  |
+| 6. Admin Dashboard | 7/26 | In Progress|  |
 | 7. Go-Live | 0/TBD | Not started | - |

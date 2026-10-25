@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-06-PLAN.md
-last_updated: "2026-10-25T14:11:41.998Z"
-last_activity: 2026-10-25 -- Completed 06-06 (fee-boot split, engine admin controls)
+stopped_at: Completed 06-07-PLAN.md
+last_updated: "2026-10-25T14:26:14.517Z"
+last_activity: 2026-10-25 -- Completed 06-07 (five kill switches, job gates, last-run marks)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 75
-  percent: 79
+  completed_plans: 76
+  percent: 71
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 7 of 26 (06-06 complete)
+Plan: 8 of 26 (06-07 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-06 (fee-boot split, engine admin controls)
+Last activity: 2026-10-25 -- Completed 06-07 (five kill switches, job gates, last-run marks)
 
-Progress: [████████░░] 79%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -112,6 +112,7 @@ Progress: [████████░░] 79%
 | Phase 06 P03 | 20 min | 3 tasks | 8 files |
 | Phase 06 P04 | 12 min | 2 tasks | 18 files |
 | Phase 06 P05 | 10 min | 2 tasks | 5 files |
+| Phase 06 P07 | 9 min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -268,6 +269,10 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-06: stuck counts per step since boot (STUCK_AT 3); a different step failing starts at 1, any landed result clears the coin
 - [Phase 06]: 06-06: Engine.exclusive(mint, fn, what?) takes an optional label so a failed admin retry counts against the automatic step; default label is admin
 - [Phase 06]: 06-06: engine jobs and the batch distribute and bonded jobs return their Landed so the queue sees failed or landed steps; stuck helpers live in fee-stuck.ts
+- [Phase 06]: 06-07: a fee job stamps its last-run mark only after its gate passes, so a paused job's last run goes stale
+- [Phase 06]: 06-07: liveStatus(fresh) re-reads the whole settings row through loadSwitches, so SQL-written switches reach fee jobs at the next prepare or submit
+- [Phase 06]: 06-07: bondedJob checks the forcedBond switch before its urgent collect (a paused pool burn sends nothing)
+- [Phase 06]: 06-07: POST /fee/release uses engine deps, so it obeys the finalize switch and manual hold; admin release must use admin deps
 
 ### Pending Todos
 
@@ -300,6 +305,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T14:11:41.992Z
-Stopped at: Completed 06-06-PLAN.md
+Last session: 2026-10-25T14:26:08.844Z
+Stopped at: Completed 06-07-PLAN.md
 Resume file: None

@@ -208,7 +208,8 @@ export const feeLedger = pgTable(
       "fee_ledger_window",
       sql`kind not in ('sweep_buyback','sweep_treasury') or window_index is not null`,
     ),
-    check("fee_ledger_platform", sql`(mint is null) = (kind = 'buyback_burn')`),
+    // A reconcile_diff names its mint, or none for the buyback wallet (D-21).
+    check("fee_ledger_platform", sql`kind = 'reconcile_diff' or (mint is null) = (kind = 'buyback_burn')`),
     uniqueIndex("fee_ledger_once")
       .on(t.mint, t.kind)
       .where(sql`${LIVE} and kind in ('forced_bond','pool_burn','finalize_config','finalize_update')`),

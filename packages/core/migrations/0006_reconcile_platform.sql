@@ -1,0 +1,2 @@
+ALTER TABLE "fee_ledger" DROP CONSTRAINT "fee_ledger_platform";--> statement-breakpoint
+ALTER TABLE "fee_ledger" ADD CONSTRAINT "fee_ledger_platform" CHECK (kind = 'reconcile_diff' or (mint is null) = (kind = 'buyback_burn'));

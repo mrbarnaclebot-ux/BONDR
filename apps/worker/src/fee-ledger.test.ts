@@ -146,4 +146,18 @@ describe.skipIf(!DB)("pgLedger", { timeout: 60_000 }, () => {
       expect([(await read()).finalize, (await read()).deployerBps]).toEqual(["done", 8000]);
     });
   });
+
+  test("implied sums landed rows per mint in one query; a buyback diff has no mint (0006)", async () => {
+    await rolledBack(async (l, read) => {
+      const mint = (await read()).mint;
+      await l.insertPending([{ kind: "collect", mint, amount: 1000n }], `i${mint}`, 10n);
+      await l.settle(`i${mint}`, "landed", { slot: 100n });
+      const [c] = await l.openCollects().then((x) => x.filter((e) => e.mint === mint));
+      await l.insertPending([{ kind: "split_treasury", mint, ref: c?.id, amount: 100n }], `j${mint}`, 10n);
+      await l.settle(`j${mint}`, "landed", { slot: 101n });
+      const i = await l.implied();
+      expect([i.byMint.get(mint), typeof i.buyback]).toEqual([900n, "bigint"]);
+      await l.diff(null, { implied: "0", chain: "5", diff: "5" }); // 23514 before 0006
+    });
+  });
 });

@@ -6,6 +6,7 @@ import { coins, type Db, db, feeLedger } from "@bondr/core/db";
 import { type LandedRow, type TotalColumn, type Totals, totalsFor } from "@bondr/core/fees";
 import { and, asc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
+import { type Implied, impliedOf, pgImplied } from "./fee-reconcile.ts";
 
 export type NewEntry = {
   kind: LedgerKind;
@@ -41,6 +42,7 @@ export type LedgerStore = {
   release(mint: string): Promise<void>; // held -> none; the held row stays as history
   markFinal(mint: string, deployerBps: number): Promise<void>; // done with no landed update (shares already locked)
   diff(mint: string | null, detail: Record<string, unknown>): Promise<void>;
+  implied(): Promise<Implied>; // ledger-implied BONDR per W and for the buyback (D-21)
 };
 
 const live = (s: LedgerState | null) => s === "pending" || s === "landed";
@@ -126,10 +128,11 @@ export function memoryLedger(): LedgerStore {
     release: async () => {},
     markFinal: async () => {},
     diff: (mint, detail) => internal("reconcile_diff", mint, detail),
+    implied: async () => impliedOf(all()),
   };
 }
 
-type Conn = Pick<Db, "select" | "insert" | "update" | "transaction">;
+type Conn = Pick<Db, "select" | "insert" | "update" | "transaction" | "execute">;
 type Row = typeof feeLedger.$inferSelect;
 
 const big = (s: string | null): bigint | undefined => (s === null ? undefined : BigInt(s));
@@ -283,5 +286,6 @@ export function pgLedger(dbFn: () => Conn = db): LedgerStore {
     async diff(mint, detail) {
       await dbFn().insert(feeLedger).values({ kind: "reconcile_diff", mint, detail });
     },
+    implied: () => pgImplied(dbFn()),
   };
 }

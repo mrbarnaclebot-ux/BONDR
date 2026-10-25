@@ -1,15 +1,25 @@
 // The engine's schedule, ready gate and per-coin queue with fake timers and fake deps. No RPC, no Postgres.
+
+import { costFromReserves } from "@bondr/core/curve";
+import { derive } from "@bondr/core/keys";
+import type { Parsed } from "@bondr/core/trades";
 import { Keypair } from "@solana/web3.js";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type CoinLoad, Engine } from "./fee-engine.ts";
+import type { WorkerEnv } from "./env.ts";
+import { type CoinLoad, Engine, startEngine, withCost } from "./fee-engine.ts";
 import { windowJob } from "./fee-prebond.ts";
 import type { FeeDeps } from "./fee-send.ts";
 
 vi.mock("./fee-prebond.ts", () => ({ windowJob: vi.fn(async () => []), splitJob: vi.fn() }));
+vi.mock("./trade-state.ts", () => ({ configs: async () => ({ global: "g", feeConfig: "fc" }) }));
+vi.mock("@bondr/core/curve", () => ({ costFromReserves: vi.fn(() => 123n) }));
 const run = vi.mocked(windowJob);
 
 const keys = new Map<string, Keypair>();
-const wOf = (mint: string) => keys.get(mint) ?? keys.set(mint, Keypair.generate()).get(mint)!;
+function wOf(mint: string): Keypair {
+  if (!keys.has(mint)) keys.set(mint, Keypair.generate());
+  return keys.get(mint) as Keypair;
+}
 const MINT = Keypair.generate().publicKey.toBase58();
 const row = (o: Partial<CoinLoad> = {}): CoinLoad => ({
   ...{ mint: MINT, w: wOf(o.mint ?? MINT).publicKey.toBase58(), launchSig: "sig", wallet: MINT },
@@ -143,4 +153,29 @@ test("a landed collect zeroes the bucket and adds to the budget in memory", () =
   const base = { state: "landed", signature: "s", lastValidBlockHeight: 1n, error: null, landedAt: null };
   e.landed(MINT, [{ ...base, id: 1, kind: "collect", mint: MINT, amount: 40n } as never]);
   expect(e.coins.get(MINT)).toMatchObject({ feesUnclaimed: 0n, feeBudget: 40n });
+});
+
+test("withCost prices every curve patch with reserves, W as creator, in any mode", async () => {
+  const seed = Buffer.alloc(32, 7);
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  await startEngine({} as never, { feeEngine: "off", seed, net: "devnet" } as WorkerEnv);
+  log.mockRestore();
+  const r = {
+    virtualTokenReserves: "1",
+    virtualQuoteReserves: "2",
+    realTokenReserves: "3",
+    realQuoteReserves: "4",
+  };
+  const parsed = { patches: [{ mint: MINT, ...r }, { mint: "B", venue: "complete", ...r }, { mint: "C" }] };
+  const Q = Keypair.generate().publicKey;
+  await withCost({} as never, Q, parsed as unknown as Parsed);
+  expect(parsed.patches.map((p) => (p as { costToComplete?: string }).costToComplete)).toEqual([
+    "123",
+    undefined,
+    undefined,
+  ]);
+  const [, rates, ids] = vi.mocked(costFromReserves).mock.calls[0] ?? [];
+  expect(rates).toEqual({ global: "g", feeConfig: "fc" });
+  expect(ids?.creator.toBase58()).toBe(derive(seed, "w", "devnet", MINT).publicKey.toBase58());
+  expect(ids).toMatchObject({ quoteMint: Q, creatorFeeBps: 0 });
 });

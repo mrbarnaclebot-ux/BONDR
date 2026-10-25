@@ -7,6 +7,7 @@ import type { AdminOverview } from "@/lib/admin-data";
 import { type Console, useConsole } from "@/lib/use-console";
 import { useHealth } from "@/lib/use-health";
 import { AuditLog } from "./admin-audit";
+import { Evacuate } from "./admin-evacuate";
 import { AdminHealth } from "./admin-health";
 import { AdminInspect } from "./admin-inspect";
 import { AdminModeration } from "./admin-moderation";
@@ -119,7 +120,7 @@ function Grid({ con, onUnauthorized, windowMs }: { con: Console; onUnauthorized(
         </div>
       </div>
       <AuditLog key={overview.loadedAt} overview={overview} busy={loading} />
-      {/* 06-23: <Evacuate /> */}
+      <Evacuate overview={overview} evacuate={poll.health?.evacuate} onChanged={con.reload} />
       {con.sim && <SimDialog {...con.sim} overview={overview} onClose={con.closeSim} />}
     </>
   );

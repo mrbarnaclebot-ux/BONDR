@@ -38,17 +38,26 @@ const unknown = (id: string, last: AdminIntentView | null): AdminIntentView => (
 /**
  * Polls the intent in worker memory (no database read, D-21) every 1.5 s, only after a user send, until it
  * settles. A lost intent (a worker restart) or 90 s with no answer is unknown: it may still land, so it is never
- * reported failed and never resent.
+ * reported failed and never resent. Each "sending" answer goes to `onView` (EVACUATE's progress line) and restarts
+ * the 90 s, so a run of many paced batches is not cut off while the worker keeps answering.
  */
-export async function pollIntent(id: string, signal: AbortSignal): Promise<Reply<AdminIntentView>> {
-  const start = Date.now();
+export async function pollIntent(
+  id: string,
+  signal: AbortSignal,
+  onView?: (v: AdminIntentView) => void,
+): Promise<Reply<AdminIntentView>> {
+  let start = Date.now();
   let last: AdminIntentView | null = null;
   while (!signal.aborted && Date.now() - start < DEADLINE_MS) {
     const r = await post<AdminIntentView>("intent", { id }, signal);
     if (!r.ok && r.status === 401) return r;
     if (!r.ok && r.status === 404) return { ok: true, body: unknown(id, last) };
     if (r.ok && r.body.state !== "sending") return r;
-    if (r.ok) last = r.body;
+    if (r.ok) {
+      last = r.body;
+      start = Date.now();
+      onView?.(r.body);
+    }
     await new Promise((done) => setTimeout(done, POLL_MS));
   }
   return { ok: true, body: unknown(id, last) };

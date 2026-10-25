@@ -1,10 +1,14 @@
 "use client";
 // UI-SPEC Top bar (D-10): the session line with a minute countdown (not a live region), Sign in again under 5
-// minutes and Sign out; split from admin-console.tsx to keep the shell under 200 lines.
+// minutes, Sign out and Refresh; split from admin-console.tsx to keep the shell under 150 lines.
+import { RefreshCw } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { clock } from "@/lib/admin-copy-health";
 import { cn } from "@/lib/cn";
 import { short } from "@/lib/format";
+import type { Console } from "@/lib/use-console";
 import { type AdminSessionView, SignInAgain, SignOut } from "./admin-signin";
+import { Button } from "./ui-button";
 
 /** Milliseconds to exp, re-read when the remaining time crosses a whole minute. Not a live region. */
 function useLeft(exp: number): number {
@@ -55,6 +59,30 @@ export function TopBar({ session, onRenew, onEnd, onSignedOut, children }: TopBa
         </div>
         {children}
       </div>
+    </div>
+  );
+}
+
+// UI-SPEC Refresh control: the one way a user reloads the Postgres panels. "Loaded" is local time, so it renders
+// after mount (the server's time zone would differ).
+export function Refresh({ con }: { con: Console }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const at = con.overview.loadedAt;
+  return (
+    <div className="grid gap-1 md:flex md:items-center md:gap-3">
+      <Button
+        className="w-full md:min-h-9 md:w-auto"
+        disabled={con.loading}
+        aria-busy={con.loading}
+        onClick={() => void con.refresh()}
+      >
+        <RefreshCw strokeWidth={1.5} aria-hidden="true" />
+        {con.loading ? "Refreshing…" : "Refresh"}
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        {!mounted ? "\u00a0" : at > 0 ? `Loaded ${clock(at, false)}` : "Not loaded"}
+      </span>
     </div>
   );
 }

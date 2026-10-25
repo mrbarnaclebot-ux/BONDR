@@ -2,24 +2,22 @@
 // The owner console shell (D-06, D-10, D-11, UI-SPEC Top bar and Layout): the session line with a minute
 // countdown, Refresh, Sign out, and the panel grid in the mockup order. Layout and mounts only: state lives in
 // use-console.ts. Any 401 from a panel swaps the console for the sign-in card.
-import { RefreshCw } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { clock } from "@/lib/admin-copy-health";
 import type { AdminOverview } from "@/lib/admin-data";
 import { type Console, useConsole } from "@/lib/use-console";
 import { useHealth } from "@/lib/use-health";
 import { AuditLog } from "./admin-audit";
 import { AdminHealth } from "./admin-health";
+import { AdminInspect } from "./admin-inspect";
 import { AdminModeration } from "./admin-moderation";
 import { type AdminSessionView, AdminSignIn, type SignInNotice } from "./admin-signin";
 import { SimDialog } from "./admin-sim";
 import { KillSwitches } from "./admin-switches";
 import { AdminTimeline } from "./admin-timeline";
-import { TopBar } from "./admin-topbar";
+import { Refresh, TopBar } from "./admin-topbar";
 import { AdminWallets } from "./admin-wallets";
 import { WTable } from "./admin-wtable";
 import { Callout } from "./callout";
-import { Button } from "./ui-button";
 
 export type ConsoleProps = AdminSessionView & { initial: AdminOverview; windowMs: number };
 
@@ -115,35 +113,14 @@ function Grid({ con, onUnauthorized, windowMs }: { con: Console; onUnauthorized(
           onChanged={con.reload}
           onTx={(action) => con.openSim(action, con.selected)}
         />
-        <AdminModeration overview={overview} onChanged={con.reload} />
+        <div className="grid gap-8 [&>*]:min-w-0">
+          <AdminInspect overview={overview} />
+          <AdminModeration overview={overview} onChanged={con.reload} />
+        </div>
       </div>
       <AuditLog key={overview.loadedAt} overview={overview} busy={loading} />
       {/* 06-23: <Evacuate /> */}
       {con.sim && <SimDialog {...con.sim} overview={overview} onClose={con.closeSim} />}
     </>
-  );
-}
-
-// UI-SPEC Refresh control: the one way a user reloads the Postgres panels. "Loaded" is local time, so it renders
-// after mount (the server's time zone would differ).
-function Refresh({ con }: { con: Console }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const at = con.overview.loadedAt;
-  return (
-    <div className="grid gap-1 md:flex md:items-center md:gap-3">
-      <Button
-        className="w-full md:min-h-9 md:w-auto"
-        disabled={con.loading}
-        aria-busy={con.loading}
-        onClick={() => void con.refresh()}
-      >
-        <RefreshCw strokeWidth={1.5} aria-hidden="true" />
-        {con.loading ? "Refreshing…" : "Refresh"}
-      </Button>
-      <span className="text-xs text-muted-foreground">
-        {!mounted ? "\u00a0" : at > 0 ? `Loaded ${clock(at, false)}` : "Not loaded"}
-      </span>
-    </div>
   );
 }

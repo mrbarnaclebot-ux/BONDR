@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-12-PLAN.md
-last_updated: "2026-10-25T16:11:11.101Z"
-last_activity: 2026-10-25 -- Completed 06-12 (console top row, overview load, health poll)
+stopped_at: Completed 06-13-PLAN.md
+last_updated: "2026-10-25T16:25:56.020Z"
+last_activity: 2026-10-25 -- Completed 06-13 (worker simulate, execute, intent routes)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 81
+  completed_plans: 82
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 13 of 26 (06-12 complete)
+Plan: 14 of 26 (06-13 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-12 (console top row, overview load, health poll)
+Last activity: 2026-10-25 -- Completed 06-13 (worker simulate, execute, intent routes)
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -118,6 +118,7 @@ Progress: [█████████░] 85%
 | Phase 06 P10 | 22 min | 3 tasks | 15 files |
 | Phase 06 P11 | 19 min | 2 tasks | 9 files |
 | Phase 06 P12 | 25 min | 2 tasks | 18 files |
+| Phase 06 P13 | 12 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -293,6 +294,8 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-12: overviewData(actor) is the console's one Postgres load (page render, Refresh, reload after an action); the only timer is the 10 s memory-only health poll, mounted inside the signed-in Grid
 - [Phase 06]: 06-12: a failed page load renders the console with emptyOverview() (loadedAt 0) so panels show failed states and Refresh retries
 - [Phase 06]: 06-12: write the 1100px breakpoint as min-[68.75rem]; Tailwind v4 orders min-[1100px] before md (48rem) so md wins
+- [Phase 06]: 06-13: A1 (Claude's discretion, owner may override): admin money actions run on adminBase (mode on, pg ledger) in every engine mode; the engine flag governs automation only
+- [Phase 06]: 06-13: execute = take (owner signature in the worker) -> pending audit row -> applies re-check (refused settles the row, 409) -> 202, then one background run through gatedDeps on the coin queue; unknown settles failed "unconfirmed" and is never resent
 
 ### Pending Todos
 
@@ -325,6 +328,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T16:12:00.000Z
-Stopped at: Completed 06-12-PLAN.md
+Last session: 2026-10-25T16:56:00.000Z
+Stopped at: Completed 06-13-PLAN.md
 Resume file: None

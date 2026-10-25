@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-06-PLAN.md
-last_updated: "2026-10-25T06:14:04.437Z"
+stopped_at: Completed 05-07-PLAN.md
+last_updated: "2026-10-25T06:32:42.174Z"
 last_activity: 2026-10-25
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 69
-  completed_plans: 63
+  completed_plans: 64
   percent: 57
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 5
-Plan: 8 of 13 (05-01 to 05-06 complete)
+Plan: 8 of 13 (05-01 to 05-07 and 05-10 complete; next 05-08)
 Status: Ready to execute
 Last activity: 2026-10-25
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -102,6 +102,7 @@ Progress: [█████████░] 91%
 | Phase 05 P01 | 15 min | 3 tasks | 12 files |
 | Phase 05 P04 | 13 min | 3 tasks | 9 files |
 | Phase 05 P05 | 25 min | 3 tasks | 15 files |
+| Phase 05 P07 | 18 min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -230,6 +231,9 @@ Recent decisions affecting current work:
 - [Phase 05]: 05-05: onIngest takes one Ingested object; engine applies fee numbers only from a trade slot at least as new as the last applied, venue only advances
 - [Phase 05]: 05-05: Engine.landed mirrors totalsFor in memory so a quiet coin never re-collects an empty bucket
 - [Phase 05]: 05-05: boot recovery leaves rows pending on any RPC error and settles nothing in dry mode
+- [Phase 05]: 05-07: bond burns gate on every collect and split settling; a fresh cost of 0 means complete and sends no forced bond
+- [Phase 05]: 05-07: pool_burn records detail.path; the fork ran exact_quote_in, so buy_v2 stays only as the fallback (A2 holds)
+- [Phase 05]: 05-07: boot catch-up reruns bondedJob for pooled coins with finalize none until 05-08 sets finalize
 
 ### Pending Todos
 
@@ -262,6 +266,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T06:14:04.431Z
-Stopped at: Completed 05-06-PLAN.md
+Last session: 2026-10-25T06:32:33.270Z
+Stopped at: Completed 05-07-PLAN.md
 Resume file: None

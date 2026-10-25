@@ -4,6 +4,7 @@
 // any doubt holds the coin until the owner releases it (POST /fee/release). Nothing here is urgent.
 import { innerEvents } from "@bondr/core/events";
 import { deployerOk, windowOf } from "@bondr/core/fees";
+import { redact } from "@bondr/core/net";
 import { fetchTx } from "@bondr/core/send";
 import {
   FINAL_SHARES,
@@ -132,7 +133,7 @@ async function checkEmpty(d: FeeDeps, coin: FeeCoin): Promise<void> {
     if (child === 0n && bondr === 0n) console.log(line);
     else console.error(line);
   } catch (e) {
-    console.error(`finalize ${mint}: W read failed: ${e instanceof Error ? e.message : String(e)}`);
+    console.error(`finalize ${mint}: W read failed: ${redact(e instanceof Error ? e.message : String(e))}`);
   }
 }
 

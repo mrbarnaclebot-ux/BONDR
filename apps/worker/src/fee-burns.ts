@@ -7,6 +7,7 @@ import { forcedBondIxs, poolBaseOut, poolBuyBurnIxs, poolExactInBurnIxs } from "
 import { costToComplete } from "@bondr/core/curve";
 import { wFloat } from "@bondr/core/float";
 import { applyBps, trigger105 } from "@bondr/core/math";
+import { redact } from "@bondr/core/net";
 import { BN } from "@bondr/core/pump";
 import { tokenDelta } from "@bondr/core/trade";
 import type { TransactionInstruction } from "@solana/web3.js";
@@ -78,9 +79,8 @@ async function poolIxs(d: FeeDeps, coin: FeeCoin, balance: bigint): Promise<Pool
       path: "exact_quote_in",
     };
   } catch (e) {
-    console.warn(
-      `pool burn exact-quote-in failed, using buy_v2: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    const why = redact(e instanceof Error ? e.message : String(e));
+    console.warn(`pool burn exact-quote-in failed, using buy_v2: ${why}`);
     const quote = new BN(applyBps(balance, 9500).toString());
     const baseOut = await poolBaseOut({ amm: d.amm, w, mint: coin.mint, quoteMint: d.Q, quote });
     const ixs = await poolBuyBurnIxs({ ...o, baseOut, maxQuoteIn: budget, wFloatLamports });

@@ -207,3 +207,18 @@ test("POST /fee/release refuses bad input and a coin that is not held, and enque
   expect(await route({ mint: MINT.toBase58(), deployer: DEV.toBase58() })).toEqual({ ok: true });
   expect(release.mock.calls.at(-1)?.[1].toBase58()).toBe(DEV.toBase58());
 });
+
+test("a failed W read after the closing sweep logs the RPC text redacted (WR-07)", async () => {
+  const err = quiet();
+  core.state.sharing = "revoked";
+  const d = deps();
+  let n = 0;
+  d.conn.getTokenAccountBalance = (async () => {
+    if (n++) throw new Error("request to https://rpc.example/?api-key=SECRET-KEY failed");
+    return { value: { amount: "10" } };
+  }) as never;
+  await finalizeJob(d, coinOf());
+  const line = err.mock.calls.map(String).find((l) => l.includes("W read failed"));
+  expect(line).toContain("api-key=<redacted>");
+  expect(line).not.toContain("SECRET-KEY");
+});

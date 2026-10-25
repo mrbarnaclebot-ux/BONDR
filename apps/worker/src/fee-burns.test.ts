@@ -25,7 +25,7 @@ vi.mock("@bondr/core/float", () => ({ wFloat: async () => 0 }));
 vi.mock("@bondr/core/bond", () => ({
   forcedBondIxs: core.forced,
   poolExactInBurnIxs: async (o: object) => {
-    if (core.exactFails) throw new Error("burn simulation failed: 6005");
+    if (core.exactFails) throw new Error("request to https://rpc.example/?api-key=SECRET-KEY failed");
     return core.exact(o);
   },
   poolBaseOut: async () => new BN(333),
@@ -153,5 +153,6 @@ test("poolBurnJob falls back to buy_v2 of what 95% buys when exact-quote-in fail
   await poolBurnJob(deps({ balance: 1000n }), { ...coin, venue: "pool" });
   expect(core.buyV2.mock.calls[0]?.[0]).toMatchObject({ baseOut: new BN(333), maxQuoteIn: new BN(1000) });
   expect(bondJob()?.rows[0]).toMatchObject({ amount: 1000n, burned: 333n, detail: { path: "buy_v2" } });
+  expect(String(warn.mock.calls[0]?.[0])).not.toContain("SECRET-KEY"); // WR-07: RPC text can carry the key
   warn.mockRestore();
 });

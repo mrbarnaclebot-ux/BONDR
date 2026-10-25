@@ -130,6 +130,16 @@ function useAct(row: WRow, onChanged: () => Promise<void>, onUnauthorized: () =>
   return { hint, setHint, busy, act };
 }
 
+// The live read's memory is fresher than the overview's; the overview carries the buyback balance.
+function derive(row: WRow, overview: AdminOverview, data: CoinData, windowMs: number) {
+  const now = Date.now();
+  const mem = data.live?.memory ?? overview.worker?.coins.find((c) => c.mint === row.mint);
+  const state = wState(row, mem, now, windowMs);
+  const balances = overview.worker?.balances ?? null;
+  const states = actionStates({ row, state, live: data.live, timeline: data.timeline, balances });
+  return { now, mem, states, held: isHeld(row, state) };
+}
+
 type BodyProps = { row: WRow; overview: AdminOverview; windowMs: number; onChanged(): Promise<void> } & {
   onTx?(action: AdminTxAction): void;
 };
@@ -144,12 +154,7 @@ function CoinBody({ row, overview, windowMs, onChanged, onTx }: BodyProps) {
         {failed ? "Could not load this coin's timeline. Refresh to try again." : "Loading timeline…"}
       </p>
     );
-  const now = Date.now();
-  const mem = data.live?.memory ?? overview.worker?.coins.find((c) => c.mint === row.mint);
-  const state = wState(row, mem, now, windowMs);
-  const balances = overview.worker?.balances ?? null;
-  const states = actionStates({ row, state, live: data.live, timeline: data.timeline, balances });
-  const held = isHeld(row, state);
+  const { now, mem, states, held } = derive(row, overview, data, windowMs);
   const shared = { symbol: row.symbol, states, busy: a.busy, onAct: a.act, onTx, onHint: a.setHint };
   return (
     <>

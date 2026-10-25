@@ -95,6 +95,7 @@ export function memoryLedger(): LedgerStore {
   let next = 1;
   const all = () => [...rows.values()];
   const copy = (e: Entry): Entry => ({ ...e });
+  const where = (f: (e: Entry) => boolean) => all().filter(f).map(copy);
   const internal = async (kind: LedgerKind, mint: string | null, detail: Record<string, unknown>) => {
     const id = next++;
     rows.set(id, { ...blank, id, kind, mint, detail });
@@ -115,19 +116,13 @@ export function memoryLedger(): LedgerStore {
       }
       return moved.map(copy);
     },
-    pending: async () =>
-      all()
-        .filter((e) => e.state === "pending")
-        .map(copy),
+    pending: async () => where((e) => e.state === "pending"),
     pendingFor: async (mint, kinds) =>
-      all()
-        .filter((e) => e.state === "pending" && e.mint === mint && kinds.includes(e.kind))
-        .map(copy),
+      where((e) => e.state === "pending" && e.mint === mint && kinds.includes(e.kind)),
     openCollects: async (mint) =>
-      all()
-        .filter((c) => c.kind === "collect" && c.state === "landed" && (!mint || c.mint === mint))
-        .filter((c) => !all().some((s) => s.kind === "split_treasury" && s.ref === c.id && live(s.state)))
-        .map(copy),
+      where((c) => c.kind === "collect" && c.state === "landed" && (!mint || c.mint === mint)).filter(
+        (c) => !all().some((s) => s.kind === "split_treasury" && s.ref === c.id && live(s.state)),
+      ),
     has: async (mint, kinds) => all().some((e) => e.mint === mint && kinds.includes(e.kind) && live(e.state)),
     hold: (mint, reason) => internal("held", mint, { reason }),
     release: async () => {},

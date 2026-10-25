@@ -19,7 +19,7 @@ const PANEL =
   "bg-[linear-gradient(180deg,color-mix(in_oklch,var(--surface-2)_78%,transparent),color-mix(in_oklch,var(--surface)_88%,transparent))] " +
   "min-[1080px]:w-[min(100%,460px)] min-[1080px]:justify-self-end";
 const ROW =
-  "grid min-h-11 grid-cols-[28px_64px_minmax(0,1fr)_auto] items-center gap-3 border-t border-line py-3 text-sm " +
+  "grid min-h-11 grid-cols-[28px_64px_minmax(0,1fr)_auto] items-center gap-3 border-t border-line py-3 text-sm text-foreground no-underline hover:text-foreground " +
   "max-[560px]:grid-cols-[28px_56px_minmax(0,1fr)_auto] motion-safe:transition-transform motion-safe:duration-400 " +
   "motion-safe:ease-(--ease-spring) motion-safe:hover:translate-x-1";
 
@@ -63,7 +63,7 @@ function Top({ c, at, windowMs }: { c: CoinRow; at: number; windowMs: number }) 
     <Link
       href={`/coin/${c.mint}`}
       aria-label={`${c.name}, ${c.symbol}, sweep in ${v.left}, ${v.pct} ready`}
-      className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-4"
+      className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-4 text-foreground no-underline hover:text-foreground"
     >
       <Ava cid={c.imageCid} className="row-span-2 size-14 rounded-[14px]" />
       <b className="display self-end truncate text-[28px] leading-none">{c.name}</b>

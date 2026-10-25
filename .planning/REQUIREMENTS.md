@@ -61,10 +61,10 @@
 - [x] **FEE-03**: When traders bond a coin first, worker buys on PumpSwap after migration with the burn budget and burns in the same transaction
 - [ ] **FEE-04**: Every 24h window without bonding, worker sweeps W's burn budget to the buyback wallet (90%) and the treasury (10%); W stays creator until bond
 - [x] **FEE-05**: After bond, worker sweeps pending fees, then runs create_fee_sharing_config and the single update_fee_shares_v2 (deployer 8000 / treasury 2000), with a pre-flight check of the deployer address
-- [ ] **FEE-06**: Worker burns the BONDR held by the buyback wallet on a schedule
-- [ ] **FEE-07**: Worker cranks distribution of post-bond fees to the deployer and treasury on a schedule
-- [ ] **FEE-08**: The ops wallet pays every worker transaction fee; worker alerts when it drops below the threshold
-- [ ] **FEE-09**: A nightly reconciliation compares ledger balances to on-chain balances and records discrepancies
+- [x] **FEE-06**: Worker burns the BONDR held by the buyback wallet on a schedule
+- [x] **FEE-07**: Worker cranks distribution of post-bond fees to the deployer and treasury on a schedule
+- [x] **FEE-08**: The ops wallet pays every worker transaction fee; worker alerts when it drops below the threshold
+- [x] **FEE-09**: A nightly reconciliation compares ledger balances to on-chain balances and records discrepancies
 - [x] **FEE-10**: Each W key is derived from the master seed and is used only inside the worker; web never holds wallet secrets
 
 ### Admin
@@ -148,10 +148,10 @@
 | FEE-03 | Phase 5 | Complete |
 | FEE-04 | Phase 5 | Pending |
 | FEE-05 | Phase 5 | Complete |
-| FEE-06 | Phase 5 | Pending |
-| FEE-07 | Phase 5 | Pending |
-| FEE-08 | Phase 5 | Pending |
-| FEE-09 | Phase 5 | Pending |
+| FEE-06 | Phase 5 | Complete |
+| FEE-07 | Phase 5 | Complete |
+| FEE-08 | Phase 5 | Complete |
+| FEE-09 | Phase 5 | Complete |
 | FEE-10 | Phase 2 | Complete |
 | ADMIN-01 | Phase 6 | Pending |
 | ADMIN-02 | Phase 6 | Pending |

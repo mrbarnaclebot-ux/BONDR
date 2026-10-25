@@ -42,7 +42,7 @@
 
 - [x] **TOKEN-01**: User sees a price chart (lightweight-charts) with 1m, 5m, 1h and 1d candles
 - [x] **TOKEN-02**: User sees a live trade feed and holder count
-- [ ] **TOKEN-03**: User sees bond progress, burn budget vs cost to complete the curve, and the time left in the current 24h window
+- [x] **TOKEN-03**: User sees bond progress, burn budget vs cost to complete the curve, and the time left in the current 24h window
 - [ ] **TOKEN-04**: User sees the fee ledger: every collection, split, sweep, forced-bond buy, burn and finalize, with amount, time and a transaction link
 - [ ] **TOKEN-05**: User sees totals: burned supply %, fees to burn, fees to buyback, fees to treasury, and the post-bond deployer share once finalized
 - [x] **TOKEN-06**: Shared token links render a preview card (OG image) on X and Telegram
@@ -135,7 +135,7 @@
 | LIST-05 | Phase 3 | Complete |
 | TOKEN-01 | Phase 3 | Complete |
 | TOKEN-02 | Phase 3 | Complete |
-| TOKEN-03 | Phase 5 | Pending |
+| TOKEN-03 | Phase 5 | Complete |
 | TOKEN-04 | Phase 5 | Pending |
 | TOKEN-05 | Phase 5 | Pending |
 | TOKEN-06 | Phase 3 | Complete |

@@ -59,6 +59,7 @@ const deps = {
 const envOf = (adminWallet: string | null) =>
   ({
     adminWallet,
+    ...{ seed: Buffer.alloc(32, 7), net: "devnet", lane: "local" },
     feeEngine: "off",
     adminEvacuate: "simulate",
     sentryReadToken: null,
@@ -97,7 +98,8 @@ test("another or a missing actor answers 403; the admin actor reaches the handle
 test("every admin route is a POST behind the gate", async () => {
   const routes = routesFor(A);
   const names = [
-    ...["health", "switch", "act", "overview", "coin-live", "simulate", "execute", "intent", "moderate"],
+    ...["health", "switch", "act", "overview", "coin-live", "simulate", "execute", "intent", "inspect"],
+    "moderate",
   ];
   expect(Object.keys(routes)).toEqual(names.map((r) => `POST /admin/${r}`));
   for (const [key, h] of Object.entries(routes)) {
@@ -153,4 +155,22 @@ test("moderate refuses a bad op or an over-length field with 400 and touches not
   expect(mod.store.coins[0]?.hiddenAt).toBeNull();
   expect(await r({ actor: A, op: "hide", query: "foo", reason: "spam" })).toEqual({ ok: true });
   expect(mod.audit.rows.map((x) => [x.actor, x.action, x.mint])).toEqual([[A, "hide", MINT]]);
+});
+
+test("inspect answers 400 for a non-signature before any RPC call, found false when missing, 503 when the RPC fails", async () => {
+  const sig = bs58.encode(Buffer.alloc(64, 1));
+  const at = (getTransaction: () => Promise<unknown>) =>
+    adminRoutes({ env: envOf(A), engine: () => null, conn: { getTransaction } as never })[
+      "POST /admin/inspect"
+    ];
+  const missing = vi.fn(async () => null);
+  const bad = [undefined, 5, "abc", bs58.encode(Buffer.alloc(32, 1)), `${sig}0`, "z".repeat(88)];
+  for (const signature of bad)
+    expect(await status(at(missing)({ actor: A, signature }), "invalid_input")).toBe(400);
+  expect(missing).not.toHaveBeenCalled();
+  expect(await at(missing)({ actor: A, signature: sig })).toEqual({ found: false });
+  const down = at(async () => {
+    throw new Error("socket hang up");
+  });
+  expect(await status(down({ actor: A, signature: sig }), "rpc_failed")).toBe(503);
 });

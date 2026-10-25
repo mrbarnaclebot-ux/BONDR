@@ -70,6 +70,7 @@ const FAULTS: Record<Code, Fault> = {
   not_applicable: BUILD_FAILED,
   simulation_failed: BUILD_FAILED,
   destination_refused: BUILD_FAILED,
+  rpc_failed: BUILD_FAILED,
   rejected: {
     text: "Phantom rejected the request. Nothing was sent and no SOL left your wallet. Your mint address stays reserved for 10 minutes.",
     action: "Try again",

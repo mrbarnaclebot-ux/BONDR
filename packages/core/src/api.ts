@@ -43,7 +43,8 @@ export type LaunchErrorCode =
   | "bad_intent_signature"
   | "not_applicable"
   | "simulation_failed"
-  | "destination_refused";
+  | "destination_refused"
+  | "rpc_failed";
 
 // reason: the admin not_applicable code the console maps to copy (D-12).
 export type ApiError = { error: LaunchErrorCode; paused?: PauseReason; reason?: string };

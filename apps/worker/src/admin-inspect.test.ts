@@ -33,13 +33,16 @@ test("curve-buy decodes ComputeBudget, the ATA creates and the pump buy with arg
   expect(r.error).toBeNull();
   expect(r.explorer).toBe(`https://solscan.io/tx/${f.source}?cluster=devnet`);
   const names = r.instructions?.map((i) => `${i.program}: ${i.name}`);
-  expect(names?.slice(0, 2)).toEqual(["Compute Budget: SetComputeUnitLimit", "Compute Budget: SetComputeUnitPrice"]);
+  expect(names?.slice(0, 2)).toEqual([
+    "Compute Budget: SetComputeUnitPrice",
+    "Compute Budget: SetComputeUnitLimit",
+  ]);
   expect(names?.[2]).toBe("Associated Token: CreateIdempotent");
   const buy = r.instructions?.[4];
   expect(buy?.index).toBe(5);
   expect(`${buy?.program}: ${buy?.name}`).toMatch(/^pump: buy/);
-  expect(buy?.args.some((a) => /^amount: \d+$/.test(a))).toBe(true);
-  expect(r.instructions?.[0].args).toEqual([expect.stringMatching(/^units: \d+$/)]);
+  expect(buy?.args).toContain("spendableQuoteIn: 1000000000000");
+  expect(r.instructions?.[1].args).toEqual([expect.stringMatching(/^units: \d+$/)]);
 });
 
 test("forced-bond decodes the pump buy and the Token-2022 BurnChecked with its amount", async () => {

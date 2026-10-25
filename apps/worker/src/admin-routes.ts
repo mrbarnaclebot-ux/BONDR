@@ -2,8 +2,10 @@
 // web forwards the session wallet as body.actor and the worker re-checks it against ADMIN_WALLET (D-08, D-11).
 import { db } from "@bondr/core/db";
 import type { Connection } from "@solana/web3.js";
+import bs58 from "bs58";
 import { type ActDeps, act, switchRoute } from "./admin-act.ts";
 import { type AuditStore, pgAudit } from "./admin-audit.ts";
+import { inspect, knownKeys } from "./admin-inspect.ts";
 import { type ModStore, moderate, modReq, pgMod } from "./admin-moderate.ts";
 import { adminBase, executeAction, intentView, type MoneyCtx, simulateAction } from "./admin-money.ts";
 import { coinLive, overview } from "./admin-overview.ts";
@@ -53,6 +55,13 @@ function simReq(b: Body) {
   if (platform !== (b.mint === undefined || b.mint === null)) throw invalid();
   return { actor: String(b.actor), action, mint: platform ? null : key(b.mint).toBase58() };
 }
+// A transaction signature: 64 bytes of base58 (87 or 88 characters, fewer only for leading zero bytes).
+function sigOf(b: Body): string {
+  const s = b.signature;
+  if (typeof s !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(s)) throw invalid();
+  if (bs58.decode(s).length !== 64) throw invalid();
+  return s;
+}
 function idOf(b: Body): string {
   if (typeof b.id !== "string" || !ID.test(b.id)) throw invalid();
   return b.id;
@@ -100,6 +109,12 @@ export function adminRoutes(o: AdminOpts): Routes {
     "POST /admin/simulate": (b) => simulateAction(money(), simReq(bodyOf(b))),
     "POST /admin/execute": async (b) => new Reply(202, await executeAction(money(), execReq(bodyOf(b)))),
     "POST /admin/intent": async (b) => intentView(idOf(bodyOf(b))),
+    "POST /admin/inspect": async (b) => {
+      const sig = sigOf(bodyOf(b)); // before any RPC call
+      return inspect(o.conn, sig, knownKeys(o.env, o.engine())).catch(() => {
+        throw fail({ error: "rpc_failed" });
+      });
+    },
     "POST /admin/moderate": (b) => {
       const req = modReq(b); // before mod(): a bad body never builds a store
       const m = mod();

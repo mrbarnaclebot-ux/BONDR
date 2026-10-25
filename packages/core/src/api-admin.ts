@@ -144,7 +144,7 @@ export type AdminInspect = {
   found: boolean;
   status?: "success" | "failed";
   slot?: number;
-  feePayer?: { label: string; address: string };
+  feePayer?: { label: string; address: string; mint?: string }; // mint: set when the payer is a coin's W
   instructions?: { index: number; program: string; name: string; args: string[] }[];
   error?: string | null;
   explorer?: string;

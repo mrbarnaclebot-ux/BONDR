@@ -23,6 +23,7 @@ export const {
   getBuyV3QuoteAmountFromTokenAmount,
   getSellSolAmountFromTokenAmount,
   getPumpFeeProgram,
+  getPumpProgram,
   PUMP_PROGRAM_ID,
   PUMP_AMM_PROGRAM_ID,
   PUMP_FEE_PROGRAM_ID,
@@ -44,6 +45,7 @@ export const {
   PUMP_AMM_FEE_CONFIG_PDA,
   coinCreatorVaultAtaPda,
   coinCreatorVaultAuthorityPda,
+  getPumpAmmProgram,
 } = amm;
 export const computeAmmFeesBps = amm.computeFeesBps; // pool fees (lp, protocol, creator); same name as pump's
 export type { BondingCurve, FeeConfig, Global, PumpQuoteAccounts } from "@pump-fun/pump-sdk"; // types only, erased at runtime

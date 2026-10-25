@@ -40,6 +40,7 @@ const STATUS: Partial<Record<LaunchErrorCode, number>> = {
   not_applicable: 409,
   simulation_failed: 422,
   destination_refused: 422,
+  rpc_failed: 503,
 };
 export const fail = (body: ApiError): Fail => new Fail(STATUS[body.error] ?? 500, body);
 

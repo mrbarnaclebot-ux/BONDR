@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-16-PLAN.md
-last_updated: "2026-10-25T23:20:00.000Z"
-last_activity: 2026-10-25 -- Completed 06-16 (W table)
+stopped_at: Completed 06-17-PLAN.md
+last_updated: "2026-10-25T23:45:00.000Z"
+last_activity: 2026-10-25 -- Completed 06-17 (per-coin timeline)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 86
-  percent: 71
+  completed_plans: 87
+  percent: 72
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 18 of 26 (06-16 complete)
+Plan: 19 of 26 (06-17 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-16 (W table)
+Last activity: 2026-10-25 -- Completed 06-17 (per-coin timeline)
 
 Progress: [█████████░] 88%
 
@@ -310,6 +310,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-16: WRow gains bondrSol so the burn budget shows SOL (D-07); a budget with no stored price reads a muted dash
 - [Phase 06]: 06-16: after any overview load the selection is kept while its coin is listed, else it falls back to the first stuck coin (or none)
 - [Phase 06]: 06-16: stuck step names follow the engine's job labels (finalize, forced bond, sweep, distribute, bonded); the danger Tag text is destructive lifted 15% toward foreground for contrast on the selected row
+- [Phase 06]: 06-17: coinTimeline is server-only in admin-timeline-data.ts; timelineSteps stays pure in admin-timeline.ts so the client builds steps with its own clock
+- [Phase 06]: 06-17: the coin op runs once per pick and once per overview load (Refresh or the reload after an action), never on a timer; live is null when the worker does not answer
+- [Phase 06]: 06-17: hold and release toggle on the held flag (exactly one applies); the console hold reason is 'Held for review from the console'; an unconfirmed launch shows one next step 'Re-check launch'
 
 ### Pending Todos
 
@@ -342,6 +345,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T23:20:00.000Z
-Stopped at: Completed 06-16-PLAN.md
+Last session: 2026-10-25T23:45:00.000Z
+Stopped at: Completed 06-17-PLAN.md
 Resume file: None

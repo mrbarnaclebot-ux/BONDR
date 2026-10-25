@@ -142,10 +142,7 @@ test("distributeJob: pending is the pool bucket plus both vault ATAs; below the 
   const calls: number[] = [];
   const accounts = [raw(), tokenAccount(20_000n), tokenAccount(30_000n), raw()];
   const conn = {
-    getMultipleAccountsInfo: async (keys: PublicKey[]) => {
-      calls.push(keys.length);
-      return accounts;
-    },
+    getMultipleAccountsInfo: async (keys: PublicKey[]) => calls.push(keys.length) && accounts,
   };
   expect((await distributeJob(deps({}, conn), coinOf())).state).toBe("done");
   expect(calls).toEqual([4]); // one read: pool, AMM vault ATA, pump vault ATA, sharing config
@@ -171,7 +168,7 @@ test("distributeJob: above the minimum, one distribute row with the meta deltas 
 
 test("distributeJob: no sharing config yet sends nothing", async () => {
   expect((await distributeJob(deps({ accounts: [raw(), null, null, null] }), coinOf())).state).toBe("done");
-  expect(jobs).toHaveLength(0);
+  expect(jobs).toEqual([]);
 });
 
 const engineOf = (coins: FeeCoin[]) => {
@@ -264,7 +261,7 @@ const window = (m: string) => [
 ];
 
 test("impliedOf: a full window nets W to 0; the buyback keeps its sweeps minus its burns", () => {
-  const burn = { kind: "buyback_burn", mint: null, burned: 800n, state: "landed" };
+  const burn = { kind: "buyback_burn", mint: null, burned: 800n, state: "landed" } as const;
   const i = impliedOf([...window("M"), { ...row("collect", "M", 7n), state: "failed" }, burn]);
   expect(i.byMint.get("M")).toBe(0n);
   expect(i.buyback).toBe(10n);

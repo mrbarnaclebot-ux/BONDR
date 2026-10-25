@@ -6,6 +6,7 @@ import { split90_10 } from "@bondr/core/math";
 import { toSol } from "@bondr/core/price";
 import { tokenDelta } from "@bondr/core/trade";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
+import type { PublicKey } from "@solana/web3.js";
 import { feeConfig } from "./fee-config.ts";
 import type { Entry, NewEntry } from "./fee-ledger.ts";
 import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
@@ -46,10 +47,10 @@ export async function splitJob(d: FeeDeps, coin: FeeCoin, collect: Entry, urgent
   return d.land({ rows: [row], ixs, signers: [coin.w], urgent });
 }
 
-// W's BONDR balance (or another token's): a missing ATA is 0; any other RPC error throws, so a flaky read never
-// skips a sweep silently.
-export async function wBondr(d: FeeDeps, coin: FeeCoin, token = d.Q): Promise<bigint> {
-  const ata = getAssociatedTokenAddressSync(token, coin.w.publicKey, true, T22);
+// An owner's BONDR balance (or another token's): a missing ATA is 0; any other RPC error throws, so a flaky read
+// never skips a sweep or a burn silently.
+export async function tokenBalance(d: FeeDeps, owner: PublicKey, token = d.Q): Promise<bigint> {
+  const ata = getAssociatedTokenAddressSync(token, owner, true, T22);
   try {
     return BigInt((await d.conn.getTokenAccountBalance(ata)).value.amount);
   } catch (e) {
@@ -57,6 +58,8 @@ export async function wBondr(d: FeeDeps, coin: FeeCoin, token = d.Q): Promise<bi
     throw e;
   }
 }
+
+export const wBondr = (d: FeeDeps, coin: FeeCoin, token = d.Q) => tokenBalance(d, coin.w.publicKey, token);
 
 // D-12: after the split, all of W's BONDR is budget; it leaves 90/10 in one W-signed tx. Zero writes no row.
 export async function sweepJob(d: FeeDeps, coin: FeeCoin, windowIndex: number): Promise<Landed> {

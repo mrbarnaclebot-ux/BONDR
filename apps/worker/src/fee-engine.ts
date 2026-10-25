@@ -18,6 +18,7 @@ import { eq } from "drizzle-orm";
 import { publishFee } from "./announce.ts";
 import { bondrPrice } from "./bondr-price.ts";
 import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
+import { scheduleBatch } from "./fee-batch.ts";
 import { bondedJob, forcedJob } from "./fee-burns.ts";
 import { feeConfig } from "./fee-config.ts";
 import { finalizeJob } from "./fee-finalize.ts";
@@ -270,6 +271,7 @@ export async function startEngine(ctx: Ctx, env: WorkerEnv): Promise<void> {
   noteOps(await ctx.conn.getBalance(deps.ops.publicKey));
   await recover(deps, (m) => e.coins.get(m));
   console.log(`fee engine ${env.feeEngine}: ${e.start()} coins armed`);
+  scheduleBatch(deps, e, env.feeBatchHourUtc);
 }
 
 const hasReserves = (p: CoinPatch) =>

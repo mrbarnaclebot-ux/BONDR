@@ -1,6 +1,7 @@
 // Owner routes of the fee engine, behind the worker's bearer check (http.ts). Phase 6 puts a UI on them.
 import { redact } from "@bondr/core/net";
 import { PublicKey } from "@solana/web3.js";
+import { batchNow } from "./fee-batch.ts";
 import type { Engine } from "./fee-engine.ts";
 import { fail, type Routes } from "./http.ts";
 
@@ -29,4 +30,6 @@ async function release(engine: Pick<Engine, "release"> | null, body: unknown): P
 // The engine starts after the server listens, so routes read it when called.
 export const feeRoutes = (engine: () => Pick<Engine, "release"> | null): Routes => ({
   "POST /fee/release": (body) => release(engine(), body),
+  // Runs the daily batch now (the e2e and the owner); a run already going is shared, not doubled.
+  "POST /fee/batch": () => batchNow() ?? Promise.reject(fail({ error: "paused" })),
 });

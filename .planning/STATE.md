@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-21-PLAN.md
-last_updated: "2026-10-25T19:09:22.083Z"
-last_activity: 2026-10-26 -- Completed 06-21 (transaction inspector)
+stopped_at: Completed 06-22-PLAN.md
+last_updated: "2026-10-25T19:28:49.729Z"
+last_activity: 2026-10-26 -- Completed 06-22 (EVACUATE worker)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 90
+  completed_plans: 91
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 22 of 26 (06-21 complete)
+Plan: 23 of 26 (06-22 complete)
 Status: Ready to execute
-Last activity: 2026-10-26 -- Completed 06-21 (transaction inspector)
+Last activity: 2026-10-26 -- Completed 06-22 (EVACUATE worker)
 
-Progress: [██████████] 95%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -123,6 +123,7 @@ Progress: [██████████] 95%
 | Phase 06 P15 | 35 min | 1 tasks | 8 files |
 | Phase 06 P19 | 25 min | 2 tasks | 11 files |
 | Phase 06 P18 | 23 min | 2 tasks | 16 files |
+| Phase 06 P22 | 14 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -322,6 +323,10 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-20: AdminOverview.moderation (hidden coins, blocked deployers, newest first) rides in overviewData's one Promise.all; reasons render only in the console, the public launch line never shows one (D-30)
 - [Phase 06]: 06-21: POST /admin/inspect decodes top-level instructions in the worker (web3.js, spl-token, SDK coders built from an offline Connection) and answers labelled strings only; bad signature 400 invalid_input, missing 200 found false, RPC failure 503 rpc_failed (new code)
 - [Phase 06]: 06-21: the inspector labels a W fee payer 'W {SYMBOL}' from the worker's mint or overview.rows' w, so it works with FEE_ENGINE off; Refresh moved to admin-topbar.tsx
+- [Phase 06]: 06-22: A2 as Claude's discretion (owner may override): ADMIN_EVACUATE defaults to simulate; an EVACUATE intent exists only when on and devnet, and executeEvacuate refuses again (409 not_applicable simulate_only / devnet_only) before pausing anything
+- [Phase 06]: 06-22: the EVACUATE gate allowlist is the treasury with BONDR only (stricter than the plan's W-internal and child-mint list, so a child transfer to the treasury can never pass, D-36); every batch starts with an idempotent treasury BONDR ATA create paid by ops
+- [Phase 06]: 06-22: EVACUATE simulate gives an intent when at least one batch passes; failures counts failed batches' wallets; evacuate rows always carry sol (0 when the price is unknown, Pitfall 4)
+- [Phase 06]: 06-22: gatedDeps, codeOf, progress, outcome and logged moved to admin-send.ts (shared by admin-money.ts and admin-evacuate.ts without an import cycle)
 
 ### Pending Todos
 

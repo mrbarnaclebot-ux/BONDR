@@ -1,7 +1,9 @@
 // The one door into admin (D-11): a same-origin POST with a live bondr_admin cookie, checked before the rate
 // limit and before any body is read. Every admin call is POST, so sameOrigin always sees an Origin (Pitfall 8).
+import { overviewData } from "@/lib/admin-data";
 import { json, rateLimited, sameOrigin } from "@/lib/guard";
 import { adminSession, adminWalletEnv } from "@/lib/session";
+import { workerPost } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
 
@@ -9,20 +11,60 @@ const MAX_BODY = 16 * 1024;
 const NO_STORE = { "cache-control": "no-store" };
 
 type Session = { wallet: string; exp: number };
+type Body = Record<string, unknown>;
+type Op = (body: Body, s: Session) => Promise<Response>;
 
-// Later plans add one entry per op. The actor sent to the worker is always s.wallet from the cookie, never a
-// field of the body.
-const OPS: Record<string, (body: Record<string, unknown>, s: Session) => Promise<Response>> = {};
+const reply = (body: unknown, status = 200) => Response.json(body, { status, headers: NO_STORE });
+
+// Pitfall 14: the web reaches only the worker routes named here; any other op is 404.
+const FORWARD: Record<string, string> = {
+  health: "/admin/health",
+  "coin-live": "/admin/coin-live",
+  switch: "/admin/switch",
+  act: "/admin/act",
+  simulate: "/admin/simulate",
+  execute: "/admin/execute",
+  intent: "/admin/intent",
+  moderate: "/admin/moderate",
+  inspect: "/admin/inspect",
+};
+
+// execute signs and sends; EVACUATE simulates every batch (at most 8 at a time), so hundreds of W need far
+// longer than the 15 s default before the web gives up with worker_unavailable.
+function timeoutOf(op: string, body: Body): number | undefined {
+  if (op === "execute") return 30_000;
+  if (op === "simulate" && body.action === "evacuate") return 90_000;
+  return undefined;
+}
+
+// Postgres reads answered by the web itself. Later plans add entries here only.
+const LOCAL: Record<string, Op> = {
+  overview: async (_b, s) => {
+    try {
+      return reply(await overviewData(s.wallet));
+    } catch (e) {
+      console.error("admin overview failed", (e as { cause?: { code?: string } }).cause?.code ?? "unknown");
+      return reply({ error: "worker_unavailable" }, 503);
+    }
+  },
+};
+
+// The body spreads first and the cookie's wallet lands last, so a body actor never reaches the worker (D-11).
+async function forward(op: string, body: Body, s: Session): Promise<Response> {
+  const r = await workerPost(FORWARD[op], { ...body, actor: s.wallet }, timeoutOf(op, body));
+  return reply(r.body, r.status);
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ op: string }> }): Promise<Response> {
   if (!sameOrigin(req)) return new Response(null, { status: 403 });
   const s = adminSession(req.headers.get("cookie"), adminWalletEnv());
-  if (!s) return Response.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  if (!s) return reply({ error: "unauthorized" }, 401);
   const { op } = await params;
   const limited = rateLimited(req, `admin:${op}`, 60, 60_000, s.wallet);
   if (limited) return limited;
-  const body = await json(req, MAX_BODY);
-  const run = Object.hasOwn(OPS, op) ? OPS[op] : undefined;
-  if (!run) return Response.json({ error: "not_found" }, { status: 404, headers: NO_STORE });
-  return run(body && typeof body === "object" ? (body as Record<string, unknown>) : {}, s);
+  const raw = await json(req, MAX_BODY);
+  const body = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Body) : {};
+  if (Object.hasOwn(FORWARD, op)) return forward(op, body, s);
+  if (Object.hasOwn(LOCAL, op)) return LOCAL[op](body, s);
+  return reply({ error: "not_found" }, 404);
 }

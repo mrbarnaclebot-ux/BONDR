@@ -204,7 +204,10 @@ export const feeLedger = pgTable(
     ),
     check("fee_ledger_landed", sql`(state = 'landed') = (landed_at is not null)`),
     check("fee_ledger_ref", sql`(kind = 'split_treasury') = (ref is not null)`),
-    check("fee_ledger_window", sql`kind not in ('sweep_buyback','sweep_treasury') or window_index is not null`),
+    check(
+      "fee_ledger_window",
+      sql`kind not in ('sweep_buyback','sweep_treasury') or window_index is not null`,
+    ),
     check("fee_ledger_platform", sql`(mint is null) = (kind = 'buyback_burn')`),
     uniqueIndex("fee_ledger_once")
       .on(t.mint, t.kind)
@@ -217,9 +220,7 @@ export const feeLedger = pgTable(
       .where(sql`${LIVE} and kind in ('sweep_buyback','sweep_treasury')`),
     uniqueIndex("fee_ledger_split").on(t.ref).where(sql`${LIVE} and kind = 'split_treasury'`),
     uniqueIndex("fee_ledger_sig_kind").on(t.signature, t.kind),
-    index("fee_ledger_public")
-      .on(t.mint, t.landedAt.desc(), t.id.desc())
-      .where(sql`state = 'landed'`),
+    index("fee_ledger_public").on(t.mint, t.landedAt.desc(), t.id.desc()).where(sql`state = 'landed'`),
   ],
 );
 

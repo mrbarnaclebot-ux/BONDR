@@ -34,7 +34,16 @@ export type LaunchErrorCode =
   | "pin_failed"
   | "slippage"
   | "message_changed"
-  | "onchain";
+  | "onchain"
+  // Phase 6 admin and moderation (statuses in apps/worker/src/http.ts).
+  | "forbidden"
+  | "blocked"
+  | "intent_expired"
+  | "intent_used"
+  | "bad_intent_signature"
+  | "not_applicable"
+  | "simulation_failed"
+  | "destination_refused";
 
 export type ApiError = { error: LaunchErrorCode; paused?: PauseReason };
 

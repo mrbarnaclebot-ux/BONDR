@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { start } from "./http.ts";
+import { fail, start } from "./http.ts";
 
 const token = randomBytes(32).toString("hex");
 const wrong = randomBytes(32).toString("hex");
@@ -75,4 +75,22 @@ test("a result that cannot serialize answers 500, not a half-sent 200 (IN-05)", 
   expect(res.status).toBe(500);
   expect(await res.json()).toEqual({ error: "build_failed" });
   log.mockRestore();
+});
+
+// Restates PASS in apps/web/lib/worker.ts line 10 (server-only, so not importable here): a status outside it
+// reaches the browser as worker_unavailable (Pitfall 14).
+const PASS = new Set([400, 402, 403, 404, 409, 410, 413, 422, 429, 500, 503]);
+
+test.each([
+  ["forbidden", 403],
+  ["blocked", 403],
+  ["intent_expired", 410],
+  ["intent_used", 409],
+  ["bad_intent_signature", 403],
+  ["not_applicable", 409],
+  ["simulation_failed", 422],
+  ["destination_refused", 422],
+] as const)("admin code %s answers %i, a status web passes through", (error, status) => {
+  expect(fail({ error }).status).toBe(status);
+  expect(PASS.has(status)).toBe(true);
 });

@@ -60,6 +60,15 @@ const FAULTS: Record<Code, Fault> = {
   invalid_input: BUILD_FAILED,
   slippage: BUILD_FAILED, // trade codes; a launch never gets them
   message_changed: BUILD_FAILED,
+  // Admin codes; a launch never gets them. blocked gets its own copy in 06-20 (D-30).
+  forbidden: BUILD_FAILED,
+  blocked: BUILD_FAILED,
+  intent_expired: BUILD_FAILED,
+  intent_used: BUILD_FAILED,
+  bad_intent_signature: BUILD_FAILED,
+  not_applicable: BUILD_FAILED,
+  simulation_failed: BUILD_FAILED,
+  destination_refused: BUILD_FAILED,
   rejected: {
     text: "Phantom rejected the request. Nothing was sent and no SOL left your wallet. Your mint address stays reserved for 10 minutes.",
     action: "Try again",

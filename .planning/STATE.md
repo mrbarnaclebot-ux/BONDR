@@ -252,7 +252,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - Replace the placeholder contact handle in the terms page
-- Phase 5: worker-core review WR-08, `forcedBondIxs` sets minOut to W's whole child balance, so any leftover in W reverts every later forced bond (`packages/core/src/bond.ts:78-88`).
+- WR-08 minOut fixed in a8758e1 (verified in 06-02); leftover burns ship in 06-09 (D-17)
 
 ### Blockers/Concerns
 

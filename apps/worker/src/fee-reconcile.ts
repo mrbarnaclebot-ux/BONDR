@@ -38,8 +38,8 @@ export function impliedOf(rows: Row[]): Implied {
 // One round trip for every mint and the buyback (the batch's database read, D-03). The buyback row has mint null.
 export async function pgImplied(c: Pick<Db, "execute">): Promise<Implied> {
   const rows = await c.execute<{ mint: string | null; implied: string }>(sql`
-    select mint, sum(case when kind in ('collect','finalize_config','finalize_update') then amount
-      else -amount end)::text as implied
+    select mint, coalesce(sum(case when kind in ('collect','finalize_config','finalize_update') then amount
+      else -amount end), 0)::text as implied
     from fee_ledger where state = 'landed' and mint is not null and kind in ('collect','finalize_config',
       'finalize_update','split_treasury','sweep_buyback','sweep_treasury','forced_bond','pool_burn')
     group by mint

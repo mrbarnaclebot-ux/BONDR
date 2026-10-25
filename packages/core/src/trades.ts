@@ -2,8 +2,9 @@
 // settle all call it, so every path writes the same rows. Worker-side; web reads the stored values.
 // Amounts are decimal strings (base units), display values are numbers. Always quoteAmount, never the
 // TradeEvent's SOL field: it is 0 for BONDR-quoted coins.
+import { big, curveState, sol } from "./curve-state.ts";
 import { type EventTx, innerEvents, type PumpEvent } from "./events.ts";
-import { bondrAtBond, curvePrice, mcapSol, poolPrice, progress, toSol } from "./price.ts";
+import { bondrAtBond, curvePrice, mcapSol, poolPrice, toSol } from "./price.ts";
 
 type Balance = { mint: string; owner?: string; uiTokenAmount: { amount: string } };
 export type TradeTx = EventTx & {
@@ -59,6 +60,9 @@ export type CoinPatch = { mint: string } & Partial<Pick<NewCoin, Reserves | "pro
     bondSol?: number;
     bondSig?: string;
     bondedAt?: string;
+    feesUnclaimed?: string; // the curve's creator fee bucket after the trade (D-10)
+    bondrSol?: number;
+    costToComplete?: string; // filled by the worker before the write, so parseTx stays pure
   };
 export type Parsed = {
   trades: ParsedTrade[];
@@ -87,8 +91,6 @@ const HANDLED = new Set(
   "CreateEvent TradeEvent CompleteEvent PostCompleteBuyEvent BuyEvent SellEvent CreatePoolEvent".split(" "),
 );
 const BURN_IX = 1000; // past every event index of a tx
-const big = (v: unknown): bigint => BigInt(String(v));
-const sol = (lamports: bigint): number => Number(lamports) / 1e9;
 
 // Price from the pool's post-trade token balances (exact whether the event's own reserves are pre- or
 // post-trade) plus its virtual quote reserves.
@@ -137,23 +139,6 @@ function row(c: Ctx, e: PumpEvent, r: RowIn, price: number | null): ParsedTrade 
   };
 }
 
-// Curve state after a trade: reserves, market cap, progress and what bonding would take.
-function curveState(c: Ctx, mint: string, d: Record<string, unknown>, b: number | null): CoinPatch {
-  const [vQ, vT] = [big(d.virtualQuoteReserves), big(d.virtualTokenReserves)];
-  const [realT, realQ] = [big(d.realTokenReserves), big(d.realQuoteReserves)];
-  const atBond = bondrAtBond(vQ, vT, realT, realQ);
-  return {
-    mint,
-    realTokenReserves: String(realT),
-    realQuoteReserves: String(realQ),
-    virtualTokenReserves: String(vT),
-    virtualQuoteReserves: String(vQ),
-    ...(b !== null && { mcapSol: mcapSol(curvePrice(vQ, vT), b), bondSol: sol(toSol(atBond, b)) }),
-    progress: progress(realT, c.init.get(mint) ?? 0n),
-    bondrAtBond: String(atBond),
-  };
-}
-
 function curveTrade(c: Ctx, e: PumpEvent): Out {
   const d = e.data;
   const mint = String(d.mint);
@@ -161,7 +146,7 @@ function curveTrade(c: Ctx, e: PumpEvent): Out {
   const side = d.isBuy ? "buy" : "sell";
   const price = curvePrice(big(d.virtualQuoteReserves), big(d.virtualTokenReserves));
   const trade = row(c, e, { mint, side, venue: "curve", tokens: d.tokenAmount, quote: d.quoteAmount }, price);
-  return { trade, patch: curveState(c, mint, d, priceAt(c, e.ix)) };
+  return { trade, patch: curveState(mint, d, priceAt(c, e.ix), c.init.get(mint) ?? 0n) };
 }
 
 function poolTrade(c: Ctx, e: PumpEvent): Out {

@@ -119,12 +119,17 @@ async function sends(d: FeeDeps, engine: BatchEngine, s: BatchSummary): Promise<
   await engine.enqueue("platform", burn, "buyback burn");
   const runs = [...engine.coins.values()].map((coin) => {
     const mint = coin.mint.toBase58();
+    // Each returns its result so the engine can mark a failing step stuck (D-20).
     const pay = async () => {
-      if ((await distributeJob(d, coin)).state === "landed") s.distribute++;
+      const out = await distributeJob(d, coin);
+      if (out.state === "landed") s.distribute++;
+      return out;
     };
     const retry = async () => {
       s.finalize++;
-      console.log(`fee batch bonded ${mint}: ${(await bondedJob(d, coin)).map((l) => l.state).join(", ")}`);
+      const out = await bondedJob(d, coin);
+      console.log(`fee batch bonded ${mint}: ${out.map((l) => l.state).join(", ")}`);
+      return out;
     };
     if (coin.finalize === "done") return engine.enqueue(mint, pay, `fee distribute ${mint}`);
     if (coin.venue === "pool" && coin.finalize === "none")

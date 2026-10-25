@@ -6,36 +6,45 @@ import { derive } from "@bondr/core/keys";
 import { OnlinePumpAmmSdk, type OnlinePumpSdk } from "@bondr/core/pump";
 import type { CoinPatch, Parsed } from "@bondr/core/trades";
 import type { Connection, PublicKey } from "@solana/web3.js";
-import { eq } from "drizzle-orm";
+import { eq, type SQL } from "drizzle-orm";
 import { publishFee } from "./announce.ts";
 import { bondrPrice } from "./bondr-price.ts";
 import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
 import { scheduleBatch } from "./fee-batch.ts";
 import { feeConfig } from "./fee-config.ts";
-import { type CoinLoad, Engine, type Ingested, logged, type WOf } from "./fee-engine.ts";
+import { type CoinLoad, coinFrom, Engine, type Ingested, logged, type WOf } from "./fee-engine.ts";
 import { pgLedger } from "./fee-ledger.ts";
 import { recover } from "./fee-recover.ts";
-import { type FeeDeps, land, noteOps } from "./fee-send.ts";
+import { type FeeCoin, type FeeDeps, land, noteOps } from "./fee-send.ts";
 import type { Ctx } from "./status.ts";
 import { configs } from "./trade-state.ts";
 
 let engine: Engine | null = null;
 export const feeEngine = (): Engine | null => engine;
-let costCtx: { net: WorkerEnv["net"]; Q: PublicKey; wOf: WOf } | null = null;
+let costCtx: { net: WorkerEnv["net"]; Q: PublicKey; wOf: WOf } | null = null; // set in every mode
 
 // Called by announce after every committed ingest, live and gap fill. Before startEngine it is a no-op.
 export const onIngest = (w: Ingested): void => engine?.onIngest(w);
 
-// One boot read: every coin with its launch's W, signature and wallet.
-const loadRows = (): Promise<CoinLoad[]> =>
+// One boot read: every coin with its launch's W, signature, wallet and manual hold.
+const loadRows = (where?: SQL): Promise<CoinLoad[]> =>
   db()
     .select({
       ...{ mint: coins.mint, w: launches.w, launchSig: launches.signature, wallet: launches.wallet },
       ...{ launchedAt: coins.launchedAt, venue: coins.venue, feeBudget: coins.feeBudget },
       ...{ feesUnclaimed: coins.feesUnclaimed, cost: coins.costToComplete, finalize: coins.finalize },
+      heldReason: coins.heldReason,
     })
     .from(coins)
-    .innerJoin(launches, eq(launches.id, coins.launchId));
+    .innerJoin(launches, eq(launches.id, coins.launchId))
+    .where(where);
+
+// One coin for the admin path with the engine off (A1); undefined before startEngine or for another seed's W.
+export async function loadCoin(mint: string): Promise<FeeCoin | undefined> {
+  const c = costCtx;
+  const [r] = c ? await loadRows(eq(coins.mint, mint)) : [];
+  return r && c ? coinFrom(r, c.wOf) : undefined;
+}
 
 export function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
   const d: FeeDeps = {

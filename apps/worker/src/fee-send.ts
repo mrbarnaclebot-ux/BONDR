@@ -2,6 +2,7 @@
 // goes through land, so crash safety, the ops floor and the program allowlist (signTx) live here only.
 // Never resend an "unknown" tx: its row stays pending and boot recovery settles it from the signature.
 import type { LedgerKind, Venue } from "@bondr/core/api";
+import type { FeeJob } from "@bondr/core/api-admin";
 import { redact } from "@bondr/core/net";
 import { toSol } from "@bondr/core/price";
 import type { OnlinePumpAmmSdk, OnlinePumpSdk } from "@bondr/core/pump";
@@ -64,6 +65,8 @@ export type FeeDeps = {
   bondrSol(): number | null;
   publish(mint: string | null, rows: Entry[]): void;
   land(job: Job): Promise<Landed>;
+  // Absent means allowed. The engine's deps set it in 06-07 (switches, hold); admin deps always allow (D-16).
+  allowed?(job: FeeJob, coin: FeeCoin | null): boolean;
 };
 
 // launchSig and wallet feed the 05-08 deployer pre-flight.
@@ -82,6 +85,7 @@ export type FeeCoin = {
   // an idle coin's window costs no database wake-up (D-03).
   open?: boolean;
   notReady?: { budget: bigint; cost: bigint }; // memory at the last chain "not ready" forced bond verdict
+  hold?: string; // the manual hold reason (coins.held_reason), separate from finalize "held" (Pitfall 13)
 };
 
 const SENDER_TIMEOUT_MS = 10_000;

@@ -4,7 +4,7 @@ import { BN } from "@bondr/core/pump";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
 import { bondedJob, forceDue, forcedJob, poolBurnJob } from "./fee-burns.ts";
-import { memoryLedger } from "./fee-ledger.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 import type { FeeCoin, FeeDeps, Job, Landed } from "./fee-send.ts";
 
 const core = vi.hoisted(() => ({

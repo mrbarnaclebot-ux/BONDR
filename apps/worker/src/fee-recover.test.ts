@@ -1,7 +1,8 @@
 // Boot recovery (D-08) over memoryLedger and a scripted connection: settle from chain status only, never send.
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { expect, test, vi } from "vitest";
-import { type Entry, memoryLedger } from "./fee-ledger.ts";
+import type { Entry } from "./fee-ledger.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 import { recover, recoverAction, settleStale } from "./fee-recover.ts";
 import type { FeeCoin, FeeDeps, Job, Landed } from "./fee-send.ts";
 

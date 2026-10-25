@@ -9,7 +9,7 @@ import { BN, OnlinePumpAmmSdk } from "@bondr/core/pump";
 import { buyExactIn } from "@bondr/core/trade";
 import type { Keypair, PublicKey } from "@solana/web3.js";
 import { bondedJob, forcedJob } from "../../../apps/worker/src/fee-burns.ts";
-import { memoryLedger } from "../../../apps/worker/src/fee-ledger.ts";
+import { memoryLedger } from "../../../apps/worker/src/fee-ledger-memory.ts";
 import {
   type FeeCoin,
   type FeeDeps,

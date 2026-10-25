@@ -1,7 +1,7 @@
 // The reconcile's skips and dedupe (WR-09) over memoryLedger and an empty chain: every W reads 0 BONDR.
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { expect, test, vi } from "vitest";
-import { memoryLedger } from "./fee-ledger.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 import { reconcile } from "./fee-reconcile.ts";
 import type { FeeCoin, FeeDeps } from "./fee-send.ts";
 

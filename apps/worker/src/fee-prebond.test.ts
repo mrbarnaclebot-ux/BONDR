@@ -8,7 +8,7 @@ import {
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
 import { windowJob } from "./fee-guard.ts";
-import { memoryLedger } from "./fee-ledger.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 import { collectJob, splitJob, sweepJob } from "./fee-prebond.ts";
 import type { FeeCoin, FeeDeps, Job, Landed } from "./fee-send.ts";
 

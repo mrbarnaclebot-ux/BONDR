@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 import { close, coins, db, launches, vanityMints, wallets } from "@bondr/core/db";
 import { eq, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, test } from "vitest";
-import { type LedgerStore, memoryLedger, pgLedger } from "./fee-ledger.ts";
+import { type LedgerStore, pgLedger } from "./fee-ledger.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
 if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFile);
@@ -75,11 +76,25 @@ describe("memoryLedger", () => {
     await l.diff(M, { account: "w", diff: "5" });
     expect(await l.pending()).toHaveLength(1); // held and reconcile_diff have no state
   });
+
+  test("one signature carries a row per mint (0007); the same signature, kind and mint is refused", async () => {
+    const l = memoryLedger();
+    const two = [
+      { kind: "evacuate", mint: "A", amount: 1n },
+      { kind: "evacuate", mint: "B", amount: 2n },
+    ] as const;
+    expect(await l.insertPending([...two], "e1", 10n)).toHaveLength(2);
+    expect(await l.insertPending([{ kind: "evacuate", mint: "A" }], "e1", 10n)).toBeNull();
+    expect(await l.insertPending([{ kind: "buyback_burn", mint: null }], "b1", 10n)).toHaveLength(1);
+    expect(await l.insertPending([{ kind: "buyback_burn", mint: null }], "b1", 10n)).toBeNull();
+  });
 });
 
 const DB = !!process.env.DATABASE_URL;
 
-async function seed(tx: Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0], mint: string) {
+type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+async function seed(tx: Tx, mint: string) {
   const [id, wallet] = [randomBytes(16).toString("hex"), `test-${randomBytes(8).toString("hex")}`];
   await tx.insert(wallets).values({ address: wallet, consentedAt: new Date(), termsVersion: "test" });
   await tx.insert(vanityMints).values({ idx: -BigInt(randomInt(1, 2 ** 47)), pubkey: mint });
@@ -95,7 +110,7 @@ async function seed(tx: Parameters<Parameters<ReturnType<typeof db>["transaction
 
 // Runs fn in a transaction that always rolls back, so nothing seeded survives the test.
 async function rolledBack(
-  fn: (l: LedgerStore, read: () => Promise<typeof coins.$inferSelect>) => Promise<void>,
+  fn: (l: LedgerStore, read: () => Promise<typeof coins.$inferSelect>, tx: Tx) => Promise<void>,
 ) {
   const mint = `test-${randomBytes(8).toString("hex")}`;
   try {
@@ -105,6 +120,7 @@ async function rolledBack(
       await fn(
         pgLedger(() => tx as never),
         read,
+        tx,
       );
       tx.rollback();
     });
@@ -163,6 +179,20 @@ describe.skipIf(!DB)("pgLedger", { timeout: 60_000 }, () => {
       const i = await l.implied();
       expect([i.byMint.get(mint), typeof i.buyback]).toEqual([900n, "bigint"]);
       await l.diff(null, { implied: "0", chain: "5", diff: "5" }); // 23514 before 0006
+    });
+  });
+
+  test("two W in one EVACUATE signature both insert against the 0007 index", async () => {
+    await rolledBack(async (l, read, tx) => {
+      const a = (await read()).mint;
+      const b = `test-${randomBytes(8).toString("hex")}`;
+      await seed(tx, b);
+      const two = [
+        { kind: "evacuate", mint: a, amount: 1n },
+        { kind: "evacuate", mint: b, amount: 2n },
+      ] as const;
+      expect(await l.insertPending([...two], `e${a}`, 10n)).toHaveLength(2);
+      expect(await l.insertPending([two[0]], `e${a}`, 10n)).toBeNull();
     });
   });
 });

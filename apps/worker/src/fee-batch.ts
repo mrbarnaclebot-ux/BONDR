@@ -1,7 +1,7 @@
-// The daily batch (D-03, D-13, D-19, D-20): at FEE_BATCH_HOUR_UTC the worker burns the buyback wallet's BONDR,
-// pays out the post-bond fees of finalized coins, retries the bond and finalize of pooled coins still at none,
-// then reconciles (fee-reconcile.ts). Coins come from the engine's memory, so the run wakes Neon once, for the
-// reconcile sum and the sends' own rows. Every send goes through its coin's queue, so it never overlaps that
+// The daily batch (D-03, D-13, D-19, D-20): at FEE_BATCH_HOUR_UTC the worker settles pending rows past their
+// blockhash (WR-01), burns the buyback wallet's BONDR, pays out the post-bond fees of finalized coins, retries the
+// bond and finalize of pooled coins still at none, then reconciles (fee-reconcile.ts). Coins come from the
+// engine's memory, so the run wakes Neon once, for the pending and reconcile reads and the sends' own rows. Every send goes through its coin's queue, so it never overlaps that
 // coin's other jobs; below the ops floor the sends are skipped and only the reconcile runs.
 import { distributeMin } from "@bondr/core/fees";
 import { redact } from "@bondr/core/net";
@@ -27,6 +27,7 @@ import { bondedJob } from "./fee-burns.ts";
 import type { Engine } from "./fee-engine.ts";
 import { tokenBalance } from "./fee-prebond.ts";
 import { reconcile } from "./fee-reconcile.ts";
+import { settleStale } from "./fee-recover.ts";
 import { type FeeCoin, type FeeDeps, factsFor, type Landed, opsLow } from "./fee-send.ts";
 
 const DECIMALS = 6; // BONDR, the quote mint (price.ts)
@@ -35,6 +36,9 @@ const DISTRIBUTE_CU = 400_000;
 // D-19, A8: the signature fee plus budget()'s priority price (1,000 micro-lamports per CU) at this limit.
 const DISTRIBUTE_FEE = 5_000 + Math.ceil((DISTRIBUTE_CU * 1_000) / 1_000_000);
 const DAY_MS = 86_400_000;
+
+const logged = (what: string) => (e: unknown) =>
+  console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
 
 export type BatchEngine = Pick<Engine, "coins" | "enqueue">;
 export type BatchSummary = {
@@ -139,6 +143,8 @@ export async function runBatch(d: FeeDeps, engine: BatchEngine): Promise<BatchSu
     accounts: 0,
     diffs: 0,
   };
+  const left = await settleStale(d, (m) => engine.coins.get(m)).catch(logged("fee batch settle"));
+  if (left) console.error(`fee batch: ${left} signatures still pending`);
   if (!s.opsLow) await sends(d, engine, s);
   Object.assign(s, await reconcile(d, engine.coins));
   console.log(`fee batch: ${JSON.stringify(s)}`);
@@ -171,7 +177,7 @@ export function scheduleBatch(d: FeeDeps, engine: BatchEngine, hour: number): vo
   clearTimeout(timer);
   const fire = () =>
     void batchNow()
-      ?.catch((e) => console.error(`fee batch failed: ${redact(e instanceof Error ? e.message : String(e))}`))
+      ?.catch(logged("fee batch"))
       .finally(() => scheduleBatch(d, engine, hour));
   timer = setTimeout(fire, nextBatchAt(Date.now(), hour) - Date.now());
   timer.unref();

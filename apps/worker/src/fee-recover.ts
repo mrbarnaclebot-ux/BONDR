@@ -132,6 +132,18 @@ async function splitOpen(d: FeeDeps, coinOf: CoinOf): Promise<void> {
   }
 }
 
+// WR-01: the daily batch settles every pending row past its blockhash, as at boot, so a dropped forced bond or
+// finalize never holds its once-only key until a restart. A row inside its blockhash belongs to a send still in
+// flight and is left to it. Returns how many signatures are still pending.
+export async function settleStale(d: FeeDeps, coinOf: CoinOf, sleep: Sleep = delay): Promise<number> {
+  const pending = d.mode === "on" ? await d.ledger.pending() : [];
+  if (!pending.length) return 0;
+  const height = await d.conn.getBlockHeight();
+  const stale = pending.filter((e) => Number(e.lastValidBlockHeight ?? 0) < height);
+  for (const e of stale) markOpen(coinOf, e.mint);
+  return stale.length ? settleRows(d, stale, coinOf, sleep) : 0;
+}
+
 export async function recover(d: FeeDeps, coinOf: CoinOf, sleep: Sleep = delay): Promise<void> {
   const pending = await d.ledger.pending();
   for (const e of pending) markOpen(coinOf, e.mint);

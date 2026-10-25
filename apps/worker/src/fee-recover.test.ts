@@ -2,7 +2,7 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { expect, test, vi } from "vitest";
 import { type Entry, memoryLedger } from "./fee-ledger.ts";
-import { recover, recoverAction } from "./fee-recover.ts";
+import { recover, recoverAction, settleStale } from "./fee-recover.ts";
 import type { FeeCoin, FeeDeps, Job, Landed } from "./fee-send.ts";
 
 const at = { height: 100, lastValid: 150, rechecks: 0 };
@@ -147,4 +147,23 @@ test("recover rebuilds bond burn, finalize and distribute facts from each tx's o
     ["distribute", 100n],
   ]);
   expect(rows[2]?.detail).toMatchObject({ deployerAmount: "80", treasuryAmount: "20" });
+});
+
+// WR-01: the daily batch runs this, so a dropped forced bond never holds its once-only key until a restart.
+test("settleStale settles a pending row past its blockhash from chain; one inside it is left to its send", async () => {
+  const failed = { confirmationStatus: "confirmed", err: { InstructionError: [0, { Custom: 1 }] } };
+  const t = deps((sigs) => sigs.map(() => failed));
+  const c = { ...coin, open: false };
+  await t.ledger.insertPending([{ kind: "forced_bond", mint }], "old", 50n);
+  await t.ledger.insertPending([{ kind: "collect", mint }], "fresh", 150n);
+  expect(
+    await settleStale(
+      t.d,
+      () => c,
+      async () => {},
+    ),
+  ).toBe(0);
+  expect(t.conn.getSignatureStatuses.mock.calls[0]?.[0]).toEqual(["old"]);
+  expect((await t.ledger.pending()).map((e) => e.signature)).toEqual(["fresh"]);
+  expect(c.open).toBe(true); // its next spend guard reads the ledger
 });

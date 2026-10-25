@@ -339,7 +339,7 @@ Plans:
 
 **Wave 16** *(blocked on Wave 15 completion)*
 
-- [ ] 06-23-PLAN.md - EVACUATE section: phrase arm, auto-simulate, sign and evacuate, simulate-only state
+- [x] 06-23-PLAN.md - EVACUATE section: phrase arm, auto-simulate, sign and evacuate, simulate-only state
 
 **Wave 17** *(blocked on Wave 16 completion)*
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 22/26 | In Progress|  |
+| 6. Admin Dashboard | 23/26 | In Progress|  |
 | 7. Go-Live | 0/TBD | Not started | - |

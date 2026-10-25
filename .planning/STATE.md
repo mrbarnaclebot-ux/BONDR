@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-22-PLAN.md
-last_updated: "2026-10-25T19:28:49.729Z"
-last_activity: 2026-10-26 -- Completed 06-22 (EVACUATE worker)
+stopped_at: Completed 06-23-PLAN.md
+last_updated: "2026-10-26T01:40:00.000Z"
+last_activity: 2026-10-26 -- Completed 06-23 (EVACUATE section)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 91
+  completed_plans: 92
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 23 of 26 (06-22 complete)
+Plan: 24 of 26 (06-23 complete)
 Status: Ready to execute
-Last activity: 2026-10-26 -- Completed 06-22 (EVACUATE worker)
+Last activity: 2026-10-26 -- Completed 06-23 (EVACUATE section)
 
-Progress: [██████████] 96%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ Progress: [██████████] 96%
 | Phase 06 P19 | 25 min | 2 tasks | 11 files |
 | Phase 06 P18 | 23 min | 2 tasks | 16 files |
 | Phase 06 P22 | 14 min | 2 tasks | 13 files |
+| Phase 06 P23 | 25 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -327,6 +328,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-22: the EVACUATE gate allowlist is the treasury with BONDR only (stricter than the plan's W-internal and child-mint list, so a child transfer to the treasury can never pass, D-36); every batch starts with an idempotent treasury BONDR ATA create paid by ops
 - [Phase 06]: 06-22: EVACUATE simulate gives an intent when at least one batch passes; failures counts failed batches' wallets; evacuate rows always carry sol (0 when the price is unknown, Pitfall 4)
 - [Phase 06]: 06-22: gatedDeps, codeOf, progress, outcome and logged moved to admin-send.ts (shared by admin-money.ts and admin-evacuate.ts without an import cycle)
+- [Phase 06]: 06-23: EVACUATE simulate-only is health.evacuate !== "on" or no intent; a 409 not_applicable on execute drops the intent (button turns simulate-only), so worker.ts need not pass reason through
+- [Phase 06]: 06-23: EVACUATE shows Connect Phantom before "Sign and evacuate {n} wallets" when Phantom is not connected, as the dialog does; no extra dialog (D-35)
+- [Phase 06]: 06-23: pollIntent's 90 s deadline restarts on each answer and takes an optional onView for EVACUATE progress (W counts)
 
 ### Pending Todos
 

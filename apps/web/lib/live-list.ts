@@ -17,6 +17,10 @@ function patch(list: CoinRow[], mint: string, fn: (c: CoinRow) => CoinRow): Coin
 export const applyTrade = (list: CoinRow[], { coin }: { coin: CoinLive }): CoinRow[] =>
   patch(list, coin.mint, (c) => ({ ...c, ...coin }));
 
+/** A fee event's coin was read before its publish, so it can predate a trade or bond already applied: fees only. */
+export const applyFees = (list: CoinRow[], coin: CoinLive): CoinRow[] =>
+  coin.fees ? patch(list, coin.mint, (c) => ({ ...c, fees: coin.fees })) : list;
+
 type Bond = { mint: string; venue: Venue; bondSig?: string | null; bondedAt?: string | null };
 export const applyBond = (list: CoinRow[], { mint, venue, bondSig, bondedAt }: Bond): CoinRow[] =>
   patch(list, mint, (c) => ({
@@ -56,6 +60,19 @@ const ORDER: Record<Sort | "trending", Cmp> = {
 };
 
 export const rerank = (list: CoinRow[], order: Sort | "trending"): CoinRow[] => list.toSorted(ORDER[order]);
+
+const railable = (c: CoinRow) =>
+  c.venue === "curve" && !!c.fees?.cost && BigInt(c.fees.cost) > 0n && BigInt(c.fees.budget) > 0n;
+// budget_a / cost_a against budget_b / cost_b, cross-multiplied in base units so no float rounds a tie away.
+const byReady: Cmp = (a, b) => {
+  const x = BigInt(a.fees?.budget ?? 0) * BigInt(b.fees?.cost ?? 0);
+  const y = BigInt(b.fees?.budget ?? 0) * BigInt(a.fees?.cost ?? 0);
+  return x > y ? -1 : x < y ? 1 : 0;
+};
+
+/** The Next to bond rail's tick (D-24): bonded or budgetless coins leave, the rest re-sort as lib/coins.ts does. */
+export const railRank = (list: CoinRow[]): CoinRow[] =>
+  list.filter(railable).toSorted((a, b) => byReady(a, b) || newer(a, b));
 
 /** D-13 over the whole list: any 1h volume, else any 24h volume, else the latest launches. */
 export const trendingMode = (list: CoinRow[]): TrendMode =>
@@ -121,4 +138,15 @@ export function resyncFeed<T extends Trade>(feed: Feed<T>, page: Feed<T>): Feed<
   if (joined || !page.more || !oldest) return { ...feed, rows: addTrades(feed.rows, page.rows) };
   const live = feed.rows.filter((r) => r.fresh && newestFirst(r, oldest) < 0);
   return { rows: addTrades(page.rows, live), more: true };
+}
+
+type Entry = { id: string; landedAt: string };
+const newestEntry = (a: Entry, b: Entry) =>
+  Date.parse(b.landedAt) - Date.parse(a.landedAt) || desc(a.id, b.id);
+
+/** Fee ledger rows merged by id in the server's order (landed time, then id, newest first); same array if none is new. */
+export function addLedger<T extends Entry>(rows: T[], add: T[]): T[] {
+  const seen = new Set(rows.map((r) => r.id));
+  const unseen = add.filter((r) => !seen.has(r.id) && !!seen.add(r.id));
+  return unseen.length ? [...unseen, ...rows].toSorted(newestEntry) : rows;
 }

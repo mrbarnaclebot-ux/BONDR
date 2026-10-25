@@ -151,15 +151,15 @@ function FeedHead({ symbol }: { symbol: string }) {
 
 type TableProps = { rows: Shown[]; symbol: string; net: Net; solIn: string; exit: Exit };
 
-/** Relative times on a 15 s tick; `local` flips on after mount (see Row). */
-function useClock() {
+/** Relative times on a tick (15 s here, 60 s in the fee ledger); `local` flips on after mount (see Row). */
+export function useClock(tick = 15_000) {
   const [now, setNow] = useState(() => Date.now());
   const [local, setLocal] = useState(false);
   useEffect(() => {
     setLocal(true);
-    const id = setInterval(() => setNow(Date.now()), 15_000);
+    const id = setInterval(() => setNow(Date.now()), tick);
     return () => clearInterval(id);
-  }, []);
+  }, [tick]);
   return { now, local };
 }
 
@@ -190,13 +190,22 @@ function FeedTable({ rows, symbol, net, solIn, exit }: TableProps) {
   );
 }
 
-type MoreProps = { shown: boolean; more: boolean; state: "idle" | "loading" | "error"; load(): void };
+const TRADE_COPY = {
+  more: "Load 50 older trades",
+  end: "That is every trade since launch.",
+  error: "Could not load older trades. Try again.",
+};
 
-function LoadMore({ shown, more, state, load }: MoreProps) {
-  if (!more)
-    return shown ? (
-      <p className="mt-4 text-xs text-muted-foreground">That is every trade since launch.</p>
-    ) : null;
+type MoreProps = {
+  shown: boolean;
+  more: boolean;
+  state: "idle" | "loading" | "error";
+  load(): void;
+  copy?: typeof TRADE_COPY;
+};
+
+export function LoadMore({ shown, more, state, load, copy = TRADE_COPY }: MoreProps) {
+  if (!more) return shown ? <p className="mt-4 text-xs text-muted-foreground">{copy.end}</p> : null;
   return (
     <>
       <Button
@@ -205,11 +214,11 @@ function LoadMore({ shown, more, state, load }: MoreProps) {
         aria-busy={state === "loading"}
         onClick={load}
       >
-        {state === "loading" ? "Loading…" : "Load 50 older trades"}
+        {state === "loading" ? "Loading…" : copy.more}
       </Button>
       {state === "error" && (
         <p role="alert" className="mt-2 text-xs text-destructive">
-          Could not load older trades. Try again.
+          {copy.error}
         </p>
       )}
     </>

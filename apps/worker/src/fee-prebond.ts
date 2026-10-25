@@ -1,0 +1,83 @@
+// Pre-bond fee jobs (FEE-01, FEE-04): collect, the 90/10 split and the window sweep, each one tx through
+// d.land. Ops pays every fee; W signs only the split and the sweep (D-02).
+import { collectIxs, splitIxs, sweepIxs } from "@bondr/core/collect";
+import { sweepSplit } from "@bondr/core/fees";
+import { split90_10 } from "@bondr/core/math";
+import { toSol } from "@bondr/core/price";
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
+import type { PublicKey } from "@solana/web3.js";
+import { feeConfig } from "./fee-config.ts";
+import type { Entry, NewEntry } from "./fee-ledger.ts";
+import { type FeeCoin, type FeeDeps, factsFor, type Landed } from "./fee-send.ts";
+
+const DECIMALS = 6; // BONDR, the quote mint (price.ts)
+const DONE: Landed = { state: "done" };
+
+// Permissionless, so W does not sign. The amount is W's BONDR delta in this tx's own meta (D-14).
+export async function collectJob(
+  d: FeeDeps,
+  coin: FeeCoin,
+  urgent = false,
+  sweepCurve = true,
+): Promise<Landed> {
+  const [mint, W] = [coin.mint, coin.w.publicKey];
+  coin.open = true;
+  const ixs = await collectIxs({
+    ...{ online: d.online, payer: d.ops.publicKey, mint, creator: W, quoteMint: d.Q },
+    sweepCurve,
+  });
+  const rows: NewEntry[] = [{ kind: "collect", mint: mint.toBase58() }];
+  return d.land({ rows, ixs, signers: [], urgent, facts: (meta) => factsFor(rows, meta, d.Q, W) });
+}
+
+// Sized from the collect row's amount, never from W's balance (D-14, T-05-04-03).
+export async function splitJob(d: FeeDeps, coin: FeeCoin, collect: Entry, urgent = false): Promise<Landed> {
+  const amount = split90_10(collect.amount ?? 0n).treasury;
+  if (amount === 0n) return DONE;
+  const ixs = splitIxs({
+    ...{ payer: d.ops.publicKey, creator: coin.w.publicKey, treasury: d.treasury, quoteMint: d.Q },
+    ...{ treasuryAmount: amount, decimals: DECIMALS },
+  });
+  const row: NewEntry = { kind: "split_treasury", mint: coin.mint.toBase58(), ref: collect.id, amount };
+  return d.land({ rows: [row], ixs, signers: [coin.w], urgent });
+}
+
+// An owner's BONDR balance (or another token's): a missing ATA is 0; any other RPC error throws, so a flaky read
+// never skips a sweep or a burn silently.
+export async function tokenBalance(d: FeeDeps, owner: PublicKey, token = d.Q): Promise<bigint> {
+  const ata = getAssociatedTokenAddressSync(token, owner, true, T22);
+  try {
+    return BigInt((await d.conn.getTokenAccountBalance(ata)).value.amount);
+  } catch (e) {
+    if (e instanceof Error && /could not find account/i.test(e.message)) return 0n;
+    throw e;
+  }
+}
+
+export const wBondr = (d: FeeDeps, coin: FeeCoin, token = d.Q) => tokenBalance(d, coin.w.publicKey, token);
+
+// D-12: after the split, all of W's BONDR is budget; it leaves 90/10 in one W-signed tx. Zero writes no row.
+export async function sweepJob(d: FeeDeps, coin: FeeCoin, windowIndex: number): Promise<Landed> {
+  const balance = await wBondr(d, coin);
+  if (balance === 0n) return DONE;
+  const { buyback, treasury } = sweepSplit(balance);
+  const mint = coin.mint.toBase58();
+  const rows: NewEntry[] = [
+    { kind: "sweep_buyback" as const, mint, amount: buyback, windowIndex },
+    { kind: "sweep_treasury" as const, mint, amount: treasury, windowIndex },
+  ].filter((r) => r.amount > 0n);
+  const ixs = sweepIxs({
+    ...{ payer: d.ops.publicKey, w: coin.w.publicKey, buyback: d.buyback.publicKey, treasury: d.treasury },
+    ...{ quoteMint: d.Q, buybackAmount: buyback, treasuryAmount: treasury, decimals: DECIMALS },
+  });
+  return d.land({ rows, ixs, signers: [coin.w] });
+}
+
+// D-11: collect only when the bucket is worth an ops fee; with no BONDR price yet, any fees are.
+export function worthCollecting(d: FeeDeps, coin: FeeCoin): boolean {
+  if (coin.feesUnclaimed <= 0n) return false;
+  const price = d.bondrSol();
+  return price === null || toSol(coin.feesUnclaimed, price) >= BigInt(feeConfig(d.net).collectMinLamports);
+}
+
+export const settled = (r: Landed) => r.state === "landed" || r.state === "done" || r.state === "dry";

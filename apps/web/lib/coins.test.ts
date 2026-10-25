@@ -1,12 +1,12 @@
-// coinByMint's windowed values, listCoins orders and heroCounts against the Neon dev branch (seeded coins,
+// coinByMint's windowed values, listCoins orders, nextToBond and heroCounts against the Neon dev branch (seeded coins,
 // removed after); CI has no .env and skips.
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { CoinRow } from "@bondr/core/api";
 import postgres from "postgres";
 import { afterAll, describe, expect, test, vi } from "vitest";
-import { dropCoin, fakeMint, fakeSig, seedCoin } from "../e2e/fixtures.ts";
-import { coinByMint, escapeLike, heroCounts, listCoins, trending, trendMode } from "./coins";
+import { dropCoin, fakeMint, fakeSig, seedCoin, seedLedger } from "../e2e/fixtures.ts";
+import { coinByMint, escapeLike, heroCounts, listCoins, nextToBond, trending, trendMode } from "./coins";
 import { close } from "./db";
 
 vi.mock("server-only", () => ({}));
@@ -58,7 +58,7 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     for (const m of mints) await dropCoin(sql, m);
     await sql.end();
     await close();
-  }, 30_000);
+  }, 120_000); // about 30 seeded coins, six deletes each, one connection
 
   test("1h change runs from the last trade before the hour; burns never count", async () => {
     const mint = await coin(180, 8, 12, [
@@ -121,7 +121,7 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     const [n] = await sql<{ all: number; bonded: number }[]>`select count(*)::int as all,
       count(*) filter (where venue in ('complete', 'pool'))::int as bonded from coins`;
     vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 20_000 }); // past the 10 s list cache of the last test
-    expect(await heroCounts()).toEqual({ launched: n.all, bonded: n.bonded });
+    expect(await heroCounts()).toMatchObject({ launched: n.all, bonded: n.bonded });
     const [p0, p1] = await Promise.all([0, 1].map((page) => listCoins({ sort: "latest", page })));
     expect(p0.coins.length).toBe(Math.min(50, n.all));
     expect(p0.more).toBe(n.all > 50);
@@ -177,5 +177,55 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     expect(t.coins[1].vol1h).toBeCloseTo(8e6);
     const i = t.coins.findIndex((r) => r.mint === c);
     if (i >= 0) expect(t.coins.slice(0, i).every((r) => r.vol1h > 0)).toBe(true);
+  });
+
+  // Budgets far above any real coin's ratio (real ones fire at 105%), so the seeded coins lead the rail.
+  test("nextToBond ranks curve coins with a budget by budget / cost, newer first on a tie, at most 4", async () => {
+    const seed = async (
+      budget: number,
+      cost: number | null,
+      extra: Record<string, string | number | Date> = {},
+    ) => {
+      const fees = { fee_budget: String(budget), cost_to_complete: cost === null ? null : String(cost) };
+      const coin = { launched_at: new Date("2099-03-01T00:00:00Z"), ...fees, ...extra };
+      const { mint } = await seedCoin(sql, { trades: 0, coin });
+      mints.push(mint);
+      return mint;
+    };
+    const a = await seed(9e9, 1e9);
+    const newer = await seed(9e9, 1e9, { launched_at: new Date("2099-03-02T00:00:00Z") });
+    // 5e9 counted as 4e9 in the bank plus the 90% share of 1.2e9 unclaimed (the token page's budget).
+    const b = await seed(4e9, 1e9, { fees_unclaimed: "1200000000" });
+    const c = await seed(0, 1e9);
+    const d = await seed(9e9, 1e9, { venue: "pool", bonded_at: new Date(), progress: 1 });
+    const nocost = await seed(9e9, null);
+    const fifth = await seed(3e9, 1e9);
+    const last = await seed(2e9, 1e9);
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 20_000 }); // past any cached read
+    const rail = await nextToBond();
+    vi.useRealTimers();
+    expect(rail.map((r) => r.mint)).toEqual([newer, a, b, fifth]);
+    expect(rail[2].fees?.budget).toBe("5080000000");
+    for (const m of [c, d, nocost, last]) expect(rail.some((r) => r.mint === m)).toBe(false);
+  });
+
+  test("heroCounts forced counts coins with a landed forced bond only", async () => {
+    const before = await sql<{ n: number }[]>`select count(distinct mint)::int as n from fee_ledger
+      where kind = 'forced_bond' and state = 'landed'`;
+    const seed = async () => {
+      const { mint } = await seedCoin(sql, {
+        trades: 0,
+        coin: { venue: "pool", bonded_at: new Date(), progress: 1 },
+      });
+      mints.push(mint);
+      return mint;
+    };
+    await seedLedger(sql, await seed(), [{ kind: "forced_bond" }]);
+    await seedLedger(sql, await seed(), [{ kind: "forced_bond", state: "pending" }]);
+    await seedLedger(sql, await seed(), [{ kind: "pool_burn" }]);
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 40_000 }); // past the cached counts
+    const counts = await heroCounts();
+    vi.useRealTimers();
+    expect(counts.forced).toBe(before[0].n + 1);
   });
 });

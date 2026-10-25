@@ -31,12 +31,15 @@ export function accountFromSeed(seed: Buffer): TestAccount {
 
 export const newTestAccount = (): TestAccount => accountFromSeed(randomBytes(32));
 
-/** The worker's sim dev, derive(seed, "sim", "devnet", "dev") in core/keys.ts, without a Solana import. */
-export function simDevAccount(): TestAccount {
+/** derive(seed, role, net, id) in core/keys.ts for `id` = "role:net:id", without a Solana import. */
+export function seedAccount(id: string): TestAccount {
   const file = rootEnv().MASTER_SEED_FILE;
   if (!file) throw new Error("needs MASTER_SEED_FILE in the root .env");
-  return accountFromSeed(createHmac("sha256", readFileSync(file)).update("sim:devnet:dev").digest());
+  return accountFromSeed(createHmac("sha256", readFileSync(file)).update(id).digest());
 }
+
+/** The worker's sim dev, derive(seed, "sim", "devnet", "dev"). */
+export const simDevAccount = (): TestAccount => seedAccount("sim:devnet:dev");
 
 /** Signs slot 0 of a v0 wire over its message bytes, as Phantom does; the count is one shortvec byte. */
 export function signWire(b64: string, key: KeyObject): string {
@@ -56,11 +59,22 @@ export function rootEnv(): {
   SESSION_SECRET?: string;
   WORKER_URL?: string;
   WORKER_TOKEN?: string;
+  BONDR_QUOTE_MINT?: string;
+  VANITY_LANE?: string;
 } {
   const file = fileURLToPath(new URL("../../../.env", import.meta.url));
   const all = existsSync(file) ? parseEnv(readFileSync(file, "utf8")) : {};
   const { DATABASE_URL, MASTER_SEED_FILE, SESSION_SECRET, WORKER_URL, WORKER_TOKEN } = all;
-  return { DATABASE_URL, MASTER_SEED_FILE, SESSION_SECRET, WORKER_URL, WORKER_TOKEN };
+  const { BONDR_QUOTE_MINT, VANITY_LANE } = all;
+  return {
+    DATABASE_URL,
+    MASTER_SEED_FILE,
+    SESSION_SECRET,
+    WORKER_URL,
+    WORKER_TOKEN,
+    BONDR_QUOTE_MINT,
+    VANITY_LANE,
+  };
 }
 
 /**

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
-stopped_at: Phase 4 complete (13/13) — ready to discuss Phase 5
-last_updated: 2026-10-24T20:14:02.109Z
-last_activity: 2026-10-24
+stopped_at: Phase 5 complete (13/13) — ready to discuss Phase 6
+last_updated: 2026-10-25T09:41:29.804Z
+last_activity: 2026-10-25
 progress:
   total_phases: 7
-  completed_phases: 4
-  total_plans: 56
-  completed_plans: 56
-  percent: 57
+  completed_phases: 5
+  total_plans: 69
+  completed_plans: 69
+  percent: 71
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** A holder can verify on the token page that the dev holds no launch supply, and see that pre-bond fees went to forcing the bond and burning supply, never to the dev.
-**Current focus:** Phase 5 — fee engine and public ledger
+**Current focus:** Phase 6 — admin dashboard
 
 ## Current Position
 
-Phase: 5
+Phase: 6
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-24
+Last activity: 2026-10-25
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 26
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -45,6 +45,7 @@ Progress: [██████████] 100%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 4 | 13 | - | - |
+| 5 | 13 | - | - |
 
 **Recent Trend:**
 
@@ -99,6 +100,13 @@ Progress: [██████████] 100%
 | Phase 04 P10 | 17 min | 3 tasks | 12 files |
 | Phase 04 P11 | 17min | 2 tasks | 11 files |
 | Phase 04 P13 | 12 min | 3 tasks | 4 files |
+| Phase 05 P01 | 15 min | 3 tasks | 12 files |
+| Phase 05 P04 | 13 min | 3 tasks | 9 files |
+| Phase 05 P05 | 25 min | 3 tasks | 15 files |
+| Phase 05 P07 | 18 min | 3 tasks | 14 files |
+| Phase 05 P08 | 25 min | 3 tasks | 23 files |
+| Phase 05 P09 | 35 min | 3 tasks | 18 files |
+| Phase 05 P12 | 31 min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -221,6 +229,19 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-11: The callout slot shows one callout: result, migration, impact, quote failed, in that order
 - [Phase 04]: 04-13: staging runs exactly one worker replica because prepared trades live in worker memory (D-07)
 - [Phase 04]: 04-13: on staging the devnet trade group takes the first curve coin of /api/coins?sort=top; the seeded trade panel group is local only
+- [Phase 05]: 05-01: no window-start column on coins; the window is derived from launched_at and FEE_WINDOW_MS (D-23 discretion)
+- [Phase 05]: 05-01: totalsFor distribute splits the row SOL by share; collect clears fees_unclaimed via set.feesUnclaimed; the store clamps fee_budget at 0
+- [Phase 05]: 05-01: FEE-01/04/05 and TOKEN-04 stay pending until the plans that ship them (05-02 onward)
+- [Phase 05]: 05-05: onIngest takes one Ingested object; engine applies fee numbers only from a trade slot at least as new as the last applied, venue only advances
+- [Phase 05]: 05-05: Engine.landed mirrors totalsFor in memory so a quiet coin never re-collects an empty bucket
+- [Phase 05]: 05-05: boot recovery leaves rows pending on any RPC error and settles nothing in dry mode
+- [Phase 05]: 05-07: bond burns gate on every collect and split settling; a fresh cost of 0 means complete and sends no forced bond
+- [Phase 05]: 05-07: pool_burn records detail.path; the fork ran exact_quote_in, so buy_v2 stays only as the fallback (A2 holds)
+- [Phase 05]: 05-07: boot catch-up reruns bondedJob for pooled coins with finalize none until 05-08 sets finalize
+- [Phase 05]: 05-08: tx1's pool sweep parks post-bond fees in W's own coin creator vault (the update pays none out), so finalize closes with a collect of W's vaults (no curve sweep), the window split and the sweep; W ends at 0 on the fork
+- [Phase 05]: 05-08: bondedJob with a live bond burn goes straight to finalizeJob so a restart between the two finalize txs resumes; POST /fee/release skips the launch-tx fetch and re-runs only the distinct and on-curve checks
+- [Phase 05]: 05-12: the devnet e2e picks the derived-W curve coin whose window closes soonest but at least 4 minutes out
+- [Phase 05]: 05-12: the batch check asserts no new coin or platform reconcile_diff right after the buyback burn
 
 ### Pending Todos
 
@@ -229,7 +250,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Phase 5 (from Phase 1 second code review, 2026-10-19):
+- Phase 5 (from Phase 1 second code review, 2026-10-19; the first three resolved by 05-08, the fourth by 05-07):
   - finalizeIxs/splitIxs take deployer and treasury from the caller. The worker must derive the deployer from the coin's on-chain CreateEvent `user` and the treasury from config, and assert deployer != treasury != W, because the 8000 bps lock is permanent.
   - Add a resumable 2-tx finalize in core: finalizeConfigIxs, finalizeUpdateIxs and finalizeState (none/configured/revoked) read from chain. Send tx 2 immediately after tx 1, because anyone can run distribute in between and pay W 100%.
   - Detect "complete and pool exists" from chain instead of a caller boolean.
@@ -253,6 +274,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T16:25:42.224Z
-Stopped at: Completed 04-13-PLAN.md
+Last session: 2026-10-25T08:52:22.136Z
+Stopped at: Completed 05-12-PLAN.md
 Resume file: None

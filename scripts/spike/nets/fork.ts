@@ -4,6 +4,8 @@ import { bondStage } from "../stages/bond.ts";
 import { completeStage } from "../stages/complete.ts";
 import { configStage } from "../stages/config.ts";
 import { createStage } from "../stages/create.ts";
+import { engineBondStage } from "../stages/engine-bond.ts";
+import { engineFinalStage } from "../stages/engine-final.ts";
 import { finalizeStage } from "../stages/finalize.ts";
 import { launchStage } from "../stages/launch.ts";
 import { migratedStage } from "../stages/migrated.ts";
@@ -20,6 +22,10 @@ const stages: Stage[] = [
   bondStage,
   poolStage,
   finalizeStage,
+  // Q still on its curve: E1 force-bonds and E2 bonds by trades, both through the engine's fee-burns.ts.
+  engineBondStage,
+  // E2 on its pool: post-bond trades, then the engine's finalizeJob (pre-flight, config, 8000/2000, closing sweep).
+  engineFinalStage,
   // Q still on its curve, C2 on its PumpSwap pool: SOL -> Q curve -> C2 pool.
   multihopStage("C2", "bonded."),
   completeStage,

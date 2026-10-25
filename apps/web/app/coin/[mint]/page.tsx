@@ -8,14 +8,17 @@ import { CoinLiveProvider } from "@/components/coin-live";
 import { ProofStamp } from "@/components/proof-stamp";
 import { BondPanel } from "@/components/token-bond";
 import { McapChart } from "@/components/token-chart";
+import { FeeLedger, type LaunchEntry, type LedgerFirst } from "@/components/token-ledger";
 import { TokenStats } from "@/components/token-stats";
 import { TradeFeed } from "@/components/token-trades";
 import { TradePanel } from "@/components/trade-panel";
 import { TradeSheet } from "@/components/trade-sheet";
-import { coinByMint } from "@/lib/coins";
+import { coinByMint, feeWindowMs } from "@/lib/coins";
 import { chartInterval, compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
+import { ledgerPage } from "@/lib/ledger";
 import { hub } from "@/lib/live-hub";
+import { imageUrl } from "@/lib/pinata";
 import { tradesPage } from "@/lib/trades";
 import { TradeProvider } from "@/lib/use-trade";
 
@@ -34,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// The first feed page and the coin row are kept 10 s, so a burst of views of one coin (a shared link) is one
+// The first feed and ledger pages and the coin row are kept 10 s, so a burst of views of one coin (a shared link) is one
 // Neon read each; Load more and the live stream bring anything newer or older.
 // ponytail: per-process map cleared at 1000 entries; move to a shared cache if web runs more than one instance.
 const TTL = 10_000;
@@ -51,10 +54,19 @@ function kept<T>(read: (mint: string) => Promise<T>) {
   };
 }
 
-// The hub id is taken before the read, so the stream replays anything that lands after it.
+/** A failed ledger read shows the panel's error line, not a failed page. */
+const ledgerOrNull = (mint: string): Promise<LedgerFirst | null> =>
+  ledgerPage(mint).catch((e: { cause?: { code?: string } }) => {
+    console.error("ledger read failed", e.cause?.code ?? "unknown");
+    return null;
+  });
+
+// The hub id is taken before both reads, so the stream replays anything that lands after them. Trades and
+// ledger share one entry: a ledger snapshot older than the head would drop a fee row until reload.
 const firstPage = kept(async (mint) => {
   const head = hub.head();
-  return { ...(await tradesPage(mint)), head };
+  const [t, ledger] = await Promise.all([tradesPage(mint), ledgerOrNull(mint)]);
+  return { ...t, ledger, head };
 });
 const coinRow = kept(coinByMint);
 
@@ -65,15 +77,22 @@ function sentence(v: LaunchView): string {
   return `Deployer ${short(v.wallet)} chose insta ${v.exit}: the ${sol(v.solIn)} SOL dev buy${tokens} was ${fate} in the launch transaction.`;
 }
 
-type PanelProps = { v: LaunchView; net: Net; feed: Awaited<ReturnType<typeof firstPage>>; chart: ReactNode };
+type PanelProps = {
+  v: LaunchView;
+  net: Net;
+  feed: Awaited<ReturnType<typeof firstPage>>;
+  launchedAt: string | null;
+  chart: ReactNode;
+  ledger: ReactNode;
+};
 
 /**
- * One column: chart, Trade, Bond and burn, Trades. At 1100px the chart and Trades take the wide column and the
- * 380px right column holds Trade above Bond and burn, not sticky (UI-SPEC Breakpoints and Layout). DOM order is
+ * One column: chart, Trade, Bond and burn, Fee ledger, Trades. At 1100px the chart and Trades take the wide
+ * column and the 380px right column holds Trade, Bond and burn and the Fee ledger, not sticky (UI-SPEC Breakpoints and Layout). DOM order is
  * chart, right column, Trades, so the one-column order needs no order rules; row 2 is 1fr so a tall right column
  * never opens a gap between chart and Trades.
  */
-function Panels({ v, net, feed, chart }: PanelProps) {
+function Panels({ v, net, feed, launchedAt, chart, ledger }: PanelProps) {
   return (
     <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:gap-x-8">
       <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-1">{chart}</div>
@@ -82,7 +101,14 @@ function Panels({ v, net, feed, chart }: PanelProps) {
         <div className="grid max-[1099px]:hidden">
           <TradePanel />
         </div>
-        <BondPanel symbol={v.symbol} net={net} />
+        <BondPanel
+          symbol={v.symbol}
+          net={net}
+          launchedAt={launchedAt}
+          windowMs={feeWindowMs()}
+          image={imageUrl(v.imageCid)}
+        />
+        {ledger}
       </div>
       <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-2 min-[1100px]:self-start">
         <TradeFeed
@@ -99,12 +125,25 @@ function Panels({ v, net, feed, chart }: PanelProps) {
   );
 }
 
+/** The ledger's synthesized oldest row, from the launch already loaded for the page. */
+const launchEntry = (v: LaunchView, launchedAt?: string): LaunchEntry | null =>
+  v.signature
+    ? {
+        signature: v.signature,
+        at: launchedAt ?? v.createdAt,
+        exit: v.exit,
+        solIn: v.solIn,
+        tokens: v.facts?.tokens,
+      }
+    : null;
+
 /** The bare token page: only a landed BONDR launch renders, everything else is a 404 (T-02-15-04). */
 export default async function CoinPage({ params }: Props) {
   const v = await landedCoin((await params).mint);
   if (!v) notFound();
   const net: Net = process.env.SOLANA_NET === "mainnet" ? "mainnet" : "devnet";
   const [feed, coin] = await Promise.all([firstPage(v.mint), coinRow(v.mint)]);
+  const launch = launchEntry(v, coin?.launchedAt);
   return (
     // One provider, so one EventSource serves the venue tag, stats, bond panel and feed (D-18); one trade state
     // serves every trade placement.
@@ -124,6 +163,17 @@ export default async function CoinPage({ params }: Props) {
               v={v}
               net={net}
               feed={feed}
+              launchedAt={coin?.launchedAt ?? null}
+              ledger={
+                <FeeLedger
+                  mint={v.mint}
+                  symbol={v.symbol}
+                  w={coin?.fees?.w ?? null}
+                  net={net}
+                  initial={feed.ledger}
+                  launch={launch}
+                />
+              }
               chart={
                 <McapChart
                   mint={v.mint}
@@ -133,9 +183,6 @@ export default async function CoinPage({ params }: Props) {
                 />
               }
             />
-            <p className="text-[13px] text-muted-foreground">
-              The public fee ledger for {v.symbol} arrives in a later BONDR update.
-            </p>
           </div>
         </div>
         <div className="min-[1100px]:hidden">

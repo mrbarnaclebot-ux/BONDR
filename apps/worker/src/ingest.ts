@@ -4,8 +4,6 @@
 // lands: nothing here runs on a timer (D-04, Neon budget).
 // ponytail: no rollback handling for a confirmed block that never finalizes (Pitfall 5); the idempotent keys
 // make a re-ingest safe. Finalized commitment would add about 13 s to every live update.
-import type { TradeRow } from "@bondr/core/api";
-import { coinRow } from "@bondr/core/coin-row";
 import { coins, db, launches, trades } from "@bondr/core/db";
 import { redact } from "@bondr/core/net";
 import { bondingCurvePda, canonicalPumpPoolPdaWithQuote } from "@bondr/core/pump";
@@ -13,13 +11,12 @@ import { fetchTx, pace } from "@bondr/core/send";
 import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } from "@bondr/core/trades";
 import { type Connection, PublicKey } from "@solana/web3.js";
 import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { arm, type Inserted } from "./announce.ts";
 import { bondr, bondrPrice } from "./bondr-price.ts";
-import { listening, publish, skipId } from "./events-route.ts";
-import { touch } from "./holders.ts";
+import { withCost } from "./fee-engine.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
 
 export const knownCoins = new Map<string, KnownCoin>();
-type Inserted = typeof trades.$inferSelect;
 // The created coin's launch row and PumpSwap pool, which the tx itself does not name.
 type LaunchRef = { id: string; pool: string };
 
@@ -122,60 +119,22 @@ function parse(tx: TradeTx, launch?: { mint: string; exit: "burn" | "sell" }): P
   return parsed;
 }
 
-const tradeRow = (t: Inserted): TradeRow & { mint: string } => ({
-  ...{ signature: t.signature, ix: t.ix, launch: t.launch, trader: t.trader, tokenAmount: t.tokenAmount },
-  ...{ side: t.side as TradeRow["side"], venue: t.venue as TradeRow["venue"], mint: t.mint },
-  ...{ sol: t.sol, mcapSol: t.mcapSol, at: t.at.toISOString(), slot: t.slot, seq: String(t.seq) },
-});
-
-// After the commit, to whoever listens on GET /events: the coin's new numbers (one read per coin, the
-// database is awake from the write), then launch, trade and bond events. Nobody listening: no read.
-async function announce(inserted: Inserted[], bonded: ReadonlySet<string>, launched?: string) {
-  if (!listening()) return;
-  for (const mint of new Set([...inserted.map((t) => t.mint), ...bonded])) {
-    const coin = await coinRow(db(), mint);
-    if (!coin) continue;
-    if (mint === launched) publish({ type: "launch", data: coin });
-    for (const t of inserted.filter((t) => t.mint === mint))
-      publish({ type: "trade", data: { trade: tradeRow(t), coin } });
-    const { venue, bondSig, bondedAt } = coin;
-    if (bonded.has(mint)) publish({ type: "bond", data: { mint, venue, bondSig, bondedAt } });
-  }
-}
-
-// Every coin with a new trade gets a (throttled) holder recount, after the write has committed. Live writes go
-// out as events. A gap fill's trades are history, not live ticks: it skips an id instead, so open pages resync.
-async function arm(
-  conn: Connection,
-  inserted: Inserted[],
-  bonded: Set<string>,
-  launched?: string,
-  live = true,
-) {
-  for (const mint of new Set(inserted.map((t) => t.mint))) {
-    const coin = knownCoins.get(mint);
-    if (coin) touch(conn, coin);
-  }
-  if (live) await announce(inserted, bonded, launched).catch(logged("publish"));
-  else if (inserted.length || bonded.size) skipId();
-  return inserted;
-}
-
 export async function ingestTx(conn: Connection, sig: string, live = true): Promise<Inserted[]> {
   const tx = await fetchTx(conn, sig);
   if (!tx) throw new Error(`tx ${sig} not visible`); // a miss is a failure, so it is kept and retried
   const parsed = parse(tx);
   if (!parsed.trades.length && !parsed.patches.length) return [];
+  await withCost(conn, parsed);
   const bonded = new Set<string>();
   const inserted = await db().transaction((t) => writeParsed(t, parsed, undefined, bonded));
-  return arm(conn, inserted, bonded, undefined, live);
+  return arm(conn, { inserted, bonded, patches: parsed.patches }, live);
 }
 
 // The launch tx the settle already fetched: the coin row, its Launch rows, then the coin joins the registry
 // and a gap fill catches a sniper trade the stream saw before the coin was known (Pitfall 3).
 export async function ingestLaunch(
   conn: Connection,
-  row: Pick<LaunchRow, "id" | "mint" | "exit">,
+  row: Pick<LaunchRow, "id" | "mint" | "exit" | "wallet">,
   tx: TradeTx,
 ): Promise<Inserted[]> {
   const b = bondr();
@@ -183,6 +142,7 @@ export async function ingestLaunch(
   const mint = new PublicKey(row.mint);
   const pool = canonicalPumpPoolPdaWithQuote(mint, new PublicKey(b.mint)).toBase58();
   const parsed = parse(tx, { mint: row.mint, exit: row.exit as "burn" | "sell" });
+  await withCost(conn, parsed);
   const bonded = new Set<string>();
   const inserted = await db().transaction((t) => writeParsed(t, parsed, { id: row.id, pool }, bonded));
   const init = parsed.created?.initialRealTokenReserves;
@@ -192,8 +152,11 @@ export async function ingestLaunch(
   }
   const bondingCurve = bondingCurvePda(mint).toBase58();
   knownCoins.set(row.mint, { mint: row.mint, bondingCurve, pool, initialRealTokenReserves: init });
-  await arm(conn, inserted, bonded, row.mint);
-  await gapFill(conn, row.mint, tx.transaction.signatures[0]);
+  const launchSig = tx.transaction.signatures[0];
+  const launchedAt = new Date(parsed.created?.launchedAt ?? Date.now()).getTime();
+  const launched = { mint: row.mint, launchedAt, launchSig, wallet: row.wallet };
+  await arm(conn, { inserted, bonded, patches: parsed.patches, launched });
+  await gapFill(conn, row.mint, launchSig);
   return inserted;
 }
 
@@ -271,7 +234,10 @@ export async function gapFillAll(conn: Connection, marks: Marks): Promise<number
 // Boot: every landed launch without a coin row (Phase 2 launches, or one whose ingest failed), one pass.
 export async function backfillLaunches(conn: Connection): Promise<number> {
   const rows = await db()
-    .select({ id: launches.id, mint: launches.mint, exit: launches.exit, signature: launches.signature })
+    .select({
+      ...{ id: launches.id, mint: launches.mint, exit: launches.exit },
+      ...{ signature: launches.signature, wallet: launches.wallet },
+    })
     .from(launches)
     .leftJoin(coins, eq(coins.launchId, launches.id))
     .where(and(eq(launches.state, "landed"), isNull(coins.mint)));

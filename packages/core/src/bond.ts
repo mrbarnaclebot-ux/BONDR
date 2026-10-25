@@ -18,6 +18,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+import { minOutAfter } from "./fees.ts";
 import { COIN_DECIMALS } from "./launch.ts";
 import { BN, type Global, type OnlinePumpAmmSdk, PUMP_AMM_SDK, PUMP_SDK } from "./pump.ts";
 import { buybackAtaIx, buyExactIn, buyExactOut, poolBaseFor, poolState } from "./trade.ts";
@@ -63,28 +64,46 @@ async function simulatedBalance(
     replaceRecentBlockhash: true,
     accounts: { addresses: [ata.toBase58()], encoding: "base64" },
   });
-  if (sim.value.err) throw new Error(`forced bond simulation failed: ${JSON.stringify(sim.value.err)}`);
+  if (sim.value.err) throw new Error(`burn simulation failed: ${JSON.stringify(sim.value.err)}`);
   const acct = sim.value.accounts?.[0];
   if (!acct) throw new Error("simulation returned no account: the accounts option is unsupported here");
   return AccountLayout.decode(Buffer.from(acct.data[0], "base64")).amount;
 }
 
+// W's child balance before the buy; 0 when its ATA does not exist yet.
+async function childBalance(conn: Connection, ata: PublicKey): Promise<bigint> {
+  const info = await conn.getAccountInfo(ata);
+  return info ? AccountLayout.decode(info.data).amount : 0n;
+}
+
+type Buy = (minOut: BN) => Promise<TransactionInstruction[]>;
+
+// Simulate the buy at minOut 1, then the real one floored at the simulated out minus W's prior balance (WR-08),
+// and BurnChecked of the whole simulated post balance, so a leftover child token burns along.
+async function buyAndBurn(
+  o: W & { conn: Connection; mint: PublicKey },
+  head: TransactionInstruction[],
+  buy: Buy,
+) {
+  const ata = getAssociatedTokenAddressSync(o.mint, o.w, true, T22);
+  const pre = await childBalance(o.conn, ata);
+  const simOut = await simulatedBalance(o.conn, o.ops, [...head, ...(await buy(new BN(1)))], ata);
+  const minOut = new BN(minOutAfter(pre, simOut).toString());
+  const ixs = [...head, ...(await buy(minOut)), burnIx(o.w, o.mint, simOut)];
+  return { ixs, burnAmount: new BN(simOut.toString()) };
+}
+
 // buy_exact_quote_in_v3 with the whole budget, then BurnChecked of the simulated out: the production bond,
 // since the owner chose to burn the full budget (PROJECT.md item 5). Past the remaining supply the buy
-// completes the curve and buys the rest from the pool-to-be, so simOut covers both legs. The real buy floors
-// at simOut, so a front-run buy between simulate and land reverts the tx as slippage instead of burning
-// more than W holds; the caller re-simulates. A front-run sell gives W more than simOut, and the remainder
-// stays in W for the worker to burn (Phase 5).
+// completes the curve and buys the rest from the pool-to-be, so simOut covers both legs. A front-run buy
+// between simulate and land reverts the tx as slippage instead of burning more than W holds; the caller
+// re-simulates. A front-run sell gives W more than simOut; that remainder stays in W (the closing sweep moves
+// only BONDR) and finalize's empty check logs it as an error. Burning it needs a ledger kind of its own.
 export async function forcedBondIxs(
   o: W & { conn: Connection; global: Global; mint: PublicKey; quoteMint: PublicKey; budget: BN },
 ): Promise<{ ixs: TransactionInstruction[]; burnAmount: BN }> {
   const side = { global: o.global, mint: o.mint, user: o.w, quoteMint: o.quoteMint };
-  const buy = (minOut: BN) => buyExactIn({ ...side, spend: o.budget, minOut });
-  const ata = getAssociatedTokenAddressSync(o.mint, o.w, true, T22);
-  const simOut = await simulatedBalance(o.conn, o.ops, [...float(o), ...(await buy(new BN(1)))], ata);
-  const burnAmount = new BN(simOut.toString());
-  const ixs = [...float(o), ...(await buy(burnAmount)), burnIx(o.w, o.mint, simOut)];
-  return { ixs, burnAmount };
+  return buyAndBurn(o, float(o), (minOut) => buyExactIn({ ...side, spend: o.budget, minOut }));
 }
 
 // buy_v3 of exactly `amount` for at most maxQuote, then BurnChecked(amount) (D-16).
@@ -138,4 +157,19 @@ export async function poolBuyBurnIxs(
     ...buy,
     burnIx(o.w, o.mint, big(o.baseOut)),
   ];
+}
+
+// D-17: PumpSwap buy_exact_quote_in_v2 spending W's whole budget, then BurnChecked of the simulated out. The
+// buyback recipient is pinned from poolState and ops creates its quote ATA, as in poolBuyBurnIxs.
+export async function poolExactInBurnIxs(
+  o: W & { conn: Connection; connAmm: Amm; mint: PublicKey; quoteMint: PublicKey; budget: BN },
+): Promise<{ ixs: TransactionInstruction[]; burnAmount: BN }> {
+  const { state, buyback } = await poolState({
+    amm: o.connAmm,
+    mint: o.mint,
+    quoteMint: o.quoteMint,
+    user: o.w,
+  });
+  const head = [...float(o), buybackAtaIx(o.ops, o.quoteMint, buyback)];
+  return buyAndBurn(o, head, (minOut) => PUMP_AMM_SDK.buyExactQuoteInV2Instructions(state, o.budget, minOut));
 }

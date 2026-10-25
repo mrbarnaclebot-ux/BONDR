@@ -1,18 +1,25 @@
+import { SUPPLY } from "@bondr/core/price";
 import { expect, test } from "vitest";
 import {
   age,
+  burnedPct,
   chartInterval,
   compact,
   curvePct,
   explorer,
+  feeSol,
   mcapSol,
   pct,
+  ratio1000,
+  ratioPct,
   relTime,
   short,
   signedPct,
   sol,
   thousands,
   tradeSol,
+  utcStamp,
+  windowLeft,
 } from "./format";
 
 test("sol trims trailing zeros and rounds to the given places", () => {
@@ -96,4 +103,38 @@ test("chartInterval follows coin age (D-17)", () => {
     "1h",
     "1h",
   ]);
+});
+
+test("feeSol reads 0, a floor, then the mcapSol rules", () => {
+  expect(feeSol("0")).toBe("0");
+  expect(feeSol("400000")).toBe("<0.001");
+  expect(feeSol("420000000")).toBe("0.42");
+  expect(feeSol("140720000000")).toBe("140.7");
+});
+
+test("utcStamp is the UTC date and minute", () => {
+  expect(utcStamp("2026-10-18T21:14:09.000Z")).toBe("2026-10-18 21:14");
+});
+
+test("ratioPct floors from base units and never rounds up to the trigger", () => {
+  expect(ratioPct("1049", "1000")).toBe("104.9%");
+  expect(ratioPct("1049999", "1000000")).toBe("104.9%");
+  expect(ratioPct("0", "1000")).toBe("0.0%");
+  expect(ratioPct("5", null)).toBe("–");
+  expect(ratioPct("5", "0")).toBe("–");
+  expect(ratio1000("1060", "1000")).toBe(1060);
+  expect(ratio1000("1", null)).toBeNull();
+});
+
+test("windowLeft reads hours and minutes, minutes, then <1m", () => {
+  expect(windowLeft(13 * 3600e3 + 22 * 60e3 + 5e3)).toBe("13h 22m");
+  expect(windowLeft(42 * 60e3)).toBe("42m");
+  expect(windowLeft(30e3)).toBe("<1m");
+  expect(windowLeft(-5e3)).toBe("<1m");
+});
+
+test("burnedPct floors to 2 decimals of the supply", () => {
+  expect(burnedPct("34200000000000", SUPPLY)).toBe("3.42%");
+  expect(burnedPct("34299999999999", SUPPLY)).toBe("3.42%");
+  expect(burnedPct("0", SUPPLY)).toBe("0.00%");
 });

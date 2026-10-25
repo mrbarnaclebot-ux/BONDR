@@ -12,6 +12,7 @@ export type LiveHandlers = {
   onLaunch?(d: Data<"launch">): void;
   onBond?(d: Data<"bond">): void;
   onHolders?(d: Data<"holders">): void;
+  onFee?(d: Data<"fee">): void;
   onResync?(): void;
 };
 
@@ -23,6 +24,7 @@ const EVENTS = {
   launch: "onLaunch",
   bond: "onBond",
   holders: "onHolders",
+  fee: "onFee",
   resync: "onResync",
 } as const;
 

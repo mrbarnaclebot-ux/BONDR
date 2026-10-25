@@ -2,7 +2,15 @@
 // it includes per-leg fees and the synthetic-migration pool-to-be (RESEARCH Don't Hand-Roll).
 import { TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
-import { BN, getBuyV3QuoteAmountFromTokenAmount, type OnlinePumpSdk } from "./pump.ts";
+import { SUPPLY } from "./price.ts";
+import {
+  BN,
+  type BondingCurve,
+  type FeeConfig,
+  type Global,
+  getBuyV3QuoteAmountFromTokenAmount,
+  type OnlinePumpSdk,
+} from "./pump.ts";
 
 type Online = InstanceType<typeof OnlinePumpSdk>;
 
@@ -33,4 +41,43 @@ export async function costToComplete(online: Online, mint: PublicKey): Promise<B
     amount: s.bondingCurve.realTokenReserves,
     curveBaseTokenBalance: s.curveBaseTokenBalance,
   });
+}
+
+type Reserves = Record<
+  "virtualTokenReserves" | "virtualQuoteReserves" | "realTokenReserves" | "realQuoteReserves",
+  bigint | string
+>;
+type CurveIds = { creator: PublicKey; quoteMint: PublicKey; creatorFeeBps: number };
+
+// costToComplete with no RPC: the same SDK quote on a curve built from the indexed (post-trade) reserves, for
+// the D-10 trigger on every trade. creatorFeeBps is the coin's own rate: 0 on devnet, 150 on fork and mainnet.
+export function costFromReserves(
+  r: Reserves,
+  rates: { global: Global; feeConfig: FeeConfig },
+  o: CurveIds,
+): bigint {
+  const bn = (v: bigint | string) => new BN(v.toString());
+  const supply = bn(SUPPLY);
+  const bondingCurve = {
+    virtualTokenReserves: bn(r.virtualTokenReserves),
+    virtualQuoteReserves: bn(r.virtualQuoteReserves),
+    realTokenReserves: bn(r.realTokenReserves),
+    realQuoteReserves: bn(r.realQuoteReserves),
+    tokenTotalSupply: supply,
+    complete: false,
+    isMayhemMode: false,
+    isCashbackCoin: false,
+    creator: o.creator,
+    quoteMint: o.quoteMint,
+    creatorFeeBps: new BN(o.creatorFeeBps),
+  } as BondingCurve; // the rest (depth, post-complete fields) only prices a buy past the curve
+  const amount = bondingCurve.realTokenReserves;
+  const q = getBuyV3QuoteAmountFromTokenAmount({
+    ...rates,
+    mintSupply: supply,
+    bondingCurve,
+    amount,
+    curveBaseTokenBalance: amount,
+  });
+  return BigInt(q.toString());
 }

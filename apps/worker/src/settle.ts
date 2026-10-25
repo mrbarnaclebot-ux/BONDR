@@ -12,11 +12,11 @@ import { ingestLaunch } from "./ingest.ts";
 import { advance, type LaunchRow, unsettled } from "./launches.ts";
 import { markUsed, release, vanityRow } from "./vanity.ts";
 
-const POLL_MS = 400;
-const RECHECK_MS = 10_000;
-const RECHECKS = 3;
+export const POLL_MS = 400;
+export const RECHECK_MS = 10_000;
+export const RECHECKS = 3;
 // Block height every 5th poll (2 s): expiry is a 60-90 s matter, and Helius free allows about 10 RPS.
-const HEIGHT_EVERY = 5;
+export const HEIGHT_EVERY = 5;
 const SEND_PACE_MS = 1100;
 
 export type Seen = { confirmed: boolean; err: unknown } | null;
@@ -26,7 +26,7 @@ export type Next =
   | { to: "poll" }
   | { to: "recheck" }
   | { to: "unknown" };
-type Obs = { seen: Seen; height: number; lastValid: number; rechecks: number; rpcError?: boolean };
+export type Obs = { seen: Seen; height: number; lastValid: number; rechecks: number; rpcError?: boolean };
 
 export function nextState(o: Obs): Next {
   if (o.seen?.confirmed)

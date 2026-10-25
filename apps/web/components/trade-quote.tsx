@@ -1,9 +1,10 @@
 "use client";
-import type { HopFee, HopVenue, TradeQuote as Quote } from "@bondr/core/api";
+import type { CoinFees, HopFee, HopVenue, TradeQuote as Quote } from "@bondr/core/api";
 import { Fragment, type ReactNode, useId, useState } from "react";
 import { cn } from "@/lib/cn";
 import { impactBand, impactPct, outText, pct, sol } from "@/lib/format";
 import { useTrade } from "@/lib/use-trade";
+import { useCoinLive } from "./coin-live";
 import { Chips } from "./trade-amount";
 import { FieldError, Input } from "./ui-field";
 
@@ -54,10 +55,18 @@ function Row({ label, className, children }: { label: string; className?: string
   );
 }
 
+/** UI-SPEC Trade panel fees: where the coin's creator fee goes on curve, before finalize and once finalized. */
+function creatorTo(h: HopFee, symbol: string, f?: CoinFees): string {
+  if (h.venue === "curve") return `to the ${symbol} burn budget`;
+  if (f?.finalize !== "done" || f.deployerBps === null)
+    return "shared 80 deployer / 20 treasury once finalized";
+  return `split ${f.deployerBps / 100} deployer / ${(10_000 - f.deployerBps) / 100} treasury`;
+}
+
 /** The quote's masked rates for one hop as sub-rows; a zero rate has no row (04-03 Note). */
-function subRows(h: HopFee, symbol: string): string[] {
+function subRows(h: HopFee, creator: string): string[] {
   return [
-    h.creatorBps && `Creator ${pct(h.creatorBps, true)}, to the ${symbol} fee wallet`,
+    h.creatorBps && `Creator ${pct(h.creatorBps, true)}, ${creator}`,
     h.lpBps && `LP ${pct(h.lpBps, true)}`,
     h.protocolBps && `Pump protocol ${pct(h.protocolBps, true)}`,
   ].filter((s): s is string => !!s);
@@ -112,6 +121,7 @@ function FeesSummary({ q }: { q: Quote | null }) {
 
 /** UI-SPEC Fees breakdown: every rate and value from the quote, none from the web app. */
 function Fees({ q, symbol }: { q: Quote | null; symbol: string }) {
+  const fees = useCoinLive()?.coin?.fees;
   const coin = q?.fees.coinHop;
   const bondr = q?.fees.bondrHop;
   const pair = q?.side === "sell" ? "BONDR to SOL" : "SOL to BONDR";
@@ -127,12 +137,12 @@ function Fees({ q, symbol }: { q: Quote | null; symbol: string }) {
                 : `Fees on ${symbol} PumpSwap, ${hopPct(coin)}`
             }
             value={`${feeSol(coin.sol)} SOL`}
-            subs={subRows(coin, symbol)}
+            subs={subRows(coin, creatorTo(coin, symbol, fees))}
           />
           <FeeRow
             title={`${pair} on ${bondr.venue === "curve" ? "the BONDR curve" : "BONDR PumpSwap"}, ${hopPct(bondr)}`}
             value={`${feeSol(bondr.sol)} SOL`}
-            subs={subRows(bondr, symbol)}
+            subs={subRows(bondr, `to the ${symbol} fee wallet`)}
           />
           <FeeRow title="BONDR platform fee" value={q.fees.platformFee} className="text-leaf" />
           <FeeRow

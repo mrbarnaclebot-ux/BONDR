@@ -36,6 +36,20 @@
       "when": 1792766544502,
       "tag": "0004_coin_last_slot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792890131485,
+      "tag": "0005_fee_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792914550899,
+      "tag": "0006_reconcile_platform",
+      "breakpoints": true
     }
   ]
 }

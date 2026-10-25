@@ -6,7 +6,7 @@ import { HomeCoins } from "@/components/home-coins";
 import { HomeHero } from "@/components/home-hero";
 import { HomeLiveProvider } from "@/components/home-live";
 import { HomeTrending } from "@/components/home-trending";
-import { heroCounts, listCoins, parseQ, parseSort, trending } from "@/lib/coins";
+import { feeWindowMs, heroCounts, listCoins, nextToBond, parseQ, parseSort, trending } from "@/lib/coins";
 import { workerGet } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
@@ -32,21 +32,25 @@ type Props = { searchParams: Promise<{ sort?: string | string[]; q?: string | st
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
 /**
- * Home: paused banner, hero with the D-09 counts, Trending (hidden with no coins), and All coins, all live through
- * one HomeLiveProvider stream (LIST-04). No closest-to-bond rail (D-08), no USD (D-01).
+ * Home: paused banner, hero with the D-09 and D-24 counts and the Next to bond rail (hidden when empty or the read
+ * failed), Trending (hidden with no coins), and All coins, all live through one HomeLiveProvider stream (LIST-04).
+ * No USD (D-01).
  */
 export default async function Home({ searchParams }: Props) {
   const params = await searchParams;
   const sort = parseSort(one(params.sort)) ?? "top";
   const q = parseQ(one(params.q)) ?? "";
-  const [counts, paused, list, trend] = await Promise.all([
+  const [counts, paused, list, trend, next] = await Promise.all([
     heroCounts().catch(() => null),
     pauseReason(),
     listCoins({ sort, page: 0, q }).catch(() => null),
     trending().catch(() => null),
+    nextToBond().catch(() => []),
   ]);
+  // The server's clock, so the rail's countdowns hydrate with the same text; the 60 s tick moves it on.
+  const rail = { at: Date.now(), coins: next };
   return (
-    <HomeLiveProvider list={list} sort={sort} q={q} trend={trend} counts={counts}>
+    <HomeLiveProvider list={list} sort={sort} q={q} trend={trend} counts={counts} rail={rail}>
       <div className="overflow-x-clip">
         {paused && (
           <div className="mx-auto w-full max-w-[1440px] px-(--gutter) pt-4">
@@ -55,7 +59,7 @@ export default async function Home({ searchParams }: Props) {
             </Callout>
           </div>
         )}
-        <HomeHero paused={paused !== null} />
+        <HomeHero paused={paused !== null} windowMs={feeWindowMs()} />
         <HomeTrending />
         <section
           id="all-coins"

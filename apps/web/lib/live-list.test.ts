@@ -1,12 +1,15 @@
 import type { CoinLive, CoinRow } from "@bondr/core/api";
 import { expect, test } from "vitest";
 import {
+  addLedger,
   addTrades,
   applyBond,
+  applyFees,
   applyTrade,
   decay,
   insertLaunch,
   mergePage,
+  railRank,
   rerank,
   resyncFeed,
   trendingMode,
@@ -59,6 +62,14 @@ test("applyBond sets the venue and a full curve", () => {
   expect(next[0]).toMatchObject({ venue: "complete", progress: 1, bondSig: "s" });
   expect(next[1]).toBe(list[1]);
   expect(applyBond(list, { mint: "z", venue: "pool", bondSig: null, bondedAt: null })).toBe(list);
+});
+
+test("applyFees takes only the fee fields, so an older snapshot never reverts a bond", () => {
+  const list = applyBond([coin("a")], { mint: "a", venue: "complete" });
+  const fees = { budget: "5" } as CoinRow["fees"];
+  const next = applyFees(list, { ...coin("a"), venue: "curve", progress: 0.9, fees });
+  expect(next[0]).toMatchObject({ venue: "complete", progress: 1, fees });
+  expect(applyFees(list, coin("a"))).toBe(list);
 });
 
 test("insertLaunch prepends only to Latest with no search, never twice", () => {
@@ -161,4 +172,25 @@ test("resyncFeed merges a page that overlaps the loaded rows and replaces one th
     "s3.0",
     "s2.0",
   ]);
+});
+
+test("addLedger merges fee rows by id, newest first, and keeps the array when nothing is new", () => {
+  const r = (id: string, min: number) => ({ id, landedAt: ago(min * 60_000) });
+  const rows = [r("3", 5), r("1", 20)];
+  const got = addLedger(rows, [r("4", 1), r("5", 1), r("3", 5), r("2", 10), r("4", 1)]);
+  expect(got.map((x) => x.id)).toEqual(["5", "4", "3", "2", "1"]);
+  expect(addLedger(rows, [r("3", 5)])).toBe(rows);
+});
+
+test("railRank drops bonded and budgetless coins and orders by budget / cost, newer first on a tie", () => {
+  const f = (budget: string, cost: string | null) => ({ fees: { budget, cost } as CoinRow["fees"] });
+  const list = [
+    coin("half", f("500", "1000")),
+    coin("bonded", { ...f("900", "1000"), venue: "complete" }),
+    coin("old", { ...f("1800", "2000"), launchedAt: ago(60_000) }),
+    coin("none", f("0", "1000")),
+    coin("new", f("900", "1000")),
+    coin("nocost", f("900", null)),
+  ];
+  expect(mints(railRank(list))).toEqual(["new", "old", "half"]);
 });

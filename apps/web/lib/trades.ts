@@ -93,7 +93,7 @@ async function read(mint: string, seconds: number): Promise<Candle[]> {
 // failed read is not kept. ponytail: per-process map cleared at 1000 entries, the same shape as lib/coins.ts.
 const seen = new Map<string, { at: number; v: Promise<unknown> }>();
 
-function kept<T>(key: string, read: () => Promise<T>): Promise<T> {
+export function kept<T>(key: string, read: () => Promise<T>): Promise<T> {
   const hit = seen.get(key);
   if (hit && Date.now() - hit.at < 10_000) return hit.v as Promise<T>;
   const v = read();

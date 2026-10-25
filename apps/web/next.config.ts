@@ -17,6 +17,7 @@ export const WEB_ENV = [
   "SENTRY_TEST_ROUTE",
   "SESSION_SECRET",
   "SITE_URL",
+  "FEE_WINDOW_MS", // not a secret: the worker's fee window length, for the Bond and burn countdown
 ] as const;
 
 // Local only: Railway has no file and sets each web variable on the service.

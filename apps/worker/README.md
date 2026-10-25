@@ -4,7 +4,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## src
 
-- `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`, then the index boot: `seedBondrPrice`, `loadCoins`, `backfillLaunches`, `startStream`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
+- `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`, then the index boot: `seedBondrPrice`, `loadCoins`, `startEngine`, `backfillLaunches`, `startStream`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
 - `env.ts`: `loadEnv` and `launchNet` (refuses mainnet in Phase 2, D-02); `ops` and `treasury` keys with the Phase 1 ids.
 - `http.ts`: node:http server, `authorized` (timingSafeEqual), `readJson` (16 KB cap), `Fail` for contract errors; `Streams` are long-lived handlers behind the same bearer check.
 - `prepare.ts`: `POST /prepare`. Guards (pause, consent, rules, hourly table cap, balance) run before any spend, then reserve, W, table, build, simulate, store `prepared`. `prepareGuard`, `parseRequest`, `signBy` and `sellFloor` are pure.
@@ -33,8 +33,14 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 | `POST /submit` | bearer WORKER_TOKEN |
 | `GET /events` | bearer WORKER_TOKEN |
 | `POST /trade/quote`, `/trade/balance`, `/trade/prepare`, `/trade/submit`, `/trade/view` | bearer WORKER_TOKEN |
+| `POST /fee/release` | bearer WORKER_TOKEN |
+| `POST /fee/batch` | bearer WORKER_TOKEN |
 
 `POST /prepare` takes a `PrepareRequest` and returns a `PrepareResult` (see `@bondr/core/api`). Errors: 409 `paused`, 403 `consent_required`, 400 `invalid_input`, 503 `pool_empty`, 429 `rate_limited` (30 new tables an hour, worker-wide), 402 `insufficient_balance`, 500 `build_failed`. One prepare runs at a time.
+
+`POST /fee/release` takes `{ mint, deployer }` for a coin whose finalize is held (D-18) and returns `{ ok: true }` once one finalize with that deployer is queued. The deployer must be base58 and on curve; the engine re-checks that it differs from the treasury and W. Errors: 400 `invalid_input` (bad keys, off curve, or the coin is not held).
+
+`POST /fee/batch` takes no body and runs the daily batch now; it returns the run's summary (`opsLow`, `burn`, `distribute`, `finalize`, `accounts`, `diffs`). A call during a run gets that run. Errors: 409 `paused` when the engine is off (never wired).
 
 `POST /submit` takes a `SubmitRequest` (`launchId`, base64 dev-signed wire) and returns a `SubmitResult` (`state`, `signature`). A launch that is no longer `prepared` returns its current state (a double submit is a no-op). Errors: 400 `invalid_input`, 404 `not_found`, 409 `paused` and 410 `expired` (the row turns `failed` and the mint is released), 422 `cosign_refused` (the row turns `failed`, the mint stays reserved for Try again), 500 `build_failed`.
 
@@ -62,7 +68,23 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## Env
 
-`SOLANA_NET` (devnet only), `ALLOW_MAINNET`, `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE`, `VANITY_THREADS`, `BONDR_QUOTE_MINT`, `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`. See the repo-root `.env.example`.
+`SOLANA_NET` (devnet only), `ALLOW_MAINNET`, `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE`, `VANITY_THREADS`, `BONDR_QUOTE_MINT`, `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`, `FEE_ENGINE` (`off` default, `dry`, `on`; anything else refuses to boot), `FEE_WINDOW_MS` (default 86400000, at least 60000), `FEE_BATCH_HOUR_UTC` (0-23, default 4). See the repo-root `.env.example`.
+
+## Fee engine
+
+Behind `FEE_ENGINE`. Off, the worker behaves as in Phase 4 plus `cost_to_complete` on every curve patch. Dry builds and simulates every job and writes nothing. On sends. At boot (`startEngine`, after `loadCoins`): one read of every coin with its launch's W, one ops balance read for the floor, then `recover` settles every pending fee row from its signature (never a resend) and splits every landed collect with no split, and only then are window timers armed. A coin whose W does not derive from this seed is skipped. Each unbonded coin has one in-memory timer for its current window's end, counted from launch; at the end it collects, splits and sweeps (`windowJob`) through a per-coin serial queue. Trade hooks keep the fee numbers in memory and enqueue nothing before the engine is ready. Run one worker replica only (D-07): a second would send every window twice. Local and staging share the devnet ops wallet, so keep `FEE_ENGINE=off` locally except for the e2e (Pitfall 11).
+
+### Runbook
+
+- **Flag.** `FEE_ENGINE=off` (default), `dry` (build and simulate, write nothing) or `on` (send). Set `on` only on staging and for the local devnet e2e; stop that local worker after the run, because both sign with the one devnet ops wallet (Pitfall 11). To pause the engine, set it back to `off` and redeploy. Staging runs `FEE_ENGINE=on` since 2026-10-25 (24 h window, `FEE_WINDOW_MS` unset); local stays `off` (Pitfall 11). With nothing pending, recovery logs nothing; the `coins armed` line prints only after it finishes.
+- **Window.** `FEE_WINDOW_MS`, default 24 h, counted from each coin's launch. Shorten it only locally (the e2e uses 600000); give web the same value, it draws the Bond and burn countdown from it.
+- **Batch.** `FEE_BATCH_HOUR_UTC`, default 4: the buyback burn, the distribution crank, the bond and finalize retries, then the reconciliation. Run it now with `curl -X POST -H "Authorization: Bearer $WORKER_TOKEN" "$WORKER_URL/fee/batch"` (both read from your shell; never paste the token into a file or a log).
+- **Release a held finalize.** `curl -X POST -H "Authorization: Bearer $WORKER_TOKEN" -H "content-type: application/json" -d '{"mint":"<mint>","deployer":"<address>"}' "$WORKER_URL/fee/release"`, after a manual check of the deployer. A held finalize is never retried by itself, the batch included; Phase 6 adds a UI.
+- **Floors and minimums.** Per network in `src/fee-config.ts`: the ops floor (0.05 SOL; below it non-urgent sends pause and the batch only reconciles), the collect minimum (10,000 lamports on devnet, 0.001 SOL elsewhere), the Sender tip and the send pace. Top ops up by hand when the floor alert logs.
+- **Boot order.** Load every coin, recover pending rows, mark ready, then arm the window timers and the batch timer. Nothing sends before ready.
+- **One replica** (D-07). Two workers would send every window and every batch twice.
+- **Spend.** Ops pays every fee; the devnet e2e (`E2E_DEVNET=1 FEE_WINDOW_MS=600000 pnpm exec playwright test apps/web/e2e/fee-devnet.e2e.ts`) prints ops and the sim wallet before and after and fails above 0.05 SOL a run.
+- **New migrations, 0005 and 0006.** On staging deploy web first: its pre-deploy applies them, and the Phase 4 worker runs fine on the additive schema. Then deploy the worker with `FEE_ENGINE=off`, then set it to `on`. Done that way on 2026-10-25 (05-13): web's pre-deploy applied 0005 and 0006 while the Phase 4 worker kept running, then the worker booted with `fee engine off`.
 
 ## Vanity lanes
 

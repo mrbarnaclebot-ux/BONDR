@@ -34,6 +34,25 @@ function count(name: string, raw: string | undefined, fallback: number): number 
   return n;
 }
 
+function atLeast(name: string, raw: string | undefined, fallback: number, min: number): number {
+  const n = count(name, raw, fallback);
+  if (n < min) throw new Error(`${name} must be at least ${min}`);
+  return n;
+}
+
+// D-09: anything but a known value refuses to boot, so a typo never moves funds (T-05-05-04).
+function feeEngine(raw: string | undefined): "off" | "dry" | "on" {
+  const v = raw?.trim() || "off";
+  if (v !== "off" && v !== "dry" && v !== "on") throw new Error("FEE_ENGINE must be off, dry or on");
+  return v;
+}
+
+function batchHour(raw: string | undefined): number {
+  const n = count("FEE_BATCH_HOUR_UTC", raw, 4);
+  if (n > 23) throw new Error("FEE_BATCH_HOUR_UTC must be 0-23");
+  return n;
+}
+
 export function loadEnv(env: Env = process.env) {
   const net = launchNet(env);
   const token = env.WORKER_TOKEN?.trim() ?? "";
@@ -54,6 +73,9 @@ export function loadEnv(env: Env = process.env) {
     priorityFee: count("PRIORITY_FEE_MICROLAMPORTS", env.PRIORITY_FEE_MICROLAMPORTS, 1000),
     vanityThreads: count("VANITY_THREADS", env.VANITY_THREADS, 1),
     lane: lane as "local" | "staging",
+    feeEngine: feeEngine(env.FEE_ENGINE),
+    feeWindowMs: atLeast("FEE_WINDOW_MS", env.FEE_WINDOW_MS, 86_400_000, 60_000),
+    feeBatchHourUtc: batchHour(env.FEE_BATCH_HOUR_UTC),
   };
 }
 
@@ -62,3 +84,7 @@ export type WorkerEnv = ReturnType<typeof loadEnv>;
 // Phase 1 ids, so the worker signs with the same funded wallets the spike used.
 export const ops = (seed: Buffer, net: "devnet") => derive(seed, "ops", net, "main");
 export const treasury = (seed: Buffer, net: "devnet") => derive(seed, "treasury", net, "main");
+// Local and staging share the devnet seed, so the lane gives each database its own buyback wallet and one
+// lane's reconcile (05-09) never sees the other's sweeps (T-05-05-06).
+export const buyback = (seed: Buffer, net: "devnet", lane: "local" | "staging") =>
+  derive(seed, "buyback", net, lane);

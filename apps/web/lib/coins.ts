@@ -92,14 +92,42 @@ export const trending = (): Promise<Trending> =>
     return { mode: trendMode(rows), coins: rows };
   });
 
-/** The hero's pulse line (D-09): coins launched and bonded (curve complete or on PumpSwap). */
-export const heroCounts = (): Promise<{ launched: number; bonded: number }> =>
+// D-15's budget (fee_budget plus the 90% share of the unclaimed fees, treasury floored), as budgetOf computes it.
+const BUDGET = sql`(${coins.feeBudget} + ${coins.feesUnclaimed} - ${coins.feesUnclaimed} / 10)`;
+const RAIL_WHERE = sql`${coins.venue} = 'curve' and ${coins.costToComplete} > 0 and ${BUDGET} > 0`;
+// budget / (1.05 x cost) orders the same as budget / cost; ties by newest launch, then mint.
+const RAIL = [
+  sql`${BUDGET}::numeric / ${coins.costToComplete} desc`,
+  desc(coins.launchedAt),
+  asc(coins.mint),
+];
+
+/** The Next to bond rail (Phase 3 D-08, D-24): up to 4 curve coins closest to forcing their bond. */
+export const nextToBond = (): Promise<CoinRow[]> =>
+  kept("next", () => coinRows(db(), RAIL, 4, 0, RAIL_WHERE));
+
+export type Counts = { launched: number; bonded: number; forced: number };
+
+/**
+ * The hero's pulse line (D-09, D-24): coins launched, bonded (curve complete or on PumpSwap), and bonded by their
+ * own fees (a landed forced bond; a pending one or a fallback pool burn does not count).
+ */
+export const heroCounts = (): Promise<Counts> =>
   kept("counts", async () => {
     const [r] = await db()
       .select({
         launched: sql<number>`count(*)::int`,
         bonded: sql<number>`(count(*) filter (where ${coins.venue} <> 'curve'))::int`,
+        forced: sql<number>`(select count(distinct l.mint) from fee_ledger l
+          where l.kind = 'forced_bond' and l.state = 'landed')::int`,
       })
       .from(coins);
     return r;
   });
+
+// The worker's fee window length (D-10), so a countdown closes when the sweep runs. Shortened only for local e2e.
+const DAY = 86_400_000;
+export const feeWindowMs = (): number => {
+  const n = Number(process.env.FEE_WINDOW_MS ?? DAY);
+  return Number.isInteger(n) && n >= 60_000 ? n : DAY;
+};

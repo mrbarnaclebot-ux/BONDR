@@ -91,9 +91,17 @@ test("curve-buy on a known coin: one row priced by the bondr argument and a full
       progress: progress(realT, INIT),
       bondrAtBond: String(atBond),
       bondSol: Number(toSol(atBond, 3e-7)) / 1e9,
+      bondrSol: 3e-7,
+      feesUnclaimed: "211320574291",
     },
   ]);
   expect(r.bondr).toBeNull();
+});
+
+test("forced-bond: the completing curve trade carries the creator fee bucket", () => {
+  const mint = "3BoxFpTp3SXWZADr3gQtAnnr7AozxH3Bc3M2qkjwU3jN";
+  const r = parseTx(fixture("forced-bond"), coin(mint), forkBondr);
+  expect(r.patches.find((p) => p.mint === mint)?.feesUnclaimed).toBe("1905959520314");
 });
 
 test("curve-sell and multihop-sell are sell rows", () => {

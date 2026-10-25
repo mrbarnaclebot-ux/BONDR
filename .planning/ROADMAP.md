@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Launch Flow** - Phantom connect, consent, launch form, one-tx launch with server co-sign, bare token page (completed 2026-10-23)
 - [x] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards (completed 2026-10-24)
 - [x] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond (completed 2026-10-24)
-- [ ] **Phase 5: Fee Engine and Public Ledger** - Worker runs split, forced bond, fallback burn, sweeps, finalize; ledger on the token page
+- [x] **Phase 5: Fee Engine and Public Ledger** - Worker runs split, forced bond, fallback burn, sweeps, finalize; ledger on the token page (completed 2026-10-25)
 - [ ] **Phase 6: Admin Dashboard** - Owner-only recovery actions, kill switches, health, moderation, inspector, audit log, EVACUATE
 - [ ] **Phase 7: Go-Live** - Contract check, CI, scripts, mainnet config, BONDR token launch gating child launches
 
@@ -232,7 +232,24 @@ Plans:
   4. After bond, the worker sweeps pending fees, passes the deployer pre-flight check, and runs the single 8000 / 2000 fee-share update; the token page then shows the deployer share
   5. User sees bond progress, burn budget vs cost to complete, time left in the 24h window, and totals (burned supply %, fees to burn, buyback, treasury); a nightly reconciliation records any ledger vs chain mismatch
 
-**Plans**: TBD
+**Plans:** 13/13 plans complete
+
+Plans:
+
+- [x] 05-01-PLAN.md - Failing ledger spec, fee_ledger table and coin fee columns with the D-08 constraints, contract types, pure fee rules
+- [x] 05-02-PLAN.md - Coin row fee fields, server-only ledger read and route, Fee ledger panel on the token page (spec green)
+- [x] 05-03-PLAN.md - Core prep: signTx, buyback role, wFloat in core, costFromReserves, unclaimed fees on the curve patch
+- [x] 05-04-PLAN.md - Ledger store, intent-first land pipeline with ops floor and mainnet-only Sender, collect, split and window sweep jobs
+- [x] 05-05-PLAN.md - Engine behind FEE_ENGINE: boot recovery, per-coin queue, window timers, trade hook, fee events, devnet dry run
+- [x] 05-06-PLAN.md - Bond and burn unbonded panel (budget gauge, window, flow), totals and Supply burned
+- [x] 05-07-PLAN.md - Forced bond and PumpSwap fallback burn with the WR-08 fix, engine triggers, fork rows
+- [x] 05-08-PLAN.md - Finalize: chain-read state, deployer pre-flight, held and release, 8000/2000 update, closing sweep, fork rows
+- [x] 05-09-PLAN.md - Daily batch: buyback burn, distribution crank, finalize retries, nightly reconcile, fork distribute row
+- [x] 05-10-PLAN.md - Bonded panel, bonded totals, live fee events, trade creator copy
+- [x] 05-11-PLAN.md - Home Next to bond rail and the bonded-by-their-own-fees hero line
+- [x] 05-12-PLAN.md - Real devnet engine e2e with the spend cap, token page responsive and axe matrix, engine runbook
+- [x] 05-13-PLAN.md - Staging: migrate, worker then web, FEE_ENGINE=on, staging matrix, Neon idle check
+
 **UI hint**: yes
 
 ### Phase 6: Admin Dashboard
@@ -277,6 +294,6 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 2. Launch Flow | 18/18 | Complete | 2026-10-23 |
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
-| 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |
+| 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
 | 6. Admin Dashboard | 0/TBD | Not started | - |
 | 7. Go-Live | 0/TBD | Not started | - |

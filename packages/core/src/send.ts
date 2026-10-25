@@ -17,6 +17,7 @@ import {
 } from "@solana/web3.js";
 import bs58 from "bs58";
 import { redact } from "./net.ts";
+import { customCode, fromLogs } from "./trade-error.ts";
 
 export const PACKET_LIMIT = 1232;
 
@@ -123,21 +124,6 @@ export async function pace(ms: number): Promise<void> {
   if (at > now) await delay(at - now);
 }
 
-// Anchor logs carry the readable name and the program logs carry the hex code; both make the row evidence.
-export function fromLogs(logs: readonly string[] | null | undefined): { code?: number; name?: string } {
-  const text = (logs ?? []).join("\n");
-  const hex = text.match(/custom program error: (0x[0-9a-f]+)/i)?.[1];
-  const num = text.match(/Error Number: (\d+)/)?.[1];
-  const code = hex ? Number.parseInt(hex, 16) : num ? Number(num) : undefined;
-  return { code, name: text.match(/Error Code: (\w+)/)?.[1] };
-}
-
-export function customCode(err: unknown): number | undefined {
-  const ie = (err as { InstructionError?: [number, unknown] } | null)?.InstructionError;
-  const custom = (ie?.[1] as { Custom?: number } | undefined)?.Custom;
-  return typeof custom === "number" ? custom : undefined;
-}
-
 export function statusOf(o: {
   sent: boolean;
   meta?: { err: unknown };
@@ -236,7 +222,7 @@ function thrown(e: unknown, bytes: number, sig: string, lastValidBlockHeight: nu
   return result(status, { ...seen, ...preflight, bytes, err, code: logs.code });
 }
 
-type BlockhashInfo = { blockhash: string; lastValidBlockHeight: number };
+export type BlockhashInfo = { blockhash: string; lastValidBlockHeight: number };
 export type RawOpts = {
   sig: string; // slot 0 of the wire: the tx id, known before sending
   bytes: number;
@@ -277,16 +263,32 @@ export type SendOpts = {
   paceMs?: number;
 };
 
-export async function sendTx(o: SendOpts): Promise<SendResult> {
-  const bh: BlockhashInfo = await o.conn.getLatestBlockhash();
-  const msg = compile(o.payer.publicKey, o.ixs, o.tables ?? [], bh.blockhash);
+type Signed =
+  | { ok: true; raw: Uint8Array; sig: string; bytes: number }
+  | { ok: false; err: string; bytes: number };
+
+// Compile, allowlist, size and sign without sending, so the engine can record its intent (the signature and
+// lastValidBlockHeight) before broadcast (D-08). Every engine tx is signed here, behind checkMessage.
+export function signTx(o: SendOpts & { bh: BlockhashInfo }): Signed {
+  const msg = compile(o.payer.publicKey, o.ixs, o.tables ?? [], o.bh.blockhash);
   const bytes = messageSize(msg);
   const refused = checkMessage(msg);
-  if (refused) return result("failed", { bytes, err: `refused to sign: ${refused}` });
-  if (bytes > PACKET_LIMIT)
-    return result("failed", { bytes, err: `too large: ${bytes} > ${PACKET_LIMIT} bytes` });
+  if (refused) return { ok: false, bytes, err: `refused to sign: ${refused}` };
+  if (bytes > PACKET_LIMIT) return { ok: false, bytes, err: `too large: ${bytes} > ${PACKET_LIMIT} bytes` };
   const tx = new VersionedTransaction(msg);
   tx.sign([o.payer, ...(o.signers ?? [])]);
-  const sig = bs58.encode(tx.signatures[0]);
-  return sendRaw(o.conn, tx.serialize(), { ...bh, sig, bytes, paceMs: o.paceMs, expectFail: o.expectFail });
+  return { ok: true, raw: tx.serialize(), sig: bs58.encode(tx.signatures[0]), bytes };
+}
+
+export async function sendTx(o: SendOpts): Promise<SendResult> {
+  const bh: BlockhashInfo = await o.conn.getLatestBlockhash();
+  const s = signTx({ ...o, bh });
+  if (!s.ok) return result("failed", { bytes: s.bytes, err: s.err });
+  return sendRaw(o.conn, s.raw, {
+    ...bh,
+    sig: s.sig,
+    bytes: s.bytes,
+    paceMs: o.paceMs,
+    expectFail: o.expectFail,
+  });
 }

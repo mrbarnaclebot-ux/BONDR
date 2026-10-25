@@ -6,6 +6,7 @@
 import { exactBondIxs, forcedBondIxs } from "@bondr/core/bond";
 import { costToComplete, readCurve } from "@bondr/core/curve";
 import { completeEvents } from "@bondr/core/events";
+import { wFloat as coreFloat } from "@bondr/core/float";
 import { buildCreate, COIN_DECIMALS } from "@bondr/core/launch";
 import { applyBps, trigger105 } from "@bondr/core/math";
 import { BN, type Global, OnlinePumpSdk } from "@bondr/core/pump";
@@ -66,13 +67,8 @@ export async function land(
   return f;
 }
 
-// Pitfall 3: W must stay rent-exempt and pays rent for its child ATA, a buyback Q ATA and the volume
-// accumulator (137 bytes). Any excess stays in W as its gas float (PROJECT.md item 9).
-export async function wFloat(run: { ctx: Ctx }, W: PublicKey, bytes = [0, 170, 170, 137]): Promise<number> {
-  const rents = await Promise.all(bytes.map((b) => run.ctx.conn.getMinimumBalanceForRentExemption(b)));
-  const need = rents.reduce((a, b) => a + b, 0) - (await run.ctx.conn.getBalance(W));
-  return Math.max(0, need);
-}
+export const wFloat = (run: { ctx: Ctx }, W: PublicKey, bytes?: number[]) =>
+  coreFloat(run.ctx.conn, W, bytes);
 
 async function whale(run: Run): Promise<void> {
   const cost = await costToComplete(run.online, run.Q);
@@ -89,7 +85,11 @@ async function whale(run: Run): Promise<void> {
   }));
 }
 
-async function createChild(run: Run, id: string, key: string): Promise<{ mint: PublicKey; W: Keypair }> {
+export async function createChild(
+  run: Run,
+  id: string,
+  key: string,
+): Promise<{ mint: PublicKey; W: Keypair }> {
   const [mint, dev] = [Keypair.generate(), run.ctx.key("sim", "dev")];
   const W = run.ctx.key("w", mint.publicKey.toBase58());
   await prefundMint(run.ctx, mint.publicKey, dev);

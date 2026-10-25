@@ -96,9 +96,9 @@ test.describe("found", () => {
     await expect(page.getByText(c.mint, { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Copy contract address" })).toBeVisible();
     await expect(page.getByText("On curve")).toBeVisible();
-    await expect(
-      page.getByText(`The public fee ledger for ${c.symbol} arrives in a later BONDR update.`),
-    ).toBeVisible();
+    // The Phase 4 note promising a later ledger gave way to the Fee ledger panel (TOKEN-04).
+    await expect(page.getByRole("region", { name: "Fee ledger" })).toBeVisible();
+    await expect(page.getByText(/public fee ledger for/)).toHaveCount(0);
     for (const name of [`${c.symbol} on X`, "Telegram"]) {
       const link = page.getByRole("link", { name, exact: true });
       if (c.links?.[name === "Telegram" ? "telegram" : "x"])
@@ -241,15 +241,17 @@ test.describe("stats and bond", () => {
     await expect(stat(page, "1h volume")).toHaveText(/^[\d,.]+ SOL$/);
     await expect(stat(page, "Holders")).toHaveText("–not counted yet");
     const panel = bondPanel(page);
-    await expect(panel).toContainText("Read from the pump curve on-chain.");
+    await expect(panel).toContainText(
+      "Pre-bond, creator fees can only force the bond or be swept to the BONDR buyback.",
+    );
     await expect(panel).toContainText("Curve filled");
     await expect(panel).toContainText("64.2%");
     await expect(panel.getByRole("img", { name: "Curve 64.2 percent filled" })).toBeVisible();
     await expect(panel).toContainText("2,940,180 of 4,580,000 BONDR in the curve. Bonds at about 84.30 SOL.");
-    await expect(panel).not.toContainText(/budget|window|ledger/i); // D-10
+    await expect(panel.getByRole("heading", { name: /Burn budget ready/, level: 3 })).toBeVisible();
   });
 
-  test("a bonded coin shows Bonded, PumpSwap, 100% and the bond tx", async ({ page }) => {
+  test("a bonded coin shows Bonded, PumpSwap, the bond moment and the bond tx", async ({ page }) => {
     const sig = fakeSig();
     const c = await seed({
       venue: "pool",
@@ -262,17 +264,14 @@ test.describe("stats and bond", () => {
     await expect(page.getByText("Bonded, PumpSwap", { exact: true })).toBeVisible();
     await expect(stat(page, "Holders")).toHaveText("1,284");
     const panel = bondPanel(page);
-    await expect(panel).toContainText("100%");
-    await expect(panel.getByText("Bonded", { exact: true })).toBeVisible();
-    await expect(panel.getByRole("img", { name: "Bonded" })).toBeVisible();
-    await expect(panel).toContainText(
-      new RegExp(`Bonded 2h \\d+m ago\\. ${c.symbol} now trades on PumpSwap\\.`),
-    );
+    await expect(panel.getByText(/^Bonded 2h \d+m ago$/)).toBeVisible();
+    await expect(panel.getByRole("heading", { name: "Bonded by its traders.", level: 3 })).toBeVisible();
+    await expect(panel).toContainText(`Traders completed ${c.symbol}'s curve. It now trades on PumpSwap.`);
     await expect(panel.getByRole("link", { name: new RegExp(`^Bond tx ${short(sig)}`) })).toHaveAttribute(
       "href",
       new RegExp(`/tx/${sig}\\?cluster=devnet$`),
     );
-    await expect(panel).not.toContainText(/budget|window|ledger/i);
+    await expect(panel).not.toContainText(/Curve filled|window/i);
   });
 
   test("a complete curve waits for PumpSwap", async ({ page }) => {

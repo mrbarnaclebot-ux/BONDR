@@ -17,28 +17,34 @@
 - `proof-stamp.tsx`: the "Dev holds 0 launch supply" stamp (step 5 and the token page).
 - `ca-row.tsx`: the contract address with Copy and the manual-copy fallback; exports `useCopy`, shared with the copy chip.
 - `coin-identity.tsx`: the token page identity bar (avatar bleed, name, symbol, meta row with venue tag, age and links, stats slot).
-- `tag.tsx`: Tag, the pill label with mint, leaf and warn tones and an optional live dot.
+- `tag.tsx`: Tag, the pill label with mint, leaf, warn and plain tones and an optional live dot.
 - `token-stats.tsx`: TokenStats, the identity bar's Mcap, 1h, 1h volume and Holders row, live from CoinLiveProvider (Mcap and 1h flash).
 - `bond-glyph.tsx`: BondGlyph, the two-node curve progress SVG with a per-instance gradient id.
-- `token-bond.tsx`: BondPanel, the Bond and burn panel (curve progress only, D-10) in its three venue states.
+- `token-bond.tsx`: BondPanel, the Bond and burn shell (a size container): head note per venue, the Curve filled gauge on curve and while complete, BondBudget or BondAfter by venue.
+- `bond-budget.tsx`: BondBudget, the on-curve body of Bond and burn: burn budget gauge, window countdown (windowOf, FEE_WINDOW_MS) and the four-step fee flow.
+- `bond-after.tsx`: BondAfter, the bonded body of Bond and burn: the bond moment (art, orb, forced or traders), the bond burn gauge and the fee shares gauge (pending, plain Pending review when held, finalized split).
+- `ready-bar.tsx`: ReadyBar, the 0-120% burn budget track with the 100% and 105% marks (`lg` token page, `md` and `sm` for the home rail).
 - `copy-chip.tsx`: the token page short-mint copy chip.
 - `tx-link.tsx`: the Solscan transaction link (cluster param on devnet); `label` makes it icon-only (trade feed).
-- `token-trades.tsx`: TradeFeed, the token page trade table with the launch caption and rows, Load more by keyset, live rows on top (batched per frame) and the Live indicator.
-- `coin-live.tsx`: CoinLiveProvider, the token page's one `useLive` stream shared through context (coin numbers, last trade side for the flash, stream state, a trade and resync subscription), and the live VenueTag.
+- `token-ledger.tsx`: FeeLedger, the token page Fee ledger panel: head with the fee wallet link, landed fee rows newest first with Solscan links (copy from `lib/ledger-copy.ts`), Load 20 older entries by keyset, the launch row last; live fee rows on top with one polite announcement per burst; the totals block above the entries.
+- `ledger-totals.tsx`: Totals, the Fee ledger's five-cell totals block in its pre-bond and bonded columns.
+- `token-trades.tsx`: TradeFeed, the token page trade table with the launch caption and rows, Load more by keyset, live rows on top (batched per frame) and the Live indicator; exports `LoadMore` and `useClock` for the fee ledger.
+- `coin-live.tsx`: CoinLiveProvider, the token page's one `useLive` stream shared through context (coin numbers, last trade side for the flash, stream state, a trade and resync subscription, a fee rows and resync subscription for the ledger), and the live VenueTag.
 - `launch-receipt.tsx`: the receipt aside, every fee and cost from the live worker status.
 - `callout.tsx`: info, warn and error callouts (status or alert role).
 - `ui-seg.tsx`: Seg, the segmented control (native group of aria-pressed buttons, CSS-only sliding indicator); chart intervals and sort tabs.
 - `token-chart.tsx`: McapChart, the token page market cap chart (interval Seg, OHLC readout, states, live candle); loads lightweight-charts by dynamic import.
 - `token-chart-draw.ts`: the lightweight-charts options, series, data, Bonded marker and `liveBar` (tested in `token-chart-draw.test.ts`).
 - `launch-link.tsx`: LaunchLink, the header's quiet "Launch a coin" link ("Launch" below 768px, an icon below 360px), `aria-current` on /launch.
-- `home-hero.tsx`: HomeHero, the home hero (headline, lede, Launch a coin or Launches paused, See all coins, the D-09 pulse line) and its art: the looping video with motes, or the still under reduced motion.
+- `home-hero.tsx`: HomeHero, the home hero (headline, lede, Launch a coin or Launches paused, Watch a coin bond or See all coins, the D-09 pulse line or from the first forced bond the D-24 line, the rail slot) and its art: the looping video with motes, or the still under reduced motion.
+- `home-next.tsx`: NextToBond, the Next to bond rail (D-24): up to 4 curve coins by budget / cost from the server render, the top coin with its sweep countdown and ReadyBar md, rows with ReadyBar sm; re-sorted and pruned on the provider's 60 s tick, hidden when empty.
 - `coin-card.tsx`: CoinCard, one coin as a single link (art bleed and avatar, name, symbol, market cap in SOL, 1h change pill, bond glyph); `grid` (age chip, horizontal below 560px) and `trending` (rank and volume chips) variants; `data-field` marks the numbers a trade flashes.
 - `home-coins.tsx`: HomeCoins, All coins (list, sort and search held by HomeLiveProvider): the Top / Latest / Oldest Seg and search (?sort= and ?q= by replaceState, a full BONDR mint opens its coin), the card grid with the 60% hold while a tab loads, Show more, and the empty and error states.
 - `home-search.tsx`: the search box (300 ms debounce, Escape and X clear), the sr-only match count and the no-match and mint-not-on-BONDR empty states.
 - `home-trending.tsx`: HomeTrending, the Trending side-scroller (up to 10 cards by 1h volume, else 24h, else the latest launches, D-13), the mode caption, arrows from 760px and mouse drag.
-- `home-live.tsx`: HomeLiveProvider, the home page's one `useLive` stream: the grid list, sort and search, Trending and the hero counts in context; trades flash every card of a coin, a launch slides into Latest with the glow, the 60 s tick decays and re-ranks unless the pointer or focus is in a `hold` region, and a resync refetches page 0 and Trending in one GET.
+- `home-live.tsx`: HomeLiveProvider, the home page's one `useLive` stream: the grid list, sort and search, Trending, the Next to bond rail and the hero counts in context; a landed forced bond fee event counts up the D-24 line; trades flash every card of a coin, a launch slides into Latest with the glow, the 60 s tick decays and re-ranks unless the pointer or focus is in a `hold` region, and a resync refetches page 0 and Trending in one GET.
 - `trade-panel.tsx`: TradePanel, the token page trade section (one form: side Seg with the Sell tone, TradeAmount, TradeQuote, TradeResult and the `buttonState` submit button, fine print), every value from `useTrade`'s worker quote; `placement="sheet"` drops the frame and uses 44px chips.
 - `trade-amount.tsx`: TradeAmount, the trade panel's amount field (label row with the balance hint, unit suffix, D-14 presets with Max and the devnet cap error) and `Chips`, the aria-pressed chip group the slippage row reuses.
-- `trade-quote.tsx`: TradeQuote, the quote list (receive, route, impact in its D-13 color, slippage chips with the custom row, minimum) and the Fees details with the masked per-hop rows, every rate from the quote.
+- `trade-quote.tsx`: TradeQuote, the quote list (receive, route, impact in its D-13 color, slippage chips with the custom row, minimum) and the Fees details with the masked per-hop rows, every rate from the quote; the creator row says where the coin's creator fee goes for its state.
 - `trade-sheet.tsx`: TradeSheet, below 1100px the sticky Quick trade bar (live Mcap with the trade flash, Buy and Sell) and the native dialog bottom sheet hosting TradePanel; close by button, Escape or backdrop (ignored while a trade is in flight), focus back to the opener, closes when the viewport crosses 1100px.
 - `trade-result.tsx`: TradeCallouts, the trade panel's callout slot: the success line ("Bought ..." or "Sold for ...", View on Solscan), the sent-but-unknown warning, the D-17 copy per failure code, then the migration, price impact and quote failed callouts.

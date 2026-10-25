@@ -23,12 +23,18 @@ test.describe("hero", () => {
       "href",
       "/launch",
     );
-    await expect(main.getByRole("link", { name: "See all coins" })).toHaveAttribute("href", "#all-coins");
+    // Phase 5 D-24: with the Next to bond rail (any curve coin with a budget, even another spec's seed) the second
+    // CTA goes to its top coin; responsive-fee.e2e.ts covers both states.
+    const rail = (await main.getByRole("region", { name: "Next to bond" }).count()) > 0;
     await expect(
-      main.getByText(/^(\d[\d,]* coins? launched, \d[\d,]* bonded\.|No coins launched yet\.)$/),
+      main.getByRole("link", { name: rail ? "Watch a coin bond" : "See all coins" }),
+    ).toHaveAttribute("href", rail ? /^\/coin\// : "#all-coins");
+    await expect(
+      main.getByText(
+        /^(\d[\d,]* coins? launched, \d[\d,]* bonded\.|No coins launched yet\.|\d[\d,]* coins? bonded by (its|their) own fees\..*)$/,
+      ),
     ).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "All coins" })).toBeVisible();
-    await expect(page.getByText("Next to bond")).toHaveCount(0); // D-08
   });
 
   test("Pause animation holds the hero video and motes; reduced motion has neither (WCAG 2.2.2)", async ({

@@ -45,7 +45,7 @@ const coinOf = (e: E, mint: PublicKey, w: Keypair, venue: FeeCoin["venue"]): Fee
   ...{ launchSig: "", wallet: e.ctx.key("sim", "dev").publicKey, finalize: "held" },
 });
 
-async function whaleBuy(e: E, id: string, mint: PublicKey, spend: BN, step: string): Promise<void> {
+export async function whaleBuy(e: E, id: string, mint: PublicKey, spend: BN, step: string): Promise<void> {
   const side = { global: e.g, mint, user: e.whale.publicKey, quoteMint: e.Q };
   const ixs = await buyExactIn({ ...side, spend, minOut: new BN(1) });
   await land(e, { id, step, payer: e.whale, ixs }, async () => ({

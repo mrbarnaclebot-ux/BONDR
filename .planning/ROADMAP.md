@@ -266,13 +266,13 @@ Plans:
   4. Owner flips per-job kill switches (launches, forced bond, sweeps, finalize, buyback burn), hides a coin from lists, blocks a deployer from launching, and inspects any pasted signature's decoded instructions, error and explorer link
   5. Owner runs EVACUATE by typing the phrase and signing; all jobs pause and every W balance moves to the treasury
 
-**Plans:** 26 plans
+**Plans:** 1/26 plans executed
 
 Plans:
 
 **Wave 1**
 
-- [ ] 06-01-PLAN.md - Red sign-in spec, admin e2e harness, migration 0007 (switches, hidden/held, blocked_deployers, admin_audit, kinds, sig-kind index)
+- [x] 06-01-PLAN.md - Red sign-in spec, admin e2e harness, migration 0007 (switches, hidden/held, blocked_deployers, admin_audit, kinds, sig-kind index)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 0/25 | Planned | - |
+| 6. Admin Dashboard | 1/26 | In Progress|  |
 | 7. Go-Live | 0/TBD | Not started | - |

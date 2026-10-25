@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-10-25T12:30:50.552Z"
-last_activity: 2026-10-25 -- Phase 6 planning complete
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-10-25T12:42:32.390Z"
+last_activity: 2026-10-25 -- Completed 06-01 (admin harness, red sign-in spec, migration 0007)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 69
+  completed_plans: 70
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-25 -- Phase 6 planning complete
+Plan: 2 of 26 (06-01 complete)
+Status: Executing
+Last activity: 2026-10-25 -- Completed 06-01 (admin harness, red sign-in spec, migration 0007)
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
@@ -107,6 +107,7 @@ Progress: [██████████] 100%
 | Phase 05 P08 | 25 min | 3 tasks | 23 files |
 | Phase 05 P09 | 35 min | 3 tasks | 18 files |
 | Phase 05 P12 | 31 min | 3 tasks | 21 files |
+| Phase 06 P01 | 25 min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -242,6 +243,11 @@ Recent decisions affecting current work:
 - [Phase 05]: 05-08: bondedJob with a live bond burn goes straight to finalizeJob so a restart between the two finalize txs resumes; POST /fee/release skips the launch-tx fetch and re-runs only the distinct and on-curve checks
 - [Phase 05]: 05-12: the devnet e2e picks the derived-W curve coin whose window closes soonest but at least 4 minutes out
 - [Phase 05]: 05-12: the batch check asserts no new coin or platform reconcile_diff right after the buyback burn
+- [Phase 06]: 06-01: admin_audit.mint has no foreign key; hide, hold and block reasons are 1 to 120 characters by CHECK
+- [Phase 06]: 06-01: the D-33 transition guard is the admin_audit_guard trigger (no DELETE; one UPDATE from pending to a final result with actor, action, at, mint, params, simulation and intent_sig unchanged), hand-written in migration 0007
+- [Phase 06]: 06-01: the manual hold is coins.held_at and held_reason, separate from finalize = 'held' (A4)
+- [Phase 06]: 06-01: fee_ledger_sig_kind is unique on (signature, kind, coalesce(mint, '')); the worker memoryLedger.keysOf must mirror it
+- [Phase 06]: 06-01: ADMIN-01/05/07/10/11 stay pending until the plans that ship them; until 06-03, Playwright runs add --grep-invert admin-signin
 
 ### Pending Todos
 
@@ -274,6 +280,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T10:41:38.074Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-admin-dashboard/06-UI-SPEC.md
+Last session: 2026-10-25T12:42:32.385Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None

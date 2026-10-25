@@ -147,7 +147,7 @@ export function BondPanel({ symbol, net, launchedAt, windowMs, image }: PanelPro
   return (
     <section
       aria-labelledby="bond-h"
-      className="@container min-w-0 rounded-lg border border-line bg-[linear-gradient(180deg,var(--surface-2),color-mix(in_oklch,var(--surface)_60%,transparent))] p-4 shadow-elev-1 md:p-8 min-[1100px]:p-6"
+      className="@container min-w-0 rounded-lg border border-line bg-[linear-gradient(180deg,var(--surface-2),color-mix(in_oklch,var(--surface)_60%,transparent))] p-4 shadow-elev-1 md:p-8 min-[68.75rem]:p-6"
     >
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="bond-h" className="display text-[28px] leading-none">

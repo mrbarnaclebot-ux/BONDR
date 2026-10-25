@@ -212,7 +212,7 @@ export function FeeLedger({ initial, ...p }: Props) {
   return (
     <section
       aria-labelledby="ledger-h"
-      className="@container min-w-0 rounded-lg border border-line bg-[linear-gradient(180deg,var(--surface-2),color-mix(in_oklch,var(--surface)_60%,transparent))] p-4 shadow-elev-1 md:p-8 min-[1100px]:p-6"
+      className="@container min-w-0 rounded-lg border border-line bg-[linear-gradient(180deg,var(--surface-2),color-mix(in_oklch,var(--surface)_60%,transparent))] p-4 shadow-elev-1 md:p-8 min-[68.75rem]:p-6"
     >
       <Head symbol={p.symbol} w={p.w} net={p.net} />
       {/* A coin with no indexed row has no totals yet. */}

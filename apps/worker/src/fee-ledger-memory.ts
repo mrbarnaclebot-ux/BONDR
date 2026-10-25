@@ -5,6 +5,7 @@ import { type Entry, factsOf, type LedgerStore, type NewEntry } from "./fee-ledg
 import { impliedOf } from "./fee-reconcile.ts";
 
 const live = (s: LedgerState | null) => s === "pending" || s === "landed";
+const inWindow = (e: Entry, i?: number) => i === undefined || e.windowIndex === i;
 const ONCE: LedgerKind[] = ["forced_bond", "pool_burn", "finalize_config", "finalize_update"];
 const BURN: LedgerKind[] = ["forced_bond", "pool_burn"];
 const SWEEP: LedgerKind[] = ["sweep_buyback", "sweep_treasury"];
@@ -54,6 +55,7 @@ export function memoryLedger(): LedgerStore {
   };
   return {
     async insertPending(news, sig, lastValidBlockHeight) {
+      if (!news.length) return []; // the row-less admin jobs (close accounts, Run migrate), as in pgInsert
       const fresh = news.map((n, i) => pendingOf(n, next + i, sig, lastValidBlockHeight));
       if (refused(all(), fresh)) return null;
       next += fresh.length;
@@ -75,7 +77,8 @@ export function memoryLedger(): LedgerStore {
       where((c) => c.kind === "collect" && c.state === "landed" && (!mint || c.mint === mint)).filter(
         (c) => !all().some((s) => s.kind === "split_treasury" && s.ref === c.id && live(s.state)),
       ),
-    has: async (mint, kinds) => all().some((e) => e.mint === mint && kinds.includes(e.kind) && live(e.state)),
+    has: async (mint, kinds, i) =>
+      all().some((e) => e.mint === mint && kinds.includes(e.kind) && live(e.state) && inWindow(e, i)),
     hold: (mint, reason) => internal("held", mint, { reason }),
     release: async () => {},
     markFinal: async () => {},

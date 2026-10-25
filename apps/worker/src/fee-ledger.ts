@@ -38,7 +38,8 @@ export type LedgerStore = {
   pending(): Promise<Entry[]>;
   pendingFor(mint: string, kinds: LedgerKind[]): Promise<Entry[]>; // the mint's pending rows of the kinds
   openCollects(mint?: string): Promise<Entry[]>; // landed collects with no live split referencing them
-  has(mint: string, kinds: LedgerKind[]): Promise<boolean>; // a live (pending or landed) row of the kinds
+  // A live (pending or landed) row of the kinds, in one window when given (the leftover sweep's free index, A9).
+  has(mint: string, kinds: LedgerKind[], windowIndex?: number): Promise<boolean>;
   hold(mint: string, reason: string): Promise<void>;
   release(mint: string): Promise<void>; // held -> none; the held row stays as history
   markFinal(mint: string, deployerBps: number): Promise<void>; // done with no landed update (shares already locked)
@@ -183,7 +184,8 @@ export function pgLedger(dbFn: () => Conn = db): LedgerStore {
     return (await (limit ? q.limit(limit) : q)).map(toEntry);
   };
   return {
-    insertPending: (news, sig, lvbh) => pgInsert(dbFn(), news, sig, lvbh),
+    // Close accounts and Run migrate send with no ledger row; drizzle throws on an empty values list.
+    insertPending: async (news, sig, lvbh) => (news.length ? pgInsert(dbFn(), news, sig, lvbh) : []),
     settle: (sig, to, o = {}) => pgSettle(dbFn(), sig, to, o),
     pending: () => rowsWhere(eq(feeLedger.state, "pending")),
     pendingFor: (mint, kinds) =>
@@ -194,9 +196,11 @@ export function pgLedger(dbFn: () => Conn = db): LedgerStore {
       const own = mint ? eq(feeLedger.mint, mint) : undefined;
       return rowsWhere(and(eq(feeLedger.kind, "collect"), eq(feeLedger.state, "landed"), own, NO_LIVE_SPLIT));
     },
-    has: async (mint, kinds) =>
-      (await rowsWhere(and(eq(feeLedger.mint, mint), inArray(feeLedger.kind, kinds), LIVE_STATES), 1))
-        .length > 0,
+    has: async (mint, kinds, windowIndex) => {
+      const win = windowIndex === undefined ? undefined : eq(feeLedger.windowIndex, windowIndex);
+      const where = and(eq(feeLedger.mint, mint), inArray(feeLedger.kind, kinds), LIVE_STATES, win);
+      return (await rowsWhere(where, 1)).length > 0;
+    },
     async hold(mint, reason) {
       await dbFn().transaction(async (tx) => {
         await tx.insert(feeLedger).values({ kind: "held", mint, detail: { reason } });

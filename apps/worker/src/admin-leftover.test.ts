@@ -71,7 +71,7 @@ function setup(o: Opts = {}) {
       jobs.push(job);
       const sig = `s${n++}`;
       if (!(await ledger.insertPending(job.rows, sig, 1n))) return { state: "done" };
-      const to = job.rows[0]?.kind === o.fail ? "failed" : "landed";
+      const to = o.fail && job.rows[0]?.kind === o.fail ? "failed" : "landed";
       if (to === "landed" && job.rows[0]?.kind === "leftover_burn") bal.set(ataOf(MINT, W).toBase58(), 0n);
       if (to === "landed" && job.rows[0]?.kind === "sweep_buyback") bal.set(ataOf(Q, W).toBase58(), 0n);
       return { state: to, sig, rows: await ledger.settle(sig, to) };
@@ -104,8 +104,8 @@ test("leftoverBurnJob burns W's whole child balance in one W-signed BurnChecked 
   expect(job?.signers).toEqual([coin.w]);
   const [burn] = decoded(job);
   expect(job?.ixs).toHaveLength(1);
-  expect(burn?.data).toMatchObject({ instruction: TokenInstruction.BurnChecked, decimals: COIN_DECIMALS });
-  expect((burn?.data as { amount: bigint }).amount).toBe(1234n);
+  const data = { instruction: TokenInstruction.BurnChecked, amount: 1234n, decimals: COIN_DECIMALS };
+  expect(burn?.data).toMatchObject(data);
   expect(burn?.keys).toMatchObject({ mint: { pubkey: MINT }, owner: { pubkey: W } });
   expect(refusedDestination(job?.ixs ?? [], allowed)).toBeNull();
 });
@@ -127,7 +127,9 @@ test("closeAccountsJob closes each empty W token account to the treasury and lea
     TokenInstruction.CloseAccount,
     TokenInstruction.CloseAccount,
   ]);
-  const accounts = closes.map((c) => (c.keys as { account: { pubkey: PublicKey } }).account.pubkey.toBase58());
+  const accounts = closes.map((c) =>
+    (c.keys as { account: { pubkey: PublicKey } }).account.pubkey.toBase58(),
+  );
   expect(accounts.sort()).toEqual([ataOf(Q, W).toBase58(), ataOf(MINT, W).toBase58()].sort());
   for (const c of closes)
     expect((c.keys as { destination: { pubkey: PublicKey } }).destination.pubkey).toEqual(TREASURY);

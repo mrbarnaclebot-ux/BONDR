@@ -13,6 +13,8 @@ const COLUMN = {
   buybackBurn: "buybackBurnEnabled",
 } as const satisfies Record<AdminJob, keyof typeof settings.$inferSelect>;
 
+export const isJob = (v: unknown): v is AdminJob => typeof v === "string" && Object.hasOwn(COLUMN, v);
+
 export type SwitchState = AdminSwitches & { evacuatedAt: string | null };
 
 // Every switch off until the first load (fail closed); the engine starts only after it.

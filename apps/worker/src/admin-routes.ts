@@ -1,10 +1,15 @@
 // The owner console's worker routes. Each sits behind the bearer check (http.ts) and, here, the allowlist:
 // web forwards the session wallet as body.actor and the worker re-checks it against ADMIN_WALLET (D-08, D-11).
+import { db } from "@bondr/core/db";
 import type { Connection } from "@solana/web3.js";
+import { type ActDeps, act, switchRoute } from "./admin-act.ts";
+import { pgAudit } from "./admin-audit.ts";
 import type { WorkerEnv } from "./env.ts";
 import type { Engine } from "./fee-engine.ts";
 import { healthSnapshot } from "./health.ts";
 import { fail, type Handler, type Routes } from "./http.ts";
+import { landed, observe } from "./settle.ts";
+import { setJob } from "./switches.ts";
 
 // Fail closed: no ADMIN_WALLET, or any other actor, is forbidden. The handler gets the whole body, actor included,
 // so it can name the actor in the audit.
@@ -20,8 +25,20 @@ export type AdminOpts = { env: WorkerEnv; engine: () => Engine | null; conn: Con
 
 // Every route is wrapped here in one place, so no admin route can skip the gate.
 export function adminRoutes(o: AdminOpts): Routes {
+  // Built per call: db() needs DATABASE_URL, which a route table built in a test does not have.
+  const deps = (): ActDeps => ({
+    audit: pgAudit(),
+    engine: o.engine,
+    conn: o.conn,
+    exec: db(),
+    observe,
+    landed,
+    setJob,
+  });
   const routes: Routes = {
     "POST /admin/health": () => healthSnapshot(o),
+    "POST /admin/switch": (b) => switchRoute(deps(), b),
+    "POST /admin/act": (b) => act(deps(), b),
   };
   return Object.fromEntries(Object.entries(routes).map(([k, h]) => [k, gated(o.env.adminWallet, h)]));
 }

@@ -38,7 +38,7 @@ test("every admin route is a POST behind the gate", async () => {
     sentryReadToken: null,
   } as unknown as WorkerEnv;
   const routes = adminRoutes({ env, engine: () => null, conn: {} as never });
-  expect(Object.keys(routes).length).toBeGreaterThan(0);
+  expect(Object.keys(routes)).toEqual(["POST /admin/health", "POST /admin/switch", "POST /admin/act"]);
   for (const [key, h] of Object.entries(routes)) {
     expect(key).toMatch(/^POST \/admin\//);
     expect(await status(h({ actor: B }))).toBe(403);

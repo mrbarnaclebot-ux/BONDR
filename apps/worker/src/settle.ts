@@ -51,7 +51,7 @@ export async function releaseMint(mint: string): Promise<void> {
   if (v) await release(db(), v.idx, "failed");
 }
 
-async function observe(conn: Connection, sig: string, history: boolean, height: number | null) {
+export async function observe(conn: Connection, sig: string, history: boolean, height: number | null) {
   try {
     const st = (await conn.getSignatureStatuses([sig], { searchTransactionHistory: history })).value[0];
     const done = st?.confirmationStatus === "confirmed" || st?.confirmationStatus === "finalized";
@@ -83,7 +83,7 @@ export function launchFacts(
   return { ...facts, solBack: String(delta + row.solIn + BigInt(fee) + rent) };
 }
 
-async function landed(conn: Connection, row: Row): Promise<void> {
+export async function landed(conn: Connection, row: Row): Promise<void> {
   // One transaction: a landed mint is never left free in the pool by a failed second write (WR-04).
   const moved = await db().transaction(async (tx) => {
     const r = await advance(tx, row.id, row.state as LaunchState, "landed", { landedAt: new Date() });

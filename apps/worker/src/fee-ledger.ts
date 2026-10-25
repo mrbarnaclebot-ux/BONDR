@@ -40,6 +40,8 @@ export type LedgerStore = {
   openCollects(mint?: string): Promise<Entry[]>; // landed collects with no live split referencing them
   // A live (pending or landed) row of the kinds, in one window when given (the leftover sweep's free index, A9).
   has(mint: string, kinds: LedgerKind[], windowIndex?: number): Promise<boolean>;
+  // Retry sweep: the oldest failed or expired sweep row whose window holds no live sweep of its kind.
+  failedSweep(mint: string): Promise<Entry | null>;
   hold(mint: string, reason: string): Promise<void>;
   release(mint: string): Promise<void>; // held -> none; the held row stays as history
   markFinal(mint: string, deployerBps: number): Promise<void>; // done with no landed update (shares already locked)
@@ -177,6 +179,8 @@ async function pgSettle(c: Conn, sig: string, to: Settled, o: SettleOpts): Promi
 const LIVE_STATES = inArray(feeLedger.state, ["pending", "landed"]);
 const NO_LIVE_SPLIT = sql`not exists (select 1 from fee_ledger s where s.kind = 'split_treasury'
   and s.ref = ${feeLedger.id} and s.state in ('pending','landed'))`;
+const NO_LIVE_TWIN = sql`not exists (select 1 from fee_ledger s where s.mint = ${feeLedger.mint}
+  and s.kind = ${feeLedger.kind} and s.window_index = ${feeLedger.windowIndex} and s.state in ('pending','landed'))`;
 
 export function pgLedger(dbFn: () => Conn = db): LedgerStore {
   const rowsWhere = async (where: SQL | undefined, limit?: number) => {
@@ -200,6 +204,11 @@ export function pgLedger(dbFn: () => Conn = db): LedgerStore {
       const win = windowIndex === undefined ? undefined : eq(feeLedger.windowIndex, windowIndex);
       const where = and(eq(feeLedger.mint, mint), inArray(feeLedger.kind, kinds), LIVE_STATES, win);
       return (await rowsWhere(where, 1)).length > 0;
+    },
+    failedSweep: async (mint) => {
+      const sweeps = inArray(feeLedger.kind, ["sweep_buyback", "sweep_treasury"]);
+      const dead = inArray(feeLedger.state, ["failed", "expired"]);
+      return (await rowsWhere(and(eq(feeLedger.mint, mint), sweeps, dead, NO_LIVE_TWIN), 1))[0] ?? null;
     },
     async hold(mint, reason) {
       await dbFn().transaction(async (tx) => {

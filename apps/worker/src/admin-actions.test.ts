@@ -7,10 +7,10 @@ import {
   getAssociatedTokenAddressSync,
   TOKEN_2022_PROGRAM_ID as T22,
 } from "@solana/spl-token";
-import { type AccountInfo, Keypair, PublicKey } from "@solana/web3.js";
+import { type AccountInfo, Keypair, PublicKey, type TransactionInstruction } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
 import { ACTIONS, type ActionView, actionView, runOn } from "./admin-actions.ts";
-import { type Allowed, refusedDestination } from "./admin-dest.ts";
+import { type Allowed, refusedDestination, short } from "./admin-dest.ts";
 import { leftoverBurnJob, sweepLeftoversJob } from "./admin-leftover.ts";
 import { captureDeps, type Step } from "./admin-sim.ts";
 import { buybackBurnJob, distributeJob } from "./fee-batch.ts";
@@ -67,7 +67,6 @@ const BUYBACK = Keypair.generate();
 const TREASURY = Keypair.generate().publicKey;
 const DEPLOYER = Keypair.generate().publicKey;
 const DAY = 86_400_000;
-const short = (k: PublicKey) => `${k.toBase58().slice(0, 4)}...`;
 const W_NAME = `W ${short(W.publicKey)}`;
 const ataOf = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true, T22);
 
@@ -85,15 +84,8 @@ function tokenAccount(amount: bigint): AccountInfo<Buffer> {
 }
 
 const coin = (o: Partial<FeeCoin> = {}): FeeCoin => ({
-  ...{
-    mint: MINT,
-    w: W,
-    launchedAt: Date.now() - 3.5 * DAY,
-    venue: "curve",
-    feesUnclaimed: 0n,
-    feeBudget: 0n,
-  },
-  ...{ cost: null, launchSig: "l", wallet: DEPLOYER, finalize: "none" },
+  ...{ mint: MINT, w: W, launchedAt: Date.now() - 3.5 * DAY, venue: "curve", feesUnclaimed: 0n },
+  ...{ feeBudget: 0n, cost: null, launchSig: "l", wallet: DEPLOYER, finalize: "none" },
   ...o,
 });
 const view = (o: Partial<ActionView> = {}): ActionView => ({
@@ -137,42 +129,22 @@ test("ACTIONS holds the nine transaction actions, each with applies, allow, watc
 
 const pool = (o: Partial<FeeCoin> = {}) => coin({ venue: "pool", ...o });
 const platform = (buybackBondr = 0n) => view({ coin: null, mint: null, buybackBondr });
+const [curve, pooled] = [view(), view({ coin: pool() })];
+const [held, done] = [view({ coin: pool({ finalize: "held" }) }), view({ coin: pool({ finalize: "done" }) })];
+const bond = (feeBudget: bigint, costNow: bigint | null, o: Partial<FeeCoin> = {}) =>
+  view({ coin: coin({ feeBudget, ...o }), costNow });
+const BOND_YES = [bond(1050n, 1000n), bond(1000n, 1000n, { feesUnclaimed: 100n })];
+// Below 105%, off the curve, or a cost of 0 (the curve completed: the migration event bonds it instead).
+const BOND_NO = [bond(1049n, 1000n), bond(5000n, 1000n, { venue: "pool" }), bond(9n, 0n), bond(9n, null)];
 const MATRIX: [keyof typeof ACTIONS, ActionView[], ActionView[], string][] = [
-  ["sweep_now", [view()], [view({ coin: pool() }), view({ coin: null })], "not_curve"],
-  [
-    "retry_forced_bond",
-    [
-      view({ coin: coin({ feeBudget: 1050n }), costNow: 1000n }),
-      view({ coin: coin({ feeBudget: 1000n, feesUnclaimed: 100n }), costNow: 1000n }),
-    ],
-    [
-      view({ coin: coin({ feeBudget: 1049n }), costNow: 1000n }),
-      view({ coin: pool({ feeBudget: 5000n }) }),
-      view({ coin: coin({ feeBudget: 9n }), costNow: 0n }),
-    ],
-    "below_trigger",
-  ],
-  ["burn_w_tokens", [view({ wChild: 1n })], [view()], "no_child"],
-  [
-    "run_migrate",
-    [view({ coin: coin({ venue: "complete" }) })],
-    [view(), view({ coin: pool() })],
-    "not_complete",
-  ],
-  [
-    "finalize_split",
-    [view({ coin: pool() }), view({ coin: pool({ finalize: "held" }) })],
-    [view(), view({ coin: pool({ finalize: "done" }) })],
-    "not_bonded",
-  ],
-  ["retry_sweep", [view({ failedSweep: { windowIndex: 2 } })], [view()], "no_failed_sweep"],
-  ["distribute_now", [view({ coin: pool({ finalize: "done" }) })], [view({ coin: pool() })], "not_finalized"],
-  [
-    "sweep_leftovers",
-    [view({ coin: pool({ finalize: "done" }) })],
-    [view({ coin: pool({ finalize: "held" }) })],
-    "not_finalized",
-  ],
+  ["sweep_now", [curve], [pooled, view({ coin: null })], "not_curve"],
+  ["retry_forced_bond", BOND_YES, BOND_NO, "below_trigger"],
+  ["burn_w_tokens", [view({ wChild: 1n })], [curve], "no_child"],
+  ["run_migrate", [view({ coin: coin({ venue: "complete" }) })], [curve, pooled], "not_complete"],
+  ["finalize_split", [pooled, held], [curve, done], "not_bonded"],
+  ["retry_sweep", [view({ failedSweep: { windowIndex: 2 } })], [curve], "no_failed_sweep"],
+  ["distribute_now", [done], [pooled, held], "not_finalized"],
+  ["sweep_leftovers", [done], [pooled, held], "not_finalized"],
   ["burn_buyback", [platform(5n)], [platform()], "no_bondr"],
 ];
 
@@ -206,41 +178,31 @@ test("watch names the accounts the balance table shows, ops first", () => {
   const d = deps();
   const rows = (action: keyof typeof ACTIONS, v = view({ coin: pool() })) =>
     ACTIONS[action].watch(v, d).map((w) => w.name);
-  expect(rows("finalize_split")).toEqual(
-    expect.arrayContaining([
-      "Treasury",
-      "Buyback",
-      W_NAME,
-      `Deployer ${short(DEPLOYER)}`,
-      "Fee sharing config",
-    ]),
-  );
+  const final = ["Treasury", "Buyback", W_NAME, `Deployer ${short(DEPLOYER)}`, "Fee sharing config"];
+  expect(rows("finalize_split")).toEqual(expect.arrayContaining(final));
   expect(rows("burn_buyback", platform(1n))).toEqual(["Ops wallet", "Buyback"]);
   for (const action of Object.keys(ACTIONS) as (keyof typeof ACTIONS)[])
     expect(rows(action, action === "burn_buyback" ? platform(1n) : view())[0]).toBe("Ops wallet");
 });
 
 test("run maps each action to its engine job", async () => {
-  const d = deps();
-  const c = coin();
+  const [d, c] = [deps(), coin()];
+  const v = view({ coin: c });
   vi.mocked(windowJob).mockResolvedValue([]);
-  await ACTIONS.sweep_now.run(d, view({ coin: c }));
+  await ACTIONS.sweep_now.run(d, v);
   expect(windowJob).toHaveBeenCalledWith(d, c, 3); // that window's sweep, early (A9)
-  vi.mocked(forcedJob).mockResolvedValueOnce([]);
-  await ACTIONS.retry_forced_bond.run(d, view({ coin: c }));
-  expect(forcedJob).toHaveBeenCalledWith(d, c);
   vi.mocked(finalizeJob).mockResolvedValueOnce([]);
-  await ACTIONS.finalize_split.run(d, view({ coin: c }));
+  await ACTIONS.finalize_split.run(d, v);
   expect(finalizeJob).toHaveBeenCalledWith(d, c, DEPLOYER);
   vi.mocked(distributeJob).mockResolvedValueOnce({ state: "done" });
-  expect(await ACTIONS.distribute_now.run(d, view({ coin: c }))).toEqual([{ state: "done" }]);
+  expect(await ACTIONS.distribute_now.run(d, v)).toEqual([{ state: "done" }]);
   expect(distributeJob).toHaveBeenCalledWith(d, c, { anyAmount: true });
+  vi.mocked(forcedJob).mockResolvedValueOnce([]);
   vi.mocked(leftoverBurnJob).mockResolvedValueOnce({ state: "done" });
-  await ACTIONS.burn_w_tokens.run(d, view({ coin: c }));
-  expect(leftoverBurnJob).toHaveBeenCalledWith(d, c);
   vi.mocked(sweepLeftoversJob).mockResolvedValueOnce([]);
-  await ACTIONS.sweep_leftovers.run(d, view({ coin: c }));
-  expect(sweepLeftoversJob).toHaveBeenCalledWith(d, c);
+  for (const a of ["retry_forced_bond", "burn_w_tokens", "sweep_leftovers"] as const)
+    await ACTIONS[a].run(d, v);
+  for (const job of [forcedJob, leftoverBurnJob, sweepLeftoversJob]) expect(job).toHaveBeenCalledWith(d, c);
   vi.mocked(buybackBurnJob).mockResolvedValueOnce({ state: "done" });
   await ACTIONS.burn_buyback.run(d, platform(1n));
   expect(buybackBurnJob).toHaveBeenCalledWith(d);
@@ -251,36 +213,26 @@ test("run_migrate lands migrate_v2 with no ledger row and ops as the user", asyn
   const out = await ACTIONS.run_migrate.run(d, view({ coin: coin({ venue: "complete" }) }));
   expect(out).toEqual([{ state: "landed", sig: "s" }]);
   const { migrateIxs } = await import("@bondr/core/bond");
-  expect(migrateIxs).toHaveBeenCalledWith({
-    global: { global: true },
-    user: OPS.publicKey,
-    mint: MINT,
-    quoteMint: Q,
-  });
-  expect(d.land).toHaveBeenCalledWith(
-    expect.objectContaining({ rows: [], ixs: [{ marker: "migrate" }], signers: [] }),
-  );
+  const ids = { global: { global: true }, user: OPS.publicKey, mint: MINT, quoteMint: Q };
+  expect(migrateIxs).toHaveBeenCalledWith(ids);
+  const job = { rows: [], ixs: [{ marker: "migrate" }], signers: [] };
+  expect(d.land).toHaveBeenCalledWith(expect.objectContaining(job));
 });
 
 test("retry_sweep settles the pending sweeps from chain, then reruns the failed window", async () => {
   const c = coin();
   const pending = [
-    { id: 1, kind: "sweep_buyback", mint: "m", signature: "p" },
+    { id: 1, kind: "sweep_buyback", signature: "p" },
   ] as unknown as ActionView["pendingSweeps"];
+  const v = view({ coin: c, failedSweep: { windowIndex: 2 }, pendingSweeps: pending });
   vi.mocked(settleRows).mockResolvedValue(0);
   vi.mocked(windowJob).mockResolvedValue([]);
   const d = deps();
-  await ACTIONS.retry_sweep.run(
-    d,
-    view({ coin: c, failedSweep: { windowIndex: 2 }, pendingSweeps: pending }),
-  );
+  await ACTIONS.retry_sweep.run(d, v);
   expect(settleRows).toHaveBeenCalledWith(d, pending, expect.any(Function));
   expect(windowJob).toHaveBeenCalledWith(d, c, 2);
   vi.mocked(settleRows).mockClear();
-  await ACTIONS.retry_sweep.run(
-    deps("dry"),
-    view({ coin: c, failedSweep: { windowIndex: 2 }, pendingSweeps: pending }),
-  );
+  await ACTIONS.retry_sweep.run(deps("dry"), v);
   expect(settleRows).not.toHaveBeenCalled(); // a simulation writes nothing
 });
 
@@ -306,13 +258,8 @@ test("actionView reads the engine coin, W's child balance, the buyback, the fres
   const load = vi.fn();
   const v = await actionView(d, mint, { coin: () => c }, load);
   expect(v.coin).toBe(c);
-  expect(v).toMatchObject({
-    mint,
-    wChild: 42n,
-    buybackBondr: 7n,
-    costNow: 1000n,
-    failedSweep: { windowIndex: 2 },
-  });
+  expect(v).toMatchObject({ mint, wChild: 42n, buybackBondr: 7n, costNow: 1000n });
+  expect(v.failedSweep).toEqual({ windowIndex: 2 });
   expect(v.pendingSweeps.map((e) => e.signature)).toEqual(["p"]);
   expect(load).not.toHaveBeenCalled();
 });
@@ -342,7 +289,9 @@ test("a finalize_split capture run passes its own allowlist on every step and na
   expect(sink.length).toBeGreaterThanOrEqual(4); // config, update, closing collect and sweep, leftover burn
   const allow = ACTIONS.finalize_split.allow(v, d);
   for (const s of sink) expect(refusedDestination(s.ixs, allow)).toBeNull();
-  expect(sink.some((s) => s.ixs.some((ix) => ix.keys.some((k) => k.pubkey.equals(DEPLOYER))))).toBe(true);
+  const namesDeployer = (ix: TransactionInstruction) =>
+    ix.keys.some((k) => k.pubkey.equals(DEPLOYER)) || ix.data.includes(DEPLOYER.toBuffer());
+  expect(sink.some((s) => s.ixs.some(namesDeployer))).toBe(true); // the update's new shareholder
   expect(v.coin?.finalize).toBe("held");
   expect(d.land).not.toHaveBeenCalled();
 });

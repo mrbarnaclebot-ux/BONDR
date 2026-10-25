@@ -34,7 +34,7 @@ type Who = {
   closeTo: PublicKey;
 };
 
-const short = (k: PublicKey) => `${k.toBase58().slice(0, 4)}...`;
+export const short = (k: PublicKey) => `${k.toBase58().slice(0, 4)}...`;
 const PROGRAMS = [TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID];
 
 export function allowFor(w: Who): Allowed {

@@ -42,7 +42,7 @@ const MICRO_LAMPORTS = 1_000n; // budget()'s priority price
 const DECIMALS: Record<AdminBalanceRow["unit"], number> = { SOL: 9, BONDR: 6, tokens: COIN_DECIMALS, bps: 0 };
 // replaceRecentBlockhash swaps it for a live one, so a step costs no getLatestBlockhash call.
 const ANY_BLOCKHASH = "11111111111111111111111111111111";
-const READS = ["pending", "pendingFor", "openCollects", "has", "implied"] as const;
+const READS = ["pending", "pendingFor", "openCollects", "has", "failedSweep", "implied"] as const;
 
 const snap = (w: Watch, a: Snap): AccountSnap =>
   !a ? 0n : w.kind === "sol" ? BigInt(a.lamports) : AccountLayout.decode(a.data).amount;

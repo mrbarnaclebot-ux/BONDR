@@ -41,6 +41,14 @@ function refused(existing: Entry[], fresh: Entry[]): boolean {
   return false;
 }
 
+// Retry sweep: a failed or expired sweep whose window holds no live sweep of its kind.
+const retryable = (f: Entry, rows: Entry[]) =>
+  SWEEP.includes(f.kind) &&
+  (f.state === "failed" || f.state === "expired") &&
+  !rows.some(
+    (e) => e.mint === f.mint && e.kind === f.kind && e.windowIndex === f.windowIndex && live(e.state),
+  );
+
 // ponytail: mirrors the 0005/0007 indexes so units and the fork stage run the engine's own code without Postgres;
 // the database stays the real guard. Coin totals are not tracked here (the engine's publish applies them).
 export function memoryLedger(): LedgerStore {
@@ -79,6 +87,10 @@ export function memoryLedger(): LedgerStore {
       ),
     has: async (mint, kinds, i) =>
       all().some((e) => e.mint === mint && kinds.includes(e.kind) && live(e.state) && inWindow(e, i)),
+    failedSweep: async (mint) => {
+      const f = all().find((e) => e.mint === mint && retryable(e, all()));
+      return f ? copy(f) : null;
+    },
     hold: (mint, reason) => internal("held", mint, { reason }),
     release: async () => {},
     markFinal: async () => {},

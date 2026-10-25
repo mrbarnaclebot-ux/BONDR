@@ -38,9 +38,9 @@ test("a failed write logs only its SQLSTATE, never the params", async () => {
   const spy = vi.spyOn(console, "error").mockImplementation(() => {});
   try {
     const params = { reason: "secret-looking-value" };
-    await expect(
-      pgAudit(exec).insertLanded({ actor: "a", action: "hold", mint: "m", params }),
-    ).rejects.toBe(err);
+    await expect(pgAudit(exec).insertLanded({ actor: "a", action: "hold", mint: "m", params })).rejects.toBe(
+      err,
+    );
     expect(spy).toHaveBeenCalledWith("admin audit write failed: 23514");
     expect(JSON.stringify(spy.mock.calls)).not.toContain("secret-looking-value");
   } finally {
@@ -62,7 +62,12 @@ async function rolledBack(fn: (a: AuditStore, tx: Tx) => Promise<void>): Promise
 }
 
 const row = async (tx: Tx, id: string) =>
-  (await tx.select().from(adminAudit).where(eq(adminAudit.id, Number(id))))[0];
+  (
+    await tx
+      .select()
+      .from(adminAudit)
+      .where(eq(adminAudit.id, Number(id)))
+  )[0];
 
 describe.skipIf(!process.env.DATABASE_URL)("pgAudit", { timeout: 30_000 }, () => {
   afterAll(() => close());

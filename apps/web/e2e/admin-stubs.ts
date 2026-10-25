@@ -2,7 +2,7 @@
 // /api/admin/simulate, /api/admin/execute and /api/admin/intent call in the browser, so no spec reaches the
 // worker or spends devnet SOL: the route never falls through to the server. Also the console fixture: the real
 // overview answer with one held finalize coin and a buyback balance, and the coin op from a fixture.
-import type { AdminCoinMemory, AdminSimResult } from "@bondr/core/api-admin";
+import type { AdminCoinMemory, AdminInspect, AdminSimResult } from "@bondr/core/api-admin";
 import type { Page, Route } from "@playwright/test";
 import type { WRow } from "../lib/admin-data.ts";
 import type { CoinTimeline } from "../lib/admin-timeline.ts";
@@ -104,3 +104,29 @@ export async function stubConsole(page: Page): Promise<void> {
     route.fulfill({ json: { timeline: TIMELINE, live: null } }),
   );
 }
+
+/** A decoded curve buy for the inspector's output state (admin-responsive.e2e.ts). */
+export const INSPECT: AdminInspect = {
+  ...{ found: true, status: "success", slot: 514_267_874, error: null },
+  feePayer: { label: "Ops wallet", address: DEPLOYER },
+  instructions: [
+    { index: 1, program: "Compute Budget", name: "SetComputeUnitLimit", args: ["units 200,000"] },
+    { index: 2, program: "pump", name: "buy", args: ["amount 31,120,363,129,478", "max_sol_cost 0.0105"] },
+  ],
+  explorer: `https://solscan.io/tx/${SIGS[0]}?cluster=devnet`,
+};
+
+/** A passing 12-wallet EVACUATE simulation with an intent (admin-responsive.e2e.ts). */
+export const EVAC: AdminSimResult = simFixture({
+  ...{ action: "evacuate", mint: null, balances: [], steps: [{ ok: true, cu: 180_000, estimated: false }] },
+  totals: {
+    wallets: 12,
+    bondr: "18402110000000",
+    bondrSol: "9200000000",
+    sol: "410000000",
+    burnedIn: 3,
+    failures: 0,
+  },
+  destinations: { ok: true, passed: ["treasury matches config"] },
+  intent: { id: INTENT_ID, message: "BONDR admin action", expiresAt: Date.now() + 600_000 },
+});

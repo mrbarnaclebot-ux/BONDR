@@ -12,7 +12,16 @@ import {
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { OPS_FLOOR_LAMPORTS, SENDER_TIPS } from "./fee-config.ts";
 import { type LedgerStore, memoryLedger } from "./fee-ledger.ts";
-import { type FeeDeps, type Job, land, noteOps, opsLow, tipIxs, urgentBroadcast } from "./fee-send.ts";
+import {
+  type FeeDeps,
+  type Job,
+  land,
+  noteOps,
+  opsLow,
+  refreshOps,
+  tipIxs,
+  urgentBroadcast,
+} from "./fee-send.ts";
 
 const calls = vi.hoisted(() => [] as string[]);
 const metaMisses = vi.hoisted(() => ({ n: 0 })); // fetchTx tries that find no meta yet
@@ -159,6 +168,19 @@ describe("land (D-08)", () => {
     expect(calls).toEqual([]);
     expect((await land(deps(), job({ urgent: true }))).state).toBe("landed");
     expect(opsLow()).toBe(false);
+  });
+
+  test("while paused, ops is re-read at most once a minute and a top-up clears the pause (WR-04)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    noteOps(0);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 3_600_000);
+    const conn = { getBalance: vi.fn(async () => LAMPORTS_PER_SOL) };
+    expect(await refreshOps({ conn, ops } as never)).toBe(false);
+    noteOps(0);
+    expect(await refreshOps({ conn, ops } as never)).toBe(true); // read a moment ago
+    expect(conn.getBalance).toHaveBeenCalledOnce();
+    vi.useRealTimers();
   });
 
   test("sender on mainnet adds the tip and posts to Sender; urgent alone gets neither", async () => {

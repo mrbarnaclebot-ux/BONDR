@@ -28,7 +28,7 @@ import type { Engine } from "./fee-engine.ts";
 import { tokenBalance } from "./fee-prebond.ts";
 import { reconcile } from "./fee-reconcile.ts";
 import { settleStale } from "./fee-recover.ts";
-import { type FeeCoin, type FeeDeps, factsFor, type Landed, opsLow } from "./fee-send.ts";
+import { type FeeCoin, type FeeDeps, factsFor, type Landed, refreshOps } from "./fee-send.ts";
 
 const DECIMALS = 6; // BONDR, the quote mint (price.ts)
 const DONE: Landed = { state: "done" };
@@ -136,7 +136,7 @@ async function sends(d: FeeDeps, engine: BatchEngine, s: BatchSummary): Promise<
 
 export async function runBatch(d: FeeDeps, engine: BatchEngine): Promise<BatchSummary> {
   const s: BatchSummary = {
-    opsLow: opsLow(),
+    opsLow: await refreshOps(d),
     burn: "skipped",
     distribute: 0,
     finalize: 0,

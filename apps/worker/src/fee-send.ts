@@ -87,12 +87,27 @@ const SENDER_TIMEOUT_MS = 10_000;
 const DEFAULT_CU = 400_000;
 
 // ponytail: per-process flag while the worker runs one replica (D-07). Set from each landed meta and the
-// boot balance read, so the floor never costs an extra RPC call.
+// boot balance read, so the floor costs no extra RPC call while ops is above it.
 let low = false;
+let checkedAt = 0;
+const OPS_RECHECK_MS = 60_000;
 export const opsLow = (): boolean => low;
 export function noteOps(lamports: number): void {
+  const was = low;
   low = lamports < OPS_FLOOR_LAMPORTS;
-  if (low) console.error(`ops below floor: ${lamports / LAMPORTS_PER_SOL} SOL, non-urgent fee sends paused`);
+  if (low && !was)
+    console.error(`ops below floor: ${lamports / LAMPORTS_PER_SOL} SOL, non-urgent fee sends paused`);
+}
+
+// WR-04: while paused, ops is re-read on the RPC at most once a minute (no database), so a manual top-up resumes
+// non-urgent sends without waiting for an urgent tx to land or a redeploy. A failed read stays paused.
+export async function refreshOps(d: Pick<FeeDeps, "conn" | "ops">): Promise<boolean> {
+  if (!low || Date.now() - checkedAt < OPS_RECHECK_MS) return low;
+  checkedAt = Date.now();
+  try {
+    noteOps(await d.conn.getBalance(d.ops.publicKey));
+  } catch {}
+  return low;
 }
 
 export const tipIxs = (net: TradeNet, ops: PublicKey, lamports: number, pick = Math.random) =>
@@ -222,7 +237,7 @@ async function conclude(d: FeeDeps, job: Job, r: SendResult, sig: string): Promi
 }
 
 export async function land(d: FeeDeps, job: Job): Promise<Landed> {
-  if (low && !job.urgent) return { state: "skipped" };
+  if (!job.urgent && (await refreshOps(d))) return { state: "skipped" };
   const cfg = feeConfig(d.net);
   const bh: BlockhashInfo = await d.conn.getLatestBlockhash();
   const tip = job.sender ? tipIxs(d.net, d.ops.publicKey, cfg.senderTipLamports) : [];

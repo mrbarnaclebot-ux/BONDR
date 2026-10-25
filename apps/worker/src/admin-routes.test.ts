@@ -129,6 +129,15 @@ test("malformed money bodies answer 400 before anything runs", async () => {
   expect(deps.land).not.toHaveBeenCalled();
 });
 
+test("simulate accepts evacuate only with mint null and reaches the money path", async () => {
+  const r = routesFor(A);
+  const sim = await r["POST /admin/simulate"]({ actor: A, action: "evacuate", mint: null });
+  expect(sim).toMatchObject({ action: "evacuate", mint: null, nothing: true });
+  expect(
+    await status(r["POST /admin/simulate"]({ actor: A, action: "evacuate", mint: MINT }), "invalid_input"),
+  ).toBe(400);
+});
+
 test("simulate then execute through the route map answers 202 and the intent reads landed", async () => {
   const r = routesFor(A);
   const sim = (await r["POST /admin/simulate"]({ actor: A, action: "sweep_now", mint: MINT })) as {

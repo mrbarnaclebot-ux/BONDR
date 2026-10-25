@@ -45,6 +45,7 @@ export type Landed = {
   sig?: string;
   rows?: Entry[];
   meta?: ConfirmedTransactionMeta;
+  code?: number; // the program's custom error code on a failed send (finalize reads 6009)
 };
 
 export type FeeDeps = {
@@ -58,6 +59,7 @@ export type FeeDeps = {
   treasury: PublicKey;
   buyback: Keypair;
   ledger: LedgerStore;
+  windowMs: number; // the closing sweep after finalize names the current window
   bondrSol(): number | null;
   publish(mint: string | null, rows: Entry[]): void;
   land(job: Job): Promise<Landed>;
@@ -170,10 +172,10 @@ async function landed(d: FeeDeps, job: Job, sig: string): Promise<Landed> {
 
 async function conclude(d: FeeDeps, job: Job, r: SendResult, sig: string): Promise<Landed> {
   if (r.status === "landed") return landed(d, job, sig);
-  const err = redact(r.err ?? r.status);
+  const err = redact(`${r.code === undefined ? "" : `code ${r.code}: `}${r.err ?? r.status}`);
   console.error(`fee ${what(job)} ${r.status}: ${err}`);
   if (r.status === "unknown") return { state: "unknown", sig };
-  return { state: "failed", sig, rows: await d.ledger.settle(sig, "failed", { error: err }) };
+  return { state: "failed", sig, code: r.code, rows: await d.ledger.settle(sig, "failed", { error: err }) };
 }
 
 export async function land(d: FeeDeps, job: Job): Promise<Landed> {

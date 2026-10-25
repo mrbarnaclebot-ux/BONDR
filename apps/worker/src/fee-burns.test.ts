@@ -13,7 +13,9 @@ const core = vi.hoisted(() => ({
   forced: vi.fn(async (_o: { budget: unknown }) => ({ ixs: [], burnAmount: new BN(777) })),
   exact: vi.fn(async (_o: object) => ({ ixs: [], burnAmount: new BN(555) })),
   buyV2: vi.fn(async (_o: object) => []),
+  finalize: vi.fn(async () => [{ state: "done" }]),
 }));
+vi.mock("./fee-finalize.ts", () => ({ finalizeJob: core.finalize }));
 vi.mock("@bondr/core/collect", async (orig) => ({
   ...((await orig()) as object),
   collectIxs: async () => [],
@@ -83,7 +85,7 @@ const bondJob = () => jobs.find((j) => j.rows[0]?.kind === "forced_bond" || j.ro
 beforeEach(() => {
   jobs = [];
   Object.assign(core, { cost: 1000n, exactFails: false });
-  for (const f of [core.forced, core.exact, core.buyV2]) f.mockClear();
+  for (const f of [core.forced, core.exact, core.buyV2, core.finalize]) f.mockClear();
 });
 
 test("forcedJob below 105% of the fresh cost logs not ready and sends no bond", async () => {
@@ -131,6 +133,7 @@ test("bondedJob collects, splits, then burns W's whole budget on the pool", asyn
   expect(bondJob()).toMatchObject({ urgent: true, sender: true, signers: [W] });
   expect(bondJob()?.rows[0]).toMatchObject({ kind: "pool_burn", amount: 900n, burned: 555n });
   expect(bondJob()?.rows[0]?.detail).toEqual({ path: "exact_quote_in" });
+  expect(core.finalize).toHaveBeenCalledOnce(); // after the burn landed
 });
 
 test("bondedJob with an empty budget or after a forced bond lands no pool_burn", async () => {
@@ -141,6 +144,7 @@ test("bondedJob with an empty budget or after a forced bond lands no pool_burn",
   await d.ledger.insertPending([{ kind: "forced_bond", mint: MINT.toBase58() }], "x", 1n);
   await bondedJob(d, { ...coin, venue: "pool" });
   expect(kinds()).toEqual(["collect"]);
+  expect(core.finalize).toHaveBeenCalledTimes(2); // a forced bond's coin finalizes too
 });
 
 test("poolBurnJob falls back to buy_v2 of what 95% buys when exact-quote-in fails, and records the path", async () => {

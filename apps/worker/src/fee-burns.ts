@@ -10,6 +10,7 @@ import { applyBps, trigger105 } from "@bondr/core/math";
 import { BN } from "@bondr/core/pump";
 import { tokenDelta } from "@bondr/core/trade";
 import type { TransactionInstruction } from "@solana/web3.js";
+import { finalizeJob } from "./fee-finalize.ts";
 import type { NewEntry } from "./fee-ledger.ts";
 import { collectJob, settled, splitJob, wBondr } from "./fee-prebond.ts";
 import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
@@ -102,10 +103,13 @@ export async function poolBurnJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
   return burnLand(d, coin, row, ixs);
 }
 
-// FEE-03 on the migration event (Pitfall 6: venue pool, never complete). Plan 05-08 appends finalize.
+// FEE-03 on the migration event (Pitfall 6: venue pool, never complete), then finalize (D-18) once the bond's
+// burn, forced or on the pool, has settled.
 export async function bondedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   const out = await collectSplit(d, coin);
-  if (!out.every(settled) || (await d.ledger.has(coin.mint.toBase58(), BOND_KINDS))) return out;
-  out.push(await poolBurnJob(d, coin));
+  if (!out.every(settled)) return out;
+  if (!(await d.ledger.has(coin.mint.toBase58(), BOND_KINDS))) out.push(await poolBurnJob(d, coin));
+  if (!out.every(settled)) return out;
+  out.push(...(await finalizeJob(d, coin)));
   return out;
 }

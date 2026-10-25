@@ -44,9 +44,10 @@ export async function splitJob(d: FeeDeps, coin: FeeCoin, collect: Entry, urgent
   return d.land({ rows: [row], ixs, signers: [coin.w], urgent });
 }
 
-// W's BONDR balance: a missing ATA is 0; any other RPC error throws, so a flaky read never skips a sweep silently.
-export async function wBondr(d: FeeDeps, coin: FeeCoin): Promise<bigint> {
-  const ata = getAssociatedTokenAddressSync(d.Q, coin.w.publicKey, true, T22);
+// W's BONDR balance (or another token's): a missing ATA is 0; any other RPC error throws, so a flaky read never
+// skips a sweep silently.
+export async function wBondr(d: FeeDeps, coin: FeeCoin, token = d.Q): Promise<bigint> {
+  const ata = getAssociatedTokenAddressSync(token, coin.w.publicKey, true, T22);
   try {
     return BigInt((await d.conn.getTokenAccountBalance(ata)).value.amount);
   } catch (e) {

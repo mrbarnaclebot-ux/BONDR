@@ -38,6 +38,8 @@ export type LedgerStore = {
   openCollects(): Promise<Entry[]>; // landed collects with no live split referencing them
   has(mint: string, kinds: LedgerKind[]): Promise<boolean>; // a live (pending or landed) row of the kinds
   hold(mint: string, reason: string): Promise<void>;
+  release(mint: string): Promise<void>; // held -> none; the held row stays as history
+  markFinal(mint: string, deployerBps: number): Promise<void>; // done with no landed update (shares already locked)
   diff(mint: string | null, detail: Record<string, unknown>): Promise<void>;
 };
 
@@ -121,6 +123,8 @@ export function memoryLedger(): LedgerStore {
         .map(copy),
     has: async (mint, kinds) => all().some((e) => e.mint === mint && kinds.includes(e.kind) && live(e.state)),
     hold: (mint, reason) => internal("held", mint, { reason }),
+    release: async () => {},
+    markFinal: async () => {},
     diff: (mint, detail) => internal("reconcile_diff", mint, detail),
   };
 }
@@ -268,6 +272,13 @@ export function pgLedger(dbFn: () => Conn = db): LedgerStore {
         await tx.insert(feeLedger).values({ kind: "held", mint, detail: { reason } });
         await tx.update(coins).set({ finalize: "held" }).where(eq(coins.mint, mint));
       });
+    },
+    async release(mint) {
+      const held = and(eq(coins.mint, mint), eq(coins.finalize, "held"));
+      await dbFn().update(coins).set({ finalize: "none" }).where(held);
+    },
+    async markFinal(mint, deployerBps) {
+      await dbFn().update(coins).set({ finalize: "done", deployerBps }).where(eq(coins.mint, mint));
     },
     async diff(mint, detail) {
       await dbFn().insert(feeLedger).values({ kind: "reconcile_diff", mint, detail });

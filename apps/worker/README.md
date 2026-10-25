@@ -33,8 +33,11 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 | `POST /submit` | bearer WORKER_TOKEN |
 | `GET /events` | bearer WORKER_TOKEN |
 | `POST /trade/quote`, `/trade/balance`, `/trade/prepare`, `/trade/submit`, `/trade/view` | bearer WORKER_TOKEN |
+| `POST /fee/release` | bearer WORKER_TOKEN |
 
 `POST /prepare` takes a `PrepareRequest` and returns a `PrepareResult` (see `@bondr/core/api`). Errors: 409 `paused`, 403 `consent_required`, 400 `invalid_input`, 503 `pool_empty`, 429 `rate_limited` (30 new tables an hour, worker-wide), 402 `insufficient_balance`, 500 `build_failed`. One prepare runs at a time.
+
+`POST /fee/release` takes `{ mint, deployer }` for a coin whose finalize is held (D-18) and returns `{ ok: true }` once one finalize with that deployer is queued. The deployer must be base58 and on curve; the engine re-checks that it differs from the treasury and W. Errors: 400 `invalid_input` (bad keys, off curve, or the coin is not held).
 
 `POST /submit` takes a `SubmitRequest` (`launchId`, base64 dev-signed wire) and returns a `SubmitResult` (`state`, `signature`). A launch that is no longer `prepared` returns its current state (a double submit is a no-op). Errors: 400 `invalid_input`, 404 `not_found`, 409 `paused` and 410 `expired` (the row turns `failed` and the mint is released), 422 `cosign_refused` (the row turns `failed`, the mint stays reserved for Try again), 500 `build_failed`.
 

@@ -131,7 +131,7 @@ describe.skipIf(!DB)("pgLedger", { timeout: 60_000 }, () => {
     });
   });
 
-  test("a second pending forced_bond returns null; hold marks the coin held", async () => {
+  test("a second pending forced_bond returns null; hold, release and markFinal move finalize", async () => {
     await rolledBack(async (l, read) => {
       const mint = (await read()).mint;
       expect(await l.insertPending([{ kind: "forced_bond", mint }], `f${mint}`, 10n)).toHaveLength(1);
@@ -139,6 +139,11 @@ describe.skipIf(!DB)("pgLedger", { timeout: 60_000 }, () => {
       expect(await l.has(mint, ["forced_bond"])).toBe(true);
       await l.hold(mint, "deployer is not the launch wallet");
       expect((await read()).finalize).toBe("held");
+      await l.release(mint);
+      expect((await read()).finalize).toBe("none");
+      expect(await l.has(mint, ["held"])).toBe(false); // held rows are history, never live
+      await l.markFinal(mint, 8000);
+      expect([(await read()).finalize, (await read()).deployerBps]).toEqual(["done", 8000]);
     });
   });
 });

@@ -23,9 +23,10 @@ import { tokenAmount } from "./launch.ts";
 type E = Run & { d: FeeDeps };
 type Facts = NonNullable<Row["facts"]>;
 
-function feeDeps(run: Run): FeeDeps {
+export function feeDeps(run: Run): FeeDeps {
   const d: FeeDeps = {
     ...{ net: "fork", mode: "on", conn: run.ctx.conn, online: run.online, Q: run.Q, ops: run.ops },
+    windowMs: 60_000,
     amm: new OnlinePumpAmmSdk(run.ctx.conn),
     treasury: run.ctx.key("treasury", "main").publicKey,
     buyback: run.ctx.key("buyback", "main"),
@@ -37,9 +38,11 @@ function feeDeps(run: Run): FeeDeps {
   return d;
 }
 
+// held: bondedJob's finalize waits here. engine-final.ts finalizes E2 after post-bond pool trades, so the
+// update has fees to pay W.
 const coinOf = (e: E, mint: PublicKey, w: Keypair, venue: FeeCoin["venue"]): FeeCoin => ({
   ...{ mint, w, launchedAt: Date.now(), venue, feesUnclaimed: 0n, feeBudget: 0n, cost: null },
-  ...{ launchSig: "", wallet: e.ctx.key("sim", "dev").publicKey, finalize: "none" },
+  ...{ launchSig: "", wallet: e.ctx.key("sim", "dev").publicKey, finalize: "held" },
 });
 
 async function whaleBuy(e: E, id: string, mint: PublicKey, spend: BN, step: string): Promise<void> {

@@ -9,7 +9,8 @@ import { OnlinePumpSdk } from "@bondr/core/pump";
 import { seedBondrPrice } from "./bondr-price.ts";
 import { loadEnv, type WorkerEnv } from "./env.ts";
 import { endStreams, eventsHandler } from "./events-route.ts";
-import { startEngine } from "./fee-engine.ts";
+import { feeEngine, startEngine } from "./fee-engine.ts";
+import { feeRoutes } from "./fee-routes.ts";
 import { startRefill } from "./grind.ts";
 import { start } from "./http.ts";
 import { backfillLaunches, loadCoins } from "./ingest.ts";
@@ -63,6 +64,7 @@ async function main() {
       "POST /trade/prepare": (body) => prepareTrade(tctx, body),
       "POST /trade/submit": (body) => submitTrade(tctx, body),
       "POST /trade/view": async (body) => viewTrade(body),
+      ...feeRoutes(feeEngine),
       // OPS-01 check: the 500 path logs this through redact and Sentry must show [addr], not the address.
       "POST /sentry-test": async () => {
         throw new Error(`sentry test from worker: wallet ${SAMPLE_ADDR}`);

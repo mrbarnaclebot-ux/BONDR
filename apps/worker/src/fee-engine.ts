@@ -20,6 +20,7 @@ import { bondrPrice } from "./bondr-price.ts";
 import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
 import { bondedJob, forcedJob } from "./fee-burns.ts";
 import { feeConfig } from "./fee-config.ts";
+import { finalizeJob } from "./fee-finalize.ts";
 import { type Entry, pgLedger } from "./fee-ledger.ts";
 import { windowJob } from "./fee-prebond.ts";
 import { recover } from "./fee-recover.ts";
@@ -152,6 +153,16 @@ export class Engine {
     }
   }
 
+  // D-18 owner release: one finalize of a held coin with the owner's deployer. False when the coin is not held.
+  release(mint: string, deployer: PublicKey): boolean {
+    const [coin, deps] = [this.coins.get(mint), this.o.deps];
+    if (!this.ready || !deps || coin?.finalize !== "held") return false;
+    const job = async () =>
+      console.log(`fee finalize ${mint}: ${summary(await finalizeJob(deps, coin, deployer))}`);
+    void this.enqueue(mint, job, `fee finalize ${mint}`);
+    return true;
+  }
+
   // Venue only advances; fee numbers move only for a trade at least as new as the last one applied.
   private apply(coin: FeeCoin, p: CoinPatch, slot: string | undefined): void {
     if (p.venue && RANK[p.venue] > RANK[coin.venue]) coin.venue = p.venue;
@@ -210,6 +221,7 @@ export class Engine {
 }
 
 let engine: Engine | null = null;
+export const feeEngine = (): Engine | null => engine;
 let costCtx: { net: WorkerEnv["net"]; Q: PublicKey; wOf: WOf } | null = null;
 
 // Called by announce after every committed ingest, live and gap fill. Before startEngine it is a no-op.
@@ -228,7 +240,7 @@ const loadRows = (): Promise<CoinLoad[]> =>
 
 function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
   const d: FeeDeps = {
-    ...{ net: env.net, mode, conn: ctx.conn, Q: ctx.Q, ledger: pgLedger() },
+    ...{ net: env.net, mode, conn: ctx.conn, Q: ctx.Q, ledger: pgLedger(), windowMs: env.feeWindowMs },
     online: ctx.online as InstanceType<typeof OnlinePumpSdk>,
     amm: new OnlinePumpAmmSdk(ctx.conn),
     ops: ops(env.seed, env.net),

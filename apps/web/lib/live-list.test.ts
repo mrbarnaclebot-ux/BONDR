@@ -4,6 +4,7 @@ import {
   addLedger,
   addTrades,
   applyBond,
+  applyFees,
   applyTrade,
   decay,
   insertLaunch,
@@ -61,6 +62,14 @@ test("applyBond sets the venue and a full curve", () => {
   expect(next[0]).toMatchObject({ venue: "complete", progress: 1, bondSig: "s" });
   expect(next[1]).toBe(list[1]);
   expect(applyBond(list, { mint: "z", venue: "pool", bondSig: null, bondedAt: null })).toBe(list);
+});
+
+test("applyFees takes only the fee fields, so an older snapshot never reverts a bond", () => {
+  const list = applyBond([coin("a")], { mint: "a", venue: "complete" });
+  const fees = { budget: "5" } as CoinRow["fees"];
+  const next = applyFees(list, { ...coin("a"), venue: "curve", progress: 0.9, fees });
+  expect(next[0]).toMatchObject({ venue: "complete", progress: 1, fees });
+  expect(applyFees(list, coin("a"))).toBe(list);
 });
 
 test("insertLaunch prepends only to Latest with no search, never twice", () => {

@@ -20,6 +20,7 @@ import {
 import type { Side } from "@/lib/flash";
 import {
   applyBond,
+  applyFees,
   applyTrade,
   decay,
   fresher,
@@ -194,7 +195,7 @@ function useHomeStream(view: RefObject<View>, s: Sets) {
     },
     // A fee movement changes the coin's budget; a landed forced bond is one more coin bonded by its own fees.
     onFee: ({ coin, rows }) => {
-      if (coin) both((l) => applyTrade(l, { coin }));
+      if (coin) both((l) => applyFees(l, coin));
       if (rows.some((r) => r.kind === "forced_bond")) s.setCounts((c) => c && { ...c, forced: c.forced + 1 });
     },
     onLaunch: (c) => {

@@ -64,10 +64,12 @@ export function CoinLiveProvider(props: {
     },
     onBond: ({ venue, bondSig, bondedAt }) => setCoin((p) => p && { ...p, venue, bondSig, bondedAt }),
     onHolders: ({ holders }) => setCoin((p) => p && { ...p, holders }),
-    // D-22: the landed rows go to the ledger and the coin's fee fields to the panel, totals and stats.
+    // D-22: the landed rows go to the ledger and the coin's fee fields to the panel, totals and stats. Only the
+    // fee fields: the snapshot can predate a trade or bond already applied.
     onFee: ({ mint: m, rows, coin: c }) => {
       if (m !== mint) return;
-      if (c) setCoin((p) => p && { ...p, ...c });
+      const f = c?.fees;
+      if (f) setCoin((p) => p && { ...p, fees: f });
       if (rows.length) fees.emit({ rows });
     },
     // A real gap (T-03-09-03): one read of the first page and the coin, through the rate-limited route; the

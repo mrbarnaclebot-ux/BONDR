@@ -58,7 +58,7 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     for (const m of mints) await dropCoin(sql, m);
     await sql.end();
     await close();
-  }, 30_000);
+  }, 120_000); // about 30 seeded coins, six deletes each, one connection
 
   test("1h change runs from the last trade before the hour; burns never count", async () => {
     const mint = await coin(180, 8, 12, [
@@ -181,7 +181,11 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
 
   // Budgets far above any real coin's ratio (real ones fire at 105%), so the seeded coins lead the rail.
   test("nextToBond ranks curve coins with a budget by budget / cost, newer first on a tie, at most 4", async () => {
-    const seed = async (budget: number, cost: number | null, extra: Record<string, string | number | Date> = {}) => {
+    const seed = async (
+      budget: number,
+      cost: number | null,
+      extra: Record<string, string | number | Date> = {},
+    ) => {
       const fees = { fee_budget: String(budget), cost_to_complete: cost === null ? null : String(cost) };
       const coin = { launched_at: new Date("2099-03-01T00:00:00Z"), ...fees, ...extra };
       const { mint } = await seedCoin(sql, { trades: 0, coin });
@@ -209,7 +213,10 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     const before = await sql<{ n: number }[]>`select count(distinct mint)::int as n from fee_ledger
       where kind = 'forced_bond' and state = 'landed'`;
     const seed = async () => {
-      const { mint } = await seedCoin(sql, { trades: 0, coin: { venue: "pool", bonded_at: new Date(), progress: 1 } });
+      const { mint } = await seedCoin(sql, {
+        trades: 0,
+        coin: { venue: "pool", bonded_at: new Date(), progress: 1 },
+      });
       mints.push(mint);
       return mint;
     };

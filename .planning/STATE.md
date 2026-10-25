@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-06-PLAN.md
-last_updated: "2026-10-25T05:29:30.353Z"
+stopped_at: Completed 05-05-PLAN.md
+last_updated: "2026-10-25T05:57:03.100Z"
 last_activity: 2026-10-25
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 69
-  completed_plans: 61
+  completed_plans: 62
   percent: 57
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 5
-Plan: 6 of 13 (05-01 to 05-04 complete)
+Plan: 7 of 13 (05-01 to 05-06 complete)
 Status: Ready to execute
 Last activity: 2026-10-25
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -101,6 +101,7 @@ Progress: [█████████░] 87%
 | Phase 04 P13 | 12 min | 3 tasks | 4 files |
 | Phase 05 P01 | 15 min | 3 tasks | 12 files |
 | Phase 05 P04 | 13 min | 3 tasks | 9 files |
+| Phase 05 P05 | 25 min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -226,6 +227,9 @@ Recent decisions affecting current work:
 - [Phase 05]: 05-01: no window-start column on coins; the window is derived from launched_at and FEE_WINDOW_MS (D-23 discretion)
 - [Phase 05]: 05-01: totalsFor distribute splits the row SOL by share; collect clears fees_unclaimed via set.feesUnclaimed; the store clamps fee_budget at 0
 - [Phase 05]: 05-01: FEE-01/04/05 and TOKEN-04 stay pending until the plans that ship them (05-02 onward)
+- [Phase 05]: 05-05: onIngest takes one Ingested object; engine applies fee numbers only from a trade slot at least as new as the last applied, venue only advances
+- [Phase 05]: 05-05: Engine.landed mirrors totalsFor in memory so a quiet coin never re-collects an empty bucket
+- [Phase 05]: 05-05: boot recovery leaves rows pending on any RPC error and settles nothing in dry mode
 
 ### Pending Todos
 
@@ -258,6 +262,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T05:29:30.350Z
+Last session: 2026-10-25T05:56:57.214Z
 Stopped at: Completed 05-06-PLAN.md
 Resume file: None

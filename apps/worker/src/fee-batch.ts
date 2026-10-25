@@ -29,9 +29,11 @@ import { tokenBalance } from "./fee-prebond.ts";
 import { reconcile } from "./fee-reconcile.ts";
 import { settleStale } from "./fee-recover.ts";
 import { type FeeCoin, type FeeDeps, factsFor, type Landed, refreshOps } from "./fee-send.ts";
+import { mark } from "./health.ts";
 
 const DECIMALS = 6; // BONDR, the quote mint (price.ts)
 const DONE: Landed = { state: "done" };
+const SKIPPED: Landed = { state: "skipped" };
 const DISTRIBUTE_CU = 400_000;
 // D-19, A8: the signature fee plus budget()'s priority price (1,000 micro-lamports per CU) at this limit.
 const DISTRIBUTE_FEE = 5_000 + Math.ceil((DISTRIBUTE_CU * 1_000) / 1_000_000);
@@ -53,6 +55,8 @@ export type BatchSummary = {
 // D-13, T-05-09-01: the buyback's whole BONDR balance in one BurnChecked (a burn, never a transfer), signed by
 // the buyback key with ops paying. The platform row has no mint.
 export async function buybackBurnJob(d: FeeDeps): Promise<Landed> {
+  if (d.allowed && !d.allowed("buybackBurn", null)) return SKIPPED;
+  mark("buyback");
   const owner = d.buyback.publicKey;
   const amount = await tokenBalance(d, owner);
   if (amount === 0n) return DONE;
@@ -92,6 +96,8 @@ function worthPaying(d: FeeDeps, pending: bigint): boolean {
 // FEE-07, T-05-09-02: permissionless, ops pays, and the SDK pays the shareholders the verified finalize locked;
 // the engine names no recipient. The row's split is the two holders' BONDR deltas in this tx's own meta.
 export async function distributeJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
+  if (d.allowed && !d.allowed("finalize", coin)) return SKIPPED;
+  mark("distribute");
   const p = await pendingOf(d, coin.mint);
   const [deployer, treasury] = p?.holders ?? [];
   if (!p || !deployer || !treasury || !worthPaying(d, p.pending)) return DONE;

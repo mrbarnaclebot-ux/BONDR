@@ -43,4 +43,5 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `fee-engine.ts`: the `Engine` (per-coin serial queue, window timers from launch, ready gate, forced bond trigger per curve patch, bonded job on venue pool) and `coinFrom`; the admin controls `exclusive` (a result-returning run on a coin's queue in every mode), `idle`, `setHold` (the manual hold, never finalize), `memory` and `stuckCount`. One worker replica only (D-07).
 - `fee-stuck.ts`: stuck-step bookkeeping since boot: `STUCK_AT`, `stepOf` (step from the job label), `verdict` (failed or landed result), `codeOf` (short redacted error code).
 - `fee-boot.ts`: `startEngine` (one boot read, recover, then arm), the engine singleton (`feeEngine`, `onIngest`), `feeDeps`, `loadCoin` (one coin for the engine-off admin path) and `withCost` (cost to complete on every curve patch).
+- `health.ts`: memory-only health facts (D-26): `bootAt`, `instance`, and `mark`/`marks`, each fee job's last run since boot.
 - `*.test.ts`: vitest checks; DB-backed ones skip without DATABASE_URL.

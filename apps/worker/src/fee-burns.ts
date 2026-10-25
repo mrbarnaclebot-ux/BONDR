@@ -16,10 +16,12 @@ import { guard, spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
 import { collectJob, settled, wBondr, worthCollecting } from "./fee-prebond.ts";
 import { type FeeCoin, type FeeDeps, factsFor, type Landed } from "./fee-send.ts";
+import { mark } from "./health.ts";
 
 const BOND_KINDS: LedgerKind[] = ["forced_bond", "pool_burn"];
 const CU = 600_000;
 const DONE: Landed = { state: "done" };
+const SKIPPED: Landed = { state: "skipped" }; // D-19: settled() stops at it, so bondedJob never reaches finalize
 const big = (x: BN): bigint => BigInt(x.toString());
 
 // The row's amount is the intent (W's whole balance); the landed amount is what W actually spent.
@@ -59,8 +61,11 @@ export function forceDue(coin: FeeCoin, cost: bigint): boolean {
   return !n || budget * 100n >= n.budget * 101n || cost * 100n <= n.cost * 99n;
 }
 
-// The urgent collect only when worth its fee (D-11): the forced bond can retrigger on every curve trade.
+// The urgent collect only when worth its fee (D-11): the forced bond can retrigger on every curve trade, so a
+// paused one returns before any read.
 export async function forcedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
+  if (d.allowed && !d.allowed("forcedBond", coin)) return [SKIPPED];
+  mark("bondCheck");
   if (await d.ledger.has(coin.mint.toBase58(), BOND_KINDS)) return [DONE];
   const out = worthCollecting(d, coin) ? [await collectJob(d, coin, true)] : [];
   return spend(d, coin, out, () => forcedSend(d, coin), true);
@@ -90,6 +95,7 @@ async function poolIxs(d: FeeDeps, coin: FeeCoin, balance: bigint): Promise<Pool
 }
 
 export async function poolBurnJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
+  if (d.allowed && !d.allowed("forcedBond", coin)) return SKIPPED;
   const balance = await wBondr(d, coin);
   if (balance === 0n) return DONE;
   const { ixs, burnAmount, path } = await poolIxs(d, coin, balance);
@@ -113,6 +119,8 @@ export async function bondedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   const out = await guard(d, coin, true);
   if (!out.every(settled)) return out;
   if (!(await d.ledger.has(coin.mint.toBase58(), BOND_KINDS))) {
+    // The urgent collect only feeds the pool burn, so the forced bond switch pauses it too (T-06-07-01).
+    if (d.allowed && !d.allowed("forcedBond", coin)) return [...out, SKIPPED];
     out.push(...(await spend(d, coin, [await collectJob(d, coin, true)], () => poolBurnJob(d, coin), true)));
     if (!out.every(settled)) return out;
   }

@@ -17,6 +17,7 @@ import { pgLedger } from "./fee-ledger.ts";
 import { recover } from "./fee-recover.ts";
 import { type FeeCoin, type FeeDeps, land, noteOps } from "./fee-send.ts";
 import type { Ctx } from "./status.ts";
+import { switchOn } from "./switches.ts";
 import { configs } from "./trade-state.ts";
 
 let engine: Engine | null = null;
@@ -60,6 +61,8 @@ export function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
       publishFee(mint, rows).catch(logged("fee publish"));
     },
     land: (job) => land(d, job),
+    // D-16, D-19: automatic jobs obey the owner's switches and a coin's manual hold; admin deps override this.
+    allowed: (job, coin) => switchOn(job) && !coin?.hold,
   };
   return d;
 }

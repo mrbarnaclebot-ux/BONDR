@@ -147,6 +147,7 @@ async function finalTxs(d: FeeDeps, coin: FeeCoin, pool: PublicKey, deployer: Pu
 
 // After the bond and its burn (bondedJob), the daily batch, or an owner release (override).
 export async function finalizeJob(d: FeeDeps, coin: FeeCoin, override?: PublicKey): Promise<Landed[]> {
+  if (d.allowed && !d.allowed("finalize", coin)) return [{ state: "skipped" }];
   if (coin.finalize === "done" || (coin.finalize === "held" && !override)) return [DONE];
   const s = await finalizeState(d.conn, coin.mint, d.Q);
   if (!s.complete || !s.pool) return [DONE];

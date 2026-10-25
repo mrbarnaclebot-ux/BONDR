@@ -136,7 +136,7 @@ export async function urgentBroadcast(
 const what = (job: Job) => job.rows.map((r) => `${r.kind} ${r.mint?.slice(0, 8) ?? "platform"}`).join(", ");
 
 // Each row's SOL value at landing, from the BONDR price in memory (D-04); unknown price leaves sol unset.
-function withSol(job: Job, facts: Facts, bondrSol: number | null): Facts {
+export function withSol(job: Pick<Job, "rows">, facts: Facts, bondrSol: number | null): Facts {
   const out: Facts = { ...facts };
   for (const r of job.rows) {
     const f = { ...out[r.kind] };

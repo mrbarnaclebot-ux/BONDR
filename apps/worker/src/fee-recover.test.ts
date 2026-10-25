@@ -51,6 +51,7 @@ function deps(statuses: (sigs: string[]) => Status[], height = 100) {
   };
   const d = {
     ...{ net: "devnet", mode: "on", Q, ops: Keypair.generate(), ledger, conn, bondrSol: () => null },
+    treasury: PublicKey.unique(),
     publish: (_m: string | null, rows: Entry[]) => published.push(rows),
     async land(job: Job): Promise<Landed> {
       jobs.push(job);

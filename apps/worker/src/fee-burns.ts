@@ -104,12 +104,16 @@ export async function poolBurnJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
 }
 
 // FEE-03 on the migration event (Pitfall 6: venue pool, never complete), then finalize (D-18) once the bond's
-// burn, forced or on the pool, has settled.
+// burn, forced or on the pool, is live. With a burn already there, collect and split are left to finalize's
+// closing collect: a collect sweeping the curve as W fails once the sharing config exists, and a restart
+// between the two finalize txs must still resume.
 export async function bondedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
-  const out = await collectSplit(d, coin);
-  if (!out.every(settled)) return out;
-  if (!(await d.ledger.has(coin.mint.toBase58(), BOND_KINDS))) out.push(await poolBurnJob(d, coin));
-  if (!out.every(settled)) return out;
+  const out: Landed[] = [];
+  if (!(await d.ledger.has(coin.mint.toBase58(), BOND_KINDS))) {
+    out.push(...(await collectSplit(d, coin)));
+    if (out.every(settled)) out.push(await poolBurnJob(d, coin));
+    if (!out.every(settled)) return out;
+  }
   out.push(...(await finalizeJob(d, coin)));
   return out;
 }

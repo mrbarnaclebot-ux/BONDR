@@ -13,17 +13,24 @@ type Online = InstanceType<typeof OnlinePumpSdk>;
 
 // [W's Q ATA, sweep, collect]. v3 trades leave creator fees on the curve until the sweep moves them to W's
 // vault (Pitfall 6), so the sweep goes first in the same tx. Collect is permissionless: W does not sign.
+// sweepCurve false: after finalize the curve names the sharing config, so a sweep naming W fails; the collect
+// alone still empties W's own vaults.
 export async function collectIxs(o: {
   online: Online;
   payer: PublicKey;
   mint: PublicKey;
   creator: PublicKey;
   quoteMint: PublicKey;
+  sweepCurve?: boolean;
 }): Promise<TransactionInstruction[]> {
   const q = { payer: o.payer, mint: o.mint, creator: o.creator, quoteMint: o.quoteMint };
+  const sweep =
+    o.sweepCurve === false
+      ? []
+      : [await PUMP_SDK.sweepCreatorFeeInstruction({ ...q, quoteTokenProgram: T22 })];
   return [
     ataIx(o.payer, o.quoteMint, o.creator),
-    await PUMP_SDK.sweepCreatorFeeInstruction({ ...q, quoteTokenProgram: T22 }),
+    ...sweep,
     ...(await o.online.collectCoinCreatorFeeV2Instructions(o.creator, o.quoteMint, T22, o.payer)),
   ];
 }

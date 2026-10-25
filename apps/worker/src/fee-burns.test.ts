@@ -143,7 +143,7 @@ test("bondedJob with an empty budget or after a forced bond lands no pool_burn",
   const d = deps({ balance: 900n });
   await d.ledger.insertPending([{ kind: "forced_bond", mint: MINT.toBase58() }], "x", 1n);
   await bondedJob(d, { ...coin, venue: "pool" });
-  expect(kinds()).toEqual(["collect"]);
+  expect(kinds()).toEqual([]); // finalize's closing collect takes what came after the forced bond
   expect(core.finalize).toHaveBeenCalledTimes(2); // a forced bond's coin finalizes too
 });
 

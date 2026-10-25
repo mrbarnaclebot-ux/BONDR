@@ -14,14 +14,16 @@ const DECIMALS = 6; // BONDR, the quote mint (price.ts)
 const DONE: Landed = { state: "done" };
 
 // Permissionless, so W does not sign. The amount is W's BONDR delta in this tx's own meta (D-14).
-export async function collectJob(d: FeeDeps, coin: FeeCoin, urgent = false): Promise<Landed> {
+export async function collectJob(
+  d: FeeDeps,
+  coin: FeeCoin,
+  urgent = false,
+  sweepCurve = true,
+): Promise<Landed> {
   const [mint, W] = [coin.mint, coin.w.publicKey];
   const ixs = await collectIxs({
-    online: d.online,
-    payer: d.ops.publicKey,
-    mint,
-    creator: W,
-    quoteMint: d.Q,
+    ...{ online: d.online, payer: d.ops.publicKey, mint, creator: W, quoteMint: d.Q },
+    sweepCurve,
   });
   return d.land({
     rows: [{ kind: "collect", mint: mint.toBase58() }],

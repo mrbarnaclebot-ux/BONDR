@@ -22,7 +22,7 @@ import {
   type TransactionInstruction,
 } from "@solana/web3.js";
 import type { NewEntry } from "./fee-ledger.ts";
-import { settled, sweepJob, wBondr } from "./fee-prebond.ts";
+import { collectJob, settled, splitJob, sweepJob, wBondr } from "./fee-prebond.ts";
 import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
 
 const W_BUFFER = 0.01 * LAMPORTS_PER_SOL; // proven float on top of the config rent (01-08)
@@ -109,6 +109,20 @@ async function lockedFinal(d: FeeDeps, coin: FeeCoin, deployer: PublicKey): Prom
   return true;
 }
 
+// Owner-delegated A6 (2026-10-25): W's post-bond, pre-update fees go to buyback and treasury like any window
+// (collect, split, sweep; D-12). Tx1's pool sweep moves them into W's own coin creator vault and the update
+// pays out nothing (fork, 05-08), so a collect comes first. After the update the creator is the sharing config,
+// so this collect takes the last fee W will ever earn; no curve sweep (the curve names the config now).
+async function closing(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
+  const mint = coin.mint.toBase58();
+  const out = [await collectJob(d, coin, false, false)];
+  for (const c of (await d.ledger.openCollects()).filter((e) => e.mint === mint))
+    out.push(await splitJob(d, coin, c));
+  if (!out.every(settled)) return out;
+  out.push(await sweepJob(d, coin, windowOf(coin.launchedAt, Date.now(), d.windowMs)));
+  return out;
+}
+
 // One read after the closing sweep: W should hold 0 BONDR and 0 child tokens. A miss is an error, not a throw.
 async function checkEmpty(d: FeeDeps, coin: FeeCoin): Promise<void> {
   const mint = coin.mint.toBase58();
@@ -147,8 +161,7 @@ export async function finalizeJob(d: FeeDeps, coin: FeeCoin, override?: PublicKe
   }
   const { out, ok } = await finalTxs(d, coin, s.pool, deployer, s.sharing);
   if (!ok) return out;
-  // Owner-delegated A6 (2026-10-25): post-bond, pre-update fees in W go 90/10 to buyback and treasury.
-  out.push(await sweepJob(d, coin, windowOf(coin.launchedAt, Date.now(), d.windowMs)));
+  out.push(...(await closing(d, coin)));
   await checkEmpty(d, coin);
   return out;
 }

@@ -12,6 +12,7 @@ const core = vi.hoisted(() => ({
   state: { complete: true, pool: {} as unknown, sharing: "none" as "none" | "configured" | "revoked" },
   sharing: { shares: [8000, 2000], holders: [] as string[], adminRevoked: true },
   events: [] as { name: string; data: Record<string, unknown> }[],
+  sweepCurve: [] as (boolean | undefined)[],
   fetchTx: vi.fn(async (_c: unknown, _s: string): Promise<object | undefined> => ({})),
 }));
 vi.mock("@bondr/core/sharing", async (orig) => ({
@@ -20,6 +21,13 @@ vi.mock("@bondr/core/sharing", async (orig) => ({
   finalizeUpdateIxs: async () => [],
   finalizeState: async () => core.state,
   readSharing: async () => core.sharing,
+}));
+vi.mock("@bondr/core/collect", async (orig) => ({
+  ...((await orig()) as object),
+  collectIxs: async (o: { sweepCurve?: boolean }) => {
+    core.sweepCurve.push(o.sweepCurve);
+    return [];
+  },
 }));
 vi.mock("@bondr/core/send", async (orig) => ({ ...((await orig()) as object), fetchTx: core.fetchTx }));
 vi.mock("@bondr/core/events", () => ({ innerEvents: () => core.events }));
@@ -75,6 +83,7 @@ function deps(o: Opts = {}) {
 
 const kinds = () => jobs.map((j) => j.rows.map((r) => r.kind).join("+"));
 const SWEEP = "sweep_buyback+sweep_treasury";
+const CLOSING = ["collect", "split_treasury", SWEEP]; // W's own vaults, then a window's split and sweep
 const quiet = () => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   return vi.spyOn(console, "error").mockImplementation(() => {});
@@ -87,6 +96,7 @@ beforeEach(() => {
   core.sharing = { shares: [8000, 2000], holders: [DEV.toBase58(), TREASURY.toBase58()], adminRevoked: true };
   core.events = [{ name: "CreateEvent", data: { mint: MINT.toBase58(), user: DEV.toBase58() } }];
   core.fetchTx.mockReset().mockResolvedValue({});
+  core.sweepCurve = [];
 });
 
 test("preflight returns the deployer when the CreateEvent user is the launch wallet, distinct and on curve", async () => {
@@ -118,14 +128,16 @@ test("an RPC failure fetching the launch tx throws and writes no held row", asyn
 test("sharing none lands config, update, then the closing sweep, and W ends empty", async () => {
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
   const out = await finalizeJob(deps({ balances: ["1000", "0", "0"] }), coinOf());
-  expect(kinds()).toEqual(["finalize_config", "finalize_update", SWEEP]);
+  expect(kinds()).toEqual(["finalize_config", "finalize_update", ...CLOSING]);
+  expect(core.sweepCurve).toEqual([false]); // the curve names the sharing config now
   expect(jobs.slice(0, 2).every((j) => j.signers[0] === W && !j.urgent && !j.sender)).toBe(true);
   expect(jobs[1]?.rows[0]?.detail).toEqual({
     ...{ dBps: 8000, tBps: 2000 },
     ...{ deployer: DEV.toBase58(), treasury: TREASURY.toBase58() },
   });
   expect(out[0]?.rows?.[0]?.amount).toBe(50n); // W's BONDR delta from the meta
-  expect(jobs[2]?.rows.map((r) => r.amount)).toEqual([900n, 100n]);
+  expect(jobs[3]?.rows[0]?.amount).toBe(5n); // a tenth of the closing collect's 50
+  expect(jobs[4]?.rows.map((r) => r.amount)).toEqual([900n, 100n]);
   expect(log).toHaveBeenCalledWith(`finalize ${MINT.toBase58()}: W child 0, BONDR 0`);
 });
 
@@ -133,7 +145,7 @@ test("sharing configured lands only the update and the sweep", async () => {
   quiet();
   core.state.sharing = "configured";
   await finalizeJob(deps({ balances: ["10"] }), coinOf());
-  expect(kinds()).toEqual(["finalize_update", SWEEP]);
+  expect(kinds()).toEqual(["finalize_update", ...CLOSING]);
 });
 
 test("sharing revoked with [8000, 2000] marks the coin done and sweeps", async () => {
@@ -142,7 +154,7 @@ test("sharing revoked with [8000, 2000] marks the coin done and sweeps", async (
   const [d, coin] = [deps({ balances: ["10"] }), coinOf()];
   const mark = vi.spyOn(d.ledger, "markFinal");
   await finalizeJob(d, coin);
-  expect(kinds()).toEqual([SWEEP]);
+  expect(kinds()).toEqual(CLOSING);
   expect(mark).toHaveBeenCalledWith(MINT.toBase58(), 8000);
   expect(coin.finalize).toBe("done");
 });
@@ -152,7 +164,7 @@ test("a 6009 on the update is final: failed with 6009, never resent, done only i
   core.state.sharing = "configured";
   const [d, coin] = [deps({ failCode: 6009, balances: ["10"] }), coinOf()];
   const out = await finalizeJob(d, coin);
-  expect(kinds()).toEqual(["finalize_update", SWEEP]);
+  expect(kinds()).toEqual(["finalize_update", ...CLOSING]);
   expect(out[0]?.rows?.[0]).toMatchObject({ state: "failed", error: expect.stringContaining("6009") });
   expect(coin.finalize).toBe("done");
 

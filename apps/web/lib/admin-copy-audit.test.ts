@@ -43,7 +43,8 @@ const ALL: AdminAuditAction[] = [
 
 test("every one of the 18 audit actions has copy", () => {
   expect(ALL).toHaveLength(18);
-  for (const a of ALL) expect(auditActionCopy(row(a, { params: { job: "sweeps", enabled: true } }))).not.toBe("");
+  for (const a of ALL)
+    expect(auditActionCopy(row(a, { params: { job: "sweeps", enabled: true } }))).not.toBe("");
 });
 
 test("coin actions read {Action}: {SYMBOL}", () => {
@@ -68,7 +69,9 @@ test("platform, switch, deployer and evacuate copy", () => {
   expect(auditActionCopy(row("unblock", { mint: null, params: { wallet: WALLET } }))).toBe(
     "Unblock deployer: Dep1…1XyZ",
   );
-  expect(auditActionCopy(row("evacuate", { mint: null, params: { wallets: 42 } }))).toBe("EVACUATE: 42 wallets");
+  expect(auditActionCopy(row("evacuate", { mint: null, params: { wallets: 42 } }))).toBe(
+    "EVACUATE: 42 wallets",
+  );
 });
 
 test("JOB_LABEL names the five switches", () => {

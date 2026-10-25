@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { short } from "@/lib/format";
 import { type Console, useConsole } from "@/lib/use-console";
 import { useHealth } from "@/lib/use-health";
+import { AuditLog } from "./admin-audit";
 import { AdminHealth } from "./admin-health";
 import { type AdminSessionView, AdminSignIn, SignInAgain, type SignInNotice, SignOut } from "./admin-signin";
 import { AdminWallets } from "./admin-wallets";
@@ -79,7 +80,7 @@ function Grid({ con, onUnauthorized }: { con: Console; onUnauthorized(): void })
       {/* 06-17: a row "grid gap-8 min-[68.75rem]:grid-cols-[1.3fr_1fr] min-[68.75rem]:items-start [&>*]:min-w-0"
           holding <AdminTimeline />, then a "grid gap-8" stack of <AdminInspect /> (06-19) and <AdminModeration />
           (06-20) */}
-      {/* 06-14: <AuditLog /> */}
+      <AuditLog key={overview.loadedAt} overview={overview} busy={loading} />
       {/* 06-23: <Evacuate /> */}
     </>
   );

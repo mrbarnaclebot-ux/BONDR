@@ -3,8 +3,10 @@
 // /admin page render and the overview op (Refresh, after an action) only, never from a timer, so Neon can
 // suspend with the console open (D-02). No `kept` cache: a read must reflect an action that just settled.
 import "server-only";
+import type { Net } from "@bondr/core/api";
 import type { AdminOverviewWorker } from "@bondr/core/api-admin";
 import { and, desc, eq, inArray, notExists, sql } from "drizzle-orm";
+import { type AuditPage, auditPage } from "./admin-audit-page";
 import type { Reconcile, Totals } from "./admin-copy-health";
 import { coins, db, feeLedger, launches, vanityMints } from "./db";
 import { workerPost } from "./worker";
@@ -35,9 +37,12 @@ export type AdminOverview = {
   vanityFree: number;
   reconcile: Reconcile;
   worker: AdminOverviewWorker | null; // null when the worker did not answer: panels show failed, never zeros
+  audit: AuditPage; // the newest page; older pages come from the audit op on click
+  net: Net; // for Solscan links
   loadedAt: number; // 0 when the load failed (emptyOverview)
 };
 
+const net = (): Net => (process.env.SOLANA_NET === "mainnet" ? "mainnet" : "devnet");
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
 
 // ponytail: every coin in one read; page the W table when coins pass a few thousand.
@@ -144,16 +149,17 @@ async function workerOverview(actor: string): Promise<AdminOverviewWorker | null
 
 /** Everything the console's DB-backed panels show; the actor is the signed-in admin wallet. */
 export async function overviewData(actor: string): Promise<AdminOverview> {
-  const [landed, unconfirmed, t, vanityFree, diffs, worker] = await Promise.all([
+  const [landed, unconfirmed, t, vanityFree, diffs, worker, audit] = await Promise.all([
     coinRows(),
     unconfirmedRows(),
     totals(),
     db().$count(vanityMints, VANITY_FREE),
     reconcile(),
     workerOverview(actor),
+    auditPage(),
   ]);
   const rows = [...unconfirmed, ...landed].sort((a, b) => b.launchedAt.localeCompare(a.launchedAt));
-  return { rows, totals: t, vanityFree, reconcile: diffs, worker, loadedAt: Date.now() };
+  return { rows, totals: t, vanityFree, reconcile: diffs, worker, audit, net: net(), loadedAt: Date.now() };
 }
 
 /** What the page renders when the load failed: loadedAt 0 marks it, so panels show their failed state. */
@@ -163,5 +169,7 @@ export const emptyOverview = (): AdminOverview => ({
   vanityFree: 0,
   reconcile: { count: 0, first: null },
   worker: null,
+  audit: { rows: [], more: false, next: null },
+  net: net(),
   loadedAt: 0,
 });

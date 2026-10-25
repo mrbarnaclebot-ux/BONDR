@@ -6,6 +6,7 @@ const DB = [
   "apps/web/lib/coins.test.ts",
   "apps/web/lib/ledger.test.ts",
   "apps/web/lib/trades.test.ts",
+  "apps/worker/src/admin-act.test.ts",
   "apps/worker/src/admin-audit.test.ts",
   "apps/worker/src/fee-ledger.test.ts",
   "apps/worker/src/ingest.test.ts",

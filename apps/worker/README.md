@@ -84,7 +84,7 @@ Behind `FEE_ENGINE`. Off, the worker behaves as in Phase 4 plus `cost_to_complet
 - **Boot order.** Load every coin, recover pending rows, mark ready, then arm the window timers and the batch timer. Nothing sends before ready.
 - **One replica** (D-07). Two workers would send every window and every batch twice.
 - **Spend.** Ops pays every fee; the devnet e2e (`E2E_DEVNET=1 FEE_WINDOW_MS=600000 pnpm exec playwright test apps/web/e2e/fee-devnet.e2e.ts`) prints ops and the sim wallet before and after and fails above 0.05 SOL a run.
-- **New migrations, 0005 and 0006.** On staging deploy web first: its pre-deploy applies them, and the Phase 4 worker runs fine on the additive schema. Then deploy the worker with `FEE_ENGINE=off`, then set it to `on` (plan 05-13).
+- **New migrations, 0005 and 0006.** On staging deploy web first: its pre-deploy applies them, and the Phase 4 worker runs fine on the additive schema. Then deploy the worker with `FEE_ENGINE=off`, then set it to `on`. Done that way on 2026-10-25 (05-13): web's pre-deploy applied 0005 and 0006 while the Phase 4 worker kept running, then the worker booted with `fee engine off`.
 
 ## Vanity lanes
 

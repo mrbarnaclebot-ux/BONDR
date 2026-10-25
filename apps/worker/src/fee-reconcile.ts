@@ -20,7 +20,15 @@ type Row = Pick<Entry, "kind" | "mint" | "amount" | "burned"> & { state: string 
 
 // RESEARCH Reconciliation SQL; pgImplied is the same sums in one query.
 const IN: LedgerKind[] = ["collect", "finalize_config", "finalize_update"];
-const OUT: LedgerKind[] = ["split_treasury", "sweep_buyback", "sweep_treasury", "forced_bond", "pool_burn"];
+// evacuate drains W's BONDR (Pitfall 6); leftover_burn burns child tokens, not BONDR, so it stays out.
+const OUT: LedgerKind[] = [
+  "split_treasury",
+  "sweep_buyback",
+  "sweep_treasury",
+  "forced_bond",
+  "pool_burn",
+  "evacuate",
+];
 const CHUNK = 100; // getMultipleAccountsInfo's limit
 
 export function impliedOf(rows: Row[]): Implied {
@@ -41,7 +49,7 @@ export async function pgImplied(c: Pick<Db, "execute">): Promise<Implied> {
     select mint, coalesce(sum(case when kind in ('collect','finalize_config','finalize_update') then amount
       else -amount end), 0)::text as implied
     from fee_ledger where state = 'landed' and mint is not null and kind in ('collect','finalize_config',
-      'finalize_update','split_treasury','sweep_buyback','sweep_treasury','forced_bond','pool_burn')
+      'finalize_update','split_treasury','sweep_buyback','sweep_treasury','forced_bond','pool_burn','evacuate')
     group by mint
     union all
     select null, (coalesce(sum(amount) filter (where kind = 'sweep_buyback'), 0)

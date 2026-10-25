@@ -168,3 +168,37 @@ test("settleStale settles a pending row past its blockhash from chain; one insid
   expect((await t.ledger.pending()).map((e) => e.signature)).toEqual(["fresh"]);
   expect(c.open).toBe(true); // its next spend guard reads the ledger
 });
+
+// Pitfall 5: one signature with rows for two mints (EVACUATE, the leftover sweep) reads each W's own delta and
+// publishes each coin's rows to that coin.
+test("recover applies each mint's rows to its own W and publishes per mint", async () => {
+  const [W2, MINT2] = [Keypair.generate(), PublicKey.unique()];
+  const coin2: FeeCoin = { ...coin, mint: MINT2, w: W2 };
+  const [mint2, published] = [MINT2.toBase58(), [] as [string | null, Entry[]][]];
+  const t = deps(() => [ok]);
+  const bal = (owner: PublicKey, amount: bigint) => ({
+    ...{ mint: Q.toBase58(), owner: owner.toBase58() },
+    uiTokenAmount: { amount: String(amount) },
+  });
+  const m = {
+    err: null,
+    preTokenBalances: [bal(W2.publicKey, 50n)],
+    postTokenBalances: [bal(W.publicKey, 100n)],
+  };
+  t.conn.getTransaction.mockImplementation((async () => ({ slot: 9, meta: m })) as never);
+  t.d.publish = (mm, rows) => void published.push([mm, rows]);
+  const rows = [
+    { kind: "collect", mint },
+    { kind: "pool_burn", mint: mint2 },
+  ] as const;
+  await t.ledger.insertPending([...rows], "two", 150n);
+  await recover(
+    t.d,
+    (k) => (k === mint ? coin : k === mint2 ? coin2 : undefined),
+    async () => {},
+  );
+  expect(published.map(([k, list]) => [k, list.map((e) => [e.kind, e.amount])])).toEqual([
+    [mint, [["collect", 100n]]],
+    [mint2, [["pool_burn", 50n]]],
+  ]);
+});

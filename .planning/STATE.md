@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-11-PLAN.md
-last_updated: "2026-10-25T06:59:00.158Z"
+stopped_at: Completed 05-08-PLAN.md
+last_updated: "2026-10-25T07:26:10.472Z"
 last_activity: 2026-10-25
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 69
-  completed_plans: 64
+  completed_plans: 66
   percent: 57
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 5
-Plan: 9 of 13 (05-01 to 05-07, 05-10 and 05-11 complete; next 05-08)
+Plan: 10 of 13 (05-01 to 05-08, 05-10 and 05-11 complete; next 05-09)
 Status: Ready to execute
 Last activity: 2026-10-25
 
-Progress: [█████████░] 93%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -103,6 +103,7 @@ Progress: [█████████░] 93%
 | Phase 05 P04 | 13 min | 3 tasks | 9 files |
 | Phase 05 P05 | 25 min | 3 tasks | 15 files |
 | Phase 05 P07 | 18 min | 3 tasks | 14 files |
+| Phase 05 P08 | 25 min | 3 tasks | 23 files |
 
 ## Accumulated Context
 
@@ -234,6 +235,8 @@ Recent decisions affecting current work:
 - [Phase 05]: 05-07: bond burns gate on every collect and split settling; a fresh cost of 0 means complete and sends no forced bond
 - [Phase 05]: 05-07: pool_burn records detail.path; the fork ran exact_quote_in, so buy_v2 stays only as the fallback (A2 holds)
 - [Phase 05]: 05-07: boot catch-up reruns bondedJob for pooled coins with finalize none until 05-08 sets finalize
+- [Phase 05]: 05-08: tx1's pool sweep parks post-bond fees in W's own coin creator vault (the update pays none out), so finalize closes with a collect of W's vaults (no curve sweep), the window split and the sweep; W ends at 0 on the fork
+- [Phase 05]: 05-08: bondedJob with a live bond burn goes straight to finalizeJob so a restart between the two finalize txs resumes; POST /fee/release skips the launch-tx fetch and re-runs only the distinct and on-curve checks
 
 ### Pending Todos
 
@@ -242,7 +245,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Phase 5 (from Phase 1 second code review, 2026-10-19):
+- Phase 5 (from Phase 1 second code review, 2026-10-19; the first three resolved by 05-08, the fourth by 05-07):
   - finalizeIxs/splitIxs take deployer and treasury from the caller. The worker must derive the deployer from the coin's on-chain CreateEvent `user` and the treasury from config, and assert deployer != treasury != W, because the 8000 bps lock is permanent.
   - Add a resumable 2-tx finalize in core: finalizeConfigIxs, finalizeUpdateIxs and finalizeState (none/configured/revoked) read from chain. Send tx 2 immediately after tx 1, because anyone can run distribute in between and pay W 100%.
   - Detect "complete and pool exists" from chain instead of a caller boolean.
@@ -266,6 +269,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T06:59:00.153Z
-Stopped at: Completed 05-07-PLAN.md
+Last session: 2026-10-25T07:25:45.068Z
+Stopped at: Completed 05-08-PLAN.md
 Resume file: None

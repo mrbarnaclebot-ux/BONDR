@@ -16,7 +16,9 @@ describe("moderationError", () => {
   });
 
   test("a mint query reads short, never upper-cased", () => {
-    expect(moderationError({ ok: false, reason: "already_hidden" }, MINT).text).toBe("BNDR…bndr is already hidden.");
+    expect(moderationError({ ok: false, reason: "already_hidden" }, MINT).text).toBe(
+      "BNDR…bndr is already hidden.",
+    );
   });
 });
 

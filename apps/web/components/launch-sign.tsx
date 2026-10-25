@@ -60,9 +60,10 @@ const FAULTS: Record<Code, Fault> = {
   invalid_input: BUILD_FAILED,
   slippage: BUILD_FAILED, // trade codes; a launch never gets them
   message_changed: BUILD_FAILED,
-  // Admin codes; a launch never gets them. blocked gets its own copy in 06-20 (D-30).
+  // D-30: a fixed line with no action; the owner's reason never reaches the deployer.
+  blocked: { text: "This wallet cannot launch coins on BONDR.", action: null },
+  // Admin codes; a launch never gets them.
   forbidden: BUILD_FAILED,
-  blocked: BUILD_FAILED,
   intent_expired: BUILD_FAILED,
   intent_used: BUILD_FAILED,
   bad_intent_signature: BUILD_FAILED,

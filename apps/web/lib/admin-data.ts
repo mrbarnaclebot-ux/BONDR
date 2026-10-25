@@ -5,10 +5,10 @@
 import "server-only";
 import type { Net } from "@bondr/core/api";
 import type { AdminOverviewWorker } from "@bondr/core/api-admin";
-import { and, desc, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, notExists, sql } from "drizzle-orm";
 import { type AuditPage, auditPage } from "./admin-audit-page";
 import type { Reconcile, Totals } from "./admin-copy-health";
-import { coins, db, feeLedger, launches, vanityMints } from "./db";
+import { blockedDeployers, coins, db, feeLedger, launches, vanityMints } from "./db";
 import { workerPost } from "./worker";
 
 export type WRow = {
@@ -32,12 +32,18 @@ export type WRow = {
   launch: "landed" | "unconfirmed";
 };
 
+export type Moderation = {
+  hidden: { mint: string; symbol: string; reason: string; at: string }[];
+  blocked: { wallet: string; reason: string; at: string }[];
+};
+
 export type AdminOverview = {
   rows: WRow[];
   totals: Totals;
   vanityFree: number;
   reconcile: Reconcile;
   worker: AdminOverviewWorker | null; // null when the worker did not answer: panels show failed, never zeros
+  moderation: Moderation; // newest first; the reasons render only in the console (D-30)
   audit: AuditPage; // the newest page; older pages come from the audit op on click
   net: Net; // for Solscan links
   loadedAt: number; // 0 when the load failed (emptyOverview)
@@ -151,6 +157,23 @@ async function reconcile(): Promise<Reconcile> {
   };
 }
 
+// The DB CHECKs pair hidden_at with hidden_reason, so a hidden coin always has its reason.
+async function moderation(): Promise<Moderation> {
+  const [hidden, blocked] = await Promise.all([
+    db()
+      .select({ mint: coins.mint, symbol: launches.symbol, reason: coins.hiddenReason, at: coins.hiddenAt })
+      .from(coins)
+      .innerJoin(launches, eq(launches.id, coins.launchId))
+      .where(isNotNull(coins.hiddenAt))
+      .orderBy(desc(coins.hiddenAt)),
+    db().select().from(blockedDeployers).orderBy(desc(blockedDeployers.createdAt)),
+  ]);
+  return {
+    hidden: hidden.map((h) => ({ ...h, reason: h.reason ?? "", at: (h.at as Date).toISOString() })),
+    blocked: blocked.map((b) => ({ wallet: b.wallet, reason: b.reason, at: b.createdAt.toISOString() })),
+  };
+}
+
 async function workerOverview(actor: string): Promise<AdminOverviewWorker | null> {
   const r = await workerPost<AdminOverviewWorker>("/admin/overview", { actor });
   return r.status === 200 ? (r.body as AdminOverviewWorker) : null;
@@ -158,7 +181,7 @@ async function workerOverview(actor: string): Promise<AdminOverviewWorker | null
 
 /** Everything the console's DB-backed panels show; the actor is the signed-in admin wallet. */
 export async function overviewData(actor: string): Promise<AdminOverview> {
-  const [landed, unconfirmed, t, vanityFree, diffs, worker, audit] = await Promise.all([
+  const [landed, unconfirmed, t, vanityFree, diffs, worker, audit, mod] = await Promise.all([
     coinRows(),
     unconfirmedRows(),
     totals(),
@@ -166,9 +189,21 @@ export async function overviewData(actor: string): Promise<AdminOverview> {
     reconcile(),
     workerOverview(actor),
     auditPage(),
+    moderation(),
   ]);
   const rows = [...unconfirmed, ...landed].sort((a, b) => b.launchedAt.localeCompare(a.launchedAt));
-  return { rows, totals: t, vanityFree, reconcile: diffs, worker, audit, net: net(), loadedAt: Date.now() };
+  const loadedAt = Date.now();
+  return {
+    rows,
+    totals: t,
+    vanityFree,
+    reconcile: diffs,
+    worker,
+    moderation: mod,
+    audit,
+    net: net(),
+    loadedAt,
+  };
 }
 
 /** What the page renders when the load failed: loadedAt 0 marks it, so panels show their failed state. */
@@ -178,6 +213,7 @@ export const emptyOverview = (): AdminOverview => ({
   vanityFree: 0,
   reconcile: { count: 0, first: null },
   worker: null,
+  moderation: { hidden: [], blocked: [] },
   audit: { rows: [], more: false, next: null },
   net: net(),
   loadedAt: 0,

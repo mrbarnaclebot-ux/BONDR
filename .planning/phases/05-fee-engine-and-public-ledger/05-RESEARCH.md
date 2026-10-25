@@ -483,18 +483,18 @@ Dust rule: |implied - chain| ≤ 0 base units for W. Every amount is a meta delt
 | A7 | BONDR (pump Token-2022 coin) has no extension blocking an owner burn | FEE-06 | Phase 1 burned child coins of the same mint type, so low risk. The devnet e2e proves it |
 | A8 | Distribution minimum = 100 × (5,000 + priority) lamports, about 0.001 SOL rounded up | D-19 | Too low wastes ops; too high delays payouts. Only exercised on the fork in this phase |
 
-## Open Questions (with recommendations)
+## Open Questions (RESOLVED)
 
-1. **Collect and split in one tx?** Recommendation: two txs, as proven. The second tx is idempotent through the `ref` unique index. Cost about 5,000 lamports.
-2. **SOL value source.** Recommendation: the BONDR price at landing (`bondrPrice.get()`, in memory, no RPC) via `toSol`. It is stored on the row and never revalued.
-3. **Per-network floors and minimums.** Recommendation:
+1. **Collect and split in one tx?** RESOLVED: two transactions (planned in 05-04). Recommendation: two txs, as proven. The second tx is idempotent through the `ref` unique index. Cost about 5,000 lamports.
+2. **SOL value source.** RESOLVED: the BONDR price at landing (05-04 land facts). Recommendation: the BONDR price at landing (`bondrPrice.get()`, in memory, no RPC) via `toSol`. It is stored on the row and never revalued.
+3. **Per-network floors and minimums.** RESOLVED: the values below, in `apps/worker/src/fee-config.ts` (05-04). Recommendation:
    - `OPS_FLOOR_LAMPORTS`: 0.05 SOL on devnet (the existing build.ts value; devnet ops holds 2.75 SOL). Mainnet is set in Phase 7.
    - `COLLECT_MIN_LAMPORTS` (the value of `fees_unclaimed`, and of the budget for a sweep): 10,000 on devnet, about 1/3 of one 0.01 SOL e2e trade's fee. 1,000,000 on mainnet and the fork.
    - `DISTRIBUTE_MIN_LAMPORTS`: 1,000,000.
    - `SENDER_TIP_LAMPORTS`: 1,000,000.
-4. **Batch hour.** Recommendation: `FEE_BATCH_HOUR_UTC=4`, plus a bearer `POST /fee/batch` so the e2e and the owner can run it now.
-5. **Held release.** Recommendation: a bearer `POST /fee/release {mint, deployer}`. The owner names the deployer after a manual check. The engine re-runs only the differ and on-curve checks against that address, then finalizes. The call is logged.
-6. **Devnet spend under 0.1 SOL.** Estimate:
+4. **Batch hour.** RESOLVED: `FEE_BATCH_HOUR_UTC=4` plus bearer `POST /fee/batch` (05-05, 05-09). Recommendation: `FEE_BATCH_HOUR_UTC=4`, plus a bearer `POST /fee/batch` so the e2e and the owner can run it now.
+5. **Held release.** RESOLVED: bearer `POST /fee/release {mint, deployer}` (05-08). Recommendation: a bearer `POST /fee/release {mint, deployer}`. The owner names the deployer after a manual check. The engine re-runs only the differ and on-curve checks against that address, then finalizes. The call is logged.
+6. **Devnet spend under 0.1 SOL.** RESOLVED: every devnet-sending plan prints ops before and after, 05-12 caps its run at 0.05 SOL, and 05-13 sums the phase total. Estimate:
    - Each coin with fees: W ATA 0.0015 SOL once plus about 3 tx fees per window that has fees.
    - Platform, once: treasury plus buyback BONDR ATAs, 0.003 SOL.
    - The e2e coin's launch table: about 0.006 SOL.

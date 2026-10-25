@@ -232,7 +232,23 @@ Plans:
   4. After bond, the worker sweeps pending fees, passes the deployer pre-flight check, and runs the single 8000 / 2000 fee-share update; the token page then shows the deployer share
   5. User sees bond progress, burn budget vs cost to complete, time left in the 24h window, and totals (burned supply %, fees to burn, buyback, treasury); a nightly reconciliation records any ledger vs chain mismatch
 
-**Plans**: TBD
+**Plans:** 13 plans
+
+Plans:
+
+- [ ] 05-01-PLAN.md - Failing ledger spec, fee_ledger table and coin fee columns with the D-08 constraints, contract types, pure fee rules
+- [ ] 05-02-PLAN.md - Coin row fee fields, server-only ledger read and route, Fee ledger panel on the token page (spec green)
+- [ ] 05-03-PLAN.md - Core prep: signTx, buyback role, wFloat in core, costFromReserves, unclaimed fees on the curve patch
+- [ ] 05-04-PLAN.md - Ledger store, intent-first land pipeline with ops floor and mainnet-only Sender, collect, split and window sweep jobs
+- [ ] 05-05-PLAN.md - Engine behind FEE_ENGINE: boot recovery, per-coin queue, window timers, trade hook, fee events, devnet dry run
+- [ ] 05-06-PLAN.md - Bond and burn unbonded panel (budget gauge, window, flow), totals and Supply burned
+- [ ] 05-07-PLAN.md - Forced bond and PumpSwap fallback burn with the WR-08 fix, engine triggers, fork rows
+- [ ] 05-08-PLAN.md - Finalize: chain-read state, deployer pre-flight, held and release, 8000/2000 update, closing sweep, fork rows
+- [ ] 05-09-PLAN.md - Daily batch: buyback burn, distribution crank, finalize retries, nightly reconcile, fork distribute row
+- [ ] 05-10-PLAN.md - Bonded panel, bonded totals, live fee events, trade creator copy
+- [ ] 05-11-PLAN.md - Home Next to bond rail and the bonded-by-their-own-fees hero line
+- [ ] 05-12-PLAN.md - Real devnet engine e2e with the spend cap, token page responsive and axe matrix, engine runbook
+- [ ] 05-13-PLAN.md - Staging: migrate, worker then web, FEE_ENGINE=on, staging matrix, Neon idle check
 **UI hint**: yes
 
 ### Phase 6: Admin Dashboard

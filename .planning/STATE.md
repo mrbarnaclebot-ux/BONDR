@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-05-PLAN.md
-last_updated: "2026-10-25T13:55:08.775Z"
-last_activity: 2026-10-25 -- Completed 06-05 (intent store, destination allowlist)
+stopped_at: Completed 06-06-PLAN.md
+last_updated: "2026-10-25T14:11:41.998Z"
+last_activity: 2026-10-25 -- Completed 06-06 (fee-boot split, engine admin controls)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 74
-  percent: 78
+  completed_plans: 75
+  percent: 79
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 6 of 26 (06-05 complete)
+Plan: 7 of 26 (06-06 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-05 (intent store, destination allowlist)
+Last activity: 2026-10-25 -- Completed 06-06 (fee-boot split, engine admin controls)
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
@@ -265,6 +265,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-05: putIntent writes the intent message itself; take sets used, state sending and the retention clock in one synchronous step; viewIntent is null before execute
 - [Phase 06]: 06-05: admin-dest refuses any token instruction other than Transfer, TransferChecked, Burn, BurnChecked and CloseAccount, plus ATA RecoverNested; TransferWithSeed is checked like Transfer
 - [Phase 06]: 06-05: passedLines derives lines from owner names (Deployer, Treasury, Buyback) and answers burn only when none apply
+- [Phase 06]: 06-06: stuck counts per step since boot (STUCK_AT 3); a different step failing starts at 1, any landed result clears the coin
+- [Phase 06]: 06-06: Engine.exclusive(mint, fn, what?) takes an optional label so a failed admin retry counts against the automatic step; default label is admin
+- [Phase 06]: 06-06: engine jobs and the batch distribute and bonded jobs return their Landed so the queue sees failed or landed steps; stuck helpers live in fee-stuck.ts
 
 ### Pending Todos
 
@@ -297,6 +300,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T13:55:08.770Z
-Stopped at: Completed 06-05-PLAN.md
+Last session: 2026-10-25T14:11:41.992Z
+Stopped at: Completed 06-06-PLAN.md
 Resume file: None

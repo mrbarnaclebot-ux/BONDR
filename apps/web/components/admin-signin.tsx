@@ -120,3 +120,47 @@ function SignInButton({ flow }: { flow: ReturnType<typeof useAdminSignIn> }) {
     </Button>
   );
 }
+
+// The top bar's session controls, beside the card that shares their sign-in flow.
+const LINK =
+  "inline-flex min-h-11 cursor-pointer items-center text-mint underline decoration-1 underline-offset-[3px] hover:text-foreground disabled:cursor-not-allowed md:min-h-6";
+
+// A fresh 30-minute cookie from a new signature, in place; the countdown restarts from its expiry.
+export function SignInAgain({ onRenew }: { onRenew(s: AdminSessionView): void }) {
+  const { address, connect } = useWallet();
+  const flow = useAdminSignIn(onRenew);
+  return (
+    <>
+      <button
+        type="button"
+        className={LINK}
+        disabled={flow.signing}
+        aria-busy={flow.signing}
+        onClick={address ? flow.signIn : connect}
+      >
+        Sign in again
+      </button>
+      {flow.fault && (
+        <Callout variant="error" className="mt-2 basis-full">
+          {flow.fault}
+        </Callout>
+      )}
+    </>
+  );
+}
+
+export function SignOut({ onSignedOut }: { onSignedOut(): void }) {
+  const [busy, setBusy] = useState(false);
+  const signOut = async () => {
+    setBusy(true);
+    const res = await post({ op: "signout" });
+    setBusy(false);
+    // Only once the clearing cookie has landed; otherwise the console stays and Sign out can be pressed again.
+    if (res?.ok) onSignedOut();
+  };
+  return (
+    <button type="button" className={LINK} disabled={busy} aria-busy={busy} onClick={signOut}>
+      Sign out
+    </button>
+  );
+}

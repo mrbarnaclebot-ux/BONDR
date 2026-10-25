@@ -1,14 +1,22 @@
 "use client";
-// The owner console shell (D-10, D-11, UI-SPEC Top bar): the session line with a minute countdown, Sign out,
-// and the grid later plans render panels into. Any 401 from a panel swaps the console for the sign-in card.
+// The owner console shell (D-06, D-10, D-11, UI-SPEC Top bar and Layout): the session line with a minute
+// countdown, Refresh, Sign out, and the panel grid in the mockup order. Layout and mounts only: state lives in
+// use-console.ts. Any 401 from a panel swaps the console for the sign-in card.
+import { RefreshCw } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { clock } from "@/lib/admin-copy-health";
+import type { AdminOverview } from "@/lib/admin-data";
 import { cn } from "@/lib/cn";
 import { short } from "@/lib/format";
-import { type AdminSessionView, AdminSignIn, type SignInNotice, useAdminSignIn } from "./admin-signin";
+import { type Console, useConsole } from "@/lib/use-console";
+import { useHealth } from "@/lib/use-health";
+import { AdminHealth } from "./admin-health";
+import { type AdminSessionView, AdminSignIn, SignInAgain, type SignInNotice, SignOut } from "./admin-signin";
+import { AdminWallets } from "./admin-wallets";
 import { Callout } from "./callout";
-import { useWallet } from "./wallet";
+import { Button } from "./ui-button";
 
-export type ConsoleProps = AdminSessionView & { children?: ReactNode };
+export type ConsoleProps = AdminSessionView & { initial: AdminOverview };
 
 type Admin = AdminSessionView & { onUnauthorized(): void };
 const AdminContext = createContext<Admin | null>(null);
@@ -20,10 +28,7 @@ export function useAdmin(): Admin {
   return admin;
 }
 
-const LINK =
-  "inline-flex min-h-11 cursor-pointer items-center text-mint underline decoration-1 underline-offset-[3px] hover:text-foreground disabled:cursor-not-allowed md:min-h-6";
-
-export function AdminConsole({ wallet, exp, children }: ConsoleProps) {
+export function AdminConsole({ wallet, exp, initial }: ConsoleProps) {
   const [session, setSession] = useState<AdminSessionView>({ wallet, exp });
   const [gate, setGate] = useState<SignInNotice | null>(null);
   const resume = useCallback((s: AdminSessionView) => {
@@ -31,19 +36,76 @@ export function AdminConsole({ wallet, exp, children }: ConsoleProps) {
     setGate(null);
   }, []);
   const onUnauthorized = useCallback(() => setGate("ended"), []);
+  const con = useConsole(initial, onUnauthorized);
   if (gate) return <AdminSignIn configured notice={gate} onSignedIn={resume} />;
   return (
     <AdminContext value={{ ...session, onUnauthorized }}>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-12 pt-8 pb-16 [&>*]:min-w-0">
-        <TopBar
-          session={session}
-          onRenew={resume}
-          onEnd={onUnauthorized}
-          onSignedOut={() => setGate("signedout")}
-        />
-        {children}
+        <div className="grid gap-4">
+          <TopBar
+            session={session}
+            onRenew={resume}
+            onEnd={onUnauthorized}
+            onSignedOut={() => setGate("signedout")}
+          >
+            <Refresh con={con} />
+          </TopBar>
+          {con.failed && <Callout variant="error">Could not refresh. Try again.</Callout>}
+        </div>
+        <Grid con={con} onUnauthorized={onUnauthorized} />
       </div>
     </AdminContext>
+  );
+}
+
+// UI-SPEC Layout, DOM order equals visual order. Mounted only while signed in, so the health poll stops with the
+// session. Later plans fill the commented slots; the switches cell stays an empty grid cell until 06-14.
+function Grid({ con, onUnauthorized }: { con: Console; onUnauthorized(): void }) {
+  const poll = useHealth(onUnauthorized);
+  const { overview, loading } = con;
+  return (
+    <>
+      <div className="grid gap-6 md:grid-cols-2 min-[68.75rem]:grid-cols-[1.1fr_1fr_1.2fr] [&>*]:min-w-0">
+        <AdminWallets overview={overview} busy={loading} />
+        <div>{/* 06-14: <AdminSwitches /> */}</div>
+        <AdminHealth
+          poll={poll}
+          overview={overview}
+          busy={loading}
+          className="md:col-span-2 min-[68.75rem]:col-span-1"
+        />
+      </div>
+      {/* 06-16: <WTable /> */}
+      {/* 06-17: a row "grid gap-8 min-[68.75rem]:grid-cols-[1.3fr_1fr] min-[68.75rem]:items-start [&>*]:min-w-0"
+          holding <AdminTimeline />, then a "grid gap-8" stack of <AdminInspect /> (06-19) and <AdminModeration />
+          (06-20) */}
+      {/* 06-14: <AuditLog /> */}
+      {/* 06-23: <Evacuate /> */}
+    </>
+  );
+}
+
+// UI-SPEC Refresh control: the one way a user reloads the Postgres panels. "Loaded" is local time, so it renders
+// after mount (the server's time zone would differ).
+function Refresh({ con }: { con: Console }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const at = con.overview.loadedAt;
+  return (
+    <div className="grid gap-1 md:flex md:items-center md:gap-3">
+      <Button
+        className="w-full md:min-h-9 md:w-auto"
+        disabled={con.loading}
+        aria-busy={con.loading}
+        onClick={() => void con.refresh()}
+      >
+        <RefreshCw strokeWidth={1.5} aria-hidden="true" />
+        {con.loading ? "Refreshing…" : "Refresh"}
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        {!mounted ? "\u00a0" : at > 0 ? `Loaded ${clock(at, false)}` : "Not loaded"}
+      </span>
+    </div>
   );
 }
 
@@ -63,12 +125,13 @@ const minutes = (left: number): string => (left < 60_000 ? "<1m" : `${Math.floor
 
 type TopBarProps = {
   session: AdminSessionView;
+  children: ReactNode;
   onRenew(s: AdminSessionView): void;
   onEnd(): void;
   onSignedOut(): void;
 };
 
-function TopBar({ session, onRenew, onEnd, onSignedOut }: TopBarProps) {
+function TopBar({ session, onRenew, onEnd, onSignedOut, children }: TopBarProps) {
   const left = useLeft(session.exp);
   const warn = left < 5 * 60_000;
   useEffect(() => {
@@ -77,66 +140,24 @@ function TopBar({ session, onRenew, onEnd, onSignedOut }: TopBarProps) {
   return (
     <div className="grid gap-4 md:flex md:flex-wrap md:items-end md:justify-between">
       <h1 className="display text-[44px] leading-[0.95]">Owner console</h1>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span>
-          Signed in <span className="num text-foreground">{short(session.wallet)}</span>, the allowlisted
-          wallet
-        </span>
-        <span className={cn(warn && "text-warn")}>
-          Session ends in{" "}
-          <span className={cn("num", warn ? "text-warn" : "text-foreground")} suppressHydrationWarning>
-            {minutes(left)}
+      <div className="grid gap-3 md:flex md:flex-wrap md:items-center md:justify-end md:gap-x-6">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>
+            Signed in <span className="num text-foreground">{short(session.wallet)}</span>, the allowlisted
+            wallet
           </span>
-        </span>
-        {warn && <SignInAgain onRenew={onRenew} />}
-        <span>Every money move asks for a fresh signature</span>
-        <SignOut onSignedOut={onSignedOut} />
+          <span className={cn(warn && "text-warn")}>
+            Session ends in{" "}
+            <span className={cn("num", warn ? "text-warn" : "text-foreground")} suppressHydrationWarning>
+              {minutes(left)}
+            </span>
+          </span>
+          {warn && <SignInAgain onRenew={onRenew} />}
+          <span>Every money move asks for a fresh signature</span>
+          <SignOut onSignedOut={onSignedOut} />
+        </div>
+        {children}
       </div>
     </div>
-  );
-}
-
-// A fresh 30-minute cookie from a new signature, in place; the countdown restarts from its expiry.
-function SignInAgain({ onRenew }: { onRenew(s: AdminSessionView): void }) {
-  const { address, connect } = useWallet();
-  const flow = useAdminSignIn(onRenew);
-  return (
-    <>
-      <button
-        type="button"
-        className={LINK}
-        disabled={flow.signing}
-        aria-busy={flow.signing}
-        onClick={address ? flow.signIn : connect}
-      >
-        Sign in again
-      </button>
-      {flow.fault && (
-        <Callout variant="error" className="mt-2 basis-full">
-          {flow.fault}
-        </Callout>
-      )}
-    </>
-  );
-}
-
-function SignOut({ onSignedOut }: { onSignedOut(): void }) {
-  const [busy, setBusy] = useState(false);
-  const signOut = async () => {
-    setBusy(true);
-    const res = await fetch("/api/admin/session", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ op: "signout" }),
-      cache: "no-store",
-    }).catch(() => null);
-    setBusy(false);
-    // Only once the clearing cookie has landed; otherwise the console stays and Sign out can be pressed again.
-    if (res?.ok) onSignedOut();
-  };
-  return (
-    <button type="button" className={LINK} disabled={busy} aria-busy={busy} onClick={signOut}>
-      Sign out
-    </button>
   );
 }

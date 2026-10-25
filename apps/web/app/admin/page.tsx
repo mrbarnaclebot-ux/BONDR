@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { AdminConsole } from "@/components/admin-console";
 import { AdminSignIn } from "@/components/admin-signin";
+import { type AdminOverview, emptyOverview, overviewData } from "@/lib/admin-data";
 import { ADMIN_COOKIE, adminSession, adminWalletEnv } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +17,21 @@ export default async function AdminPage() {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-(--gutter)">
       {session ? (
-        <AdminConsole wallet={session.wallet} exp={session.exp} />
+        <AdminConsole wallet={session.wallet} exp={session.exp} initial={await load(session.wallet)} />
       ) : (
         <AdminSignIn configured={admin !== null} />
       )}
     </div>
   );
+}
+
+// The console's one Postgres load on open (D-21). A failed read still renders the console; its panels show
+// their failed state and Refresh tries again.
+async function load(actor: string): Promise<AdminOverview> {
+  try {
+    return await overviewData(actor);
+  } catch (e) {
+    console.error("admin overview failed", (e as { cause?: { code?: string } }).cause?.code ?? "unknown");
+    return emptyOverview();
+  }
 }

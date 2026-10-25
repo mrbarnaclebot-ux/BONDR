@@ -26,6 +26,7 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `trade-store.ts`: prepared trades in memory (exact message bytes, state), 120 s TTL, 5,000 cap.
 - `admin-intent.ts`: owner intents in memory (D-12): the worker-written text the owner signs, single-use `take` verified against ADMIN_WALLET, 2 min expiry, kept 10 min after execute for the poll, 200 cap.
 - `admin-dest.ts`: pure destination lock (D-14): `allowFor` builds the allowlist (owners and their ATAs under both token programs), `refusedDestination` names the first top-level outflow outside it, `passedLines` feeds the dialog copy.
+- `admin-leftover.ts`: leftover recovery jobs through `d.land` (D-16, D-17): `leftoverBurnJob` (W child burn, `leftover_burn` row, also run by finalize), `closeAccountsJob` (W's empty ATAs closed to the treasury, no row), `sweepLeftoversJob` (sweep at the free window index, burn, close).
 - `trade-prepare.ts`: `prepareTrade`, the unsigned simulated and budgeted trade tx (`cuLimitFor`, `priorityMicroLamports`, devnet buy cap).
 - `trade-submit.ts`: POST /trade/submit (`submitTrade`: byte compare against the stored message, one paced send, background settle with the landed amount) and POST /trade/view (`viewTrade`).
 - `fee-config.ts`: per-network fee engine settings (`feeConfig`: collect minimum, pacing, creator bps), `OPS_FLOOR_LAMPORTS`, the Helius Sender URL and tip accounts.

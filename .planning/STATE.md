@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-08-PLAN.md
-last_updated: "2026-10-25T14:41:00.757Z"
-last_activity: 2026-10-25 -- Completed 06-08 (admin gate, memory-only health, RPC ring, Sentry count)
+stopped_at: Completed 06-09-PLAN.md
+last_updated: "2026-10-25T14:59:47.826Z"
+last_activity: 2026-10-25 -- Completed 06-09 (leftover burn, close accounts, leftover sweep, distribute any amount)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 77
+  completed_plans: 78
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 9 of 26 (06-08 complete)
+Plan: 10 of 26 (06-09 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-08 (admin gate, memory-only health, RPC ring, Sentry count)
+Last activity: 2026-10-25 -- Completed 06-09 (leftover burn, close accounts, leftover sweep, distribute any amount)
 
-Progress: [████████░░] 81%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -114,6 +114,7 @@ Progress: [████████░░] 81%
 | Phase 06 P05 | 10 min | 2 tasks | 5 files |
 | Phase 06 P07 | 9 min | 2 tasks | 12 files |
 | Phase 06 P08 | 13 min | 3 tasks | 16 files |
+| Phase 06 P09 | 25 min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -278,6 +279,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-08: lastEngine is the newest job mark; the unused engine mark was removed
 - [Phase 06]: 06-08: Engine.stuckCount() returns the AdminHealth stuck shape ({ mint, step, attempts })
 - [Phase 06]: 06-08: the Sentry read aborts after 5 s so a slow Sentry cannot hold the health poll
+- [Phase 06]: 06-09: LedgerStore.has takes an optional windowIndex; the leftover sweep picks the lowest free index at or after the current window (A9)
+- [Phase 06]: 06-09: finalize's checkEmpty burns leftover child tokens through leftoverBurnJob and returns its Landed into finalizeJob's output; leftover BONDR stays an error for Sweep leftovers
+- [Phase 06]: 06-09: insertPending([]) returns [] in both stores without touching the database, so row-less admin jobs (close accounts, Run migrate) send through land
 
 ### Pending Todos
 
@@ -310,6 +314,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T14:40:57.341Z
+Last session: 2026-10-25T14:59:42.796Z
 Stopped at: Completed 06-08-PLAN.md
 Resume file: None

@@ -96,9 +96,9 @@ test.describe("found", () => {
     await expect(page.getByText(c.mint, { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Copy contract address" })).toBeVisible();
     await expect(page.getByText("On curve")).toBeVisible();
-    await expect(
-      page.getByText(`The public fee ledger for ${c.symbol} arrives in a later BONDR update.`),
-    ).toBeVisible();
+    // The Phase 4 note promising a later ledger gave way to the Fee ledger panel (TOKEN-04).
+    await expect(page.getByRole("region", { name: "Fee ledger" })).toBeVisible();
+    await expect(page.getByText(/public fee ledger for/)).toHaveCount(0);
     for (const name of [`${c.symbol} on X`, "Telegram"]) {
       const link = page.getByRole("link", { name, exact: true });
       if (c.links?.[name === "Telegram" ? "telegram" : "x"])

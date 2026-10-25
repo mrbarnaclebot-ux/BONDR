@@ -1,7 +1,8 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ReactNode } from "react";
 
-// UI-SPEC Tag: mint for the curve states, leaf for "Bonded", warn for cautions. `live` adds the pulsing dot.
+// UI-SPEC Tag: mint for the curve states, leaf for "Bonded" and burns, warn for cautions, plain (no fill) for
+// neutral ledger rows. `live` adds the pulsing dot.
 const tagVariants = cva(
   "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold tracking-[0.05em] whitespace-nowrap uppercase",
   {
@@ -10,6 +11,7 @@ const tagVariants = cva(
         mint: "border-mint/40 bg-mint-wash text-mint",
         leaf: "border-leaf/45 bg-leaf-wash text-leaf",
         warn: "border-warn/45 bg-warn-wash text-warn",
+        plain: "border-line-strong text-foreground",
       },
     },
     defaultVariants: { tone: "mint" },

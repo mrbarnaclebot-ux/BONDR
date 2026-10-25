@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-11-PLAN.md
-last_updated: "2026-10-25T15:46:03.903Z"
-last_activity: 2026-10-25 -- Completed 06-11 (capture-deps simulation, recovery action registry)
+stopped_at: Completed 06-12-PLAN.md
+last_updated: "2026-10-25T16:11:11.101Z"
+last_activity: 2026-10-25 -- Completed 06-12 (console top row, overview load, health poll)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 80
+  completed_plans: 81
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 12 of 26 (06-11 complete)
+Plan: 13 of 26 (06-12 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-11 (capture-deps simulation, recovery action registry)
+Last activity: 2026-10-25 -- Completed 06-12 (console top row, overview load, health poll)
 
-Progress: [████████░░] 84%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
@@ -117,6 +117,7 @@ Progress: [████████░░] 84%
 | Phase 06 P09 | 25 min | 2 tasks | 12 files |
 | Phase 06 P10 | 22 min | 3 tasks | 15 files |
 | Phase 06 P11 | 19 min | 2 tasks | 9 files |
+| Phase 06 P12 | 25 min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -289,6 +290,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-10: coinLive with the engine on reads only engine memory (an unknown mint is not_found); with the engine off it loads the one coin
 - [Phase 06]: 06-11 (Claude's discretion, owner may override; OQ1, A6): multi-step simulations make the first step authoritative; later steps are estimated and re-checked by the RPC preflight when sent
 - [Phase 06]: 06-11: finalize_split allows treasury, buyback (closing sweep) and only the deployer = coin.wallet (D-15); captureDeps wraps the ledger read-only
+- [Phase 06]: 06-12: overviewData(actor) is the console's one Postgres load (page render, Refresh, reload after an action); the only timer is the 10 s memory-only health poll, mounted inside the signed-in Grid
+- [Phase 06]: 06-12: a failed page load renders the console with emptyOverview() (loadedAt 0) so panels show failed states and Refresh retries
+- [Phase 06]: 06-12: write the 1100px breakpoint as min-[68.75rem]; Tailwind v4 orders min-[1100px] before md (48rem) so md wins
 
 ### Pending Todos
 
@@ -321,6 +325,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T15:47:00.000Z
-Stopped at: Completed 06-11-PLAN.md
+Last session: 2026-10-25T16:12:00.000Z
+Stopped at: Completed 06-12-PLAN.md
 Resume file: None

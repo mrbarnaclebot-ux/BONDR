@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-08-PLAN.md
-last_updated: "2026-10-25T08:03:35.609Z"
+stopped_at: Completed 05-12-PLAN.md
+last_updated: "2026-10-25T08:22:39.585Z"
 last_activity: 2026-10-25
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 69
-  completed_plans: 67
+  completed_plans: 68
   percent: 57
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 5
-Plan: 11 of 13 (05-01 to 05-11 complete; next 05-12)
+Plan: 12 of 13 (05-01 to 05-12 complete; next 05-13)
 Status: Ready to execute
 Last activity: 2026-10-25
 
-Progress: [██████████] 97%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -105,6 +105,7 @@ Progress: [██████████] 97%
 | Phase 05 P07 | 18 min | 3 tasks | 14 files |
 | Phase 05 P08 | 25 min | 3 tasks | 23 files |
 | Phase 05 P09 | 35 min | 3 tasks | 18 files |
+| Phase 05 P12 | 31 min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -238,6 +239,8 @@ Recent decisions affecting current work:
 - [Phase 05]: 05-07: boot catch-up reruns bondedJob for pooled coins with finalize none until 05-08 sets finalize
 - [Phase 05]: 05-08: tx1's pool sweep parks post-bond fees in W's own coin creator vault (the update pays none out), so finalize closes with a collect of W's vaults (no curve sweep), the window split and the sweep; W ends at 0 on the fork
 - [Phase 05]: 05-08: bondedJob with a live bond burn goes straight to finalizeJob so a restart between the two finalize txs resumes; POST /fee/release skips the launch-tx fetch and re-runs only the distinct and on-curve checks
+- [Phase 05]: 05-12: the devnet e2e picks the derived-W curve coin whose window closes soonest but at least 4 minutes out
+- [Phase 05]: 05-12: the batch check asserts no new coin or platform reconcile_diff right after the buyback burn
 
 ### Pending Todos
 
@@ -270,6 +273,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T08:03:31.975Z
-Stopped at: Completed 05-08-PLAN.md
+Last session: 2026-10-25T08:22:39.579Z
+Stopped at: Completed 05-12-PLAN.md
 Resume file: None

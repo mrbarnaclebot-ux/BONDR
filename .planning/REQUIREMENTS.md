@@ -56,10 +56,10 @@
 
 ### Fee engine (worker)
 
-- [ ] **FEE-01**: Worker collects each unbonded coin's creator fees and splits them 90% to W's burn budget and 10% to the treasury, recording every step in the ledger
+- [x] **FEE-01**: Worker collects each unbonded coin's creator fees and splits them 90% to W's burn budget and 10% to the treasury, recording every step in the ledger
 - [x] **FEE-02**: Worker detects when W's burn budget is at least 105% of the cost to complete the curve, and sends one buy + burn transaction through Helius Sender
 - [x] **FEE-03**: When traders bond a coin first, worker buys on PumpSwap after migration with the burn budget and burns in the same transaction
-- [ ] **FEE-04**: Every 24h window without bonding, worker sweeps W's burn budget to the buyback wallet (90%) and the treasury (10%); W stays creator until bond
+- [x] **FEE-04**: Every 24h window without bonding, worker sweeps W's burn budget to the buyback wallet (90%) and the treasury (10%); W stays creator until bond
 - [x] **FEE-05**: After bond, worker sweeps pending fees, then runs create_fee_sharing_config and the single update_fee_shares_v2 (deployer 8000 / treasury 2000), with a pre-flight check of the deployer address
 - [x] **FEE-06**: Worker burns the BONDR held by the buyback wallet on a schedule
 - [x] **FEE-07**: Worker cranks distribution of post-bond fees to the deployer and treasury on a schedule
@@ -143,10 +143,10 @@
 | TRADE-02 | Phase 4 | Complete |
 | TRADE-03 | Phase 4 | Complete |
 | TRADE-04 | Phase 4 | Complete |
-| FEE-01 | Phase 5 | Pending |
+| FEE-01 | Phase 5 | Complete |
 | FEE-02 | Phase 5 | Complete |
 | FEE-03 | Phase 5 | Complete |
-| FEE-04 | Phase 5 | Pending |
+| FEE-04 | Phase 5 | Complete |
 | FEE-05 | Phase 5 | Complete |
 | FEE-06 | Phase 5 | Complete |
 | FEE-07 | Phase 5 | Complete |

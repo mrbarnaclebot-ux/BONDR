@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-07-PLAN.md
-last_updated: "2026-10-25T14:26:14.517Z"
-last_activity: 2026-10-25 -- Completed 06-07 (five kill switches, job gates, last-run marks)
+stopped_at: Completed 06-08-PLAN.md
+last_updated: "2026-10-25T14:41:00.757Z"
+last_activity: 2026-10-25 -- Completed 06-08 (admin gate, memory-only health, RPC ring, Sentry count)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 76
+  completed_plans: 77
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 8 of 26 (06-07 complete)
+Plan: 9 of 26 (06-08 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-07 (five kill switches, job gates, last-run marks)
+Last activity: 2026-10-25 -- Completed 06-08 (admin gate, memory-only health, RPC ring, Sentry count)
 
-Progress: [████████░░] 80%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -113,6 +113,7 @@ Progress: [████████░░] 80%
 | Phase 06 P04 | 12 min | 2 tasks | 18 files |
 | Phase 06 P05 | 10 min | 2 tasks | 5 files |
 | Phase 06 P07 | 9 min | 2 tasks | 12 files |
+| Phase 06 P08 | 13 min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -273,6 +274,10 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-07: liveStatus(fresh) re-reads the whole settings row through loadSwitches, so SQL-written switches reach fee jobs at the next prepare or submit
 - [Phase 06]: 06-07: bondedJob checks the forcedBond switch before its urgent collect (a paused pool burn sends nothing)
 - [Phase 06]: 06-07: POST /fee/release uses engine deps, so it obeys the finalize switch and manual hold; admin release must use admin deps
+- [Phase 06]: 06-08: adminRoutes wraps its whole route map with gated in one place; later plans only add POST /admin keys to it
+- [Phase 06]: 06-08: lastEngine is the newest job mark; the unused engine mark was removed
+- [Phase 06]: 06-08: Engine.stuckCount() returns the AdminHealth stuck shape ({ mint, step, attempts })
+- [Phase 06]: 06-08: the Sentry read aborts after 5 s so a slow Sentry cannot hold the health poll
 
 ### Pending Todos
 
@@ -305,6 +310,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T14:26:08.844Z
-Stopped at: Completed 06-07-PLAN.md
+Last session: 2026-10-25T14:40:57.341Z
+Stopped at: Completed 06-08-PLAN.md
 Resume file: None

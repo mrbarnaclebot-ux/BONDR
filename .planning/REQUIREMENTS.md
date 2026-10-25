@@ -43,8 +43,8 @@
 - [x] **TOKEN-01**: User sees a price chart (lightweight-charts) with 1m, 5m, 1h and 1d candles
 - [x] **TOKEN-02**: User sees a live trade feed and holder count
 - [x] **TOKEN-03**: User sees bond progress, burn budget vs cost to complete the curve, and the time left in the current 24h window
-- [ ] **TOKEN-04**: User sees the fee ledger: every collection, split, sweep, forced-bond buy, burn and finalize, with amount, time and a transaction link
-- [ ] **TOKEN-05**: User sees totals: burned supply %, fees to burn, fees to buyback, fees to treasury, and the post-bond deployer share once finalized
+- [x] **TOKEN-04**: User sees the fee ledger: every collection, split, sweep, forced-bond buy, burn and finalize, with amount, time and a transaction link
+- [x] **TOKEN-05**: User sees totals: burned supply %, fees to burn, fees to buyback, fees to treasury, and the post-bond deployer share once finalized
 - [x] **TOKEN-06**: Shared token links render a preview card (OG image) on X and Telegram
 
 ### Trading
@@ -60,7 +60,7 @@
 - [ ] **FEE-02**: Worker detects when W's burn budget is at least 105% of the cost to complete the curve, and sends one buy + burn transaction through Helius Sender
 - [ ] **FEE-03**: When traders bond a coin first, worker buys on PumpSwap after migration with the burn budget and burns in the same transaction
 - [ ] **FEE-04**: Every 24h window without bonding, worker sweeps W's burn budget to the buyback wallet (90%) and the treasury (10%); W stays creator until bond
-- [ ] **FEE-05**: After bond, worker sweeps pending fees, then runs create_fee_sharing_config and the single update_fee_shares_v2 (deployer 8000 / treasury 2000), with a pre-flight check of the deployer address
+- [x] **FEE-05**: After bond, worker sweeps pending fees, then runs create_fee_sharing_config and the single update_fee_shares_v2 (deployer 8000 / treasury 2000), with a pre-flight check of the deployer address
 - [ ] **FEE-06**: Worker burns the BONDR held by the buyback wallet on a schedule
 - [ ] **FEE-07**: Worker cranks distribution of post-bond fees to the deployer and treasury on a schedule
 - [ ] **FEE-08**: The ops wallet pays every worker transaction fee; worker alerts when it drops below the threshold
@@ -136,8 +136,8 @@
 | TOKEN-01 | Phase 3 | Complete |
 | TOKEN-02 | Phase 3 | Complete |
 | TOKEN-03 | Phase 5 | Complete |
-| TOKEN-04 | Phase 5 | Pending |
-| TOKEN-05 | Phase 5 | Pending |
+| TOKEN-04 | Phase 5 | Complete |
+| TOKEN-05 | Phase 5 | Complete |
 | TOKEN-06 | Phase 3 | Complete |
 | TRADE-01 | Phase 4 | Complete |
 | TRADE-02 | Phase 4 | Complete |
@@ -147,7 +147,7 @@
 | FEE-02 | Phase 5 | Pending |
 | FEE-03 | Phase 5 | Pending |
 | FEE-04 | Phase 5 | Pending |
-| FEE-05 | Phase 5 | Pending |
+| FEE-05 | Phase 5 | Complete |
 | FEE-06 | Phase 5 | Pending |
 | FEE-07 | Phase 5 | Pending |
 | FEE-08 | Phase 5 | Pending |

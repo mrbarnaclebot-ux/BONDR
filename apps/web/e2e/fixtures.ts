@@ -81,8 +81,50 @@ export async function seedCoin(
   return { mint, symbol, wallet, solIn, sigs: rows.map((r) => r.signature) };
 }
 
+export type LedgerSeed = {
+  kind: string;
+  state?: "pending" | "landed" | "failed" | "expired" | null;
+  amount?: string;
+  burned?: string;
+  sol?: string;
+  signature?: string | null; // default fakeSig(); null for held rows
+  window_index?: number;
+  ref?: number;
+  detail?: Record<string, unknown>;
+  landed_at?: Date; // landed rows only, default now
+};
+
+/** fee_ledger rows on a seeded coin (state defaults to landed). Returns each row's id and signature. */
+export async function seedLedger(
+  sql: postgres.Sql,
+  mint: string,
+  rows: LedgerSeed[],
+): Promise<{ id: string; signature: string | null }[]> {
+  const values = rows.map(({ landed_at, detail, ...r }) => {
+    const state = r.state === undefined ? "landed" : r.state;
+    const signature = r.signature === undefined ? fakeSig() : r.signature;
+    return {
+      amount: null,
+      burned: null,
+      sol: null,
+      window_index: null,
+      ref: null,
+      ...r,
+      mint,
+      state,
+      signature,
+      detail: detail ? sql.json(detail as postgres.JSONValue) : null,
+      landed_at: state === "landed" ? (landed_at ?? new Date()) : null,
+      last_valid_block_height: signature ? "1000" : null,
+    };
+  });
+  return sql<{ id: string; signature: string | null }[]>`insert into fee_ledger ${sql(values)}
+    returning id, signature`;
+}
+
 /** Removes a seeded coin in reverse foreign-key order. */
 export async function dropCoin(sql: postgres.Sql, mint: string): Promise<void> {
+  await sql`delete from fee_ledger where mint = ${mint}`;
   await sql`delete from trades where mint = ${mint}`;
   await sql`delete from coins where mint = ${mint}`;
   const gone = await sql<{ wallet: string }[]>`delete from launches where mint = ${mint} returning wallet`;

@@ -7,13 +7,17 @@ import { Keypair } from "@solana/web3.js";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { WorkerEnv } from "./env.ts";
 import { type CoinLoad, Engine, startEngine, withCost } from "./fee-engine.ts";
+import { bondedJob, forcedJob } from "./fee-burns.ts";
 import { windowJob } from "./fee-prebond.ts";
 import type { FeeDeps } from "./fee-send.ts";
 
 vi.mock("./fee-prebond.ts", () => ({ windowJob: vi.fn(async () => []), splitJob: vi.fn() }));
+vi.mock("./fee-burns.ts", () => ({ forcedJob: vi.fn(async () => []), bondedJob: vi.fn(async () => []) }));
 vi.mock("./trade-state.ts", () => ({ configs: async () => ({ global: "g", feeConfig: "fc" }) }));
 vi.mock("@bondr/core/curve", () => ({ costFromReserves: vi.fn(() => 123n) }));
 const run = vi.mocked(windowJob);
+const forced = vi.mocked(forcedJob);
+const bonded = vi.mocked(bondedJob);
 
 const keys = new Map<string, Keypair>();
 function wOf(mint: string): Keypair {
@@ -34,6 +38,8 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(2500);
   run.mockClear();
+  forced.mockClear();
+  bonded.mockClear();
 });
 afterEach(() => vi.useRealTimers());
 
@@ -178,4 +184,52 @@ test("withCost prices every curve patch with reserves, W as creator, in any mode
   expect(rates).toEqual({ global: "g", feeConfig: "fc" });
   expect(ids?.creator.toBase58()).toBe(derive(seed, "w", "devnet", MINT).publicKey.toBase58());
   expect(ids).toMatchObject({ quoteMint: Q, creatorFeeBps: 0 });
+});
+
+test("after ready, budget plus 90% of unclaimed at 105% of the cost enqueues one forced bond", async () => {
+  const e = engine();
+  e.add(row({ feeBudget: "60" }));
+  const hit = patch(MINT, { feesUnclaimed: "50", costToComplete: "100" }); // 60 + 45 = 105% of 100
+  e.onIngest(hit);
+  expect(forced).not.toHaveBeenCalled(); // before ready (gap fill, Pitfall 10)
+  e.start();
+  const hold = deferred();
+  forced.mockImplementationOnce(async () => {
+    await hold.p;
+    return [];
+  });
+  e.onIngest(hit);
+  e.onIngest(hit);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(forced).toHaveBeenCalledTimes(1);
+  expect(forced.mock.calls[0]?.[1].mint.toBase58()).toBe(MINT);
+  hold.resolve();
+  await vi.advanceTimersByTimeAsync(0);
+  e.onIngest(patch(MINT, { feesUnclaimed: "49", costToComplete: "100" })); // 104.1%
+  await vi.advanceTimersByTimeAsync(0);
+  expect(forced).toHaveBeenCalledTimes(1);
+});
+
+test("venue pool enqueues the bonded job, venue complete enqueues nothing", async () => {
+  const e = engine();
+  e.add(row({ feeBudget: "500", cost: "100" }));
+  e.start();
+  e.onIngest({ patches: [{ mint: MINT, venue: "complete" }], inserted: [] });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(bonded).not.toHaveBeenCalled();
+  expect(forced).not.toHaveBeenCalled();
+  e.onIngest({ patches: [{ mint: MINT, venue: "pool" }], inserted: [] });
+  e.onIngest({ patches: [{ mint: MINT, venue: "pool" }], inserted: [] });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(bonded).toHaveBeenCalledTimes(1);
+});
+
+test("start enqueues the bonded job for a pooled coin not yet finalized (restart catch-up)", async () => {
+  const e = engine();
+  const done = Keypair.generate().publicKey.toBase58();
+  e.add(row({ venue: "pool" }));
+  e.add(row({ mint: done, venue: "pool", finalize: "done" }));
+  e.start();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(bonded.mock.calls.map((c) => c[1].mint.toBase58())).toEqual([MINT]);
 });

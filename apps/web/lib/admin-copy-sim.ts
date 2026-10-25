@@ -14,6 +14,10 @@ const FIXED: Record<string, string> = {
   bad_intent_signature: "That signature is not from the admin wallet. Nothing was sent.",
   worker_unavailable: UNAVAILABLE,
   rate_limited: "Too many requests. Wait a minute and try again.",
+  // Dialog-side states, not worker codes.
+  phantom_rejected: "Phantom rejected the request. Nothing was sent.",
+  phantom_failed: "Phantom could not sign the message. Nothing was sent.",
+  nothing_to_send: "There is nothing to send for this action now. Nothing was sent.",
 };
 
 // The worker's simulate and send codes (tradeError and admin-money outcome) as words.

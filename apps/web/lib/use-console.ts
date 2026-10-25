@@ -1,7 +1,8 @@
 "use client";
 // The console's Postgres-backed state (D-21): the overview from the page render, reloaded only by the Refresh
 // click (refresh) or after an action settles (reload). Never on a timer, so Neon can suspend with the tab open.
-// The selected coin lives here too; 06-18 adds the dialog state here, not in admin-console.tsx.
+// The selected coin and the open simulation dialog live here too, not in admin-console.tsx.
+import type { AdminTxAction } from "@bondr/core/api-admin";
 import { useCallback, useRef, useState } from "react";
 import type { AdminOverview } from "./admin-data";
 import { firstStuck, wItems } from "./admin-state";
@@ -14,7 +15,14 @@ export type Console = {
   reload(): Promise<void>;
   selected: string | null;
   select(mint: string | null): void;
+  sim: Sim | null;
+  openSim(action: AdminTxAction, mint: string | null): void;
+  /** `sent`: something may have been sent, so the DB panels reload once. */
+  closeSim(sent: boolean): void;
 };
+
+/** The dialog's action; mint is null only for burn_buyback (a platform action). */
+export type Sim = { action: AdminTxAction; mint: string | null };
 
 // UI-SPEC default selection: the first stuck coin on open (and after a load that drops the pick), else none. Stuck does not depend on the clock, so
 // the server render and the client agree.
@@ -52,5 +60,14 @@ export function useConsole(initial: AdminOverview, onUnauthorized: () => void, w
   );
   const refresh = useCallback(() => load(true), [load]);
   const reload = useCallback(() => load(false), [load]);
-  return { overview, loading, failed, refresh, reload, selected, select };
+  const [sim, setSim] = useState<Sim | null>(null);
+  const openSim = useCallback((action: AdminTxAction, mint: string | null) => setSim({ action, mint }), []);
+  const closeSim = useCallback(
+    (sent: boolean) => {
+      setSim(null);
+      if (sent) void reload();
+    },
+    [reload],
+  );
+  return { overview, loading, failed, refresh, reload, selected, select, sim, openSim, closeSim };
 }

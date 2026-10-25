@@ -37,6 +37,9 @@ test("every contract code maps to the UI-SPEC copy verbatim", () => {
   expect(c("simulation_failed")).toBe("Simulation failed: an unexpected error. Nothing was sent.");
   expect(c("worker_unavailable")).toBe("The worker did not answer. Nothing was sent. Try again in a moment.");
   expect(c("rate_limited")).toBe("Too many requests. Wait a minute and try again.");
+  expect(c("phantom_rejected")).toBe("Phantom rejected the request. Nothing was sent.");
+  expect(c("phantom_failed")).toBe("Phantom could not sign the message. Nothing was sent.");
+  expect(c("nothing_to_send")).toBe("There is nothing to send for this action now. Nothing was sent.");
   expect(c("something_new")).toBe(c("worker_unavailable"));
 });
 

@@ -20,7 +20,12 @@ test("no token reports not configured and makes no request", async () => {
 
 test("counts by project slug with the bearer token; 100 issues means capped", async () => {
   const f = reply(issues("bondr-web", "bondr-web", "bondr-web", "bondr-worker", "bondr-worker", "other"));
-  expect(await sentryCount(TOKEN, f as never, 0)).toEqual({ configured: true, web: 3, worker: 2, capped: false });
+  expect(await sentryCount(TOKEN, f as never, 0)).toEqual({
+    configured: true,
+    web: 3,
+    worker: 2,
+    capped: false,
+  });
   const [url, init] = f.mock.calls[0];
   expect(url).toContain("sentry.io/api/0/organizations/mrbarnacle/issues/");
   expect(url).toContain("query=is:unresolved");
@@ -29,12 +34,20 @@ test("counts by project slug with the bearer token; 100 issues means capped", as
   vi.resetModules();
   const fresh = (await import("./sentry-count.ts")).sentryCount;
   const full = reply(issues(...Array(100).fill("bondr-worker")));
-  expect(await fresh(TOKEN, full as never, 0)).toEqual({ configured: true, web: 0, worker: 100, capped: true });
+  expect(await fresh(TOKEN, full as never, 0)).toEqual({
+    configured: true,
+    web: 0,
+    worker: 100,
+    capped: true,
+  });
 });
 
 test("a second call within 60 s shares the first request; after 60 s it reads again", async () => {
   const f = reply(issues("bondr-web"));
-  const [a, b] = await Promise.all([sentryCount(TOKEN, f as never, 0), sentryCount(TOKEN, f as never, 59_999)]);
+  const [a, b] = await Promise.all([
+    sentryCount(TOKEN, f as never, 0),
+    sentryCount(TOKEN, f as never, 59_999),
+  ]);
   expect(a).toEqual(b);
   expect(f).toHaveBeenCalledTimes(1);
   await sentryCount(TOKEN, f as never, 60_000);

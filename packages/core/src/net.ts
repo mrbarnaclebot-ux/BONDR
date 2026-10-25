@@ -41,11 +41,12 @@ async function isSurfpool(url: string): Promise<boolean> {
 
 // Devnet must report the devnet genesis. A fork may report mainnet genesis only because its host is local;
 // anything else could be a real mainnet endpoint, so it throws before any send. The fork must also be Surfpool.
-export async function connect(net: Net): Promise<Connection> {
+// opts.fetch lets the worker time every RPC call (06-08 rpc-stats).
+export async function connect(net: Net, opts: { fetch?: typeof fetch } = {}): Promise<Connection> {
   const url = rpcUrl(net);
   const local = LOCAL_HOSTS.has(new URL(url).hostname);
   if (net === "fork" && !local) throw new Error(redact(`fork RPC must be 127.0.0.1 or localhost: ${url}`));
-  const conn = new Connection(url, "confirmed");
+  const conn = new Connection(url, { commitment: "confirmed", fetch: opts.fetch });
   const genesis = await conn.getGenesisHash().catch((e: unknown) => {
     throw new Error(redact(`${net} RPC unreachable: ${String(e)}`));
   });

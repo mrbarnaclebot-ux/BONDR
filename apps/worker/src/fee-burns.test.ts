@@ -14,7 +14,10 @@ const core = vi.hoisted(() => ({
   exact: vi.fn(async (_o: object) => ({ ixs: [], burnAmount: new BN(555) })),
   buyV2: vi.fn(async (_o: object) => []),
 }));
-vi.mock("@bondr/core/collect", async (orig) => ({ ...((await orig()) as object), collectIxs: async () => [] }));
+vi.mock("@bondr/core/collect", async (orig) => ({
+  ...((await orig()) as object),
+  collectIxs: async () => [],
+}));
 vi.mock("@bondr/core/curve", () => ({ costToComplete: async () => new BN(core.cost.toString()) }));
 vi.mock("@bondr/core/float", () => ({ wFloat: async () => 0 }));
 vi.mock("@bondr/core/bond", () => ({
@@ -40,7 +43,11 @@ const qMeta = (wDelta: bigint) => ({
     { mint: Q.toBase58(), owner: W.publicKey.toBase58(), uiTokenAmount: { amount: String(10_000n) } },
   ],
   postTokenBalances: [
-    { mint: Q.toBase58(), owner: W.publicKey.toBase58(), uiTokenAmount: { amount: String(10_000n + wDelta) } },
+    {
+      mint: Q.toBase58(),
+      owner: W.publicKey.toBase58(),
+      uiTokenAmount: { amount: String(10_000n + wDelta) },
+    },
   ],
 });
 
@@ -96,7 +103,9 @@ test("forcedJob at 105% collects, splits, then lands one urgent sender forced_bo
   expect(core.forced.mock.calls[0]?.[0].budget?.toString()).toBe("1050");
   expect(bondJob()).toMatchObject({ urgent: true, sender: true, signers: [W], cu: 600_000 });
   expect(jobs.slice(0, 2).every((j) => j.urgent)).toBe(true);
-  expect(bondJob()?.rows).toEqual([{ kind: "forced_bond", mint: MINT.toBase58(), amount: 1050n, burned: 777n }]);
+  expect(bondJob()?.rows).toEqual([
+    { kind: "forced_bond", mint: MINT.toBase58(), amount: 1050n, burned: 777n },
+  ]);
   expect(out.at(-1)?.rows?.[0]).toMatchObject({ amount: 1040n, burned: 777n }); // spent, from the meta
 });
 

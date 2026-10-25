@@ -7,8 +7,9 @@
 import type { Venue } from "@bondr/core/api";
 import { costFromReserves } from "@bondr/core/curve";
 import { coins, db, launches } from "@bondr/core/db";
-import { type LandedRow, totalsFor, windowEnd, windowOf } from "@bondr/core/fees";
+import { budgetOf, type LandedRow, totalsFor, windowEnd, windowOf } from "@bondr/core/fees";
 import { derive } from "@bondr/core/keys";
+import { trigger105 } from "@bondr/core/math";
 import { redact } from "@bondr/core/net";
 import { OnlinePumpAmmSdk, type OnlinePumpSdk } from "@bondr/core/pump";
 import type { CoinPatch, Parsed } from "@bondr/core/trades";
@@ -17,6 +18,7 @@ import { eq } from "drizzle-orm";
 import { publishFee } from "./announce.ts";
 import { bondrPrice } from "./bondr-price.ts";
 import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
+import { bondedJob, forcedJob } from "./fee-burns.ts";
 import { feeConfig } from "./fee-config.ts";
 import { type Entry, pgLedger } from "./fee-ledger.ts";
 import { windowJob } from "./fee-prebond.ts";
@@ -80,6 +82,7 @@ export class Engine {
   private readonly queue = new Map<string, Promise<void>>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly slots = new Map<string, bigint>(); // newest trade slot applied per coin (Pitfall 10)
+  private readonly forcing = new Set<string>(); // a forced bond is queued or running
   private ready = false;
 
   constructor(o: Opts) {
@@ -97,11 +100,15 @@ export class Engine {
     return true;
   }
 
-  // After boot recovery: from here on hooks and timers enqueue jobs. Returns the coins armed.
+  // After boot recovery: from here on hooks and timers enqueue jobs. A pooled coin not yet finalized gets its
+  // bonded job again, in case a restart dropped it (D-10). Returns the coins armed.
   start(): number {
     if (this.o.mode === "off") return 0;
     this.ready = true;
-    for (const coin of this.coins.values()) this.arm(coin);
+    for (const coin of this.coins.values()) {
+      this.arm(coin);
+      if (coin.venue === "pool" && coin.finalize === "none") this.bonded(coin);
+    }
     return this.timers.size;
   }
 
@@ -124,8 +131,11 @@ export class Engine {
     for (const p of w.patches) {
       const coin = this.coins.get(p.mint);
       if (!coin) continue;
+      const was = coin.venue;
       this.apply(coin, p, w.inserted.findLast((t) => t.mint === p.mint)?.slot);
       if (coin.venue !== "curve") this.clear(p.mint);
+      if (was !== "pool" && coin.venue === "pool") this.bonded(coin);
+      else if (!p.venue) this.force(coin);
     }
   }
 
@@ -149,6 +159,24 @@ export class Engine {
     this.slots.set(p.mint, BigInt(slot));
     if (p.feesUnclaimed !== undefined) coin.feesUnclaimed = BigInt(p.feesUnclaimed);
     if (p.costToComplete !== undefined) coin.cost = BigInt(p.costToComplete);
+  }
+
+  // D-15: memory says the budget clears 105% of the cost; forcedJob re-checks on chain before sending.
+  private force(coin: FeeCoin): void {
+    const [mint, deps, cost] = [coin.mint.toBase58(), this.o.deps, coin.cost];
+    if (!this.ready || !deps || coin.venue !== "curve" || !cost || this.forcing.has(mint)) return;
+    if (!trigger105(budgetOf(coin.feeBudget, coin.feesUnclaimed), cost)) return;
+    this.forcing.add(mint);
+    const job = async () => console.log(`forced bond ${mint}: ${summary(await forcedJob(deps, coin))}`);
+    void this.enqueue(mint, job, `forced bond ${mint}`).then(() => this.forcing.delete(mint));
+  }
+
+  // FEE-03 on the migration event; complete alone runs nothing (Pitfall 6).
+  private bonded(coin: FeeCoin): void {
+    const [mint, deps] = [coin.mint.toBase58(), this.o.deps];
+    if (!this.ready || !deps) return;
+    const job = async () => console.log(`fee bonded ${mint}: ${summary(await bondedJob(deps, coin))}`);
+    void this.enqueue(mint, job, `fee bonded ${mint}`);
   }
 
   private arm(coin: FeeCoin, index = windowOf(coin.launchedAt, Date.now(), this.o.windowMs)): void {

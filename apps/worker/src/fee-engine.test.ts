@@ -6,8 +6,8 @@ import type { Parsed } from "@bondr/core/trades";
 import { Keypair } from "@solana/web3.js";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { WorkerEnv } from "./env.ts";
-import { type CoinLoad, Engine, startEngine, withCost } from "./fee-engine.ts";
 import { bondedJob, forcedJob } from "./fee-burns.ts";
+import { type CoinLoad, Engine, startEngine, withCost } from "./fee-engine.ts";
 import { windowJob } from "./fee-prebond.ts";
 import type { FeeDeps } from "./fee-send.ts";
 
@@ -205,7 +205,7 @@ test("after ready, budget plus 90% of unclaimed at 105% of the cost enqueues one
   expect(forced.mock.calls[0]?.[1].mint.toBase58()).toBe(MINT);
   hold.resolve();
   await vi.advanceTimersByTimeAsync(0);
-  e.onIngest(patch(MINT, { feesUnclaimed: "49", costToComplete: "100" })); // 104.1%
+  e.onIngest(patch(MINT, { feesUnclaimed: "40", costToComplete: "100" })); // 60 + 36 = 96%
   await vi.advanceTimersByTimeAsync(0);
   expect(forced).toHaveBeenCalledTimes(1);
 });

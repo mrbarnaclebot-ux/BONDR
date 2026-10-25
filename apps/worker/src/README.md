@@ -29,6 +29,7 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `fee-ledger.ts`: `LedgerStore`, `pgLedger` (fee_ledger rows; landing moves the coin fee columns in the same transaction) and `memoryLedger` (same unique rules, for units and the fork stage).
 - `fee-send.ts`: `land`, the one fee send path (sign, record pending, broadcast, settle), the ops floor (`opsLow`, `noteOps`) and the mainnet-only Sender path (`tipIxs`, `urgentBroadcast`); `FeeDeps`, `Job`, `FeeCoin`.
 - `fee-prebond.ts`: `collectJob`, `splitJob`, `sweepJob` and `windowJob` (collect, 90/10 split, window sweep).
+- `fee-burns.ts`: `forcedJob` (urgent collect and split, fresh cost re-check, forced bond at 105%), `poolBurnJob` (PumpSwap burn of W's whole budget, buy_v2 fallback) and `bondedJob` (on the migration event).
 - `fee-recover.ts`: `recover`, the boot settle of every pending fee row from chain status (never a resend) and the split of every open collect; `recoverAction`.
-- `fee-engine.ts`: `startEngine` (one boot read, recover, then arm), the `Engine` (per-coin serial queue, window timers from launch, ready gate), `onIngest` and `withCost` (cost to complete on every curve patch). One worker replica only (D-07).
+- `fee-engine.ts`: `startEngine` (one boot read, recover, then arm), the `Engine` (per-coin serial queue, window timers from launch, ready gate), `onIngest` (forced bond trigger per curve patch, bonded job on venue pool) and `withCost` (cost to complete on every curve patch). One worker replica only (D-07).
 - `*.test.ts`: vitest checks; DB-backed ones skip without DATABASE_URL.

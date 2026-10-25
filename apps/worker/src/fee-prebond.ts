@@ -45,7 +45,7 @@ export async function splitJob(d: FeeDeps, coin: FeeCoin, collect: Entry, urgent
 }
 
 // W's BONDR balance: a missing ATA is 0; any other RPC error throws, so a flaky read never skips a sweep silently.
-async function wBondr(d: FeeDeps, coin: FeeCoin): Promise<bigint> {
+export async function wBondr(d: FeeDeps, coin: FeeCoin): Promise<bigint> {
   const ata = getAssociatedTokenAddressSync(d.Q, coin.w.publicKey, true, T22);
   try {
     return BigInt((await d.conn.getTokenAccountBalance(ata)).value.amount);
@@ -79,7 +79,7 @@ function worthCollecting(d: FeeDeps, coin: FeeCoin): boolean {
   return price === null || toSol(coin.feesUnclaimed, price) >= BigInt(feeConfig(d.net).collectMinLamports);
 }
 
-const settled = (r: Landed) => r.state === "landed" || r.state === "done" || r.state === "dry";
+export const settled = (r: Landed) => r.state === "landed" || r.state === "done" || r.state === "dry";
 
 // Window end (D-10, D-12): collect, split every open collect of this coin, then sweep. The sweep waits for a
 // later window while any step is unsettled, so a treasury tenth is never swept 90/10 by mistake.

@@ -92,13 +92,18 @@ async function seed(tx: Parameters<Parameters<ReturnType<typeof db>["transaction
 }
 
 // Runs fn in a transaction that always rolls back, so nothing seeded survives the test.
-async function rolledBack(fn: (l: LedgerStore, read: () => Promise<typeof coins.$inferSelect>) => Promise<void>) {
+async function rolledBack(
+  fn: (l: LedgerStore, read: () => Promise<typeof coins.$inferSelect>) => Promise<void>,
+) {
   const mint = `test-${randomBytes(8).toString("hex")}`;
   try {
     await db().transaction(async (tx) => {
       await seed(tx, mint);
       const read = async () => (await tx.select().from(coins).where(eq(coins.mint, mint)))[0];
-      await fn(pgLedger(() => tx as never), read);
+      await fn(
+        pgLedger(() => tx as never),
+        read,
+      );
       tx.rollback();
     });
   } catch (e) {

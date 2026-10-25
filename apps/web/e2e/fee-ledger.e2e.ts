@@ -130,3 +130,73 @@ test.describe("paging", () => {
     await expect(more).toHaveCount(0);
   });
 });
+
+// UI-SPEC Bond and burn on curve (TOKEN-03) and the pre-bond totals (TOKEN-05), from seeded coin fee columns.
+// bondr_sol 1e6 lamports per base unit, so 504 base units read 0.504 SOL.
+test.describe("Bond and burn", () => {
+  const seeded: Seeded[] = [];
+  const seed = async (coin: Record<string, string | number | null>) => {
+    const c = await seedCoin(db(), { trades: 60, coin });
+    seeded.push(c);
+    return c;
+  };
+  test.afterAll(async () => {
+    for (const c of seeded) await dropCoin(db(), c.mint);
+  });
+  const bond = (page: Page) => page.getByRole("region", { name: "Bond and burn" });
+  const step = (page: Page) => bond(page).locator('[aria-current="step"]');
+
+  test("no fees yet reads 0 and the flow sits on Collect", async ({ page }) => {
+    const c = await seed({ fee_budget: "0", cost_to_complete: "1000", bondr_sol: 1e6 });
+    await page.goto(`/coin/${c.mint}`);
+    const panel = bond(page);
+    await expect(panel).toContainText("0.0%");
+    await expect(panel).toContainText("No creator fees yet.");
+    await expect(panel.getByText("0", { exact: true })).toBeVisible();
+    await expect(step(page)).toContainText("Collect");
+  });
+
+  test("a half budget shows its ratio, track label, window and Split step", async ({ page }) => {
+    const c = await seed({ fee_budget: "504", cost_to_complete: "1000", bondr_sol: 1e6 });
+    await page.goto(`/coin/${c.mint}`);
+    const panel = bond(page);
+    await expect(panel).toContainText("50.4%");
+    await expect(panel).toContainText("0.504");
+    await expect(
+      panel.getByRole("img", {
+        name: "Burn budget is 50.4 percent of the cost to complete the curve. Forced bond fires at 105 percent.",
+      }),
+    ).toBeVisible();
+    await expect(step(page)).toContainText("Split 90/10");
+    await expect(panel.getByText("Window 1 closes in")).toBeVisible();
+    await expect(panel.getByText(/^\d+h \d+m$/)).toBeVisible();
+  });
+
+  test("an unknown cost is not measured yet", async ({ page }) => {
+    const c = await seed({ fee_budget: "504", cost_to_complete: null, bondr_sol: 1e6 });
+    await page.goto(`/coin/${c.mint}`);
+    await expect(bond(page).getByRole("img", { name: "Burn budget not measured yet." })).toBeVisible();
+  });
+
+  test("past 105% the flow is on Force bond", async ({ page }) => {
+    const c = await seed({ fee_budget: "1060", cost_to_complete: "1000", bondr_sol: 1e6 });
+    await page.goto(`/coin/${c.mint}`);
+    await expect(bond(page)).toContainText("106.0%");
+    await expect(bond(page)).toContainText("The budget is past 105%.");
+    await expect(step(page)).toContainText("Force bond");
+  });
+
+  test("totals show treasury and the launch burn; the stats row shows Supply burned", async ({ page }) => {
+    // The seeded launch burns 31,120,363.129479 tokens: 3.11% of the 1B supply, 31.1M.
+    const c = await seed({ to_treasury: "5000000000", to_treasury_sol: "150000000", bondr_sol: 1e6 });
+    await page.goto(`/coin/${c.mint}`);
+    const total = (label: string) => ledger(page).locator(`dt:text-is("${label}") + dd`);
+    await expect(total("To treasury")).toHaveText("0.15 SOL");
+    await expect(ledger(page)).toContainText("5,000 BONDR, the 10% share");
+    await expect(total("Supply burned")).toHaveText("3.11%");
+    await expect(ledger(page)).toContainText(`31.1M ${c.symbol} burned`);
+    await expect(total("To buyback")).toHaveText("0 SOL");
+    await expect(total("Deployer share")).toHaveText("After bond");
+    await expect(page.locator('dt:text-is("Supply burned") + dd').first()).toHaveText("3.11%");
+  });
+});

@@ -1,8 +1,9 @@
 "use client";
+import { SUPPLY } from "@bondr/core/price";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { flashClass } from "@/lib/flash";
-import { mcapSol, signedPct, thousands } from "@/lib/format";
+import { burnedPct, mcapSol, signedPct, thousands } from "@/lib/format";
 import { useCoinLive } from "./coin-live";
 
 const MUTED = "text-muted-foreground";
@@ -37,12 +38,14 @@ const NOT_COUNTED = (
 
 /**
  * The identity bar stats row (UI-SPEC Identity bar), live from CoinLiveProvider; the coin is null until the
- * indexer has its row. Mcap and 1h flash by the trade side (D-15); volume and holders just update.
+ * indexer has its row. Mcap and 1h flash by the trade side (D-15); volume, holders and Supply burned just update.
  */
 export function TokenStats() {
   const live = useCoinLive();
   const c = live?.coin ?? null;
   const change = c?.change1h ?? null;
+  const fees = c?.fees;
+  const burned = !!fees && BigInt(fees.burnedSupply) > 0n;
   return (
     <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
       <Stat label="Mcap" tone={c ? undefined : MUTED} flash={live?.flash}>
@@ -56,6 +59,9 @@ export function TokenStats() {
       </Stat>
       <Stat label="Holders" tone={c?.holders == null ? MUTED : undefined}>
         {c?.holders == null ? NOT_COUNTED : thousands(c.holders)}
+      </Stat>
+      <Stat label="Supply burned" tone={burned ? "text-leaf" : MUTED}>
+        {fees ? burnedPct(fees.burnedSupply, SUPPLY) : "–"}
       </Stat>
     </dl>
   );

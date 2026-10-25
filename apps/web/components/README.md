@@ -20,10 +20,12 @@
 - `tag.tsx`: Tag, the pill label with mint, leaf, warn and plain tones and an optional live dot.
 - `token-stats.tsx`: TokenStats, the identity bar's Mcap, 1h, 1h volume and Holders row, live from CoinLiveProvider (Mcap and 1h flash).
 - `bond-glyph.tsx`: BondGlyph, the two-node curve progress SVG with a per-instance gradient id.
-- `token-bond.tsx`: BondPanel, the Bond and burn panel (curve progress only, D-10) in its three venue states.
+- `token-bond.tsx`: BondPanel, the Bond and burn shell (a size container): head note per venue and the Curve filled gauge in its three venue states.
+- `bond-budget.tsx`: BondBudget, the on-curve body of Bond and burn: burn budget gauge, window countdown (windowOf, FEE_WINDOW_MS) and the four-step fee flow.
+- `ready-bar.tsx`: ReadyBar, the 0-120% burn budget track with the 100% and 105% marks (`lg` token page, `md` and `sm` for the home rail).
 - `copy-chip.tsx`: the token page short-mint copy chip.
 - `tx-link.tsx`: the Solscan transaction link (cluster param on devnet); `label` makes it icon-only (trade feed).
-- `token-ledger.tsx`: FeeLedger, the token page Fee ledger panel: head with the fee wallet link, landed fee rows newest first with Solscan links (copy from `lib/ledger-copy.ts`), Load 20 older entries by keyset, the launch row last.
+- `token-ledger.tsx`: FeeLedger, the token page Fee ledger panel: head with the fee wallet link, landed fee rows newest first with Solscan links (copy from `lib/ledger-copy.ts`), Load 20 older entries by keyset, the launch row last; the pre-bond totals block above the entries.
 - `token-trades.tsx`: TradeFeed, the token page trade table with the launch caption and rows, Load more by keyset, live rows on top (batched per frame) and the Live indicator; exports `LoadMore` and `useClock` for the fee ledger.
 - `coin-live.tsx`: CoinLiveProvider, the token page's one `useLive` stream shared through context (coin numbers, last trade side for the flash, stream state, a trade and resync subscription), and the live VenueTag.
 - `launch-receipt.tsx`: the receipt aside, every fee and cost from the live worker status.

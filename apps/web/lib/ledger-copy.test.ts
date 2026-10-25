@@ -57,9 +57,7 @@ test("forced bond is a leaf burn tag with the burned tokens", () => {
 test("launch row reads burn or sell", () => {
   const b = launchCopy({ exit: "burn", solIn: "500000000", tokens: "31120363129478", symbol: "GRUB" });
   expect([b.tag, b.tone, b.value]).toEqual(["Launch burn", "leaf", "0.5 SOL"]);
-  expect(b.text).toBe(
-    "Dev buy of 0.5 SOL (31.1M GRUB) burned in the launch transaction (insta burn).",
-  );
+  expect(b.text).toBe("Dev buy of 0.5 SOL (31.1M GRUB) burned in the launch transaction (insta burn).");
   const s = launchCopy({ exit: "sell", solIn: "500000000", symbol: "GRUB" });
   expect([s.tag, s.tone]).toEqual(["Launch sell", "plain"]);
   expect(s.text).toContain("sold back in the launch transaction (insta sell)");

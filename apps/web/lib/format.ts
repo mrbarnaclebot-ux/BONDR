@@ -46,6 +46,18 @@ const fixed = (n: number, d: number) =>
 /** Market cap, volume or bond SOL: "18,400", "140.7", "61.40", "0.842" (UI-SPEC Number formats). */
 export const mcapSol = (n: number): string => fixed(n, n >= 1000 ? 0 : n >= 100 ? 1 : n >= 1 ? 2 : 3);
 
+/** A fee row's lamports: "0", "<0.001", else the mcapSol places with trailing zeros trimmed ("0.42", "140.7"). */
+export function feeSol(lamports: string): string {
+  const n = BigInt(lamports);
+  if (n === 0n) return "0";
+  if (n < 1_000_000n) return "<0.001";
+  const s = mcapSol(Number(n) / 1e9);
+  return s.includes(".") ? s.replace(/0+$/, "").replace(/\.$/, "") : s;
+}
+
+/** "2026-10-18 21:14", the UTC date and minute. */
+export const utcStamp = (iso: string): string => new Date(iso).toISOString().slice(0, 16).replace("T", " ");
+
 /** Trade lamports as SOL with 3 decimals, "<0.001" below that. */
 export const tradeSol = (lamports: string): string =>
   BigInt(lamports) < 1_000_000n ? "<0.001" : (Number(lamports) / 1e9).toFixed(3);

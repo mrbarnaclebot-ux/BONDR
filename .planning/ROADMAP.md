@@ -266,7 +266,7 @@ Plans:
   4. Owner flips per-job kill switches (launches, forced bond, sweeps, finalize, buyback burn), hides a coin from lists, blocks a deployer from launching, and inspects any pasted signature's decoded instructions, error and explorer link
   5. Owner runs EVACUATE by typing the phrase and signing; all jobs pause and every W balance moves to the treasury
 
-**Plans:** 4/26 plans executed
+**Plans:** 5/26 plans executed
 
 Plans:
 
@@ -282,7 +282,7 @@ Plans:
 
 - [x] 06-03-PLAN.md - Admin sign-in with Phantom, 30-minute bondr_admin cookie, guarded /api/admin/[op], console shell
 - [x] 06-04-PLAN.md - Multi-mint fee ledger fixes (sig-kind key, per-row sol, per-mint publish, evacuate in reconcile), fee-ledger-memory split
-- [ ] 06-05-PLAN.md - TDD: intent store with fresh-signature check, destination allowlist decoder
+- [x] 06-05-PLAN.md - TDD: intent store with fresh-signature check, destination allowlist decoder
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 4/26 | In Progress|  |
+| 6. Admin Dashboard | 5/26 | In Progress|  |
 | 7. Go-Live | 0/TBD | Not started | - |

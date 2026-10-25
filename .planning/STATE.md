@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-10-25T13:41:40.610Z"
-last_activity: 2026-10-25 -- Completed 06-04 (multi-mint fee ledger fixes, fee-ledger-memory split)
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-10-25T13:55:08.775Z"
+last_activity: 2026-10-25 -- Completed 06-05 (intent store, destination allowlist)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 73
-  percent: 77
+  completed_plans: 74
+  percent: 78
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 5 of 26 (06-04 complete)
+Plan: 6 of 26 (06-05 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-04 (multi-mint fee ledger fixes, fee-ledger-memory split)
+Last activity: 2026-10-25 -- Completed 06-05 (intent store, destination allowlist)
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -111,6 +111,7 @@ Progress: [████████░░] 77%
 | Phase 06 P02 | 15 min | 2 tasks | 13 files |
 | Phase 06 P03 | 20 min | 3 tasks | 8 files |
 | Phase 06 P04 | 12 min | 2 tasks | 18 files |
+| Phase 06 P05 | 10 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -261,6 +262,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-04: rows built with their own sol keep it; withSol only fills rows without one
 - [Phase 06]: 06-04: landed rows publish per mint via publishByMint in send and recovery; Facts stay keyed by kind (one value per kind per tx)
 - [Phase 06]: 06-04: reconcile counts evacuate as a W outflow; leftover_burn is not a BONDR move
+- [Phase 06]: 06-05: putIntent writes the intent message itself; take sets used, state sending and the retention clock in one synchronous step; viewIntent is null before execute
+- [Phase 06]: 06-05: admin-dest refuses any token instruction other than Transfer, TransferChecked, Burn, BurnChecked and CloseAccount, plus ATA RecoverNested; TransferWithSeed is checked like Transfer
+- [Phase 06]: 06-05: passedLines derives lines from owner names (Deployer, Treasury, Buyback) and answers burn only when none apply
 
 ### Pending Todos
 
@@ -293,6 +297,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T13:41:40.605Z
-Stopped at: Completed 06-04-PLAN.md
+Last session: 2026-10-25T13:55:08.770Z
+Stopped at: Completed 06-05-PLAN.md
 Resume file: None

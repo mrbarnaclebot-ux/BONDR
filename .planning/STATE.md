@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-10-25T12:55:27.413Z"
-last_activity: 2026-10-25 -- Completed 06-02 (admin contracts, public ledger kinds, error codes)
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-10-25T13:28:55.002Z"
+last_activity: 2026-10-25 -- Completed 06-03 (owner sign-in, admin cookie, console shell)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 71
-  percent: 71
+  completed_plans: 72
+  percent: 76
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 3 of 26 (06-02 complete)
+Plan: 4 of 26 (06-03 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-02 (admin contracts, public ledger kinds, error codes)
+Last activity: 2026-10-25 -- Completed 06-03 (owner sign-in, admin cookie, console shell)
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 76%
 
 ## Performance Metrics
 
@@ -109,6 +109,7 @@ Progress: [████████░░] 75%
 | Phase 05 P12 | 31 min | 3 tasks | 21 files |
 | Phase 06 P01 | 25 min | 2 tasks | 16 files |
 | Phase 06 P02 | 15 min | 2 tasks | 13 files |
+| Phase 06 P03 | 20 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-02: leftover_burn adds only bond_burned; evacuate uses the sweep_treasury totals shape
 - [Phase 06]: 06-02: admin error statuses: forbidden, blocked, bad_intent_signature 403; intent_used, not_applicable 409; intent_expired 410; simulation_failed, destination_refused 422
 - [Phase 06]: 06-02: ADMIN-01/03/04/06/10/11 contracts only, not marked complete; the worker reconcile and send kind lists learn evacuate and leftover_burn in the plans that write those rows
+- [Phase 06]: 06-03: admin nonces reuse issueNonce and are spent in consent_nonces; the first message line 'BONDR admin sign-in' is the domain separation (D-09)
+- [Phase 06]: 06-03: verify refuses a non-admin wallet with 403 not_admin before the signature check (no nonce spend, no cookie)
+- [Phase 06]: 06-03: panels reach the session through useAdmin() (wallet, exp, onUnauthorized) from AdminConsole's context; ops register in OPS in api/admin/[op]/route.ts with the actor from the cookie
 
 ### Pending Todos
 
@@ -284,6 +288,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T12:55:27.407Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-10-25T13:28:46.439Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None

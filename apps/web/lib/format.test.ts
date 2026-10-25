@@ -5,6 +5,7 @@ import {
   compact,
   curvePct,
   explorer,
+  feeSol,
   mcapSol,
   pct,
   relTime,
@@ -13,6 +14,7 @@ import {
   sol,
   thousands,
   tradeSol,
+  utcStamp,
 } from "./format";
 
 test("sol trims trailing zeros and rounds to the given places", () => {
@@ -96,4 +98,15 @@ test("chartInterval follows coin age (D-17)", () => {
     "1h",
     "1h",
   ]);
+});
+
+test("feeSol reads 0, a floor, then the mcapSol rules", () => {
+  expect(feeSol("0")).toBe("0");
+  expect(feeSol("400000")).toBe("<0.001");
+  expect(feeSol("420000000")).toBe("0.42");
+  expect(feeSol("140720000000")).toBe("140.7");
+});
+
+test("utcStamp is the UTC date and minute", () => {
+  expect(utcStamp("2026-10-18T21:14:09.000Z")).toBe("2026-10-18 21:14");
 });

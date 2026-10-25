@@ -251,7 +251,7 @@ test.describe("stats and bond", () => {
     await expect(panel.getByRole("heading", { name: /Burn budget ready/, level: 3 })).toBeVisible();
   });
 
-  test("a bonded coin shows Bonded, PumpSwap, 100% and the bond tx", async ({ page }) => {
+  test("a bonded coin shows Bonded, PumpSwap, the bond moment and the bond tx", async ({ page }) => {
     const sig = fakeSig();
     const c = await seed({
       venue: "pool",
@@ -264,17 +264,14 @@ test.describe("stats and bond", () => {
     await expect(page.getByText("Bonded, PumpSwap", { exact: true })).toBeVisible();
     await expect(stat(page, "Holders")).toHaveText("1,284");
     const panel = bondPanel(page);
-    await expect(panel).toContainText("100%");
-    await expect(panel.getByText("Bonded", { exact: true })).toBeVisible();
-    await expect(panel.getByRole("img", { name: "Bonded" })).toBeVisible();
-    await expect(panel).toContainText(
-      new RegExp(`Bonded 2h \\d+m ago\\. ${c.symbol} now trades on PumpSwap\\.`),
-    );
+    await expect(panel.getByText(/^Bonded 2h \d+m ago$/)).toBeVisible();
+    await expect(panel.getByRole("heading", { name: "Bonded by its traders.", level: 3 })).toBeVisible();
+    await expect(panel).toContainText(`Traders completed ${c.symbol}'s curve. It now trades on PumpSwap.`);
     await expect(panel.getByRole("link", { name: new RegExp(`^Bond tx ${short(sig)}`) })).toHaveAttribute(
       "href",
       new RegExp(`/tx/${sig}\\?cluster=devnet$`),
     );
-    await expect(panel).not.toContainText(/budget|window|ledger/i);
+    await expect(panel).not.toContainText(/Curve filled|window/i);
   });
 
   test("a complete curve waits for PumpSwap", async ({ page }) => {

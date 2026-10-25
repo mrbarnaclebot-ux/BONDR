@@ -3,15 +3,14 @@ import type { CoinFees, CoinRow, Net } from "@bondr/core/api";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { flashClass, type Side } from "@/lib/flash";
-import { age, curvePct, mcapSol, short, utcStamp, whole } from "@/lib/format";
+import { curvePct, mcapSol, utcStamp, whole } from "@/lib/format";
+import { BondAfter } from "./bond-after";
 import { BondBudget } from "./bond-budget";
 import { BondGlyph } from "./bond-glyph";
 import { useCoinLive } from "./coin-live";
-import { Tag } from "./tag";
-import { TxLink } from "./tx-link";
 
 // The shell (UI-SPEC Bond and burn): head note per venue and the Curve filled gauge; on curve BondBudget adds
-// the burn budget, window and fee flow.
+// the burn budget, window and fee flow; once bonded BondAfter replaces the gauge with the moment and the burn.
 export type BondCoin = Pick<
   CoinRow,
   "venue" | "progress" | "realQuoteReserves" | "bondrAtBond" | "bondSol" | "bondSig" | "bondedAt"
@@ -36,21 +35,9 @@ function CurveProse({ c }: { c: BondCoin }) {
   );
 }
 
-function Prose({ c, symbol, net }: { c: BondCoin; symbol: string; net: Net }) {
+function Prose({ c, symbol }: { c: BondCoin; symbol: string }) {
   if (c.venue === "curve") return <CurveProse c={c} />;
-  if (c.venue === "complete")
-    return `The curve is complete. ${symbol} moves to PumpSwap automatically, usually within a minute.`;
-  return (
-    <>
-      {`Bonded ${age(c.bondedAt ?? new Date().toISOString())} ago. ${symbol} now trades on PumpSwap.`}
-      {c.bondSig && (
-        <>
-          {" "}
-          <TxLink signature={c.bondSig} net={net}>{`Bond tx ${short(c.bondSig)}`}</TxLink>
-        </>
-      )}
-    </>
-  );
+  return `The curve is complete. ${symbol} moves to PumpSwap automatically, usually within a minute.`;
 }
 
 type Flash = { side: Side; n: number } | null;
@@ -70,7 +57,6 @@ function Gauge({ c, pct, flash }: { c: BondCoin; pct: string; flash: Flash }) {
         >
           {pct}
         </span>
-        {c.venue === "pool" && <Tag tone="leaf">Bonded</Tag>}
       </div>
     </>
   );
@@ -125,14 +111,20 @@ function headNote(c: BondCoin): ReactNode {
   );
 }
 
-type PanelProps = { symbol: string; net: Net; launchedAt: string | null; windowMs: number };
+type PanelProps = {
+  symbol: string;
+  net: Net;
+  launchedAt: string | null;
+  windowMs: number;
+  image: string | null; // the coin image for the bond moment's orb
+};
 
 /**
  * UI-SPEC Bond and burn: on curve, complete and waiting, or bonded, live from CoinLiveProvider (a bond event
  * switches the state). The coin is null before it is indexed. A size container, so the inner layout follows
  * the panel's width in the 380px column and full width alike.
  */
-export function BondPanel({ symbol, net, launchedAt, windowMs }: PanelProps) {
+export function BondPanel({ symbol, net, launchedAt, windowMs, image }: PanelProps) {
   const live = useCoinLive();
   const c: BondCoin = live?.coin ?? CURVE_START;
   const pct = curvePct(c.venue === "curve" ? c.progress : 1);
@@ -144,12 +136,11 @@ export function BondPanel({ symbol, net, launchedAt, windowMs }: PanelProps) {
           p={c.venue === "curve" ? c.progress : 1}
           w={560}
           h={52}
-          ring={c.venue === "pool"}
-          label={c.venue === "pool" ? "Bonded" : `Curve ${pct.slice(0, -1)} percent filled`}
+          label={`Curve ${pct.slice(0, -1)} percent filled`}
         />
       </div>
       <p className="text-sm text-muted-foreground">
-        <Prose c={c} symbol={symbol} net={net} />
+        <Prose c={c} symbol={symbol} />
       </p>
     </>
   );
@@ -168,6 +159,15 @@ export function BondPanel({ symbol, net, launchedAt, windowMs }: PanelProps) {
         <BondBudget fees={c.fees ?? NO_FEES} launchedAt={launchedAt} windowMs={windowMs} symbol={symbol}>
           {curve}
         </BondBudget>
+      ) : c.venue === "pool" ? (
+        <BondAfter
+          f={c.fees ?? NO_FEES}
+          symbol={symbol}
+          net={net}
+          bondedAt={c.bondedAt}
+          bondSig={c.bondSig}
+          image={image}
+        />
       ) : (
         curve
       )}

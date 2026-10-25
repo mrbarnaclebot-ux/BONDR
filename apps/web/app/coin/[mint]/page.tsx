@@ -18,6 +18,7 @@ import { chartInterval, compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
 import { firstLedgerPage } from "@/lib/ledger";
 import { hub } from "@/lib/live-hub";
+import { imageUrl } from "@/lib/pinata";
 import { tradesPage } from "@/lib/trades";
 import { TradeProvider } from "@/lib/use-trade";
 
@@ -98,7 +99,13 @@ function Panels({ v, net, feed, launchedAt, chart, ledger }: PanelProps) {
         <div className="grid max-[1099px]:hidden">
           <TradePanel />
         </div>
-        <BondPanel symbol={v.symbol} net={net} launchedAt={launchedAt} windowMs={windowMs()} />
+        <BondPanel
+          symbol={v.symbol}
+          net={net}
+          launchedAt={launchedAt}
+          windowMs={windowMs()}
+          image={imageUrl(v.imageCid)}
+        />
         {ledger}
       </div>
       <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-2 min-[1100px]:self-start">

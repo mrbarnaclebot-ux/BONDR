@@ -106,6 +106,16 @@ describe("memoryLedger", () => {
     expect(await l.has(M, ["sweep_buyback", "sweep_treasury"], 5)).toBe(false);
     expect(await l.has(M, ["sweep_buyback", "sweep_treasury"])).toBe(true);
   });
+
+  test("failedSweep names a failed or expired sweep until its window sweeps again (Retry sweep)", async () => {
+    const l = memoryLedger();
+    expect(await l.failedSweep(M)).toBeNull();
+    await l.insertPending([{ kind: "sweep_buyback", mint: M, windowIndex: 2 }], "s1", 10n);
+    await l.settle("s1", "expired", { error: "expired" });
+    expect((await l.failedSweep(M))?.windowIndex).toBe(2);
+    await l.insertPending([{ kind: "sweep_buyback", mint: M, windowIndex: 2 }], "s2", 10n);
+    expect(await l.failedSweep(M)).toBeNull();
+  });
 });
 
 const DB = !!process.env.DATABASE_URL;
@@ -214,6 +224,21 @@ describe.skipIf(!DB)("pgLedger", { timeout: 60_000 }, () => {
       ] as const;
       expect(await l.insertPending([...two], `e${a}`, 10n)).toHaveLength(2);
       expect(await l.insertPending([two[0]], `e${a}`, 10n)).toBeNull();
+    });
+  });
+
+  test("failedSweep skips a failed window that swept again", async () => {
+    await rolledBack(async (l, read) => {
+      const mint = (await read()).mint;
+      for (const [sig, i] of [
+        [`x${mint}`, 1],
+        [`y${mint}`, 4],
+      ] as const) {
+        await l.insertPending([{ kind: "sweep_treasury", mint, windowIndex: i }], sig, 10n);
+        await l.settle(sig, "failed", { error: "boom" });
+      }
+      await l.insertPending([{ kind: "sweep_treasury", mint, windowIndex: 1 }], `z${mint}`, 10n);
+      expect((await l.failedSweep(mint))?.windowIndex).toBe(4);
     });
   });
 });

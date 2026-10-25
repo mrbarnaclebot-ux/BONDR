@@ -14,6 +14,7 @@ import { AuditLog } from "./admin-audit";
 import { AdminHealth } from "./admin-health";
 import { type AdminSessionView, AdminSignIn, SignInAgain, type SignInNotice, SignOut } from "./admin-signin";
 import { KillSwitches } from "./admin-switches";
+import { AdminTimeline } from "./admin-timeline";
 import { AdminWallets } from "./admin-wallets";
 import { WTable } from "./admin-wtable";
 import { Callout } from "./callout";
@@ -61,11 +62,30 @@ export function AdminConsole({ wallet, exp, initial, windowMs }: ConsoleProps) {
   );
 }
 
+// Only a user pick moves focus to the Timeline h2, after it renders the new title; the default selection on open
+// or after a load never does.
+function usePick(select: (mint: string) => void) {
+  const [picks, setPicks] = useState(0);
+  useEffect(() => {
+    const h = picks ? document.getElementById("timeline-h") : null;
+    h?.focus({ preventScroll: true });
+    h?.scrollIntoView({ block: "start" });
+  }, [picks]);
+  return useCallback(
+    (mint: string) => {
+      select(mint);
+      setPicks((n) => n + 1);
+    },
+    [select],
+  );
+}
+
 // UI-SPEC Layout, DOM order equals visual order. Mounted only while signed in, so the health poll stops with the
 // session. Later plans fill the commented slots.
 function Grid({ con, onUnauthorized, windowMs }: { con: Console; onUnauthorized(): void; windowMs: number }) {
   const poll = useHealth(onUnauthorized);
   const { overview, loading } = con;
+  const pick = usePick(con.select);
   return (
     <>
       <div className="grid gap-6 md:grid-cols-2 min-[68.75rem]:grid-cols-[1.1fr_1fr_1.2fr] [&>*]:min-w-0">
@@ -76,7 +96,7 @@ function Grid({ con, onUnauthorized, windowMs }: { con: Console; onUnauthorized(
           overview={overview}
           busy={loading}
           className="md:col-span-2 min-[68.75rem]:col-span-1"
-          onSelect={con.select}
+          onSelect={pick}
         />
       </div>
       <WTable
@@ -84,11 +104,17 @@ function Grid({ con, onUnauthorized, windowMs }: { con: Console; onUnauthorized(
         busy={loading}
         windowMs={windowMs}
         selected={con.selected}
-        onSelect={con.select}
+        onSelect={pick}
       />
-      {/* 06-17: a row "grid gap-8 min-[68.75rem]:grid-cols-[1.3fr_1fr] min-[68.75rem]:items-start [&>*]:min-w-0"
-          holding <AdminTimeline />, then a "grid gap-8" stack of <AdminInspect /> (06-19) and <AdminModeration />
-          (06-20) */}
+      <div className="grid gap-8 min-[68.75rem]:grid-cols-[1.3fr_1fr] min-[68.75rem]:items-start [&>*]:min-w-0">
+        <AdminTimeline
+          overview={overview}
+          selected={con.selected}
+          windowMs={windowMs}
+          onChanged={con.reload}
+        />
+        {/* 06-19, 06-20: a "grid gap-8" stack of <AdminInspect /> and <AdminModeration /> */}
+      </div>
       <AuditLog key={overview.loadedAt} overview={overview} busy={loading} />
       {/* 06-23: <Evacuate /> */}
     </>

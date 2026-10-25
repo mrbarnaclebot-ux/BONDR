@@ -90,9 +90,10 @@ function Table({ rows, net }: { rows: AdminAuditRow[]; net: Net }) {
   const [now, setNow] = useState(0);
   useEffect(() => setNow(Date.now()), []);
   return (
-    // A named section is a region; tabIndex lets a keyboard user scroll the wide table sideways.
+    // A named section is a region; tabIndex lets a keyboard user scroll the wide table sideways. relative keeps
+    // TxLink's absolutely positioned sr-only text inside the region, or it widens the page at 390px.
     // biome-ignore lint/a11y/noNoninteractiveTabindex: see above
-    <section aria-label="Audit log table, scrolls sideways" tabIndex={0} className="overflow-x-auto">
+    <section aria-label="Audit log table, scrolls sideways" tabIndex={0} className="relative overflow-x-auto">
       <table className="w-full min-w-[880px] text-xs">
         <caption className="sr-only">Admin actions, newest first</caption>
         <thead className="text-muted-foreground">

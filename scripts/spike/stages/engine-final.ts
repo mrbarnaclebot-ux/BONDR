@@ -1,13 +1,15 @@
-// FEE-05 on the fork through the worker's own fee-finalize.ts, on E2 (traders bonded, pool-burned by
-// engine-bond.ts). Two sim PumpSwap trades accrue post-bond creator fees, then finalizeJob runs the deployer
-// pre-flight on E2's real launch tx, the config tx, the one 8000/2000 update and the closing sweep. Devnet cannot
-// prove this (D-06: no child bonds there).
+// FEE-05 and FEE-07 on the fork through the worker's own fee-finalize.ts and fee-batch.ts, on E2 (traders bonded,
+// pool-burned by engine-bond.ts). Two sim PumpSwap trades accrue post-bond creator fees, then finalizeJob runs the
+// deployer pre-flight on E2's real launch tx, the config tx, the one 8000/2000 update and the closing sweep. Two
+// more trades accrue fees to the sharing config, and distributeJob pays them out. Devnet cannot prove this (D-06:
+// no child bonds there).
 import { poolBaseOut } from "@bondr/core/bond";
 import { applyBps } from "@bondr/core/math";
 import { BN, OnlinePumpAmmSdk } from "@bondr/core/pump";
 import { FINAL_SHARES, readSharing } from "@bondr/core/sharing";
 import { poolBuy, poolSell } from "@bondr/core/trade";
 import { PublicKey } from "@solana/web3.js";
+import { distributeJob } from "../../../apps/worker/src/fee-batch.ts";
 import { finalizeJob } from "../../../apps/worker/src/fee-finalize.ts";
 import type { FeeCoin } from "../../../apps/worker/src/fee-send.ts";
 import type { Rule, Stage } from "../results.ts";
@@ -19,8 +21,8 @@ import { updateRule } from "./sharing.ts";
 type F = E & { coin: FeeCoin };
 
 // A buy of a tenth of the trader's Q (an empty trader gets a whale top-up first), then a sell of all of it.
-// Both pay the pool creator fee to W, so the update's inner distribution has something to pay.
-async function trades(f: F): Promise<void> {
+// Both pay the pool creator fee: to W before finalize, to the sharing config after it.
+async function trades(f: F, tag: string): Promise<void> {
   const trader = f.ctx.key("sim", "trader");
   const o = {
     amm: new OnlinePumpAmmSdk(f.ctx.conn),
@@ -30,17 +32,17 @@ async function trades(f: F): Promise<void> {
   };
   if ((await tokenAmount(f.ctx, f.Q, o.user)) === "0") {
     const amount = new BN(await tokenAmount(f.ctx, f.Q, f.whale.publicKey)).divn(100);
-    await topUp(f, "aux.engine.final.trader.topup", o.user, amount, {});
+    await topUp(f, `aux.engine.${tag}.trader.topup`, o.user, amount, {});
   }
   const quote = BigInt(await tokenAmount(f.ctx, f.Q, o.user)) / 10n;
   const baseOut = await poolBaseOut({ ...o, w: o.user, quote: new BN(applyBps(quote, 9500).toString()) });
   const buy = await poolBuy({ ...o, baseOut, maxQuoteIn: new BN(quote.toString()) });
   const step = "Sim trader PumpSwap buy_v2 on E2's pool (post-bond creator fees accrue)";
-  await land(f, { id: "aux.engine.final.buy", step, payer: trader, ixs: buy }, async () => ({}));
+  await land(f, { id: `aux.engine.${tag}.buy`, step, payer: trader, ixs: buy }, async () => ({}));
   const baseIn = new BN(await tokenAmount(f.ctx, f.coin.mint, o.user));
   const sell = await poolSell({ ...o, baseIn, minQuoteOut: new BN(1) });
   const sellStep = "Sim trader PumpSwap sell_v2 of all of it on E2's pool";
-  await land(f, { id: "aux.engine.final.sell", step: sellStep, payer: trader, ixs: sell }, async () => ({}));
+  await land(f, { id: `aux.engine.${tag}.sell`, step: sellStep, payer: trader, ixs: sell }, async () => ({}));
 }
 
 // The decoded SharingConfig after the update is the row's proof, not the send result (as finalize.ts).
@@ -71,6 +73,27 @@ async function finalize(f: F): Promise<void> {
   });
 }
 
+// The fork deps carry no BONDR price, so any pending fees clear the minimum (the null-price rule, as a collect).
+async function distribute(f: F): Promise<void> {
+  const out = await distributeJob(f.d, f.coin);
+  const detail = (out.rows?.[0]?.detail ?? {}) as Record<string, string>;
+  const step = "Engine distributeJob: sweeps, transfer_creator_fees_to_pump_v2, distribute_creator_fees_v2";
+  record(f, "engine.distribute", step, out, {
+    ...{ deployerAmount: detail.deployerAmount ?? "-1", treasuryAmount: detail.treasuryAmount ?? "-1" },
+  });
+}
+
+// 80:20 by finalize.distribute's rule: both above 0, and the deployer's floor share within 1 base unit.
+const distributeRule: Rule = (row) => {
+  const f = row.facts ?? {};
+  if (!row.sig) return "no signature";
+  const [d, t] = [BigInt(f.deployerAmount ?? -1), BigInt(f.treasuryAmount ?? -1)];
+  if (d <= 0n || t <= 0n) return `amounts ${d} / ${t}, both must be above 0`;
+  const want = ((d + t) * BigInt(FINAL_SHARES.deployer)) / 10000n;
+  const off = d > want ? d - want : want - d;
+  return off <= 1n ? null : `deployer got ${d}, 80% of ${d + t} is ${want}`;
+};
+
 const emptyRule: Rule = (row) => {
   const f = row.facts ?? {};
   if (!row.sig) return "no signature";
@@ -92,6 +115,7 @@ export const engineFinalStage: Stage = {
     "engine.finalize.config": sigOk,
     "engine.finalize.update": finalUpdateRule,
     "engine.finalize.sweep": emptyRule,
+    "engine.distribute": distributeRule,
   }),
   async run(ctx) {
     const s = ctx.file.state;
@@ -110,7 +134,9 @@ export const engineFinalStage: Stage = {
       ...{ cost: null, launchSig: s["E2.sig"], wallet: new PublicKey(s["E2.dev"]), finalize: "none" },
     };
     const f: F = { ...run, d: feeDeps(run), coin };
-    await trades(f);
+    await trades(f, "final");
     await finalize(f);
+    await trades(f, "distribute");
+    await distribute(f);
   },
 };

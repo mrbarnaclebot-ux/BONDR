@@ -76,6 +76,9 @@ export const COPY: Record<PublicKind, Entry> = {
   },
 };
 
+/** A row this build has copy for. The worker deploys apart from web, so a live row can carry a kind added later. */
+export const known = (r: { kind: string }): r is LedgerRow => Object.hasOwn(COPY, r.kind);
+
 /** A landed row's copy; the amount cell is the kind's special value, else the stored SOL value, else none. */
 export function ledgerCopy(r: LedgerRow, symbol: string): Copy {
   const e = COPY[r.kind];

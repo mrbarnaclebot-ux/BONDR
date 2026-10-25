@@ -17,6 +17,10 @@ function patch(list: CoinRow[], mint: string, fn: (c: CoinRow) => CoinRow): Coin
 export const applyTrade = (list: CoinRow[], { coin }: { coin: CoinLive }): CoinRow[] =>
   patch(list, coin.mint, (c) => ({ ...c, ...coin }));
 
+/** A fee event's coin was read before its publish, so it can predate a trade or bond already applied: fees only. */
+export const applyFees = (list: CoinRow[], coin: CoinLive): CoinRow[] =>
+  coin.fees ? patch(list, coin.mint, (c) => ({ ...c, fees: coin.fees })) : list;
+
 type Bond = { mint: string; venue: Venue; bondSig?: string | null; bondedAt?: string | null };
 export const applyBond = (list: CoinRow[], { mint, venue, bondSig, bondedAt }: Bond): CoinRow[] =>
   patch(list, mint, (c) => ({

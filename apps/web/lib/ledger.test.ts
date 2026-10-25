@@ -57,15 +57,23 @@ describe.skipIf(!process.env.DATABASE_URL)("ledgerPage", { timeout: 60_000 }, ()
 
   test("25 rows page as 20 then 5 with no duplicate, ties ordered by id", async () => {
     await sql`delete from fee_ledger where mint = ${coin.mint}`;
-    const at = (i: number) => new Date(Date.now() - 10 * 60_000 - Math.floor(i / 2) * 60_000);
+    // Rows 19 and 20 share a millisecond, so the cursor sits inside a tie.
+    const at = (i: number) => new Date(Date.now() - 10 * 60_000 - Math.floor((i + 1) / 2) * 60_000);
     const rows = Array.from({ length: 25 }, (_, i) => ({ kind: "collect", amount: "1", landed_at: at(i) }));
     const seeded = await seedLedger(sql, coin.mint, rows);
+    const [low, high] = [seeded[19].id, seeded[20].id];
+    // Postgres keeps microseconds the ms cursor cannot carry; the lower id gets the later microsecond, so only
+    // the truncated (ms, id) order puts the higher id first.
+    await sql`update fee_ledger set landed_at = landed_at + interval '456 microseconds' where id = ${low}`;
+    await sql`update fee_ledger set landed_at = landed_at + interval '123 microseconds' where id = ${high}`;
     const first = await ledgerPage(coin.mint);
     expect([first.rows.length, first.more]).toEqual([20, true]);
+    expect(first.rows[19].id).toBe(String(high));
     const cursor = parseLedgerCursor(first.next as string);
     expect(cursor).not.toBeNull();
     const second = await ledgerPage(coin.mint, cursor ?? undefined);
     expect([second.rows.length, second.more]).toEqual([5, false]);
+    expect(second.rows[0].id).toBe(String(low));
     const ids = [...first.rows, ...second.rows].map((r) => r.id);
     expect(new Set(ids).size).toBe(25);
     expect(ids.sort()).toEqual(seeded.map((s) => String(s.id)).sort());

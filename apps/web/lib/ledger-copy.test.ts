@@ -1,7 +1,7 @@
 import type { LedgerRow } from "@bondr/core/api";
 import { PUBLIC_KINDS } from "@bondr/core/fees";
 import { expect, test } from "vitest";
-import { COPY, launchCopy, ledgerCopy } from "./ledger-copy";
+import { COPY, known, launchCopy, ledgerCopy } from "./ledger-copy";
 
 const row = (r: Partial<LedgerRow>): LedgerRow => ({
   id: "1",
@@ -19,6 +19,15 @@ const row = (r: Partial<LedgerRow>): LedgerRow => ({
 test("every public kind has copy, and no internal kind does", () => {
   expect(Object.keys(COPY).sort()).toEqual([...PUBLIC_KINDS].sort());
   for (const k of ["held", "buyback_burn", "reconcile_diff"]) expect(Object.hasOwn(COPY, k)).toBe(false);
+});
+
+test("known drops a kind this build has no copy for", () => {
+  const rows = [
+    row({ kind: "collect" }),
+    { ...row({}), kind: "future_kind" },
+    { ...row({}), kind: "toString" },
+  ];
+  expect(rows.filter(known).map((r) => r.kind)).toEqual(["collect"]);
 });
 
 test("split_treasury reads BONDR in whole units and its SOL value", () => {

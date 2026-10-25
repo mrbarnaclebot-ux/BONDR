@@ -13,6 +13,7 @@ import { useHealth } from "@/lib/use-health";
 import { AuditLog } from "./admin-audit";
 import { AdminHealth } from "./admin-health";
 import { type AdminSessionView, AdminSignIn, SignInAgain, type SignInNotice, SignOut } from "./admin-signin";
+import { KillSwitches } from "./admin-switches";
 import { AdminWallets } from "./admin-wallets";
 import { Callout } from "./callout";
 import { Button } from "./ui-button";
@@ -60,7 +61,7 @@ export function AdminConsole({ wallet, exp, initial }: ConsoleProps) {
 }
 
 // UI-SPEC Layout, DOM order equals visual order. Mounted only while signed in, so the health poll stops with the
-// session. Later plans fill the commented slots; the switches cell stays an empty grid cell until 06-14.
+// session. Later plans fill the commented slots.
 function Grid({ con, onUnauthorized }: { con: Console; onUnauthorized(): void }) {
   const poll = useHealth(onUnauthorized);
   const { overview, loading } = con;
@@ -68,7 +69,7 @@ function Grid({ con, onUnauthorized }: { con: Console; onUnauthorized(): void })
     <>
       <div className="grid gap-6 md:grid-cols-2 min-[68.75rem]:grid-cols-[1.1fr_1fr_1.2fr] [&>*]:min-w-0">
         <AdminWallets overview={overview} busy={loading} />
-        <div>{/* 06-14: <AdminSwitches /> */}</div>
+        <KillSwitches poll={poll} onChanged={con.reload} />
         <AdminHealth
           poll={poll}
           overview={overview}

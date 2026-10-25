@@ -133,14 +133,93 @@ export const coins = pgTable(
     holdersAt: tstz(),
     bondSig: text(),
     bondedAt: tstz(),
+    // Fee engine totals (D-23), base units of BONDR (or the coin for bond_burned) and lamports for *_sol.
+    // No window-start column: the window is derived from launched_at and FEE_WINDOW_MS (RESEARCH Pattern 3).
+    feeBudget: big().notNull().default("0"),
+    feesUnclaimed: big().notNull().default("0"),
+    costToComplete: big(),
+    bondrSol: dbl(),
+    toBuyback: big().notNull().default("0"),
+    toBuybackSol: big().notNull().default("0"),
+    toTreasury: big().notNull().default("0"),
+    toTreasurySol: big().notNull().default("0"),
+    bondSpent: big().notNull().default("0"),
+    bondSpentSol: big().notNull().default("0"),
+    bondBurned: big().notNull().default("0"),
+    deployerEarned: big().notNull().default("0"),
+    deployerEarnedSol: big().notNull().default("0"),
+    finalize: text().notNull().default("none"),
+    deployerBps: smallint(),
   },
   (t) => [
     check("coins_venue", sql`venue in ('curve','complete','pool')`),
     check("coins_bonded", sql`(venue = 'curve') = (bonded_at is null)`),
     check("coins_progress", sql`progress between 0 and 1`),
     check("coins_holders", sql`holders >= 0`),
+    check("coins_finalize", sql`finalize in ('none','held','done')`),
+    check(
+      "coins_fee_totals",
+      sql`fee_budget >= 0 and to_buyback >= 0 and to_buyback_sol >= 0 and to_treasury >= 0 and to_treasury_sol >= 0
+        and bond_spent >= 0 and bond_spent_sol >= 0 and bond_burned >= 0 and deployer_earned >= 0
+        and deployer_earned_sol >= 0`,
+    ),
     index("coins_launched_at").on(t.launchedAt.desc()),
     index("coins_mcap_sol").on(t.mcapSol.desc()),
+  ],
+);
+
+// Every fee movement (D-08). A row is inserted pending before anything is signed, so the partial unique
+// indexes over live states (pending, landed) make a double sweep, split or burn impossible. Each index is
+// partial per kind group because NULLs are distinct in a unique index (RESEARCH Pitfall 1).
+const LIVE = sql`state in ('pending','landed')`;
+export const feeLedger = pgTable(
+  "fee_ledger",
+  {
+    id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    kind: text().notNull(),
+    mint: text().references(() => coins.mint), // null only for the platform buyback_burn
+    state: text(), // null only for held and reconcile_diff, which have no tx
+    amount: big(), // base units of the mint moved (W's |delta| for W txs)
+    burned: big(), // tokens burned (coin units; BONDR for buyback_burn)
+    sol: big(), // lamports at landing
+    signature: text(),
+    lastValidBlockHeight: bigint({ mode: "bigint" }),
+    windowIndex: integer(),
+    ref: bigint({ mode: "number" }), // split_treasury: its collect row id
+    detail: jsonb(),
+    error: text(),
+    createdAt: tstz().notNull().defaultNow(),
+    landedAt: tstz(),
+  },
+  (t) => [
+    check(
+      "fee_ledger_kind",
+      sql`kind in ('collect','split_treasury','sweep_buyback','sweep_treasury','forced_bond','pool_burn',
+        'buyback_burn','finalize_config','finalize_update','distribute','held','reconcile_diff')`,
+    ),
+    check("fee_ledger_state", sql`state in ('pending','landed','failed','expired')`),
+    check(
+      "fee_ledger_tx",
+      sql`(state is null) = (kind in ('held','reconcile_diff')) and (state is null) = (signature is null)`,
+    ),
+    check("fee_ledger_landed", sql`(state = 'landed') = (landed_at is not null)`),
+    check("fee_ledger_ref", sql`(kind = 'split_treasury') = (ref is not null)`),
+    check("fee_ledger_window", sql`kind not in ('sweep_buyback','sweep_treasury') or window_index is not null`),
+    check("fee_ledger_platform", sql`(mint is null) = (kind = 'buyback_burn')`),
+    uniqueIndex("fee_ledger_once")
+      .on(t.mint, t.kind)
+      .where(sql`${LIVE} and kind in ('forced_bond','pool_burn','finalize_config','finalize_update')`),
+    uniqueIndex("fee_ledger_bond_burn")
+      .on(t.mint)
+      .where(sql`${LIVE} and kind in ('forced_bond','pool_burn')`),
+    uniqueIndex("fee_ledger_sweep")
+      .on(t.mint, t.kind, t.windowIndex)
+      .where(sql`${LIVE} and kind in ('sweep_buyback','sweep_treasury')`),
+    uniqueIndex("fee_ledger_split").on(t.ref).where(sql`${LIVE} and kind = 'split_treasury'`),
+    uniqueIndex("fee_ledger_sig_kind").on(t.signature, t.kind),
+    index("fee_ledger_public")
+      .on(t.mint, t.landedAt.desc(), t.id.desc())
+      .where(sql`state = 'landed'`),
   ],
 );
 

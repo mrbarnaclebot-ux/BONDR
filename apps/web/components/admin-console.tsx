@@ -15,10 +15,11 @@ import { AdminHealth } from "./admin-health";
 import { type AdminSessionView, AdminSignIn, SignInAgain, type SignInNotice, SignOut } from "./admin-signin";
 import { KillSwitches } from "./admin-switches";
 import { AdminWallets } from "./admin-wallets";
+import { WTable } from "./admin-wtable";
 import { Callout } from "./callout";
 import { Button } from "./ui-button";
 
-export type ConsoleProps = AdminSessionView & { initial: AdminOverview };
+export type ConsoleProps = AdminSessionView & { initial: AdminOverview; windowMs: number };
 
 type Admin = AdminSessionView & { onUnauthorized(): void };
 const AdminContext = createContext<Admin | null>(null);
@@ -30,7 +31,7 @@ export function useAdmin(): Admin {
   return admin;
 }
 
-export function AdminConsole({ wallet, exp, initial }: ConsoleProps) {
+export function AdminConsole({ wallet, exp, initial, windowMs }: ConsoleProps) {
   const [session, setSession] = useState<AdminSessionView>({ wallet, exp });
   const [gate, setGate] = useState<SignInNotice | null>(null);
   const resume = useCallback((s: AdminSessionView) => {
@@ -38,7 +39,7 @@ export function AdminConsole({ wallet, exp, initial }: ConsoleProps) {
     setGate(null);
   }, []);
   const onUnauthorized = useCallback(() => setGate("ended"), []);
-  const con = useConsole(initial, onUnauthorized);
+  const con = useConsole(initial, onUnauthorized, windowMs);
   if (gate) return <AdminSignIn configured notice={gate} onSignedIn={resume} />;
   return (
     <AdminContext value={{ ...session, onUnauthorized }}>
@@ -54,7 +55,7 @@ export function AdminConsole({ wallet, exp, initial }: ConsoleProps) {
           </TopBar>
           {con.failed && <Callout variant="error">Could not refresh. Try again.</Callout>}
         </div>
-        <Grid con={con} onUnauthorized={onUnauthorized} />
+        <Grid con={con} onUnauthorized={onUnauthorized} windowMs={windowMs} />
       </div>
     </AdminContext>
   );
@@ -62,7 +63,7 @@ export function AdminConsole({ wallet, exp, initial }: ConsoleProps) {
 
 // UI-SPEC Layout, DOM order equals visual order. Mounted only while signed in, so the health poll stops with the
 // session. Later plans fill the commented slots.
-function Grid({ con, onUnauthorized }: { con: Console; onUnauthorized(): void }) {
+function Grid({ con, onUnauthorized, windowMs }: { con: Console; onUnauthorized(): void; windowMs: number }) {
   const poll = useHealth(onUnauthorized);
   const { overview, loading } = con;
   return (
@@ -75,9 +76,16 @@ function Grid({ con, onUnauthorized }: { con: Console; onUnauthorized(): void })
           overview={overview}
           busy={loading}
           className="md:col-span-2 min-[68.75rem]:col-span-1"
+          onSelect={con.select}
         />
       </div>
-      {/* 06-16: <WTable /> */}
+      <WTable
+        overview={overview}
+        busy={loading}
+        windowMs={windowMs}
+        selected={con.selected}
+        onSelect={con.select}
+      />
       {/* 06-17: a row "grid gap-8 min-[68.75rem]:grid-cols-[1.3fr_1fr] min-[68.75rem]:items-start [&>*]:min-w-0"
           holding <AdminTimeline />, then a "grid gap-8" stack of <AdminInspect /> (06-19) and <AdminModeration />
           (06-20) */}

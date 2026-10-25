@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { AdminConsole } from "@/components/admin-console";
 import { AdminSignIn } from "@/components/admin-signin";
 import { type AdminOverview, emptyOverview, overviewData } from "@/lib/admin-data";
+import { feeWindowMs } from "@/lib/coins";
 import { ADMIN_COOKIE, adminSession, adminWalletEnv } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,12 @@ export default async function AdminPage() {
   return (
     <div className="mx-auto w-full max-w-[1440px] px-(--gutter)">
       {session ? (
-        <AdminConsole wallet={session.wallet} exp={session.exp} initial={await load(session.wallet)} />
+        <AdminConsole
+          wallet={session.wallet}
+          exp={session.exp}
+          initial={await load(session.wallet)}
+          windowMs={feeWindowMs()}
+        />
       ) : (
         <AdminSignIn configured={admin !== null} />
       )}

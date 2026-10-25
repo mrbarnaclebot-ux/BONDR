@@ -1,7 +1,7 @@
 import type { AdminCoinMemory } from "@bondr/core/api-admin";
 import { expect, test } from "vitest";
 import type { WRow } from "./admin-data";
-import { budgetSol, chipCounts, firstStuck, sortRows, type WItem, wState } from "./admin-state";
+import { budgetSol, chipCounts, firstStuck, sortRows, type WItem, wItems, wState } from "./admin-state";
 
 const H = 3_600_000;
 const NOW = Date.parse("2026-10-25T12:00:00Z");
@@ -127,4 +127,13 @@ test("budgetSol values the budget at the stored BONDR price", () => {
   expect(budgetSol(row({ feeBudget: "1000", feesUnclaimed: "100", bondrSol: 0.5 }))).toBe(545n);
   expect(budgetSol(row({ feeBudget: "1000" }))).toBeNull();
   expect(budgetSol(row())).toBe(0n);
+});
+
+test("wItems joins memory by mint and sorts", () => {
+  const rows = [row({ mint: "a", venue: "pool", finalize: "done" }), row({ mint: "b" })];
+  const out = wItems(rows, [stuck("sweep"), mem({ mint: "b", hold: "x" })], NOW, WIN);
+  expect(out.map((i) => [i.row.mint, i.state.key])).toEqual([
+    ["b", "held"],
+    ["a", "finalized"],
+  ]);
 });

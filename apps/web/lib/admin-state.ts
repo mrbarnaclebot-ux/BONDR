@@ -150,3 +150,9 @@ export function chipCounts(list: WItem[]): Record<"All" | WChip, number> {
 /** The default selection on open: the first stuck coin in table order, else none. */
 export const firstStuck = (list: WItem[]): string | null =>
   list.find((i) => i.state.chip === "Stuck")?.row.mint ?? null;
+
+/** Every coin of one overview load, joined to its engine memory and sorted for the table. */
+export function wItems(rows: WRow[], coins: AdminCoinMemory[], now: number, windowMs: number): WItem[] {
+  const mem = new Map(coins.map((c) => [c.mint, c]));
+  return sortRows(rows.map((row) => ({ row, state: wState(row, mem.get(row.mint), now, windowMs) })));
+}

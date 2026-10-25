@@ -18,9 +18,10 @@ export function Chips(props: {
   pressed: string;
   onPick(value: string): void;
   size?: "sheet";
+  wrap?: boolean; // the admin filters: auto-width chips that wrap
 }) {
   return (
-    <fieldset className="m-0 flex min-w-0 flex-1 gap-2 border-0 p-0">
+    <fieldset className={cn("m-0 flex min-w-0 flex-1 gap-2 border-0 p-0", props.wrap && "flex-wrap")}>
       <legend className="sr-only">{props.legend}</legend>
       {props.items.map((c) => (
         <button
@@ -32,7 +33,11 @@ export function Chips(props: {
           onClick={() => props.onPick(c.value)}
           className={cn(
             "num flex-1 cursor-pointer rounded-md border border-line text-xs transition-colors duration-(--dur) hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line disabled:hover:text-current aria-pressed:border-mint aria-pressed:text-mint",
-            props.size === "sheet" ? "min-h-11" : "min-h-10",
+            props.wrap
+              ? "min-h-11 flex-none px-3 md:min-h-8"
+              : props.size === "sheet"
+                ? "min-h-11"
+                : "min-h-10",
           )}
         >
           {c.label}

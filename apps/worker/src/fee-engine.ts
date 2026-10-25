@@ -91,6 +91,7 @@ export class Engine {
   }
 
   isReady = (): boolean => this.ready;
+  busy = (mint: string): boolean => this.queue.has(mint); // a job is queued or running on the mint
 
   add(r: CoinLoad): boolean {
     if (this.o.mode === "off") return false;

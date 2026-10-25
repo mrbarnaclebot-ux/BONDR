@@ -40,7 +40,7 @@ const DAY_MS = 86_400_000;
 const logged = (what: string) => (e: unknown) =>
   console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
 
-export type BatchEngine = Pick<Engine, "coins" | "enqueue">;
+export type BatchEngine = Pick<Engine, "coins" | "enqueue" | "busy">;
 export type BatchSummary = {
   opsLow: boolean;
   burn: Landed["state"];
@@ -146,7 +146,7 @@ export async function runBatch(d: FeeDeps, engine: BatchEngine): Promise<BatchSu
   const left = await settleStale(d, (m) => engine.coins.get(m)).catch(logged("fee batch settle"));
   if (left) console.error(`fee batch: ${left} signatures still pending`);
   if (!s.opsLow) await sends(d, engine, s);
-  Object.assign(s, await reconcile(d, engine.coins));
+  Object.assign(s, await reconcile(d, engine.coins, engine.busy));
   console.log(`fee batch: ${JSON.stringify(s)}`);
   return s;
 }

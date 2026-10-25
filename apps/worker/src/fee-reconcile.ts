@@ -65,8 +65,28 @@ async function balances(d: FeeDeps, owners: PublicKey[]): Promise<bigint[]> {
   return out;
 }
 
-// Mints the engine does not hold (another seed or lane) have no W here to read, so they are left out.
-export async function reconcile(d: FeeDeps, coins: ReadonlyMap<string, FeeCoin>) {
+// ponytail: the last diff per account in process memory, so a restart writes one repeat row; read the last
+// reconcile_diff per mint at batch time if repeats after a deploy ever matter.
+const lastDiff = new Map<string, string>();
+
+// A diff that persists unchanged was already recorded and alerted, so it writes no new row (WR-09).
+function isNew(key: string, diff: bigint | null): boolean {
+  if (diff === null) {
+    lastDiff.delete(key);
+    return false;
+  }
+  const seen = lastDiff.get(key) === String(diff);
+  lastDiff.set(key, String(diff));
+  return !seen;
+}
+
+// Mints the engine does not hold (another seed or lane) have no W here to read, so they are left out. A W with a
+// pending row or a busy queue is mid-move, its ledger and chain a moment apart, so it waits for tomorrow (WR-09).
+export async function reconcile(
+  d: FeeDeps,
+  coins: ReadonlyMap<string, FeeCoin>,
+  busy = (_m: string) => false,
+) {
   const implied = await d.ledger.implied();
   const wants = [...implied.byMint].flatMap(([mint, want]) => {
     const coin = coins.get(mint);
@@ -77,13 +97,15 @@ export async function reconcile(d: FeeDeps, coins: ReadonlyMap<string, FeeCoin>)
     d,
     wants.map((w) => w.owner),
   );
+  const moving = new Set((await d.ledger.pending()).map((e) => e.mint));
   let diffs = 0;
   for (const [i, { mint, want }] of wants.entries()) {
-    const got = chain[i] ?? 0n;
+    if (mint && (moving.has(mint) || busy(mint))) continue;
+    const [got, key] = [chain[i] ?? 0n, mint ?? "buyback"];
     const diff = reconcileDiff(want, got);
-    if (diff === null) continue;
-    diffs++;
-    console.error(`reconcile diff ${mint?.slice(0, 8) ?? "buyback"}: chain ${got}, ledger ${want}, ${diff}`);
+    if (diff !== null) diffs++;
+    if (!isNew(key, diff)) continue;
+    console.error(`reconcile diff ${key.slice(0, 8)}: chain ${got}, ledger ${want}, ${diff}`);
     const detail = { implied: String(want), chain: String(got), diff: String(diff) };
     if (d.mode === "on") await d.ledger.diff(mint, detail);
   }

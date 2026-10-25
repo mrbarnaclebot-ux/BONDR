@@ -176,6 +176,7 @@ const engineOf = (coins: FeeCoin[]) => {
   return {
     keys,
     coins: new Map(coins.map((c) => [c.mint.toBase58(), c])),
+    busy: () => false,
     enqueue: async (mint: string, job: () => Promise<unknown>) => {
       keys.push(mint);
       await job();

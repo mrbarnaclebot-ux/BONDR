@@ -53,7 +53,7 @@ function fakeConn(o: { meta?: object; seen?: boolean; send?: () => Promise<strin
   };
 }
 
-function deps(over: Partial<FeeDeps> & { conn?: ReturnType<typeof fakeConn> } = {}) {
+function deps(over: Omit<Partial<FeeDeps>, "conn"> & { conn?: ReturnType<typeof fakeConn> } = {}) {
   const ledger = memoryLedger();
   const recorded: LedgerStore = {
     ...ledger,

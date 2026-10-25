@@ -85,7 +85,11 @@ async function whale(run: Run): Promise<void> {
   }));
 }
 
-async function createChild(run: Run, id: string, key: string): Promise<{ mint: PublicKey; W: Keypair }> {
+export async function createChild(
+  run: Run,
+  id: string,
+  key: string,
+): Promise<{ mint: PublicKey; W: Keypair }> {
   const [mint, dev] = [Keypair.generate(), run.ctx.key("sim", "dev")];
   const W = run.ctx.key("w", mint.publicKey.toBase58());
   await prefundMint(run.ctx, mint.publicKey, dev);

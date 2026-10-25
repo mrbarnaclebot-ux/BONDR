@@ -13,7 +13,7 @@ const DEFERRED: Landed = { state: "unknown" };
 
 // The splits it sent, then DEFERRED while any row is still pending. Dry mode writes nothing, so its pending
 // rows stay as they are, as at boot.
-async function guard(d: FeeDeps, coin: FeeCoin, urgent: boolean): Promise<Landed[]> {
+export async function guard(d: FeeDeps, coin: FeeCoin, urgent: boolean): Promise<Landed[]> {
   const mint = coin.mint.toBase58();
   const held = await d.ledger.pendingFor(mint, HOLDS);
   const left = held.length && d.mode === "on" ? await settleRows(d, held, () => coin) : held.length;

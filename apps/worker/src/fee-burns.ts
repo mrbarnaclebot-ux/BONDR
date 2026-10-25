@@ -12,7 +12,7 @@ import { BN } from "@bondr/core/pump";
 import { tokenDelta } from "@bondr/core/trade";
 import type { TransactionInstruction } from "@solana/web3.js";
 import { finalizeJob } from "./fee-finalize.ts";
-import { spend } from "./fee-guard.ts";
+import { guard, spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
 import { collectJob, settled, wBondr } from "./fee-prebond.ts";
 import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
@@ -97,11 +97,13 @@ export async function poolBurnJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
 }
 
 // FEE-03 on the migration event (Pitfall 6: venue pool, never complete), then finalize (D-18) once the bond's
-// burn, forced or on the pool, is live. With a burn already there, collect and split are left to finalize's
-// closing collect: a collect sweeping the curve as W fails once the sharing config exists, and a restart
-// between the two finalize txs must still resume.
+// burn, forced or on the pool, has landed. A pending one is settled from chain first and finalize waits while it
+// stays pending (WR-02): a dropped pool burn must be sent again, never closing-swept 90/10. With a burn already
+// there, collect and split are left to finalize's closing collect: a collect sweeping the curve as W fails once
+// the sharing config exists, and a restart between the two finalize txs must still resume.
 export async function bondedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
-  const out: Landed[] = [];
+  const out = await guard(d, coin, true);
+  if (!out.every(settled)) return out;
   if (!(await d.ledger.has(coin.mint.toBase58(), BOND_KINDS))) {
     out.push(...(await collectThen(d, coin, () => poolBurnJob(d, coin))));
     if (!out.every(settled)) return out;

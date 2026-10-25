@@ -54,7 +54,8 @@ const qMeta = (wDelta: bigint) => ({
 });
 
 let jobs: Job[];
-function deps(o: { balance?: bigint; metas?: object[] } = {}): FeeDeps {
+type Status = { confirmationStatus: string; err: unknown } | null;
+function deps(o: { balance?: bigint; metas?: object[]; statuses?: () => Status[] } = {}): FeeDeps {
   const ledger = memoryLedger();
   const metas = [...(o.metas ?? [])];
   let n = 0;
@@ -67,6 +68,12 @@ function deps(o: { balance?: bigint; metas?: object[] } = {}): FeeDeps {
         if (o.balance === undefined) throw new Error("Invalid param: could not find account");
         return { value: { amount: String(o.balance) } };
       },
+      // An earlier row's chain status: an RPC error unless the test scripts one.
+      getSignatureStatuses: async () => {
+        if (!o.statuses) throw new Error("rpc down");
+        return { value: o.statuses() };
+      },
+      getBlockHeight: async () => 100,
     },
     async land(job: Job): Promise<Landed> {
       jobs.push(job);
@@ -142,6 +149,7 @@ test("bondedJob with an empty budget or after a forced bond lands no pool_burn",
   jobs = [];
   const d = deps({ balance: 900n });
   await d.ledger.insertPending([{ kind: "forced_bond", mint: MINT.toBase58() }], "x", 1n);
+  await d.ledger.settle("x", "landed");
   await bondedJob(d, { ...coin, venue: "pool" });
   expect(kinds()).toEqual([]); // finalize's closing collect takes what came after the forced bond
   expect(core.finalize).toHaveBeenCalledTimes(2); // a forced bond's coin finalizes too
@@ -155,4 +163,24 @@ test("poolBurnJob falls back to buy_v2 of what 95% buys when exact-quote-in fail
   expect(bondJob()?.rows[0]).toMatchObject({ amount: 1000n, burned: 333n, detail: { path: "buy_v2" } });
   expect(String(warn.mock.calls[0]?.[0])).not.toContain("SECRET-KEY"); // WR-07: RPC text can carry the key
   warn.mockRestore();
+});
+
+// WR-02: a dropped pool burn must be sent again, never closing-swept 90/10 by finalize.
+test("bondedJob with a pending pool_burn leaves finalize for later while its status is unknown", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const d = deps({ balance: 900n });
+  await d.ledger.insertPending([{ kind: "pool_burn", mint: MINT.toBase58() }], "x", 50n);
+  expect((await bondedJob(d, { ...coin, venue: "pool" })).map((l) => l.state)).toEqual(["unknown"]);
+  expect(core.finalize).not.toHaveBeenCalled();
+  expect(jobs).toEqual([]);
+  vi.restoreAllMocks();
+});
+
+test("bondedJob sends the pool burn again once the pending one failed on chain, then finalizes", async () => {
+  const failed = { confirmationStatus: "confirmed", err: { InstructionError: [0, { Custom: 1 }] } };
+  const d = deps({ balance: 900n, statuses: () => [failed] });
+  await d.ledger.insertPending([{ kind: "pool_burn", mint: MINT.toBase58() }], "x", 50n);
+  await bondedJob(d, { ...coin, venue: "pool" });
+  expect(kinds()).toEqual(["collect", "pool_burn"]);
+  expect(core.finalize).toHaveBeenCalledOnce();
 });

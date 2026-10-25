@@ -102,13 +102,14 @@ test("pauseAll switches all five jobs off and stamps evacuatedAt in one UPDATE, 
   await loadSwitches();
   await pauseAll();
   expect(m.sets).toHaveLength(1);
-  const [set] = m.sets as Record<string, unknown>[];
+  const set = m.sets[0] as Record<string, unknown>;
   expect(set).toMatchObject({
     ...{ launchesEnabled: false, forcedBondEnabled: false, sweepsEnabled: false },
     ...{ finalizeEnabled: false, buybackBurnEnabled: false },
   });
-  expect(set?.evacuatedAt).toBeInstanceOf(Date);
+  expect(set.evacuatedAt).toBeInstanceOf(Date);
   const s = switchState();
-  for (const j of ["launches", "forcedBond", "sweeps", "finalize", "buybackBurn"] as const) expect(s[j]).toBe(false);
-  expect(s.evacuatedAt).toBe((set?.evacuatedAt as Date).toISOString());
+  for (const j of ["launches", "forcedBond", "sweeps", "finalize", "buybackBurn"] as const)
+    expect(s[j]).toBe(false);
+  expect(s.evacuatedAt).toBe((set.evacuatedAt as Date).toISOString());
 });

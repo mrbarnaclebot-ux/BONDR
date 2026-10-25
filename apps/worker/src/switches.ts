@@ -50,3 +50,14 @@ export async function setJob(job: AdminJob, on: boolean): Promise<AdminSwitches>
   const { evacuatedAt: _, ...switches } = state;
   return switches;
 }
+
+// EVACUATE (D-35): every switch off, launches included, and evacuated_at in one write, then memory re-read from
+// the row so it carries evacuatedAt. The switches stay off until the owner turns each back on (D-36).
+export async function pauseAll(): Promise<void> {
+  const off = Object.fromEntries(Object.values(COLUMN).map((c) => [c, false]));
+  await db()
+    .update(settings)
+    .set({ ...off, evacuatedAt: new Date() })
+    .where(eq(settings.id, 1));
+  await loadSwitches();
+}

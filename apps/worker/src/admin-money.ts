@@ -4,14 +4,14 @@
 // alone moves nothing), writes the pending audit row before anything is sent, and runs the job once more through
 // deps whose land re-checks each tx's destinations. Nothing is resent: an unknown result stays unknown.
 import type { AdminIntentView, AdminSimResult, AdminTxAction } from "@bondr/core/api-admin";
-import { redact } from "@bondr/core/net";
 import { OnlinePumpSdk } from "@bondr/core/pump";
-import { tradeError } from "@bondr/core/trade-error";
 import type { Connection } from "@solana/web3.js";
 import { ACTIONS, type ActionDef, type ActionView, actionView, runOn } from "./admin-actions.ts";
-import type { AuditStore, Final } from "./admin-audit.ts";
+import type { AuditStore } from "./admin-audit.ts";
 import { type Allowed, passedLines, refusedDestination } from "./admin-dest.ts";
+import type { EvacCoin } from "./admin-evacuate.ts";
 import { type Intent, putIntent, take, updateIntent, viewIntent } from "./admin-intent.ts";
+import { codeOf, gatedDeps, logged, outcome, progress } from "./admin-send.ts";
 import { captureDeps, type Step, simSummary } from "./admin-sim.ts";
 import type { WorkerEnv } from "./env.ts";
 import { feeDeps } from "./fee-boot.ts";
@@ -25,12 +25,13 @@ export type MoneyCtx = {
   audit: AuditStore;
   admin: string | null; // injectable, so the fork stage signs with its test key
   now?: () => number;
+  evacuate?: "simulate" | "on"; // ADMIN_EVACUATE; absent means simulate only (A2)
+  coins?: () => Promise<EvacCoin[]>; // EVACUATE's coin list; absent reads every coin of this seed
 };
 type SimReq = { actor: string; action: AdminTxAction; mint: string | null };
 type ExecReq = { actor: string; id: string; signature: Uint8Array };
 type IntentData = { allowed: Allowed; summary: AdminSimResult };
 type Run = { def: ActionDef; view: ActionView; allowed: Allowed; auditId: string };
-type Out = { state: AdminIntentView["state"]; result: Final; error?: string };
 
 const clock = (c: MoneyCtx) => (c.now ?? Date.now)();
 
@@ -39,21 +40,6 @@ const clock = (c: MoneyCtx) => (c.now ?? Date.now)();
 export function adminBase(env: WorkerEnv, conn: Connection): FeeDeps {
   const online = new OnlinePumpSdk(conn);
   return feeDeps({ conn, online, Q: env.quoteMint, priorityFee: env.priorityFee }, env, "on");
-}
-
-// D-14, D-16: admin runs ignore switches and holds, but every tx is checked against the allowlist right before
-// it is sent. A refusal answers skipped, which settled() reads as a stop, so later steps never build.
-export function gatedDeps(base: FeeDeps, allowed: Allowed, onRefused: (to: string) => void): FeeDeps {
-  return {
-    ...base,
-    allowed: () => true,
-    land: async (job) => {
-      const to = refusedDestination(job.ixs, allowed);
-      if (!to) return base.land(job);
-      onRefused(to);
-      return { state: "skipped" };
-    },
-  };
 }
 
 // Evacuate has no registry entry (06-22), so an intent for it can never reach a job.
@@ -67,15 +53,6 @@ async function viewOf(ctx: MoneyCtx, mint: string | null): Promise<ActionView> {
   const view = await actionView(ctx.deps, mint, ctx.engine);
   if (mint && !view.coin) throw fail({ error: "not_found" });
   return view;
-}
-
-// Only a contract code reaches the browser, never the RPC's own text.
-function codeOf(err: string): string {
-  try {
-    return tradeError(JSON.parse(err), null).error;
-  } catch {
-    return "simulation_failed";
-  }
 }
 
 // What the owner signs: each named destination with its full address; the coin's own W is an internal move.
@@ -142,33 +119,6 @@ export async function executeAction(ctx: MoneyCtx, req: ExecReq): Promise<{ id: 
   }
   void send(ctx, e, run).catch(logged(e.action));
   return { id: e.id };
-}
-
-const logged = (action: string) => (err: unknown) => {
-  const text = err instanceof Error ? err.message : String(err);
-  console.error(`admin ${action} failed: ${redact(text)}`);
-};
-
-const progress = (seen: Landed[]) => ({
-  sigs: seen.flatMap((l) => (l.sig ? [l.sig] : [])),
-  landed: seen.filter((l) => l.state === "landed").length,
-  total: seen.length,
-});
-
-// Refused first: the lock fired. Then unknown, never resent: the owner refreshes once the chain answers.
-function outcome(seen: Landed[], refused: string | null, threw: boolean): Out {
-  if (refused) return { state: "refused", result: "refused", error: "destination_refused" };
-  if (seen.some((l) => l.state === "unknown"))
-    return { state: "unknown", result: "failed", error: "unconfirmed" };
-  const bad = seen.find((l) => l.state !== "landed" && l.state !== "done");
-  if (bad) {
-    const why =
-      bad.state === "skipped" ? "ops_low" : bad.code === undefined ? "send_failed" : `code ${bad.code}`;
-    return { state: "failed", result: "failed", error: why };
-  }
-  if (threw) return { state: "failed", result: "failed", error: "build_failed" };
-  if (!seen.length) return { state: "failed", result: "failed", error: "nothing_sent" };
-  return { state: "landed", result: "landed" };
 }
 
 // Pitfall 9: on the coin's queue when the engine runs, so it never overlaps the coin's automatic jobs.

@@ -62,7 +62,12 @@ function token(mint: PublicKey, owner: PublicKey, amount: bigint): Info {
 function coin(lamports = 5_000_000n, bondr = 1_000_000n, child = 42_000_000n) {
   const c = { mint: PublicKey.unique(), w: Keypair.generate() };
   const w = c.w.publicKey;
-  if (lamports) chain.set(w.toBase58(), { lamports: Number(lamports), data: Buffer.alloc(0), owner: SystemProgram.programId });
+  if (lamports)
+    chain.set(w.toBase58(), {
+      lamports: Number(lamports),
+      data: Buffer.alloc(0),
+      owner: SystemProgram.programId,
+    });
   if (bondr) chain.set(ata(Q, w).toBase58(), token(Q, w, bondr));
   if (child) chain.set(ata(c.mint, w).toBase58(), token(c.mint, w, child));
   return c;
@@ -81,7 +86,13 @@ const conn = {
     await new Promise((r) => setTimeout(r, sims.delay));
     sims.inFlight--;
     const bad = sims.failOn && tx.message.staticAccountKeys.some((k) => k.equals(sims.failOn as PublicKey));
-    return { value: { err: bad ? { InstructionError: [2, { Custom: 1 }] } : null, unitsConsumed: 9_000, accounts: null } };
+    return {
+      value: {
+        err: bad ? { InstructionError: [2, { Custom: 1 }] } : null,
+        unitsConsumed: 9_000,
+        accounts: null,
+      },
+    };
   },
 };
 
@@ -104,7 +115,11 @@ beforeEach(() => {
 const balances = (n: number) => evacuateBalances(deps, coins(n));
 const perW = (bs: WBalance[]) => bs.map((b) => ({ b, ixs: buildBatch(deps, [b]).ixs.slice(1) }));
 const sizeOf = (ixs: TransactionInstruction[]) =>
-  wireSize(OPS.publicKey, [ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }), ComputeBudgetProgram.setComputeUnitLimit({ units: 1 }), ...ixs]);
+  wireSize(OPS.publicKey, [
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }),
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 1 }),
+    ...ixs,
+  ]);
 
 test("balances come from one read per 100 accounts and skip an empty W", async () => {
   const cs = [...coins(39), coin(0n, 0n, 0n)];
@@ -159,7 +174,12 @@ test("a batch pays only the treasury, burns child tokens and lets each W sign", 
   }
   expect(seen).toEqual({ transfer: 3, burn: 3, sol: 3 });
   const mints = [Q, ...bs.map((b) => b.mint)];
-  const loose = allowFor({ treasury: TREASURY, internal: bs.map((b) => b.w.publicKey), mints, closeTo: TREASURY });
+  const loose = allowFor({
+    treasury: TREASURY,
+    internal: bs.map((b) => b.w.publicKey),
+    mints,
+    closeTo: TREASURY,
+  });
   expect(refusedDestination(job.ixs, loose)).toBeNull();
   const strict = allowFor({ treasury: TREASURY, internal: [], mints: [Q], closeTo: TREASURY });
   expect(refusedDestination(job.ixs, strict)).toBeNull();

@@ -9,7 +9,7 @@ import { OnlinePumpSdk } from "@bondr/core/pump";
 import { seedBondrPrice } from "./bondr-price.ts";
 import { loadEnv, type WorkerEnv } from "./env.ts";
 import { endStreams, eventsHandler } from "./events-route.ts";
-import { feeEngine, startEngine } from "./fee-engine.ts";
+import { feeEngine, startEngine } from "./fee-boot.ts";
 import { feeRoutes } from "./fee-routes.ts";
 import { startRefill } from "./grind.ts";
 import { start } from "./http.ts";

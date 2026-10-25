@@ -39,5 +39,6 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `fee-reconcile.ts`: `reconcile` (each W's and the buyback's ledger-implied BONDR against the chain, 100 accounts per read; a difference writes a reconcile_diff row and a Sentry error, never moves funds), `impliedOf`, `pgImplied`.
 - `fee-routes.ts`: `feeRoutes`, the bearer POST /fee/release (the owner names a held coin's deployer; one finalize runs with it) and POST /fee/batch (runs the batch now).
 - `fee-recover.ts`: `recover`, the boot settle of every pending fee row from chain status (never a resend) and the split of every open collect; `settleRows` (the same settle at runtime), `settleStale` (the daily batch's settle of rows past their blockhash), `recoverAction`.
-- `fee-engine.ts`: `startEngine` (one boot read, recover, then arm), the `Engine` (per-coin serial queue, window timers from launch, ready gate), `onIngest` (forced bond trigger per curve patch, bonded job on venue pool) and `withCost` (cost to complete on every curve patch). One worker replica only (D-07).
+- `fee-engine.ts`: the `Engine` (per-coin serial queue, window timers from launch, ready gate, forced bond trigger per curve patch, bonded job on venue pool) and `coinFrom`. One worker replica only (D-07).
+- `fee-boot.ts`: `startEngine` (one boot read, recover, then arm), the engine singleton (`feeEngine`, `onIngest`), `feeDeps` and `withCost` (cost to complete on every curve patch).
 - `*.test.ts`: vitest checks; DB-backed ones skip without DATABASE_URL.

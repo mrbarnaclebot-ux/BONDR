@@ -5,31 +5,18 @@
 // ponytail: one replica, all engine state in this process. Add a Postgres advisory lock if the worker ever
 // runs two, or both would send every window.
 import type { Venue } from "@bondr/core/api";
-import { costFromReserves } from "@bondr/core/curve";
-import { coins, db, launches } from "@bondr/core/db";
 import { type LandedRow, totalsFor, windowEnd, windowOf } from "@bondr/core/fees";
-import { derive } from "@bondr/core/keys";
 import { redact } from "@bondr/core/net";
-import { OnlinePumpAmmSdk, type OnlinePumpSdk } from "@bondr/core/pump";
-import type { CoinPatch, Parsed } from "@bondr/core/trades";
-import { type Connection, type Keypair, PublicKey } from "@solana/web3.js";
-import { eq } from "drizzle-orm";
-import { publishFee } from "./announce.ts";
-import { bondrPrice } from "./bondr-price.ts";
-import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
-import { scheduleBatch } from "./fee-batch.ts";
+import type { CoinPatch } from "@bondr/core/trades";
+import { type Keypair, PublicKey } from "@solana/web3.js";
 import { bondedJob, forceDue, forcedJob } from "./fee-burns.ts";
-import { feeConfig } from "./fee-config.ts";
 import { finalizeJob } from "./fee-finalize.ts";
 import { windowJob } from "./fee-guard.ts";
-import { type Entry, pgLedger } from "./fee-ledger.ts";
-import { recover } from "./fee-recover.ts";
-import { type FeeCoin, type FeeDeps, type Landed, land, noteOps } from "./fee-send.ts";
-import type { Ctx } from "./status.ts";
-import { configs } from "./trade-state.ts";
+import type { Entry } from "./fee-ledger.ts";
+import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
 
 export type Mode = "off" | "dry" | "on";
-type WOf = (mint: string) => Keypair;
+export type WOf = (mint: string) => Keypair;
 export type CoinLoad = {
   mint: string;
   w: string; // launches.w
@@ -54,7 +41,7 @@ type Opts = { mode: Mode; deps?: FeeDeps; windowMs: number; wOf: WOf };
 
 const RANK: Record<Venue, number> = { curve: 0, complete: 1, pool: 2 };
 
-const logged = (what: string) => (e: unknown) =>
+export const logged = (what: string) => (e: unknown) =>
   console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
 
 const summary = (out: Landed[]) => out.map((l) => l.state).join(", ") || "nothing";
@@ -218,82 +205,5 @@ export class Engine {
   private clear(mint: string): void {
     clearTimeout(this.timers.get(mint));
     this.timers.delete(mint);
-  }
-}
-
-let engine: Engine | null = null;
-export const feeEngine = (): Engine | null => engine;
-let costCtx: { net: WorkerEnv["net"]; Q: PublicKey; wOf: WOf } | null = null;
-
-// Called by announce after every committed ingest, live and gap fill. Before startEngine it is a no-op.
-export const onIngest = (w: Ingested): void => engine?.onIngest(w);
-
-// One boot read: every coin with its launch's W, signature and wallet.
-const loadRows = (): Promise<CoinLoad[]> =>
-  db()
-    .select({
-      ...{ mint: coins.mint, w: launches.w, launchSig: launches.signature, wallet: launches.wallet },
-      ...{ launchedAt: coins.launchedAt, venue: coins.venue, feeBudget: coins.feeBudget },
-      ...{ feesUnclaimed: coins.feesUnclaimed, cost: coins.costToComplete, finalize: coins.finalize },
-    })
-    .from(coins)
-    .innerJoin(launches, eq(launches.id, coins.launchId));
-
-function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
-  const d: FeeDeps = {
-    ...{ net: env.net, mode, conn: ctx.conn, Q: ctx.Q, ledger: pgLedger(), windowMs: env.feeWindowMs },
-    online: ctx.online as InstanceType<typeof OnlinePumpSdk>,
-    amm: new OnlinePumpAmmSdk(ctx.conn),
-    ops: ops(env.seed, env.net),
-    treasury: treasury(env.seed, env.net).publicKey,
-    buyback: buyback(env.seed, env.net, env.lane),
-    bondrSol: () => bondrPrice.get(),
-    publish: (mint, rows) => {
-      engine?.landed(mint, rows);
-      publishFee(mint, rows).catch(logged("fee publish"));
-    },
-    land: (job) => land(d, job),
-  };
-  return d;
-}
-
-// Boot, after loadCoins and before the backfill and the stream: load, settle every pending row, then arm.
-// A retried index boot keeps an engine that already started, so no window is ever armed twice.
-export async function startEngine(ctx: Ctx, env: WorkerEnv): Promise<void> {
-  const wOf: WOf = (mint) => derive(env.seed, "w", env.net, mint);
-  costCtx = { net: env.net, Q: ctx.Q, wOf };
-  if (env.feeEngine === "off") return console.log("fee engine off");
-  if (engine?.isReady()) return;
-  const deps = feeDeps(ctx, env, env.feeEngine);
-  const e = new Engine({ mode: env.feeEngine, deps, windowMs: env.feeWindowMs, wOf });
-  engine = e;
-  for (const r of await loadRows()) e.add(r);
-  noteOps(await ctx.conn.getBalance(deps.ops.publicKey));
-  await recover(deps, (m) => e.coins.get(m));
-  console.log(`fee engine ${env.feeEngine}: ${e.start()} coins armed`);
-  scheduleBatch(deps, e, env.feeBatchHourUtc);
-}
-
-const hasReserves = (p: CoinPatch) =>
-  p.virtualTokenReserves !== undefined &&
-  p.virtualQuoteReserves !== undefined &&
-  p.realTokenReserves !== undefined &&
-  p.realQuoteReserves !== undefined;
-
-// Cost to complete on every curve patch, so it rides the trade write that already happens (D-23). Runs in
-// every mode: the panel shows it with the engine off. A failure leaves the cost unset, never fails the write.
-export async function withCost(conn: Connection, parsed: Parsed): Promise<void> {
-  const c = costCtx;
-  const curve = parsed.patches.filter((p) => !p.venue && hasReserves(p));
-  if (!c || !curve.length) return;
-  try {
-    const { global, feeConfig: fc } = await configs({ conn });
-    const creatorFeeBps = feeConfig(c.net).creatorFeeBps;
-    for (const p of curve) {
-      const ids = { creator: c.wOf(p.mint).publicKey, quoteMint: c.Q, creatorFeeBps };
-      p.costToComplete = String(costFromReserves(p as Required<CoinPatch>, { global, feeConfig: fc }, ids));
-    }
-  } catch (e) {
-    logged("cost to complete")(e);
   }
 }

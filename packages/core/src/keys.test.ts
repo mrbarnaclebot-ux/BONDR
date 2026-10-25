@@ -26,6 +26,12 @@ describe("derive", () => {
     expect(local).not.toBe(pk(master, "w", "devnet", "local.7"));
   });
 
+  test("the buyback key is its own role", () => {
+    const buyback = pk(master, "buyback", "devnet", "local");
+    expect(buyback).not.toBe(pk(master, "treasury", "devnet", "local"));
+    expect(buyback).not.toBe(pk(master, "ops", "devnet", "local"));
+  });
+
   test("a different master gives a different key", () => {
     const other = Buffer.alloc(32, 7);
     expect(pk(other, "w", "devnet", "X")).not.toBe(pk(master, "w", "devnet", "X"));

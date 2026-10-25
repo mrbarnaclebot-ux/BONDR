@@ -10,8 +10,18 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+import bs58 from "bs58";
 import { describe, expect, test } from "vitest";
-import { checkMessage, PACKET_LIMIT, pace, preflightRejected, sendRaw, statusOf, wireSize } from "./send.ts";
+import {
+  checkMessage,
+  PACKET_LIMIT,
+  pace,
+  preflightRejected,
+  sendRaw,
+  signTx,
+  statusOf,
+  wireSize,
+} from "./send.ts";
 
 const payer = Keypair.generate();
 const to = Keypair.generate().publicKey;
@@ -126,5 +136,39 @@ describe("sendRaw", () => {
   test("a network error is unknown, with the signature and lastValidBlockHeight", async () => {
     const r = await sendRaw(throwing(new Error("fetch failed")), new Uint8Array(1), opts);
     expect(r).toMatchObject({ status: "unknown", sig: "SiG", lastValidBlockHeight: 77 });
+  });
+});
+
+describe("signTx", () => {
+  const conn = {} as Connection; // never touched: signTx is offline
+  const bh = { blockhash: BH, lastValidBlockHeight: 1 };
+  const sign = (ixs: TransactionInstruction[]) => signTx({ conn, payer, ixs, bh });
+
+  test("refuses a program outside the allowlist", () => {
+    const r = sign([transfer, program("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")]);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.err).toMatch(/^refused to sign/);
+  });
+
+  test("refuses a message over the packet limit", () => {
+    const many = Array.from({ length: 40 }, () =>
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: Keypair.generate().publicKey,
+        lamports: 1,
+      }),
+    );
+    const r = sign(many);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.err).toMatch(/^too large/);
+  });
+
+  test("signs without sending; sig is the payer's slot-0 signature", () => {
+    const r = sign([transfer]);
+    if (!r.ok) throw new Error(r.err);
+    expect(r.bytes).toBeGreaterThan(0);
+    const tx = VersionedTransaction.deserialize(r.raw);
+    expect(r.sig).toBe(bs58.encode(tx.signatures[0]));
+    expect(tx.message.staticAccountKeys[0].equals(payer.publicKey)).toBe(true);
   });
 });

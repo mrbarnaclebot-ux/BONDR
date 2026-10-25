@@ -1,9 +1,15 @@
-// The health snapshot (D-22, D-26): every field from worker memory. The database module is an empty mock, so any
-// use of it throws and fails the test; the console polls this every 10 s and must never wake Neon.
+// The health snapshot (D-22, D-26): every field from worker memory. The database module keeps its table objects
+// (other admin routes build queries from them at import) but db() throws, so any query fails the test; the
+// console polls this every 10 s and must never wake Neon.
 import { Keypair } from "@solana/web3.js";
 import { expect, test, vi } from "vitest";
 
-vi.mock("@bondr/core/db", () => ({}));
+vi.mock("@bondr/core/db", async (actual) => ({
+  ...(await actual<typeof import("@bondr/core/db")>()),
+  db: () => {
+    throw new Error("health touched the database");
+  },
+}));
 
 const { adminRoutes } = await import("./admin-routes.ts");
 const { bootAt, healthSnapshot, instance, mark } = await import("./health.ts");

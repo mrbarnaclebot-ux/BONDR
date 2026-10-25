@@ -45,7 +45,10 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `fee-stuck.ts`: stuck-step bookkeeping since boot: `STUCK_AT`, `stepOf` (step from the job label), `verdict` (failed or landed result), `codeOf` (short redacted error code).
 - `fee-boot.ts`: `startEngine` (one boot read, recover, then arm), the engine singleton (`feeEngine`, `onIngest`), `feeDeps`, `loadCoin` (one coin for the engine-off admin path) and `withCost` (cost to complete on every curve patch).
 - `health.ts`: memory-only health facts (D-26): `bootAt`, `instance`, `mark`/`marks` (the stream's last message and each fee job's last run since boot) and `healthSnapshot`, the POST /admin/health answer (never a database read, D-22).
-- `admin-routes.ts`: `adminRoutes`, every owner console route, each wrapped once by `gated` (403 unless ADMIN_WALLET is set and body.actor matches it); POST /admin/health.
+- `admin-routes.ts`: `adminRoutes`, every owner console route, each wrapped once by `gated` (403 unless ADMIN_WALLET is set and body.actor matches it); POST /admin/health, /admin/switch, /admin/act, /admin/overview, /admin/coin-live.
+- `admin-audit.ts`: the one admin audit writer (D-33, D-34): `pgAudit` and `memoryAudit` with `insertPending` (money actions, before any send), `settle` (guarded update, once) and `insertLanded` (session-only actions). A failed write logs its SQLSTATE only.
+- `admin-act.ts`: session-only actions (D-13), each audited before the change: `switchRoute` (`setJob`), `act` hold, release hold (also resets a finalize-held coin to none) and re-check launch (one status read, then settle's `landed`).
+- `admin-overview.ts`: `overview` (treasury, buyback, ops and their BONDR in one getMultipleAccountsInfo, plus engine memory per coin) and `coinLive` (the selected coin's W, W BONDR and W child in one call, its memory and window).
 - `rpc-stats.ts`: `timedFetch` (the worker Connection's fetch) keeps the last hour of RPC calls in memory, 50,000 cap; `rpcStats` gives p50, p95, error rate and 429s.
 - `sentry-count.ts`: `sentryCount`, open issues for bondr-web and bondr-worker from the Sentry API with SENTRY_READ_TOKEN, cached 60 s, no request without a token.
 - `*.test.ts`: vitest checks; DB-backed ones skip without DATABASE_URL.

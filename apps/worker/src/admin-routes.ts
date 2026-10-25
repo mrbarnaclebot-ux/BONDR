@@ -4,6 +4,7 @@ import { db } from "@bondr/core/db";
 import type { Connection } from "@solana/web3.js";
 import { type ActDeps, act, switchRoute } from "./admin-act.ts";
 import { pgAudit } from "./admin-audit.ts";
+import { coinLive, overview } from "./admin-overview.ts";
 import type { WorkerEnv } from "./env.ts";
 import type { Engine } from "./fee-engine.ts";
 import { healthSnapshot } from "./health.ts";
@@ -39,6 +40,8 @@ export function adminRoutes(o: AdminOpts): Routes {
     "POST /admin/health": () => healthSnapshot(o),
     "POST /admin/switch": (b) => switchRoute(deps(), b),
     "POST /admin/act": (b) => act(deps(), b),
+    "POST /admin/overview": () => overview(o),
+    "POST /admin/coin-live": (b) => coinLive(o, b),
   };
   return Object.fromEntries(Object.entries(routes).map(([k, h]) => [k, gated(o.env.adminWallet, h)]));
 }

@@ -20,6 +20,7 @@ import { resumeLaunches } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
 import { backoff, startStream } from "./stream.ts";
 import { submit } from "./submit.ts";
+import { loadSwitches } from "./switches.ts";
 import { prepareTrade } from "./trade-prepare.ts";
 import { quoteTrade, tradeBalance } from "./trade-quote.ts";
 import { submitTrade, viewTrade } from "./trade-submit.ts";
@@ -27,13 +28,18 @@ import { submitTrade, viewTrade } from "./trade-submit.ts";
 const failed = (what: string) => (e: unknown) =>
   console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
 
-// The coin registry and BONDR's price in memory, the fee engine (boot recovery before any job), a one-time
+// The coin registry, BONDR's price and the owner's switches in memory, the fee engine (boot recovery before any job), a one-time
 // pass over launches not indexed yet, then the live stream (which gap fills every coin on open). A failure retries with the stream's capped backoff: every
 // step is idempotent, and exiting instead would also stop launches once Railway's restart retries run out.
 async function bootIndex(ctx: Ctx, env: WorkerEnv, attempt = 0): Promise<void> {
   try {
     await seedBondrPrice(ctx);
     await loadCoins(db());
+    const s = await loadSwitches();
+    const [l, f, w, z, b] = [s.launches, s.forcedBond, s.sweeps, s.finalize, s.buybackBurn].map((v) =>
+      v ? "on" : "off",
+    );
+    console.log(`switches: launches=${l} forcedBond=${f} sweeps=${w} finalize=${z} buybackBurn=${b}`);
     await startEngine(ctx, env);
     console.log(`backfilled ${await backfillLaunches(ctx.conn)} launches`);
   } catch (e) {

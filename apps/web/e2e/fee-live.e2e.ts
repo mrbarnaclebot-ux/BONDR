@@ -1,9 +1,10 @@
 // Live fee events on the token page (D-22) over a stubbed /api/live, released after the server render: a landed
 // collect and split pair lands on top of the ledger, the totals and Supply burned stat follow the event's coin,
-// the polite region reads the burst once, and a resync refetches the ledger's first page exactly once.
+// the polite region reads the burst once, and a resync refetches the ledger's first page exactly once and merges
+// it by id with the seeded pair already shown.
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { dropCoin, fakeSig, type Seeded, seedCoin } from "./fixtures.ts";
+import { dropCoin, fakeSig, type Seeded, seedCoin, seedLedger } from "./fixtures.ts";
 import { rootEnv } from "./phantom.ts";
 
 const url = rootEnv().DATABASE_URL;
@@ -34,6 +35,11 @@ const entries = (page: Page) =>
 let coin: Seeded;
 test.beforeAll(async () => {
   coin = await seedCoin(db(), { trades: 2 });
+  const ago = (min: number) => new Date(Date.now() - min * 60_000);
+  await seedLedger(db(), coin.mint, [
+    { kind: "collect", amount: "10000000", sol: "30000000", window_index: 0, landed_at: ago(10) },
+    { kind: "sweep_treasury", amount: "1000000", sol: "3000000", window_index: 0, landed_at: ago(9) },
+  ]);
 });
 test.afterAll(async () => {
   if (coin) await dropCoin(db(), coin.mint);
@@ -112,17 +118,17 @@ test("a fee event lands on top, updates the totals and stat, and is announced on
   const event = feeEvent(coin.mint);
   await stubLive(page, [["fee", event]], gate);
   await page.goto(`/coin/${coin.mint}`);
-  await expect(entries(page)).toHaveCount(1); // the launch row, server rendered
+  await expect(entries(page)).toHaveCount(3); // the seeded pair and the launch row, server rendered
   open();
 
-  await expect(entries(page)).toHaveCount(3);
+  await expect(entries(page)).toHaveCount(5);
   await expect(entries(page).nth(0)).toContainText("Split 90/10");
   await expect(entries(page).nth(1)).toContainText("Collect");
   await expect(entries(page).nth(0).getByRole("link")).toHaveAttribute(
     "href",
     new RegExp(event.rows[1].signature),
   );
-  await expect(entries(page).nth(2)).toContainText("Launch burn");
+  await expect(entries(page).nth(4)).toContainText("Launch burn");
   await expect(ledger(page).locator('dt:text-is("To treasury") + dd')).toHaveText("0.003 SOL");
   await expect(page.locator('dt:text-is("Supply burned") + dd').first()).toHaveText("5.00%");
   await expect(ledger(page).locator('[aria-live="polite"]')).toHaveText(
@@ -130,15 +136,25 @@ test("a fee event lands on top, updates the totals and stat, and is announced on
   );
 });
 
-test("a resync refetches the ledger's first page exactly once", async ({ page }) => {
+test("a resync refetches the ledger's first page once and merges it by id", async ({ page }) => {
+  let open = () => {};
+  const gate = new Promise<void>((r) => {
+    open = r;
+  });
+  const path = `/api/coin/${coin.mint}/ledger`;
   let n = 0;
   page.on("request", (r) => {
-    if (new URL(r.url()).pathname === `/api/coin/${coin.mint}/ledger`) n++;
+    if (new URL(r.url()).pathname === path) n++;
   });
-  await stubLive(page, [["resync", {}]]);
+  await stubLive(page, [["resync", {}]], gate);
   await page.goto(`/coin/${coin.mint}`);
-  await expect.poll(() => n, { timeout: 20_000 }).toBe(1);
+  await expect(entries(page)).toHaveCount(3); // the seeded pair is shown before the refetch returns it again
+  const refetch = page.waitForResponse((r) => new URL(r.url()).pathname === path, { timeout: 20_000 });
+  open();
+  expect((await (await refetch).json()).rows).toHaveLength(2);
   await page.waitForTimeout(1500);
   expect(n).toBe(1);
-  await expect(entries(page)).toHaveCount(1); // no duplicate launch or fee rows
+  await expect(entries(page)).toHaveCount(3); // no duplicate fee or launch rows
+  for (const [i, tag] of ["Sweep", "Collect", "Launch burn"].entries())
+    await expect(entries(page).nth(i)).toContainText(tag);
 });

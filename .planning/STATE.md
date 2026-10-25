@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-23-PLAN.md
-last_updated: "2026-10-26T01:40:00.000Z"
-last_activity: 2026-10-26 -- Completed 06-23 (EVACUATE section)
+stopped_at: Completed 06-24-PLAN.md
+last_updated: "2026-10-25T20:18:29.075Z"
+last_activity: 2026-10-25 -- Completed 06-24 (devnet console run, EVACUATE, Neon check)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 92
+  completed_plans: 93
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 24 of 26 (06-23 complete)
+Plan: 25 of 26 (06-24 complete)
 Status: Ready to execute
-Last activity: 2026-10-26 -- Completed 06-23 (EVACUATE section)
+Last activity: 2026-10-25 -- Completed 06-24 (devnet console run, EVACUATE, Neon check)
 
-Progress: [██████████] 97%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -331,6 +331,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-23: EVACUATE simulate-only is health.evacuate !== "on" or no intent; a 409 not_applicable on execute drops the intent (button turns simulate-only), so worker.ts need not pass reason through
 - [Phase 06]: 06-23: EVACUATE shows Connect Phantom before "Sign and evacuate {n} wallets" when Phantom is not connected, as the dialog does; no extra dialog (D-35)
 - [Phase 06]: 06-23: pollIntent's 90 s deadline restarts on each answer and takes an optional onView for EVACUATE progress (W counts)
+- [Phase 06]: 06-24: the devnet EVACUATE proof seeds one dev W (sim dev curve-buys 1 BONDR of the coin, then sends W 1 BONDR and those child tokens) because every dev W was empty; this also proves leftover_burn
+- [Phase 06]: 06-24: EVACUATE on devnet runs only after the spec reads every page of staging /api/coins and finds no dev mint there (Pitfall 12); afterAll restores switches through POST /api/admin/switch, then writes settings directly as a backstop
+- [Phase 06]: 06-24: neonctl 8.10.3 has no endpoints list; the Neon idle check reads branches and endpoints through `neonctl api`
 
 ### Pending Todos
 
@@ -363,6 +366,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T18:53:00.000Z
-Stopped at: Completed 06-20-PLAN.md
+Last session: 2026-10-25T20:20:00.000Z
+Stopped at: Completed 06-24-PLAN.md
 Resume file: None

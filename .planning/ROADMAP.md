@@ -266,7 +266,7 @@ Plans:
   4. Owner flips per-job kill switches (launches, forced bond, sweeps, finalize, buyback burn), hides a coin from lists, blocks a deployer from launching, and inspects any pasted signature's decoded instructions, error and explorer link
   5. Owner runs EVACUATE by typing the phrase and signing; all jobs pause and every W balance moves to the treasury
 
-**Plans:** 22/26 plans executed
+**Plans:** 24/26 plans executed
 
 Plans:
 
@@ -343,7 +343,7 @@ Plans:
 
 **Wave 17** *(blocked on Wave 16 completion)*
 
-- [ ] 06-24-PLAN.md - Devnet run: Sweep now, Burn buyback now, Re-check launch, EVACUATE on dev coins; console-open Neon check; spend
+- [x] 06-24-PLAN.md - Devnet run: Sweep now, Burn buyback now, Re-check launch, EVACUATE on dev coins; console-open Neon check; spend
 
 **Wave 18** *(blocked on Wave 17 completion)*
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 23/26 | In Progress|  |
+| 6. Admin Dashboard | 24/26 | In Progress|  |
 | 7. Go-Live | 0/TBD | Not started | - |

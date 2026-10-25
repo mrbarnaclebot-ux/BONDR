@@ -103,3 +103,28 @@ export const impactBand = (f: number): "warn" | "error" | null =>
 /** A quote amount: a buy receives the coin (integer, thousands), a sell receives SOL (4 decimals). */
 export const outText = (side: TradeSide, base: string, symbol: string): string =>
   side === "buy" ? `${thousands(BigInt(base) / 1_000_000n)} ${symbol}` : `${sol(base, 4)} SOL`;
+
+/** Budget over cost in tenths of a percent, floored from base units; null when the cost is unknown or 0. */
+export function ratio1000(budget: string, cost: string | null): number | null {
+  if (cost === null || BigInt(cost) <= 0n) return null;
+  return Number((BigInt(budget) * 1000n) / BigInt(cost));
+}
+
+/** "104.9%", floored so the ratio never reads the 105% trigger early; "–" when the cost is unknown. */
+export function ratioPct(budget: string, cost: string | null): string {
+  const r = ratio1000(budget, cost);
+  return r === null ? "–" : `${Math.floor(r / 10)}.${r % 10}%`;
+}
+
+/** Time left in a fee window: "13h 22m", "42m", "<1m". */
+export function windowLeft(ms: number): string {
+  const m = Math.floor(ms / 60_000);
+  if (m < 1) return "<1m";
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+}
+
+/** Burned base units as a percent of `supply`, floored to 2 decimals: "3.42%". */
+export function burnedPct(burned: string, supply: bigint): string {
+  const q = (BigInt(burned) * 10_000n) / supply;
+  return `${q / 100n}.${(q % 100n).toString().padStart(2, "0")}%`;
+}

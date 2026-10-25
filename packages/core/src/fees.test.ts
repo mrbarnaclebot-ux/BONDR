@@ -77,7 +77,8 @@ test("totalsFor maps each landed kind to its coin column changes", () => {
     add: { fee_budget: 4n },
     set: { finalize: "done", deployerBps: 8000 },
   });
-  for (const k of ["buyback_burn", "reconcile_diff", "held"] as const) expect(totalsFor(k, r)).toEqual({ add: {} });
+  for (const k of ["buyback_burn", "reconcile_diff", "held"] as const)
+    expect(totalsFor(k, r)).toEqual({ add: {} });
 });
 
 test("totalsFor splits a distribute's SOL in proportion to its two shares", () => {
@@ -86,7 +87,12 @@ test("totalsFor splits a distribute's SOL in proportion to its two shares", () =
     add: { deployer_earned: 80n, deployer_earned_sol: 40n, to_treasury: 20n, to_treasury_sol: 10n },
   });
   const noSol = totalsFor("distribute", { detail: { deployerAmount: "1", treasuryAmount: "0" } });
-  expect(noSol.add).toEqual({ deployer_earned: 1n, deployer_earned_sol: 0n, to_treasury: 0n, to_treasury_sol: 0n });
+  expect(noSol.add).toEqual({
+    deployer_earned: 1n,
+    deployer_earned_sol: 0n,
+    to_treasury: 0n,
+    to_treasury_sol: 0n,
+  });
 });
 
 test("reconcileDiff is null on a match, else chain minus implied", () => {

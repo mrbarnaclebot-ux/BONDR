@@ -102,6 +102,67 @@ export type CoinLive = {
   bondrAtBond: string | null;
   realQuoteReserves: string;
   holders: number | null;
+  fees?: CoinFees;
+};
+
+// Fee engine (Phase 5). Every money field is base units or lamports as a decimal string; web formats only.
+export type LedgerKind =
+  | "collect"
+  | "split_treasury"
+  | "sweep_buyback"
+  | "sweep_treasury"
+  | "forced_bond"
+  | "pool_burn"
+  | "buyback_burn"
+  | "finalize_config"
+  | "finalize_update"
+  | "distribute"
+  | "held"
+  | "reconcile_diff";
+// The platform burn and the internal rows never reach a public read.
+export type PublicKind = Exclude<LedgerKind, "buyback_burn" | "held" | "reconcile_diff">;
+export type LedgerState = "pending" | "landed" | "failed" | "expired";
+
+export type LedgerRow = {
+  id: string;
+  kind: PublicKind;
+  amount: string | null;
+  burned: string | null;
+  sol: string | null; // lamports
+  signature: string;
+  windowIndex: number | null;
+  detail: {
+    dBps?: number;
+    tBps?: number;
+    deployer?: string;
+    treasury?: string;
+    deployerAmount?: string;
+    treasuryAmount?: string;
+  } | null;
+  landedAt: string;
+};
+
+export type CoinFees = {
+  w: string | null;
+  budget: string;
+  budgetSol: string | null;
+  cost: string | null;
+  costSol: string | null;
+  toBuyback: string;
+  toBuybackSol: string;
+  toTreasury: string;
+  toTreasurySol: string;
+  bondSpent: string;
+  bondSpentSol: string;
+  bondBurned: string;
+  burnedSupply: string;
+  bondKind: "forced" | "fallback" | null;
+  bondBurnSig: string | null;
+  deployerEarned: string;
+  deployerEarnedSol: string;
+  finalize: "none" | "held" | "done";
+  deployerBps: number | null;
+  finalizeSig: string | null;
 };
 
 export type CoinRow = CoinLive & {
@@ -137,6 +198,7 @@ export type LiveEvent = { id: string } & (
   | { type: "launch"; data: CoinRow }
   | { type: "bond"; data: { mint: string; venue: Venue; bondSig: string | null; bondedAt: string | null } }
   | { type: "holders"; data: { mint: string; holders: number } }
+  | { type: "fee"; data: { mint: string | null; rows: LedgerRow[]; coin: CoinLive | null } }
 );
 
 // Trading (Phase 4). One error vocabulary for launches and trades.

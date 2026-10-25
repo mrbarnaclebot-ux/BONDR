@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { coinRow } from "./coin-row.ts";
 import { close, coins, db, feeLedger, launches, settings, trades, vanityMints, wallets } from "./db.ts";
 
 // Vitest does not read .env; load it so a local run hits the Neon dev branch. CI has no .env and skips.
@@ -206,6 +207,21 @@ describe.skipIf(!process.env.DATABASE_URL)("database constraints", { timeout: 30
       expect(await put({ kind: "split_treasury" })).toBe("23514"); // no ref
       expect(await put({ state: "landed", landedAt: undefined })).toBeUndefined();
       expect(await put({ state: "sent" })).toBe("23514");
+    });
+
+    test("coinRow fills the fee fields from the coin and its launch burn", async () => {
+      await clear();
+      const burn = { mint: feeMint, side: "burn", launch: true, sol: null, quoteAmount: null };
+      await db()
+        .insert(trades)
+        .values(
+          tradeOf({ ...burn, signature: randomBytes(16).toString("hex"), tokenAmount: "31120363129478" }),
+        )
+        .execute();
+      const fees = (await coinRow(db(), feeMint))?.fees;
+      expect(fees).toMatchObject({ finalize: "none", budget: "0", budgetSol: null, bondKind: null });
+      expect(fees?.burnedSupply).toBe("31120363129478");
+      expect(fees?.finalizeSig).toBeNull();
     });
 
     test("coins refuses an unknown finalize state and a negative total", async () => {

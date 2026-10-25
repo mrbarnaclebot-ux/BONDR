@@ -86,6 +86,13 @@ The break-glass path for a leaked master seed (ADMIN-11, D-35 to D-37). Use it o
 - **Same money path.** The owner signs the intent (D-12); the worker writes one pending `admin_audit` row (`action evacuate`, `params.wallets`) before anything is sent and settles it once with every signature.
 - **Everything pauses first.** Before the first transfer the worker switches every job off, launches included, and stamps `settings.evacuated_at` in one write. Then each batch waits for its coins' queued engine jobs, re-reads its balances and sends through the gated land (treasury and burn only), paced like the engine. Each W writes a public `evacuate` row with its own amount and SOL value, and a `leftover_burn` row when it held child tokens. A failed batch leaves later W to go; an unknown one is never resent.
 - **Afterwards.** Every switch stays off until the owner turns each back on, one at a time, from the console. W's emptied token accounts stay open with their rent. Rotating the master seed is a separate Phase 7 runbook; EVACUATE does not rotate anything.
+- **Local admin devnet run.** `apps/web/e2e/admin-devnet.e2e.ts` (Sweep now, Burn buyback now, Re-check launch and EVACUATE on dev coins) needs this worker, started by hand from the repo root. It prints only the public test admin address; `--env-file` never overrides variables already set:
+
+  ```sh
+  ADMIN_WALLET=$(node --input-type=module -e "import { seedAccount } from './apps/web/e2e/keys.ts'; console.log(seedAccount('admin:devnet:e2e').address)") ADMIN_EVACUATE=on FEE_ENGINE=off VANITY_THREADS=0 WORKER_PORT=8080 node --env-file=.env apps/worker/src/main.ts
+  ```
+
+  Check the boot log's switches line and `http://127.0.0.1:8080/healthz`, then run `E2E_DEVNET=1 pnpm exec playwright test apps/web/e2e/admin-devnet.e2e.ts --project=chromium --reporter=line` (Playwright starts web with the same ADMIN_WALLET). Its afterAll turns every switch back on and clears `settings.evacuated_at`. Stop the worker with Ctrl-C afterwards: local and staging share the devnet ops wallet (Pitfall 12).
 
 ## Fee engine
 

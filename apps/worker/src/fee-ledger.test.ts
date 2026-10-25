@@ -88,6 +88,24 @@ describe("memoryLedger", () => {
     expect(await l.insertPending([{ kind: "buyback_burn", mint: null }], "b1", 10n)).toHaveLength(1);
     expect(await l.insertPending([{ kind: "buyback_burn", mint: null }], "b1", 10n)).toBeNull();
   });
+
+  test("an empty row list inserts nothing and returns [] in both stores; pg never touches the database", async () => {
+    const l = memoryLedger();
+    expect(await l.insertPending([], "c1", 10n)).toEqual([]);
+    expect(await l.pending()).toEqual([]);
+    const untouchable = () => {
+      throw new Error("database touched");
+    };
+    expect(await pgLedger(untouchable as never).insertPending([], "c1", 10n)).toEqual([]);
+  });
+
+  test("has narrows to one window index when given (A9)", async () => {
+    const l = memoryLedger();
+    await l.insertPending([{ kind: "sweep_treasury", mint: M, windowIndex: 4 }], "s1", 10n);
+    expect(await l.has(M, ["sweep_buyback", "sweep_treasury"], 4)).toBe(true);
+    expect(await l.has(M, ["sweep_buyback", "sweep_treasury"], 5)).toBe(false);
+    expect(await l.has(M, ["sweep_buyback", "sweep_treasury"])).toBe(true);
+  });
 });
 
 const DB = !!process.env.DATABASE_URL;
@@ -158,6 +176,9 @@ describe.skipIf(!DB)("pgLedger", { timeout: 60_000 }, () => {
       expect(await l.insertPending([{ kind: "forced_bond", mint }], `f${mint}`, 10n)).toHaveLength(1);
       expect(await l.insertPending([{ kind: "forced_bond", mint }], `g${mint}`, 10n)).toBeNull();
       expect(await l.has(mint, ["forced_bond"])).toBe(true);
+      await l.insertPending([{ kind: "sweep_buyback", mint, windowIndex: 2 }], `w${mint}`, 10n);
+      expect(await l.has(mint, ["sweep_buyback"], 2)).toBe(true);
+      expect(await l.has(mint, ["sweep_buyback"], 3)).toBe(false);
       await l.hold(mint, "deployer is not the launch wallet");
       expect((await read()).finalize).toBe("held");
       await l.release(mint);

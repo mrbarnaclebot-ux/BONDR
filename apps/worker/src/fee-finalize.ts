@@ -21,6 +21,7 @@ import {
   SystemProgram,
   type TransactionInstruction,
 } from "@solana/web3.js";
+import { leftoverBurnJob } from "./admin-leftover.ts";
 import { spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
 import { collectJob, settled, sweepJob, wBondr } from "./fee-prebond.ts";
@@ -120,16 +121,22 @@ async function closing(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   return spend(d, coin, out, () => sweepJob(d, coin, windowOf(coin.launchedAt, Date.now(), d.windowMs)));
 }
 
-// One read after the closing sweep: W should hold 0 BONDR and 0 child tokens. A miss is an error, not a throw.
-async function checkEmpty(d: FeeDeps, coin: FeeCoin): Promise<void> {
+// One read after the closing sweep: W should hold 0 BONDR. Leftover child tokens are burned here, never held
+// (D-17, WR-08); leftover BONDR stays an error for the owner's Sweep leftovers action. A miss never throws.
+async function checkEmpty(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   const mint = coin.mint.toBase58();
   try {
     const [child, bondr] = [await wBondr(d, coin, coin.mint), await wBondr(d, coin)];
     const line = `finalize ${mint}: W child ${child}, BONDR ${bondr}`;
-    if (child === 0n && bondr === 0n) console.log(line);
+    if (bondr === 0n) console.log(line);
     else console.error(line);
+    if (child === 0n) return [];
+    const burn = await leftoverBurnJob(d, coin);
+    console.log(`finalize ${mint}: leftover burn ${burn.state}`);
+    return [burn];
   } catch (e) {
     console.error(`finalize ${mint}: W read failed: ${redact(e instanceof Error ? e.message : String(e))}`);
+    return [];
   }
 }
 
@@ -160,6 +167,6 @@ export async function finalizeJob(d: FeeDeps, coin: FeeCoin, override?: PublicKe
   const { out, ok } = await finalTxs(d, coin, s.pool, deployer, s.sharing);
   if (!ok) return out;
   out.push(...(await closing(d, coin)));
-  await checkEmpty(d, coin);
+  out.push(...(await checkEmpty(d, coin)));
   return out;
 }

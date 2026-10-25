@@ -86,21 +86,26 @@ async function pendingOf(d: FeeDeps, mint: PublicKey) {
 }
 
 // D-19: worth it only while the ops fee is under 1% of the payout; with no BONDR price yet, any fees are (as a
-// collect, D-11).
-function worthPaying(d: FeeDeps, pending: bigint): boolean {
+// collect, D-11). The owner's Distribute now (anyAmount, D-16) skips the minimum but never pays nothing.
+function worthPaying(d: FeeDeps, pending: bigint, anyAmount = false): boolean {
   if (pending <= 0n) return false;
+  if (anyAmount) return true;
   const price = d.bondrSol();
   return price === null || toSol(pending, price) >= distributeMin(DISTRIBUTE_FEE);
 }
 
 // FEE-07, T-05-09-02: permissionless, ops pays, and the SDK pays the shareholders the verified finalize locked;
 // the engine names no recipient. The row's split is the two holders' BONDR deltas in this tx's own meta.
-export async function distributeJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
+export async function distributeJob(
+  d: FeeDeps,
+  coin: FeeCoin,
+  o: { anyAmount?: boolean } = {},
+): Promise<Landed> {
   if (d.allowed && !d.allowed("finalize", coin)) return SKIPPED;
   mark("distribute");
   const p = await pendingOf(d, coin.mint);
   const [deployer, treasury] = p?.holders ?? [];
-  if (!p || !deployer || !treasury || !worthPaying(d, p.pending)) return DONE;
+  if (!p || !deployer || !treasury || !worthPaying(d, p.pending, o.anyAmount)) return DONE;
   const ixs = await distributeIxs({
     online: d.online,
     mint: coin.mint,

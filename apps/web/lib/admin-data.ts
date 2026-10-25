@@ -22,6 +22,7 @@ export type WRow = {
   feeBudget: string;
   feesUnclaimed: string;
   cost: string | null;
+  bondrSol: number | null; // lamports per BONDR base unit, for the budget's SOL value (D-07)
   launchedAt: string;
   lastCollectAt: string | null;
   heldAt: string | null;
@@ -52,6 +53,7 @@ async function coinRows(): Promise<WRow[]> {
       ...{ mint: coins.mint, symbol: launches.symbol, name: launches.name, image: launches.imageCid },
       ...{ w: launches.w, venue: coins.venue, finalize: coins.finalize, feeBudget: coins.feeBudget },
       ...{ feesUnclaimed: coins.feesUnclaimed, cost: coins.costToComplete, launchedAt: coins.launchedAt },
+      bondrSol: coins.bondrSol,
       lastCollectAt: sql<Date | null>`(select max(f.landed_at) from fee_ledger f
         where f.mint = ${coins.mint} and f.kind = 'collect' and f.state = 'landed')`.mapWith(
         feeLedger.landedAt,
@@ -91,7 +93,14 @@ async function unconfirmedRows(): Promise<WRow[]> {
     );
   return found.map(({ createdAt, ...r }) => ({
     ...r,
-    ...{ venue: "curve" as const, finalize: "none" as const, feeBudget: "0", feesUnclaimed: "0", cost: null },
+    ...{
+      venue: "curve" as const,
+      finalize: "none" as const,
+      feeBudget: "0",
+      feesUnclaimed: "0",
+      cost: null,
+      bondrSol: null,
+    },
     ...{ launchedAt: createdAt.toISOString(), lastCollectAt: null, heldAt: null, heldReason: null },
     ...{ bondSent: false, bondedAt: null, launch: "unconfirmed" as const },
   }));

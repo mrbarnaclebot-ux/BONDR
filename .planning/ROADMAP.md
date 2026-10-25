@@ -266,7 +266,93 @@ Plans:
   4. Owner flips per-job kill switches (launches, forced bond, sweeps, finalize, buyback burn), hides a coin from lists, blocks a deployer from launching, and inspects any pasted signature's decoded instructions, error and explorer link
   5. Owner runs EVACUATE by typing the phrase and signing; all jobs pause and every W balance moves to the treasury
 
-**Plans**: TBD
+**Plans:** 26 plans
+
+Plans:
+
+**Wave 1**
+
+- [ ] 06-01-PLAN.md - Red sign-in spec, admin e2e harness, migration 0007 (switches, hidden/held, blocked_deployers, admin_audit, kinds, sig-kind index)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 06-02-PLAN.md - Contracts: admin payload types, error codes, leftover_burn and evacuate kinds with copy and totals, scrub, STATE todo
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 06-03-PLAN.md - Admin sign-in with Phantom, 30-minute bondr_admin cookie, guarded /api/admin/[op], console shell
+- [ ] 06-04-PLAN.md - Multi-mint fee ledger fixes (sig-kind key, per-row sol, per-mint publish, evacuate in reconcile), fee-ledger-memory split
+- [ ] 06-05-PLAN.md - TDD: intent store with fresh-signature check, destination allowlist decoder
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 06-06-PLAN.md - fee-boot split, engine stuck memory, exclusive runs, idle waits, manual hold
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 06-07-PLAN.md - Five kill switches in worker memory and settings, job gates, last-run marks
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 06-08-PLAN.md - Gated worker admin routes, memory-only health (RPC ring, Sentry count), admin env
+- [ ] 06-09-PLAN.md - Leftover burn, close accounts and leftover sweep jobs; finalize burns leftovers; distribute any amount
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 06-10-PLAN.md - Audit writer, switch and act routes (hold, release, re-check launch), overview and coin-live
+- [ ] 06-11-PLAN.md - Capture-deps simulation with balance diff, registry of the nine transaction actions
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 06-12-PLAN.md - Forwarder, overview load, Refresh, Wallets and Health panels with the visibility-aware poll
+- [ ] 06-13-PLAN.md - Worker simulate, execute (fresh signature, audit first, gated land) and intent routes
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 06-14-PLAN.md - Kill switches panel and audit log panel with keyset paging
+- [ ] 06-15-PLAN.md - Fork gate: retry forced bond, run migrate, burn W tokens, finalize split, distribute now through the money path
+- [ ] 06-19-PLAN.md - Moderation worker and core: hide and block with audit, hidden list filter, blocked launch refusal
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 06-16-PLAN.md - W table: state function, filters, sort, sticky Coin column, selection
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [ ] 06-17-PLAN.md - Per-coin timeline, action grid with reasons, hold, release and re-check launch
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [ ] 06-18-PLAN.md - Simulation dialog and client run: simulate, sign intent, execute, poll; Burn buyback now
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [ ] 06-20-PLAN.md - Moderation web: overview lists, Moderation panel, public blocked copy, serial spec
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [ ] 06-21-PLAN.md - Transaction inspector: worker decoder with SDK coders, route and panel
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [ ] 06-22-PLAN.md - EVACUATE worker: balances, packing, simulation totals, pause-first execute, runbook
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [ ] 06-23-PLAN.md - EVACUATE section: phrase arm, auto-simulate, sign and evacuate, simulate-only state
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [ ] 06-24-PLAN.md - Devnet run: Sweep now, Burn buyback now, Re-check launch, EVACUATE on dev coins; console-open Neon check; spend
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [ ] 06-25-PLAN.md - Responsive and axe matrix at 390/768/1440, Designer critique sign-off
+
+**Wave 19** *(blocked on Wave 18 completion)*
+
+- [ ] 06-26-PLAN.md - Staging: web then worker, locked-state matrix, Phase 5 and 4 regressions, Neon idle, HV-06-01 and HV-06-02
+
 **UI hint**: yes
 
 ### Phase 7: Go-Live
@@ -295,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 0/TBD | Not started | - |
+| 6. Admin Dashboard | 0/25 | Planned | - |
 | 7. Go-Live | 0/TBD | Not started | - |

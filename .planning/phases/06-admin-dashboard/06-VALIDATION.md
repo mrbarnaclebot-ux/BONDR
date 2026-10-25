@@ -2,7 +2,7 @@
 phase: 6
 slug: admin-dashboard
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-10-25
 ---
@@ -65,7 +65,7 @@ created: 2026-10-25
 | ADMIN-11 | EVACUATE drains dev-database coins on devnet | devnet (local) | scripted run, then a balance printout of every W |
 | UI | 390/768/1440 axe 0, no horizontal scroll, screenshots | e2e | `admin-responsive.e2e.ts` via `shoot.ts gate()` |
 
-Plan and task IDs are filled in by the planner; see each PLAN.md `<verify>` block.
+Plan and task IDs: see each 06-NN-PLAN.md `<verify>` block (26 plans).
 
 ---
 
@@ -91,11 +91,11 @@ Plan and task IDs are filled in by the planner; see each PLAN.md `<verify>` bloc
 
 ## Validation Sign-Off
 
-- [ ] All tasks have an automated verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] All tasks have an automated verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
+- [x] No watch-mode flags
 - [ ] Feedback latency under 60 s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** plan-checker passed 2026-10-25 (iteration 3); Wave 0 files are created during execution

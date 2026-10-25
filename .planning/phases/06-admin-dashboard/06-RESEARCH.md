@@ -667,7 +667,9 @@ useEffect(() => {
 | A11 | `RAILWAY_REPLICA_ID` (or a random id) for the Leader lock row's instance id | Pattern 8 | Cosmetic |
 | A12 | Helius devnet offers no bundle simulation | Alternatives | If it does, multi-step simulation could be exact; not needed for safety |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Resolved 2026-10-25 under the owner's autonomous-mode delegation: every question below takes its Recommendation, recorded as Claude's discretion in the plans. The owner may override.
 
 1. **How exact must multi-step simulations be?**
    - What we know: a single-tx RPC simulation cannot see the effect of an earlier unsent tx. Finalize's update fails simulation before the config exists.

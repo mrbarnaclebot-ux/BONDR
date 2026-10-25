@@ -18,6 +18,7 @@ import {
   type VersionedMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+import { OPS_FLOOR_LAMPORTS } from "./fee-config.ts";
 import { fail } from "./http.ts";
 
 type Built = Awaited<ReturnType<typeof buildLaunch>>;
@@ -25,9 +26,6 @@ export type Builds = { burn: Built; sell: Built };
 
 // Helius free allows about one send per second (Pitfall 8).
 const TABLE_PACE_MS = 1100;
-// Below this ops pays for no new table: what is left stays for fee and recovery txs. buildFailed logs it, so
-// Sentry tells the owner to top ops up by hand (01-10).
-const OPS_FLOOR_LAMPORTS = 0.05 * LAMPORTS_PER_SOL;
 
 const buildFailed = (why: string) => {
   console.error(`prepare build failed: ${redact(why)}`);

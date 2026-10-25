@@ -157,8 +157,9 @@ test("a landed collect zeroes the bucket and adds to the budget in memory", () =
 
 test("withCost prices every curve patch with reserves, W as creator, in any mode", async () => {
   const seed = Buffer.alloc(32, 7);
+  const Q = Keypair.generate().publicKey;
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
-  await startEngine({} as never, { feeEngine: "off", seed, net: "devnet" } as WorkerEnv);
+  await startEngine({ Q } as never, { feeEngine: "off", seed, net: "devnet" } as WorkerEnv);
   log.mockRestore();
   const r = {
     virtualTokenReserves: "1",
@@ -167,8 +168,7 @@ test("withCost prices every curve patch with reserves, W as creator, in any mode
     realQuoteReserves: "4",
   };
   const parsed = { patches: [{ mint: MINT, ...r }, { mint: "B", venue: "complete", ...r }, { mint: "C" }] };
-  const Q = Keypair.generate().publicKey;
-  await withCost({} as never, Q, parsed as unknown as Parsed);
+  await withCost({} as never, parsed as unknown as Parsed);
   expect(parsed.patches.map((p) => (p as { costToComplete?: string }).costToComplete)).toEqual([
     "123",
     undefined,

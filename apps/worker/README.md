@@ -4,7 +4,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## src
 
-- `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`, then the index boot: `seedBondrPrice`, `loadCoins`, `backfillLaunches`, `startStream`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
+- `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`, then the index boot: `seedBondrPrice`, `loadCoins`, `startEngine`, `backfillLaunches`, `startStream`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
 - `env.ts`: `loadEnv` and `launchNet` (refuses mainnet in Phase 2, D-02); `ops` and `treasury` keys with the Phase 1 ids.
 - `http.ts`: node:http server, `authorized` (timingSafeEqual), `readJson` (16 KB cap), `Fail` for contract errors; `Streams` are long-lived handlers behind the same bearer check.
 - `prepare.ts`: `POST /prepare`. Guards (pause, consent, rules, hourly table cap, balance) run before any spend, then reserve, W, table, build, simulate, store `prepared`. `prepareGuard`, `parseRequest`, `signBy` and `sellFloor` are pure.
@@ -62,7 +62,11 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## Env
 
-`SOLANA_NET` (devnet only), `ALLOW_MAINNET`, `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE`, `VANITY_THREADS`, `BONDR_QUOTE_MINT`, `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`. See the repo-root `.env.example`.
+`SOLANA_NET` (devnet only), `ALLOW_MAINNET`, `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE`, `VANITY_THREADS`, `BONDR_QUOTE_MINT`, `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`, `FEE_ENGINE` (`off` default, `dry`, `on`; anything else refuses to boot), `FEE_WINDOW_MS` (default 86400000, at least 60000), `FEE_BATCH_HOUR_UTC` (0-23, default 4). See the repo-root `.env.example`.
+
+## Fee engine
+
+Behind `FEE_ENGINE`. Off, the worker behaves as in Phase 4 plus `cost_to_complete` on every curve patch. Dry builds and simulates every job and writes nothing. On sends. At boot (`startEngine`, after `loadCoins`): one read of every coin with its launch's W, one ops balance read for the floor, then `recover` settles every pending fee row from its signature (never a resend) and splits every landed collect with no split, and only then are window timers armed. A coin whose W does not derive from this seed is skipped. Each unbonded coin has one in-memory timer for its current window's end, counted from launch; at the end it collects, splits and sweeps (`windowJob`) through a per-coin serial queue. Trade hooks keep the fee numbers in memory and enqueue nothing before the engine is ready. Run one worker replica only (D-07): a second would send every window twice. Local and staging share the devnet ops wallet, so keep `FEE_ENGINE=off` locally except for the e2e (Pitfall 11).
 
 ## Vanity lanes
 

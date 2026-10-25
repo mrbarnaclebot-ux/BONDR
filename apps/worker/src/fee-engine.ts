@@ -182,7 +182,7 @@ export class Engine {
 }
 
 let engine: Engine | null = null;
-let costCtx: { net: WorkerEnv["net"]; wOf: WOf } | null = null;
+let costCtx: { net: WorkerEnv["net"]; Q: PublicKey; wOf: WOf } | null = null;
 
 // Called by announce after every committed ingest, live and gap fill. Before startEngine it is a no-op.
 export const onIngest = (w: Ingested): void => engine?.onIngest(w);
@@ -220,7 +220,7 @@ function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
 // A retried index boot keeps an engine that already started, so no window is ever armed twice.
 export async function startEngine(ctx: Ctx, env: WorkerEnv): Promise<void> {
   const wOf: WOf = (mint) => derive(env.seed, "w", env.net, mint);
-  costCtx = { net: env.net, wOf };
+  costCtx = { net: env.net, Q: ctx.Q, wOf };
   if (env.feeEngine === "off") return console.log("fee engine off");
   if (engine?.isReady()) return;
   const deps = feeDeps(ctx, env, env.feeEngine);
@@ -240,7 +240,7 @@ const hasReserves = (p: CoinPatch) =>
 
 // Cost to complete on every curve patch, so it rides the trade write that already happens (D-23). Runs in
 // every mode: the panel shows it with the engine off. A failure leaves the cost unset, never fails the write.
-export async function withCost(conn: Connection, Q: PublicKey, parsed: Parsed): Promise<void> {
+export async function withCost(conn: Connection, parsed: Parsed): Promise<void> {
   const c = costCtx;
   const curve = parsed.patches.filter((p) => !p.venue && hasReserves(p));
   if (!c || !curve.length) return;
@@ -248,7 +248,7 @@ export async function withCost(conn: Connection, Q: PublicKey, parsed: Parsed): 
     const { global, feeConfig: fc } = await configs({ conn });
     const creatorFeeBps = feeConfig(c.net).creatorFeeBps;
     for (const p of curve) {
-      const ids = { creator: c.wOf(p.mint).publicKey, quoteMint: Q, creatorFeeBps };
+      const ids = { creator: c.wOf(p.mint).publicKey, quoteMint: c.Q, creatorFeeBps };
       p.costToComplete = String(costFromReserves(p as Required<CoinPatch>, { global, feeConfig: fc }, ids));
     }
   } catch (e) {

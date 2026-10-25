@@ -3,8 +3,8 @@
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import type { TradeNet } from "./trade-quote.ts";
 
-// Below this, ops pauses non-urgent fee sends and launches refuse to build (build.ts holds the same value
-// until 05-05 imports this one).
+// Below this, ops pauses non-urgent fee sends and launches pay for no new table (build.ts): what is left stays
+// for fee and recovery txs, and the error log tells the owner to top ops up by hand (01-10).
 export const OPS_FLOOR_LAMPORTS = 0.05 * LAMPORTS_PER_SOL;
 
 // Helius Sender, mainnet only (A1, re-verified against the Sender docs 2026-10-25; check again in Phase 7).

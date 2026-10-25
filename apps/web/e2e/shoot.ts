@@ -7,6 +7,7 @@ const shots = (phase: string) =>
   fileURLToPath(new URL(`../../../.planning/phases/${phase}/screenshots/`, import.meta.url));
 const SHOTS = shots("03-indexer-lists-and-token-page");
 export const PHASE4_SHOTS = shots("04-trading");
+export const PHASE5_SHOTS = shots("05-fee-engine-and-public-ledger");
 const SUFFIX = process.env.E2E_BASE_URL ? "-staging" : "";
 
 export async function gate(page: Page, name: string, width: number, dir = SHOTS): Promise<void> {

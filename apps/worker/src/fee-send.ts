@@ -77,6 +77,9 @@ export type FeeCoin = {
   launchSig: string;
   wallet: PublicKey;
   finalize: "none" | "held" | "done";
+  // Set before any collect or bond burn is sent and at boot: only then does the spend guard read Postgres, so
+  // an idle coin's window costs no database wake-up (D-03).
+  open?: boolean;
 };
 
 const SENDER_TIMEOUT_MS = 10_000;

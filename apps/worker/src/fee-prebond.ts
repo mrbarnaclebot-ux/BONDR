@@ -22,6 +22,7 @@ export async function collectJob(
   sweepCurve = true,
 ): Promise<Landed> {
   const [mint, W] = [coin.mint, coin.w.publicKey];
+  coin.open = true;
   const ixs = await collectIxs({
     ...{ online: d.online, payer: d.ops.publicKey, mint, creator: W, quoteMint: d.Q },
     sweepCurve,

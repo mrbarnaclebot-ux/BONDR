@@ -75,6 +75,7 @@ test("recover settles three signatures from one status call, then splits the lan
   await t.ledger.insertPending([{ kind: "sweep_buyback", mint, amount: 9n, windowIndex: 1 }], "b", 150n);
   await t.ledger.insertPending([{ kind: "sweep_treasury", mint, amount: 1n, windowIndex: 2 }], "c", 150n);
   await recover(t.d, coinOf, async () => {});
+  expect(coin.open).toBe(true); // its first spend guard reads the ledger (WR-05)
   expect(t.conn.getSignatureStatuses).toHaveBeenCalledTimes(1);
   expect(t.conn.getSignatureStatuses.mock.calls[0]).toEqual([
     ["a", "b", "c"],

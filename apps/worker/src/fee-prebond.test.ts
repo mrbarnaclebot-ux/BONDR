@@ -157,7 +157,7 @@ test("a pending collect from an earlier window defers the sweep while its status
   const err = vi.spyOn(console, "error").mockImplementation(() => {});
   const d = deps({ metas: [qMeta(1000n)], balance: 5_000n });
   await d.ledger.insertPending([{ kind: "collect", mint: coin.mint.toBase58() }], "old", 50n);
-  const out = await windowJob(d, { ...coin, feesUnclaimed: 20_000n }, 4);
+  const out = await windowJob(d, { ...coin, feesUnclaimed: 20_000n, open: true }, 4);
   expect(jobs.map((j) => j.rows[0]?.kind)).toEqual(["collect", "split_treasury"]); // no sweep
   expect(out.at(-1)?.state).toBe("unknown");
   expect(err.mock.calls.flat().join(" ")).toContain("balance-sized send deferred");
@@ -168,7 +168,7 @@ test("a pending collect that landed on chain is settled from its meta, split, th
   const ok = { confirmationStatus: "confirmed", err: null };
   const d = deps({ balance: 5_000n, statuses: () => [ok] });
   await d.ledger.insertPending([{ kind: "collect", mint: coin.mint.toBase58() }], "old", 50n);
-  const out = await windowJob(d, coin, 4);
+  const out = await windowJob(d, { ...coin, open: true }, 4);
   expect(out.map((r) => r.state)).toEqual(["landed", "landed"]);
   expect(jobs.map((j) => [j.rows[0]?.kind, j.rows[0]?.amount])).toEqual([
     ["split_treasury", 200n], // a tenth of the 2000 the old collect's own meta shows
@@ -183,7 +183,21 @@ test("a landed collect whose split is pending defers the sweep", async () => {
   const [c] = (await d.ledger.insertPending([{ kind: "collect", mint }], "c", 50n)) ?? [];
   await d.ledger.settle("c", "landed", { facts: { collect: { amount: 1000n } } });
   await d.ledger.insertPending([{ kind: "split_treasury", mint, ref: c?.id, amount: 100n }], "s", 50n);
-  expect((await windowJob(d, coin, 4)).map((r) => r.state)).toEqual(["unknown"]);
+  expect((await windowJob(d, { ...coin, open: true }, 4)).map((r) => r.state)).toEqual(["unknown"]);
   expect(jobs).toEqual([]);
   vi.restoreAllMocks();
+});
+
+// WR-05: N idle coins must not mean N Neon wake-ups a day.
+test("an idle coin's window reads no ledger; a collect opens it and a clean guard closes it again", async () => {
+  const d = deps({ metas: [qMeta(1000n)], balance: 0n });
+  const reads = [vi.spyOn(d.ledger, "pendingFor"), vi.spyOn(d.ledger, "openCollects")];
+  const idle = { ...coin, open: undefined }; // never collected nor flagged at boot
+  await windowJob(d, idle, 1);
+  expect(reads.map((r) => r.mock.calls.length)).toEqual([0, 0]);
+  const busy = { ...coin, feesUnclaimed: 20_000n, open: undefined };
+  await windowJob(d, busy, 1);
+  expect(jobs.map((j) => j.rows[0]?.kind)).toEqual(["collect", "split_treasury"]);
+  expect(reads.map((r) => r.mock.calls.length)).toEqual([1, 1]);
+  expect(busy.open).toBe(false);
 });

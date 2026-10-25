@@ -121,15 +121,24 @@ export const settleRows = (d: FeeDeps, rows: Entry[], coinOf: CoinOf, sleep: Sle
   settleAll(d, bySig(rows), coinOf, sleep, { landed: 0, failed: 0, expired: 0 });
 
 // A failed split never fails the boot: the collect stays open and the coin's next window splits it.
+// A coin with a pending row or an open collect at boot: its first spend guard reads the ledger (FeeCoin.open).
+function markOpen(coinOf: CoinOf, mint: string | null): FeeCoin | undefined {
+  const coin = mint ? coinOf(mint) : undefined;
+  if (coin) coin.open = true;
+  return coin;
+}
+
 async function splitOpen(d: FeeDeps, coinOf: CoinOf): Promise<void> {
   for (const c of await d.ledger.openCollects()) {
-    const coin = c.mint ? coinOf(c.mint) : undefined;
+    const coin = markOpen(coinOf, c.mint);
     if (coin) await splitJob(d, coin, c).catch(logged(`fee recover split ${c.id}`));
   }
 }
 
 export async function recover(d: FeeDeps, coinOf: CoinOf, sleep: Sleep = delay): Promise<void> {
-  const groups = bySig(await d.ledger.pending());
+  const pending = await d.ledger.pending();
+  for (const e of pending) markOpen(coinOf, e.mint);
+  const groups = bySig(pending);
   const n: Count = { landed: 0, failed: 0, expired: 0 };
   if (d.mode === "dry") console.log(`fee recover: ${groups.size} pending, left as is in dry mode`);
   else if (groups.size) {

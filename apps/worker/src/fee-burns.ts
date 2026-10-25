@@ -29,6 +29,7 @@ const collectThen = async (d: FeeDeps, coin: FeeCoin, send: () => Promise<Landed
 // The row's amount is the intent (W's whole balance); the landed amount is what W actually spent.
 function burnLand(d: FeeDeps, coin: FeeCoin, row: NewEntry, ixs: TransactionInstruction[]): Promise<Landed> {
   const w = coin.w.publicKey;
+  coin.open = true;
   return d.land({
     ...{ rows: [row], ixs, signers: [coin.w], urgent: true, sender: true, cu: CU },
     facts: (meta) => ({ [row.kind]: { amount: -tokenDelta(meta, d.Q, w) } }),

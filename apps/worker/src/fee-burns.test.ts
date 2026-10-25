@@ -170,7 +170,8 @@ test("bondedJob with a pending pool_burn leaves finalize for later while its sta
   vi.spyOn(console, "error").mockImplementation(() => {});
   const d = deps({ balance: 900n });
   await d.ledger.insertPending([{ kind: "pool_burn", mint: MINT.toBase58() }], "x", 50n);
-  expect((await bondedJob(d, { ...coin, venue: "pool" })).map((l) => l.state)).toEqual(["unknown"]);
+  const pooled = { ...coin, venue: "pool" as const, open: true };
+  expect((await bondedJob(d, pooled)).map((l) => l.state)).toEqual(["unknown"]);
   expect(core.finalize).not.toHaveBeenCalled();
   expect(jobs).toEqual([]);
   vi.restoreAllMocks();
@@ -180,7 +181,7 @@ test("bondedJob sends the pool burn again once the pending one failed on chain, 
   const failed = { confirmationStatus: "confirmed", err: { InstructionError: [0, { Custom: 1 }] } };
   const d = deps({ balance: 900n, statuses: () => [failed] });
   await d.ledger.insertPending([{ kind: "pool_burn", mint: MINT.toBase58() }], "x", 50n);
-  await bondedJob(d, { ...coin, venue: "pool" });
+  await bondedJob(d, { ...coin, venue: "pool", open: true });
   expect(kinds()).toEqual(["collect", "pool_burn"]);
   expect(core.finalize).toHaveBeenCalledOnce();
 });

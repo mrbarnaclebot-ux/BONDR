@@ -12,14 +12,18 @@ const HOLDS: LedgerKind[] = ["collect", "split_treasury", "forced_bond", "pool_b
 const DEFERRED: Landed = { state: "unknown" };
 
 // The splits it sent, then DEFERRED while any row is still pending. Dry mode writes nothing, so its pending
-// rows stay as they are, as at boot.
+// rows stay as they are, as at boot. A coin never marked open has nothing to settle or split (FeeCoin.open).
 export async function guard(d: FeeDeps, coin: FeeCoin, urgent: boolean): Promise<Landed[]> {
+  if (!coin.open) return [];
   const mint = coin.mint.toBase58();
   const held = await d.ledger.pendingFor(mint, HOLDS);
   const left = held.length && d.mode === "on" ? await settleRows(d, held, () => coin) : held.length;
   const out: Landed[] = [];
   for (const c of await d.ledger.openCollects(mint)) out.push(await splitJob(d, coin, c, urgent));
-  if (!left) return out;
+  if (!left) {
+    coin.open = !out.every(settled);
+    return out;
+  }
   console.error(`fee ${mint}: ${left} collect, split or bond burn pending, balance-sized send deferred`);
   return [...out, DEFERRED];
 }

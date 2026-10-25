@@ -15,6 +15,8 @@ export const PUBLIC_KINDS = [
   "finalize_config",
   "finalize_update",
   "distribute",
+  "leftover_burn",
+  "evacuate",
 ] as const satisfies readonly PublicKind[];
 
 // D-10, D-12: windows run from launch, derived and never stored, so a restart loses nothing.
@@ -119,6 +121,10 @@ export function totalsFor(kind: LedgerKind, r: LandedRow): Totals {
       };
     case "distribute":
       return distributeTotals(r);
+    case "leftover_burn": // D-17: child tokens, not BONDR, so only Supply burned moves (UI-SPEC item 12)
+      return { add: { bond_burned: r.burned ?? 0n } };
+    case "evacuate": // D-36: an emergency move to treasury, the sweep_treasury shape (UI-SPEC item 12)
+      return { add: { fee_budget: -amount, to_treasury: amount, to_treasury_sol: sol } };
     case "finalize_config":
       return { add: { fee_budget: amount } };
     case "finalize_update":

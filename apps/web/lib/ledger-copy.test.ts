@@ -63,6 +63,26 @@ test("forced bond is a leaf burn tag with the burned tokens", () => {
   expect(c.text.startsWith("Burned 31.1M GRUB.")).toBe(true);
 });
 
+test("leftover burn is a leaf tag with the burned tokens and an optional SOL value", () => {
+  const c = ledgerCopy(row({ kind: "leftover_burn", burned: "31120363129478" }), "GRUB");
+  expect([c.tag, c.tone, c.value]).toEqual(["Leftover burn", "leaf", null]);
+  expect(c.text).toBe("Burned leftover 31.1M GRUB from the fee wallet.");
+  expect(ledgerCopy(row({ kind: "leftover_burn", burned: "1", sol: "420000000" }), "GRUB").value).toBe(
+    "0.42 SOL",
+  );
+});
+
+test("evacuate is a warn Emergency row naming the treasury, BONDR or SOL only", () => {
+  const b = ledgerCopy(row({ kind: "evacuate", amount: "810000000", sol: "420000000" }), "GRUB");
+  expect([b.tag, b.tone, b.value]).toEqual(["Emergency", "warn", "0.42 SOL"]);
+  expect(b.text).toBe(
+    "Moved 810 BONDR to treasury, emergency. BONDR paused its fee jobs and moved every fee wallet balance to treasury.",
+  );
+  const s = ledgerCopy(row({ kind: "evacuate", sol: "420000000" }), "GRUB");
+  expect(s.text).toBe("Moved 0.42 SOL to treasury, emergency.");
+  expect(s.value).toBe("0.42 SOL");
+});
+
 test("launch row reads burn or sell", () => {
   const b = launchCopy({ exit: "burn", solIn: "500000000", tokens: "31120363129478", symbol: "GRUB" });
   expect([b.tag, b.tone, b.value]).toEqual(["Launch burn", "leaf", "0.5 SOL"]);

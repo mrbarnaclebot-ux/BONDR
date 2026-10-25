@@ -117,6 +117,8 @@ export type LedgerKind =
   | "finalize_config"
   | "finalize_update"
   | "distribute"
+  | "leftover_burn"
+  | "evacuate"
   | "held"
   | "reconcile_diff";
 // The platform burn and the internal rows never reach a public read.

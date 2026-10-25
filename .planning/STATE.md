@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-19-PLAN.md
-last_updated: "2026-10-25T16:43:20.271Z"
-last_activity: 2026-10-25 -- Completed 06-19 (moderation worker and core)
+stopped_at: Completed 06-16-PLAN.md
+last_updated: "2026-10-25T23:20:00.000Z"
+last_activity: 2026-10-25 -- Completed 06-16 (W table)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 85
+  completed_plans: 86
   percent: 71
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 17 of 26 (06-19 complete)
+Plan: 18 of 26 (06-16 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-19 (moderation worker and core)
+Last activity: 2026-10-25 -- Completed 06-16 (W table)
 
 Progress: [█████████░] 88%
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 88%
 
 **Velocity:**
 
-- Total plans completed: 26
+- Total plans completed: 27
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -307,6 +307,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-19: moderation audits before the change, so block/unblock read isBlocked first; block still inserts on conflict do nothing returning as the race guard
 - [Phase 06]: 06-19: unhide/unblock of nothing answer no_match; an exact mint beats symbol matches; the route caps strings at 200 (400), reasons over 120 answer no_reason
 - [Phase 06]: 06-19: coinRows ANDs isNull(coins.hiddenAt); coinRow and the web admin W table query stay unfiltered; prepare refuses blocked wallets (403) inside the existing admission Promise.all
+- [Phase 06]: 06-16: WRow gains bondrSol so the burn budget shows SOL (D-07); a budget with no stored price reads a muted dash
+- [Phase 06]: 06-16: after any overview load the selection is kept while its coin is listed, else it falls back to the first stuck coin (or none)
+- [Phase 06]: 06-16: stuck step names follow the engine's job labels (finalize, forced bond, sweep, distribute, bonded); the danger Tag text is destructive lifted 15% toward foreground for contrast on the selected row
 
 ### Pending Todos
 
@@ -339,6 +342,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T16:43:20.266Z
-Stopped at: Completed 06-19-PLAN.md
+Last session: 2026-10-25T23:20:00.000Z
+Stopped at: Completed 06-16-PLAN.md
 Resume file: None

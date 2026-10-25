@@ -70,7 +70,7 @@
 ### Admin
 
 - [ ] **ADMIN-01**: Owner signs in with the single allowlisted wallet; sessions expire after 30 minutes, and every money-moving action needs a fresh signature
-- [ ] **ADMIN-02**: Owner sees treasury, buyback and ops balances, every W with its state, and platform totals
+- [x] **ADMIN-02**: Owner sees treasury, buyback and ops balances, every W with its state, and platform totals
 - [ ] **ADMIN-03**: Owner can run each recovery action: sweep now, retry forced bond, burn W token balance, run migrate, finalize split, hold for review, retry sweep, distribute now, re-check launch, sweep leftovers + close accounts, burn buyback now
 - [ ] **ADMIN-04**: Every action simulates first and shows balance changes before confirm; destinations are limited to burn, treasury, buyback, or that coin's deployer
 - [x] **ADMIN-05**: Owner can flip kill switches per job (launches, forced bond, sweeps, finalize, buyback burn)
@@ -154,7 +154,7 @@
 | FEE-09 | Phase 5 | Complete |
 | FEE-10 | Phase 2 | Complete |
 | ADMIN-01 | Phase 6 | Pending |
-| ADMIN-02 | Phase 6 | Pending |
+| ADMIN-02 | Phase 6 | Complete |
 | ADMIN-03 | Phase 6 | Pending |
 | ADMIN-04 | Phase 6 | Pending |
 | ADMIN-05 | Phase 6 | Complete |

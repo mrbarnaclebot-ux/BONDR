@@ -315,7 +315,7 @@ Plans:
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 06-16-PLAN.md - W table: state function, filters, sort, sticky Coin column, selection
+- [x] 06-16-PLAN.md - W table: state function, filters, sort, sticky Coin column, selection
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 16/26 | In Progress|  |
+| 6. Admin Dashboard | 17/26 | In Progress|  |
 | 7. Go-Live | 0/TBD | Not started | - |

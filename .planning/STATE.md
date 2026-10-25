@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-09-PLAN.md
-last_updated: "2026-10-25T14:59:47.826Z"
-last_activity: 2026-10-25 -- Completed 06-09 (leftover burn, close accounts, leftover sweep, distribute any amount)
+stopped_at: Completed 06-10-PLAN.md
+last_updated: "2026-10-25T15:22:47.140Z"
+last_activity: 2026-10-25 -- Completed 06-10 (audit writer, switch/act routes, overview and coin-live)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 78
+  completed_plans: 79
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 10 of 26 (06-09 complete)
+Plan: 11 of 26 (06-10 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-09 (leftover burn, close accounts, leftover sweep, distribute any amount)
+Last activity: 2026-10-25 -- Completed 06-10 (audit writer, switch/act routes, overview and coin-live)
 
-Progress: [████████░░] 82%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -115,6 +115,7 @@ Progress: [████████░░] 82%
 | Phase 06 P07 | 9 min | 2 tasks | 12 files |
 | Phase 06 P08 | 13 min | 3 tasks | 16 files |
 | Phase 06 P09 | 25 min | 2 tasks | 12 files |
+| Phase 06 P10 | 22 min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -282,6 +283,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-09: LedgerStore.has takes an optional windowIndex; the leftover sweep picks the lowest free index at or after the current window (A9)
 - [Phase 06]: 06-09: finalize's checkEmpty burns leftover child tokens through leftoverBurnJob and returns its Landed into finalizeJob's output; leftover BONDR stays an error for Sweep leftovers
 - [Phase 06]: 06-09: insertPending([]) returns [] in both stores without touching the database, so row-less admin jobs (close accounts, Run migrate) send through land
+- [Phase 06]: 06-10: session-only admin actions validate, run read-only checks, write one landed audit row, then change state; a failed audit write stops the action
+- [Phase 06]: 06-10: re-check with no in-flight launch records { outcome: not_applicable } and answers 409 not_applicable, so every re-check is in the log
+- [Phase 06]: 06-10: coinLive with the engine on reads only engine memory (an unknown mint is not_found); with the engine off it loads the one coin
 
 ### Pending Todos
 
@@ -314,6 +318,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T14:59:42.796Z
-Stopped at: Completed 06-08-PLAN.md
+Last session: 2026-10-25T15:22:47.135Z
+Stopped at: Completed 06-10-PLAN.md
 Resume file: None

@@ -35,7 +35,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 | `POST /trade/quote`, `/trade/balance`, `/trade/prepare`, `/trade/submit`, `/trade/view` | bearer WORKER_TOKEN |
 | `POST /fee/release` | bearer WORKER_TOKEN |
 | `POST /fee/batch` | bearer WORKER_TOKEN |
-| `POST /admin/health`, `/admin/switch`, `/admin/act` | bearer WORKER_TOKEN and `actor` equal to ADMIN_WALLET |
+| `POST /admin/health`, `/admin/switch`, `/admin/act`, `/admin/overview`, `/admin/coin-live` | bearer WORKER_TOKEN and `actor` equal to ADMIN_WALLET |
 
 `POST /prepare` takes a `PrepareRequest` and returns a `PrepareResult` (see `@bondr/core/api`). Errors: 409 `paused`, 403 `consent_required`, 400 `invalid_input`, 503 `pool_empty`, 429 `rate_limited` (30 new tables an hour, worker-wide), 402 `insufficient_balance`, 500 `build_failed`. One prepare runs at a time.
 
@@ -73,7 +73,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## Owner console
 
-Web forwards the session wallet as `actor`; the worker answers 403 `forbidden` unless it equals ADMIN_WALLET (unset means closed). `POST /admin/switch` takes `{ job, enabled }` and returns the five switches. `POST /admin/act` takes `{ action: "hold" | "release_hold" | "recheck_launch", mint, reason? }` (reason 1 to 120 characters, hold only) and returns `{ outcome }`. Re-check is one signature status read: a confirmed launch runs the normal landed path, anything else answers `not_on_chain` and changes nothing; no in-flight launch is 409 `not_applicable`. Release hold on a finalize-held coin also sets finalize back to `none`, so the next batch re-runs the full pre-flight.
+Web forwards the session wallet as `actor`; the worker answers 403 `forbidden` unless it equals ADMIN_WALLET (unset means closed). `POST /admin/switch` takes `{ job, enabled }` and returns the five switches. `POST /admin/act` takes `{ action: "hold" | "release_hold" | "recheck_launch", mint, reason? }` (reason 1 to 120 characters, hold only) and returns `{ outcome }`. `POST /admin/overview` returns the treasury, buyback and ops balances (one account read) with each coin's engine memory; `POST /admin/coin-live` takes `{ mint }` and reads only that coin's W. Re-check is one signature status read: a confirmed launch runs the normal landed path, anything else answers `not_on_chain` and changes nothing; no in-flight launch is 409 `not_applicable`. Release hold on a finalize-held coin also sets finalize back to `none`, so the next batch re-runs the full pre-flight.
 
 The console's switch, hold, release and re-check actions are audited: one `admin_audit` row each, written before the change. The bearer `POST /kill-switch` and `POST /fee/release` stay for the runbook and are not audited (OQ6).
 

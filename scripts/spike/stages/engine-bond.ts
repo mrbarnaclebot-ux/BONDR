@@ -95,7 +95,9 @@ async function forcedPath(e: E): Promise<void> {
     cost: cost.toString(),
     budget: budget.toString(),
   });
-  const coin = coinOf(e, mint, W, "curve");
+  // The indexer's memory after the whale buy: forcedJob collects only when fees are unclaimed (73853e4), and
+  // with no BONDR price any amount is worth it.
+  const coin = { ...coinOf(e, mint, W, "curve"), feesUnclaimed: 1n };
   const before = await supply(e, mint);
   const out = await forcedJob(e.d, coin);
   record(

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { fail, start } from "./http.ts";
+import { fail, Reply, start } from "./http.ts";
 
 const token = randomBytes(32).toString("hex");
 const wrong = randomBytes(32).toString("hex");
@@ -10,6 +10,7 @@ const server = start(
     "GET /status": async () => ({ ok: "status" }),
     "POST /quote": async (body) => ({ echo: body }),
     "GET /bigint": async () => ({ n: 1n }),
+    "GET /accepted": async () => new Reply(202, { id: "x" }),
     "GET /boom": async () => {
       throw new Error("secret stack detail at /Users/x/file.ts:1");
     },
@@ -52,6 +53,12 @@ test("POST bodies over 16 KB get 413, small JSON passes through", async () => {
   expect(await res.json()).toEqual({ echo: { solIn: "1" } });
   const bad = await fetch(`${base}/quote`, { method: "POST", headers, body: "{" });
   expect(bad.status).toBe(400);
+});
+
+test("a Reply answers with its own status and body", async () => {
+  const res = await get("/accepted", token);
+  expect(res.status).toBe(202);
+  expect(await res.json()).toEqual({ id: "x" });
 });
 
 test("unknown paths get 404", async () => {

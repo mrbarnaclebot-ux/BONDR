@@ -43,6 +43,16 @@ const STATUS: Partial<Record<LaunchErrorCode, number>> = {
 };
 export const fail = (body: ApiError): Fail => new Fail(STATUS[body.error] ?? 500, body);
 
+// A handler returns this to answer with another success status (admin execute answers 202 and sends after).
+export class Reply {
+  readonly status: number;
+  readonly body: unknown;
+  constructor(status: number, body: unknown) {
+    this.status = status;
+    this.body = body;
+  }
+}
+
 export type Handler = (body: unknown) => Promise<unknown>;
 export type Routes = Record<string, Handler>; // keyed "METHOD /path"
 // A long-lived response the handler writes itself (GET /events); same bearer check as Routes.
@@ -96,7 +106,9 @@ async function handle(
     const route = routes[key];
     if (!route) return send(res, 404, { error: "not_found" });
     const body = req.method === "POST" ? await readJson(req) : undefined;
-    send(res, 200, await route(body));
+    const out = await route(body);
+    if (out instanceof Reply) return send(res, out.status, out.body);
+    send(res, 200, out);
   } catch (e) {
     if (e instanceof Fail) return send(res, e.status, e.body);
     console.error(`${key} failed: ${redact(e instanceof Error ? e.message : String(e))}`);

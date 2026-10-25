@@ -4,7 +4,7 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 
 - `main.ts`: entry; config, one RPC connection, the route table, index boot and the stream.
 - `env.ts`: `loadEnv` (fails at boot on bad config, devnet only; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`, `ADMIN_WALLET` (invalid is null), `ADMIN_EVACUATE`, `SENTRY_READ_TOKEN`), `ops`, `treasury` and the per-lane `buyback` keys.
-- `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Routes` keyed "METHOD /path".
+- `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Reply` for a non-200 success, `Routes` keyed "METHOD /path".
 - `sentry.ts`: OPS-01 Sentry init with the shared scrub; imported first by main.ts.
 - `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache), POST /kill-switch (through switches.ts), `Ctx`, `MAX_SOL_IN`.
 - `switches.ts`: the owner's five switches (D-18) in memory: `loadSwitches` (one settings read at boot; a missing row is all off), `switchOn`, `switchState`, `setJob` (DB first, then memory). No timer reads.
@@ -27,6 +27,9 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `admin-intent.ts`: owner intents in memory (D-12): the worker-written text the owner signs, single-use `take` verified against ADMIN_WALLET, 2 min expiry, kept 10 min after execute for the poll, 200 cap.
 - `admin-dest.ts`: pure destination lock (D-14): `allowFor` builds the allowlist (owners and their ATAs under both token programs), `refusedDestination` names the first top-level outflow outside it, `passedLines` feeds the dialog copy.
 - `admin-leftover.ts`: leftover recovery jobs through `d.land` (D-16, D-17): `leftoverBurnJob` (W child burn, `leftover_burn` row, also run by finalize), `closeAccountsJob` (W's empty ATAs closed to the treasury, no row), `sweepLeftoversJob` (sweep at the free window index, burn, close).
+- `admin-sim.ts`: simulate-first capture (D-12): `captureDeps` (land simulates each built tx with the watched accounts, dry mode, read-only ledger, no publish), `simulateJob`, `balanceRows` and `simSummary` (first step authoritative, later ones estimated).
+- `admin-actions.ts`: the recovery action registry (D-15, D-16): `ACTIONS` (applies, allow, watch, run per transaction action), `actionView` (the live coin plus one chain read) and `runOn` (the coin's engine queue, "platform" for burn_buyback, direct with the engine off).
+- `admin-money.ts`: the money path (ADMIN-01, ADMIN-04, ADMIN-10): `simulateAction` (capture run, destination check, intent), `executeAction` (owner signature via `take`, pending audit row first, background send through `gatedDeps`, never resent), `intentView`, `adminBase` (mode on in every engine mode, A1).
 - `trade-prepare.ts`: `prepareTrade`, the unsigned simulated and budgeted trade tx (`cuLimitFor`, `priorityMicroLamports`, devnet buy cap).
 - `trade-submit.ts`: POST /trade/submit (`submitTrade`: byte compare against the stored message, one paced send, background settle with the landed amount) and POST /trade/view (`viewTrade`).
 - `fee-config.ts`: per-network fee engine settings (`feeConfig`: collect minimum, pacing, creator bps), `OPS_FLOOR_LAMPORTS`, the Helius Sender URL and tip accounts.
@@ -45,7 +48,7 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `fee-stuck.ts`: stuck-step bookkeeping since boot: `STUCK_AT`, `stepOf` (step from the job label), `verdict` (failed or landed result), `codeOf` (short redacted error code).
 - `fee-boot.ts`: `startEngine` (one boot read, recover, then arm), the engine singleton (`feeEngine`, `onIngest`), `feeDeps`, `loadCoin` (one coin for the engine-off admin path) and `withCost` (cost to complete on every curve patch).
 - `health.ts`: memory-only health facts (D-26): `bootAt`, `instance`, `mark`/`marks` (the stream's last message and each fee job's last run since boot) and `healthSnapshot`, the POST /admin/health answer (never a database read, D-22).
-- `admin-routes.ts`: `adminRoutes`, every owner console route, each wrapped once by `gated` (403 unless ADMIN_WALLET is set and body.actor matches it); POST /admin/health, /admin/switch, /admin/act, /admin/overview, /admin/coin-live.
+- `admin-routes.ts`: `adminRoutes`, every owner console route, each wrapped once by `gated` (403 unless ADMIN_WALLET is set and body.actor matches it); POST /admin/health, /admin/switch, /admin/act, /admin/overview, /admin/coin-live, /admin/simulate, /admin/execute (202) and /admin/intent.
 - `admin-audit.ts`: the one admin audit writer (D-33, D-34): `pgAudit` and `memoryAudit` with `insertPending` (money actions, before any send), `settle` (guarded update, once) and `insertLanded` (session-only actions). A failed write logs its SQLSTATE only.
 - `admin-act.ts`: session-only actions (D-13), each audited before the change: `switchRoute` (`setJob`), `act` hold, release hold (also resets a finalize-held coin to none) and re-check launch (one status read, then settle's `landed`).
 - `admin-overview.ts`: `overview` (treasury, buyback, ops and their BONDR in one getMultipleAccountsInfo, plus engine memory per coin) and `coinLive` (the selected coin's W, W BONDR and W child in one call, its memory and window).

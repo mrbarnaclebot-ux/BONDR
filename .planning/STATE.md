@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-10-25T13:28:55.002Z"
-last_activity: 2026-10-25 -- Completed 06-03 (owner sign-in, admin cookie, console shell)
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-10-25T13:41:40.610Z"
+last_activity: 2026-10-25 -- Completed 06-04 (multi-mint fee ledger fixes, fee-ledger-memory split)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 72
-  percent: 76
+  completed_plans: 73
+  percent: 77
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 4 of 26 (06-03 complete)
+Plan: 5 of 26 (06-04 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-03 (owner sign-in, admin cookie, console shell)
+Last activity: 2026-10-25 -- Completed 06-04 (multi-mint fee ledger fixes, fee-ledger-memory split)
 
-Progress: [████████░░] 76%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -110,6 +110,7 @@ Progress: [████████░░] 76%
 | Phase 06 P01 | 25 min | 2 tasks | 16 files |
 | Phase 06 P02 | 15 min | 2 tasks | 13 files |
 | Phase 06 P03 | 20 min | 3 tasks | 8 files |
+| Phase 06 P04 | 12 min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -256,6 +257,10 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-03: admin nonces reuse issueNonce and are spent in consent_nonces; the first message line 'BONDR admin sign-in' is the domain separation (D-09)
 - [Phase 06]: 06-03: verify refuses a non-admin wallet with 403 not_admin before the signature check (no nonce spend, no cookie)
 - [Phase 06]: 06-03: panels reach the session through useAdmin() (wallet, exp, onUnauthorized) from AdminConsole's context; ops register in OPS in api/admin/[op]/route.ts with the actor from the cookie
+- [Phase 06]: 06-04: memoryLedger lives in fee-ledger-memory.ts (not re-exported); its signature keys include the mint like the 0007 index
+- [Phase 06]: 06-04: rows built with their own sol keep it; withSol only fills rows without one
+- [Phase 06]: 06-04: landed rows publish per mint via publishByMint in send and recovery; Facts stay keyed by kind (one value per kind per tx)
+- [Phase 06]: 06-04: reconcile counts evacuate as a W outflow; leftover_burn is not a BONDR move
 
 ### Pending Todos
 
@@ -288,6 +293,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T13:28:46.439Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-10-25T13:41:40.605Z
+Stopped at: Completed 06-04-PLAN.md
 Resume file: None

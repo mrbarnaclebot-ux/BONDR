@@ -14,7 +14,6 @@ import {
   readSharing,
   SHARING_CONFIG_SIZE,
 } from "@bondr/core/sharing";
-import { tokenDelta } from "@bondr/core/trade";
 import {
   type ConfirmedTransactionMeta,
   LAMPORTS_PER_SOL,
@@ -25,7 +24,7 @@ import {
 import { spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
 import { collectJob, settled, sweepJob, wBondr } from "./fee-prebond.ts";
-import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
+import { type FeeCoin, type FeeDeps, factsFor, type Landed } from "./fee-send.ts";
 
 const W_BUFFER = 0.01 * LAMPORTS_PER_SOL; // proven float on top of the config rent (01-08)
 const CU = 600_000;
@@ -75,7 +74,7 @@ const base = (d: FeeDeps, coin: FeeCoin, pool: PublicKey) => ({
 // the sweeps and the update's inner distribution pay W the vault (01-08), and the closing sweep takes it.
 function finalLand(d: FeeDeps, coin: FeeCoin, row: NewEntry, ixs: TransactionInstruction[]) {
   const w = coin.w.publicKey;
-  const facts = (meta: ConfirmedTransactionMeta) => ({ [row.kind]: { amount: tokenDelta(meta, d.Q, w) } });
+  const facts = (meta: ConfirmedTransactionMeta) => factsFor([row], meta, d.Q, w);
   return d.land({ rows: [row], ixs, signers: [coin.w], cu: CU, facts });
 }
 

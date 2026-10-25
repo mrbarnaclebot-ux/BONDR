@@ -1,7 +1,7 @@
 // The one send path of the fee engine (D-08, D-16, D-20): sign, record the intent, broadcast, settle. Every job
 // goes through land, so crash safety, the ops floor and the program allowlist (signTx) live here only.
 // Never resend an "unknown" tx: its row stays pending and boot recovery settles it from the signature.
-import type { Venue } from "@bondr/core/api";
+import type { LedgerKind, Venue } from "@bondr/core/api";
 import { redact } from "@bondr/core/net";
 import { toSol } from "@bondr/core/price";
 import type { OnlinePumpAmmSdk, OnlinePumpSdk } from "@bondr/core/pump";
@@ -16,6 +16,7 @@ import {
   settle,
   signTx,
 } from "@bondr/core/send";
+import { tokenDelta } from "@bondr/core/trade";
 import {
   type ConfirmedTransactionMeta,
   type Connection,
@@ -148,6 +149,35 @@ export function withSol(job: Pick<Job, "rows">, facts: Facts, bondrSol: number |
     const amount = f.amount ?? r.amount;
     if (f.sol === undefined && amount !== undefined && bondrSol !== null) f.sol = toSol(amount, bondrSol);
     out[r.kind] = f;
+  }
+  return out;
+}
+
+type Delta = (owner: PublicKey) => bigint;
+const W_IN: LedgerKind[] = ["collect", "finalize_config", "finalize_update"];
+const W_OUT: LedgerKind[] = ["forced_bond", "pool_burn"];
+function distributed(detail: NewEntry["detail"], delta: Delta): Partial<NewEntry> | undefined {
+  const [dk, tk] = [detail?.deployer, detail?.treasury];
+  if (typeof dk !== "string" || typeof tk !== "string") return undefined;
+  const [dx, tx] = [delta(new PublicKey(dk)), delta(new PublicKey(tk))];
+  return { amount: dx + tx, detail: { ...detail, deployerAmount: String(dx), treasuryAmount: String(tx) } };
+}
+
+// Each row's landed amount from its tx's own meta (D-14): what W gained (collect, finalize) or spent (bond
+// burns), and for a distribute what the two holders the row names gained. Jobs and boot recovery share it, so a
+// recovered row lands with the same facts (WR-03). Other kinds keep their intent amount.
+export function factsFor(
+  rows: NewEntry[],
+  meta: ConfirmedTransactionMeta,
+  Q: PublicKey,
+  w?: PublicKey,
+): Facts {
+  const delta: Delta = (owner) => tokenDelta(meta, Q, owner);
+  const out: Facts = {};
+  for (const { kind, detail } of rows) {
+    if (kind === "distribute") out.distribute = distributed(detail, delta);
+    if (w && W_IN.includes(kind)) out[kind] = { amount: delta(w) };
+    if (w && W_OUT.includes(kind)) out[kind] = { amount: -delta(w) };
   }
   return out;
 }

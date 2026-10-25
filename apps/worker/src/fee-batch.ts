@@ -16,7 +16,6 @@ import {
   PUMP_SDK,
 } from "@bondr/core/pump";
 import { distributeIxs } from "@bondr/core/sharing";
-import { tokenDelta } from "@bondr/core/trade";
 import {
   AccountLayout,
   createBurnCheckedInstruction,
@@ -28,7 +27,7 @@ import { bondedJob } from "./fee-burns.ts";
 import type { Engine } from "./fee-engine.ts";
 import { tokenBalance } from "./fee-prebond.ts";
 import { reconcile } from "./fee-reconcile.ts";
-import { type FeeCoin, type FeeDeps, type Landed, opsLow } from "./fee-send.ts";
+import { type FeeCoin, type FeeDeps, factsFor, type Landed, opsLow } from "./fee-send.ts";
 
 const DECIMALS = 6; // BONDR, the quote mint (price.ts)
 const DONE: Landed = { state: "done" };
@@ -102,12 +101,8 @@ export async function distributeJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> 
     ...{ dBps: deployer.shareBps, tBps: treasury.shareBps },
     ...{ deployer: deployer.address.toBase58(), treasury: treasury.address.toBase58() },
   };
-  const facts = (meta: ConfirmedTransactionMeta) => {
-    const [dx, tx] = [tokenDelta(meta, d.Q, deployer.address), tokenDelta(meta, d.Q, treasury.address)];
-    const split = { deployerAmount: String(dx), treasuryAmount: String(tx) };
-    return { distribute: { amount: dx + tx, detail: { ...detail, ...split } } };
-  };
   const row = { kind: "distribute" as const, mint: coin.mint.toBase58(), detail };
+  const facts = (meta: ConfirmedTransactionMeta) => factsFor([row], meta, d.Q);
   return d.land({ rows: [row], ixs, signers: [], cu: DISTRIBUTE_CU, facts });
 }
 

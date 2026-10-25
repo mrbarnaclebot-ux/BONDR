@@ -9,13 +9,12 @@ import { wFloat } from "@bondr/core/float";
 import { applyBps, trigger105 } from "@bondr/core/math";
 import { redact } from "@bondr/core/net";
 import { BN } from "@bondr/core/pump";
-import { tokenDelta } from "@bondr/core/trade";
 import type { TransactionInstruction } from "@solana/web3.js";
 import { finalizeJob } from "./fee-finalize.ts";
 import { guard, spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
 import { collectJob, settled, wBondr } from "./fee-prebond.ts";
-import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
+import { type FeeCoin, type FeeDeps, factsFor, type Landed } from "./fee-send.ts";
 
 const BOND_KINDS: LedgerKind[] = ["forced_bond", "pool_burn"];
 const CU = 600_000;
@@ -32,7 +31,7 @@ function burnLand(d: FeeDeps, coin: FeeCoin, row: NewEntry, ixs: TransactionInst
   coin.open = true;
   return d.land({
     ...{ rows: [row], ixs, signers: [coin.w], urgent: true, sender: true, cu: CU },
-    facts: (meta) => ({ [row.kind]: { amount: -tokenDelta(meta, d.Q, w) } }),
+    facts: (meta) => factsFor([row], meta, d.Q, w),
   });
 }
 

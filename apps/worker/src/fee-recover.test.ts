@@ -120,3 +120,31 @@ test("an unseen signature within its blockhash is polled until it lands", async 
   expect(waits).toEqual([400, 400]);
   expect(await t.ledger.pending()).toEqual([]);
 });
+
+// WR-03: a recovered row lands with the facts its job would have written, not only a collect.
+test("recover rebuilds bond burn, finalize and distribute facts from each tx's own meta", async () => {
+  const [dev, tre] = [PublicKey.unique(), PublicKey.unique()];
+  const t = deps(() => [ok, ok, ok]);
+  const bal = (owner: PublicKey, amount: bigint) => ({
+    ...{ mint: Q.toBase58(), owner: owner.toBase58() },
+    uiTokenAmount: { amount: String(amount) },
+  });
+  const metas: Record<string, object> = {
+    b: { err: null, preTokenBalances: [bal(W.publicKey, 900n)], postTokenBalances: [bal(W.publicKey, 0n)] },
+    f: meta(300n),
+    x: { err: null, preTokenBalances: [], postTokenBalances: [bal(dev, 80n), bal(tre, 20n)] },
+  };
+  t.conn.getTransaction.mockImplementation((async (sig: string) => ({ slot: 9, meta: metas[sig] })) as never);
+  const detail = { deployer: dev.toBase58(), treasury: tre.toBase58() };
+  await t.ledger.insertPending([{ kind: "pool_burn", mint, amount: 999n, burned: 5n }], "b", 150n);
+  await t.ledger.insertPending([{ kind: "finalize_update", mint }], "f", 150n);
+  await t.ledger.insertPending([{ kind: "distribute", mint, detail }], "x", 150n);
+  await recover(t.d, coinOf, async () => {});
+  const rows = t.published.flat();
+  expect(rows.map((e) => [e.kind, e.amount])).toEqual([
+    ["pool_burn", 900n],
+    ["finalize_update", 300n],
+    ["distribute", 100n],
+  ]);
+  expect(rows[2]?.detail).toMatchObject({ deployerAmount: "80", treasuryAmount: "20" });
+});

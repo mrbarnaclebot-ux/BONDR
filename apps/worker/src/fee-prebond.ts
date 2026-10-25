@@ -4,12 +4,11 @@ import { collectIxs, splitIxs, sweepIxs } from "@bondr/core/collect";
 import { sweepSplit } from "@bondr/core/fees";
 import { split90_10 } from "@bondr/core/math";
 import { toSol } from "@bondr/core/price";
-import { tokenDelta } from "@bondr/core/trade";
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
 import type { PublicKey } from "@solana/web3.js";
 import { feeConfig } from "./fee-config.ts";
 import type { Entry, NewEntry } from "./fee-ledger.ts";
-import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
+import { type FeeCoin, type FeeDeps, factsFor, type Landed } from "./fee-send.ts";
 
 const DECIMALS = 6; // BONDR, the quote mint (price.ts)
 const DONE: Landed = { state: "done" };
@@ -27,13 +26,8 @@ export async function collectJob(
     ...{ online: d.online, payer: d.ops.publicKey, mint, creator: W, quoteMint: d.Q },
     sweepCurve,
   });
-  return d.land({
-    rows: [{ kind: "collect", mint: mint.toBase58() }],
-    ixs,
-    signers: [],
-    urgent,
-    facts: (meta) => ({ collect: { amount: tokenDelta(meta, d.Q, W) } }),
-  });
+  const rows: NewEntry[] = [{ kind: "collect", mint: mint.toBase58() }];
+  return d.land({ rows, ixs, signers: [], urgent, facts: (meta) => factsFor(rows, meta, d.Q, W) });
 }
 
 // Sized from the collect row's amount, never from W's balance (D-14, T-05-04-03).

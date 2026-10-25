@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-17-PLAN.md
-last_updated: "2026-10-25T23:45:00.000Z"
-last_activity: 2026-10-25 -- Completed 06-17 (per-coin timeline)
+stopped_at: Completed 06-18-PLAN.md
+last_updated: "2026-10-25T18:36:31.142Z"
+last_activity: 2026-10-25 -- Completed 06-18 (simulation dialog)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 87
-  percent: 72
+  completed_plans: 88
+  percent: 71
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 19 of 26 (06-17 complete)
+Plan: 20 of 26 (06-18 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-17 (per-coin timeline)
+Last activity: 2026-10-25 -- Completed 06-18 (simulation dialog)
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -122,6 +122,7 @@ Progress: [█████████░] 88%
 | Phase 06 P14 | 25 min | 2 tasks | 12 files |
 | Phase 06 P15 | 35 min | 1 tasks | 8 files |
 | Phase 06 P19 | 25 min | 2 tasks | 11 files |
+| Phase 06 P18 | 23 min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -313,6 +314,10 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-17: coinTimeline is server-only in admin-timeline-data.ts; timelineSteps stays pure in admin-timeline.ts so the client builds steps with its own clock
 - [Phase 06]: 06-17: the coin op runs once per pick and once per overview load (Refresh or the reload after an action), never on a timer; live is null when the worker does not answer
 - [Phase 06]: 06-17: hold and release toggle on the held flag (exactly one applies); the console hold reason is 'Held for review from the console'; an unconfirmed launch shows one next step 'Re-check launch'
+- [Phase 06]: 06-18: the dialog run lives in lib/use-sim.ts (signMessage over intent.message exactly); one AbortController per mount, so a signature that resolves after close or session end is never executed
+- [Phase 06]: 06-18: no wallet connected shows 'Connect Phantom' in the send slot; a wrong signer is left to the worker (403 bad_intent_signature, intent stays usable, back to ready)
+- [Phase 06]: 06-18: a lost execute answer is polled; a missing intent or 90 s without a final state reads 'Sent, not confirmed yet', never 'nothing was sent'
+- [Phase 06]: 06-18: OQ1 note 'Later transactions are simulated again by the RPC before they are sent.' when any step is estimated (Claude's discretion)
 
 ### Pending Todos
 
@@ -345,6 +350,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T23:45:00.000Z
-Stopped at: Completed 06-17-PLAN.md
+Last session: 2026-10-25T18:36:00.000Z
+Stopped at: Completed 06-18-PLAN.md
 Resume file: None

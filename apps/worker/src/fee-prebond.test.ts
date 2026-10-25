@@ -25,7 +25,9 @@ const coin: FeeCoin = {
 const qMeta = (wDelta: bigint) => ({
   err: null,
   preTokenBalances: [],
-  postTokenBalances: [{ mint: Q.toBase58(), owner: W.publicKey.toBase58(), uiTokenAmount: { amount: String(wDelta) } }],
+  postTokenBalances: [
+    { mint: Q.toBase58(), owner: W.publicKey.toBase58(), uiTokenAmount: { amount: String(wDelta) } },
+  ],
 });
 
 let jobs: Job[];
@@ -71,7 +73,9 @@ test("a window collects, splits a tenth of the collect's own delta, then sweeps 
   const [c, s, w] = jobs;
   expect(c?.rows).toEqual([{ kind: "collect", mint: coin.mint.toBase58() }]);
   const collectId = out[0]?.rows?.[0]?.id;
-  expect(s?.rows).toEqual([{ kind: "split_treasury", mint: coin.mint.toBase58(), ref: collectId, amount: 100n }]);
+  expect(s?.rows).toEqual([
+    { kind: "split_treasury", mint: coin.mint.toBase58(), ref: collectId, amount: 100n },
+  ]);
   expect(s?.signers).toEqual([W]);
   expect(transfers(s).map((t) => t.data.amount)).toEqual([100n]);
   expect(w?.rows.map((r) => [r.kind, r.amount, r.windowIndex])).toEqual([
@@ -124,7 +128,9 @@ test("a zero or missing W balance sweeps nothing and writes no row (D-12)", asyn
 
 test("a split of a collect under 10 base units sends nothing", async () => {
   const d = deps();
-  expect((await splitJob(d, coin, { id: 1, kind: "collect", mint: "m", amount: 9n } as never)).state).toBe("done");
+  expect((await splitJob(d, coin, { id: 1, kind: "collect", mint: "m", amount: 9n } as never)).state).toBe(
+    "done",
+  );
   expect(jobs).toEqual([]);
 });
 

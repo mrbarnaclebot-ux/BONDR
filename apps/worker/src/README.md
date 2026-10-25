@@ -24,4 +24,8 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `trade-store.ts`: prepared trades in memory (exact message bytes, state), 120 s TTL, 5,000 cap.
 - `trade-prepare.ts`: `prepareTrade`, the unsigned simulated and budgeted trade tx (`cuLimitFor`, `priorityMicroLamports`, devnet buy cap).
 - `trade-submit.ts`: POST /trade/submit (`submitTrade`: byte compare against the stored message, one paced send, background settle with the landed amount) and POST /trade/view (`viewTrade`).
+- `fee-config.ts`: per-network fee engine settings (`feeConfig`: collect minimum, pacing, creator bps), `OPS_FLOOR_LAMPORTS`, the Helius Sender URL and tip accounts.
+- `fee-ledger.ts`: `LedgerStore`, `pgLedger` (fee_ledger rows; landing moves the coin fee columns in the same transaction) and `memoryLedger` (same unique rules, for units and the fork stage).
+- `fee-send.ts`: `land`, the one fee send path (sign, record pending, broadcast, settle), the ops floor (`opsLow`, `noteOps`) and the mainnet-only Sender path (`tipIxs`, `urgentBroadcast`); `FeeDeps`, `Job`, `FeeCoin`.
+- `fee-prebond.ts`: `collectJob`, `splitJob`, `sweepJob` and `windowJob` (collect, 90/10 split, window sweep).
 - `*.test.ts`: vitest checks; DB-backed ones skip without DATABASE_URL.

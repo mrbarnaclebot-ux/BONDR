@@ -52,3 +52,30 @@ export function splitIxs(o: {
     ),
   ];
 }
+
+// D-12 window sweep: W's BONDR goes 90% to the buyback and 10% to the treasury in one tx W signs. The
+// destinations are only ever the two derived ATAs (T-01-20); a zero leg is left out.
+export function sweepIxs(o: {
+  payer: PublicKey;
+  w: PublicKey;
+  buyback: PublicKey;
+  treasury: PublicKey;
+  quoteMint: PublicKey;
+  buybackAmount: bigint;
+  treasuryAmount: bigint;
+  decimals: number;
+}): TransactionInstruction[] {
+  const ata = (owner: PublicKey) => getAssociatedTokenAddressSync(o.quoteMint, owner, true, T22);
+  const legs = (
+    [
+      [o.buyback, o.buybackAmount],
+      [o.treasury, o.treasuryAmount],
+    ] as const
+  ).filter(([, x]) => x > 0n);
+  return [
+    ...legs.map(([owner]) => ataIx(o.payer, o.quoteMint, owner)),
+    ...legs.map(([owner, x]) =>
+      createTransferCheckedInstruction(ata(o.w), o.quoteMint, ata(owner), o.w, x, o.decimals, [], T22),
+    ),
+  ];
+}

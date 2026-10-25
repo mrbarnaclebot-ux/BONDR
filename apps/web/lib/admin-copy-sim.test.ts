@@ -22,14 +22,18 @@ test("every contract code maps to the UI-SPEC copy verbatim", () => {
   expect(c("destination_refused", "Evil1111")).toBe(
     "Destination refused: Evil1111 is not burn, treasury, buyback or SWMP's deployer. Nothing can be sent.",
   );
-  expect(c("not_applicable")).toBe("Finalize split no longer applies to SWMP. Refresh to see its current state.");
+  expect(c("not_applicable")).toBe(
+    "Finalize split no longer applies to SWMP. Refresh to see its current state.",
+  );
   expect(adminErrorCopy("not_applicable", "burn_buyback", "BONDR")).toBe(
     "Burn buyback now no longer applies to BONDR. Refresh to see its current state.",
   );
   expect(c("simulation_failed", "insufficient_balance")).toBe(
     "Simulation failed: insufficient funds. Nothing was sent.",
   );
-  expect(c("simulation_failed", "code 6001")).toBe("Simulation failed: program error 6001. Nothing was sent.");
+  expect(c("simulation_failed", "code 6001")).toBe(
+    "Simulation failed: program error 6001. Nothing was sent.",
+  );
   expect(c("simulation_failed")).toBe("Simulation failed: an unexpected error. Nothing was sent.");
   expect(c("worker_unavailable")).toBe("The worker did not answer. Nothing was sent. Try again in a moment.");
   expect(c("rate_limited")).toBe("Too many requests. Wait a minute and try again.");
@@ -59,7 +63,11 @@ test("the result line shows transactions only past one step and a static expiry"
   ]);
   expect(simResultLine(SIM)[0].tone).toBe("ok");
   const one = { ...SIM, ok: false, steps: [SIM.steps[0]], intent: undefined };
-  expect(text(simResultLine(one))).toEqual(["Result failed", "Compute 48,210 CU", "Fee 0.000015 SOL, ops pays"]);
+  expect(text(simResultLine(one))).toEqual([
+    "Result failed",
+    "Compute 48,210 CU",
+    "Fee 0.000015 SOL, ops pays",
+  ]);
   expect(simResultLine(one)[0].tone).toBe("danger");
 });
 

@@ -20,13 +20,14 @@ vi.mock("@bondr/core/db", async (orig) => ({
         where: async () => {
           if (m.fail) throw new Error("db down");
           m.sets.push(v);
+          if (m.rows[0]) Object.assign(m.rows[0], v);
         },
       }),
     }),
   }),
 }));
 
-const { loadSwitches, setJob, switchOn, switchState } = await import("./switches.ts");
+const { loadSwitches, pauseAll, setJob, switchOn, switchState } = await import("./switches.ts");
 const { liveStatus, setSwitch } = await import("./status.ts");
 
 const row = (o: object = {}) => ({
@@ -95,4 +96,19 @@ test("liveStatus reads launches from memory, and fresh re-reads the row into the
   expect(m.selects).toBe(before);
   expect((await liveStatus(ctx, true)).paused).toBe(null);
   expect(switchOn("launches")).toBe(true);
+});
+
+test("pauseAll switches all five jobs off and stamps evacuatedAt in one UPDATE, then memory", async () => {
+  await loadSwitches();
+  await pauseAll();
+  expect(m.sets).toHaveLength(1);
+  const [set] = m.sets as Record<string, unknown>[];
+  expect(set).toMatchObject({
+    ...{ launchesEnabled: false, forcedBondEnabled: false, sweepsEnabled: false },
+    ...{ finalizeEnabled: false, buybackBurnEnabled: false },
+  });
+  expect(set?.evacuatedAt).toBeInstanceOf(Date);
+  const s = switchState();
+  for (const j of ["launches", "forcedBond", "sweeps", "finalize", "buybackBurn"] as const) expect(s[j]).toBe(false);
+  expect(s.evacuatedAt).toBe((set?.evacuatedAt as Date).toISOString());
 });

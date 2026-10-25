@@ -1,12 +1,17 @@
-// The daily batch (FEE-06, FEE-07, D-13, D-19, D-20): the buyback burn, the distribution crank, finalize retries,
-// the ops-floor pause, the batch hour and the single-flight route. No RPC: chain reads are stubbed and land
+// The daily batch (FEE-06, FEE-07, FEE-09, D-13, D-19, D-20, D-21): the buyback burn, the distribution crank,
+// finalize retries, the ops-floor pause, the batch hour, the single-flight route and the reconciliation. No RPC: chain reads are stubbed and land
 // records each job against a memoryLedger.
 import { BN, PUMP_AMM_SDK, PUMP_SDK } from "@bondr/core/pump";
-import { AccountLayout, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
+import {
+  AccountLayout,
+  getAssociatedTokenAddressSync,
+  TOKEN_2022_PROGRAM_ID as T22,
+} from "@solana/spl-token";
 import { type AccountInfo, Keypair, PublicKey } from "@solana/web3.js";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { buybackBurnJob, distributeJob, nextBatchAt, runBatch, scheduleBatch } from "./fee-batch.ts";
-import { memoryLedger } from "./fee-ledger.ts";
+import { memoryLedger, type NewEntry } from "./fee-ledger.ts";
+import { impliedOf, reconcile } from "./fee-reconcile.ts";
 import { feeRoutes } from "./fee-routes.ts";
 import { type FeeCoin, type FeeDeps, type Job, type Landed, noteOps } from "./fee-send.ts";
 
@@ -228,4 +233,68 @@ test("POST /fee/batch: refused before the engine starts; then one run, shared wh
   expect(a).toBe(b);
   expect(await a).toMatchObject({ opsLow: false, burn: "done" });
   expect(implied).toHaveBeenCalledTimes(1);
+});
+
+const ataOf = (owner: PublicKey) => getAssociatedTokenAddressSync(Q, owner, true, T22).toBase58();
+
+// Chain balances by ATA address; every multi-account read's size is kept.
+function chain(amounts: Record<string, bigint>, calls: number[]) {
+  return {
+    getMultipleAccountsInfo: async (keys: PublicKey[]) => {
+      calls.push(keys.length);
+      return keys.map((k) => (k.toBase58() in amounts ? tokenAccount(amounts[k.toBase58()] ?? 0n) : null));
+    },
+  };
+}
+
+async function landRows(d: FeeDeps, rows: NewEntry[]): Promise<void> {
+  for (const [i, r] of rows.entries()) {
+    await d.ledger.insertPending([r], `r${i}${r.kind}${r.mint}`, 1n);
+    await d.ledger.settle(`r${i}${r.kind}${r.mint}`, "landed");
+  }
+}
+
+const row = (kind: NewEntry["kind"], mint: string, amount: bigint, o: Partial<NewEntry> = {}) => ({
+  ...{ kind, mint, amount, ...o },
+  state: "landed",
+});
+const window = (m: string) => [
+  ...[row("collect", m, 1000n), row("split_treasury", m, 100n, { ref: 1 })],
+  ...[row("sweep_buyback", m, 810n, { windowIndex: 0 }), row("sweep_treasury", m, 90n, { windowIndex: 0 })],
+];
+
+test("impliedOf: a full window nets W to 0; the buyback keeps its sweeps minus its burns", () => {
+  const burn = { kind: "buyback_burn", mint: null, burned: 800n, state: "landed" };
+  const i = impliedOf([...window("M"), { ...row("collect", "M", 7n), state: "failed" }, burn]);
+  expect(i.byMint.get("M")).toBe(0n);
+  expect(i.buyback).toBe(10n);
+});
+
+test("reconcile: an exact match writes nothing; a W off by 5 writes one reconcile_diff and an error", async () => {
+  const coin = coinOf();
+  const mint = coin.mint.toBase58();
+  for (const w of [0n, 5n]) {
+    const d = deps();
+    Object.assign(d.conn, chain({ [ataOf(coin.w.publicKey)]: w, [ataOf(d.buyback.publicKey)]: 810n }, []));
+    await landRows(d, window(mint));
+    const diff = vi.spyOn(d.ledger, "diff");
+    expect(await reconcile(d, new Map([[mint, coin]]))).toEqual({ accounts: 2, diffs: Number(w) / 5 });
+    if (w === 0n) expect(diff).not.toHaveBeenCalled();
+    else expect(diff).toHaveBeenCalledWith(mint, { implied: "0", chain: "5", diff: "5" });
+  }
+  expect(console.error).toHaveBeenCalledWith(expect.stringContaining("reconcile diff"));
+});
+
+test("reconcile: chain reads go 100 accounts per call and nothing is ever sent", async () => {
+  const coins = Array.from({ length: 150 }, () => coinOf());
+  const calls: number[] = [];
+  const d = deps({}, chain({}, calls));
+  await landRows(
+    d,
+    coins.map((c) => row("collect", c.mint.toBase58(), 1n)),
+  );
+  const s = await reconcile(d, new Map(coins.map((c) => [c.mint.toBase58(), c])));
+  expect(calls).toEqual([100, 51]);
+  expect(s).toEqual({ accounts: 151, diffs: 150 });
+  expect(jobs).toHaveLength(0);
 });

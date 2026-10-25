@@ -60,6 +60,7 @@ export async function preflight(d: FeeDeps, coin: FeeCoin, override?: PublicKey)
   const reason = deployerOk({
     ...{ deployer, wallet: override ? deployer : coin.wallet.toBase58() },
     ...{ treasury: d.treasury.toBase58(), w: coin.w.publicKey.toBase58() },
+    platform: [d.ops.publicKey.toBase58(), d.buyback.publicKey.toBase58()],
     onCurve: PublicKey.isOnCurve(key.toBytes()),
   });
   return reason ? hold(d, coin, reason) : key;

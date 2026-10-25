@@ -44,12 +44,13 @@ test("minOutAfter subtracts W's balance before the buy (WR-08)", () => {
 });
 
 test("deployerOk requires the launch wallet, three distinct accounts and an on-curve deployer", () => {
-  const ok = { deployer: "D", wallet: "D", treasury: "T", w: "W", onCurve: true };
+  const ok = { deployer: "D", wallet: "D", treasury: "T", w: "W", platform: ["O", "B"], onCurve: true };
   expect(deployerOk(ok)).toBeNull();
   expect(deployerOk({ ...ok, wallet: "X" })).toBe("deployer is not the launch wallet");
   expect(deployerOk({ ...ok, treasury: "D" })).toBe("deployer is the treasury");
   expect(deployerOk({ ...ok, w: "D" })).toBe("deployer is the fee wallet");
   expect(deployerOk({ ...ok, w: "T" })).toBe("treasury is the fee wallet");
+  expect(deployerOk({ ...ok, platform: ["O", "D"] })).toBe("deployer is a platform key");
   expect(deployerOk({ ...ok, onCurve: false })).toBe("deployer is off curve");
 });
 

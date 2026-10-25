@@ -42,18 +42,21 @@ export function minOutAfter(pre: bigint, simOut: bigint): bigint {
   return simOut - pre;
 }
 
-// D-18: the permanent 80/20 goes to the launch wallet only, never to the treasury or W, and only on curve.
+// D-18: the permanent 80/20 goes to the launch wallet only, never to the treasury, W or another platform key
+// (ops, buyback), and only on curve.
 export function deployerOk(a: {
   deployer: string;
   wallet: string;
   treasury: string;
   w: string;
+  platform: string[];
   onCurve: boolean;
 }): string | null {
   if (a.deployer !== a.wallet) return "deployer is not the launch wallet";
   if (a.deployer === a.treasury) return "deployer is the treasury";
   if (a.deployer === a.w) return "deployer is the fee wallet";
   if (a.treasury === a.w) return "treasury is the fee wallet";
+  if (a.platform.includes(a.deployer)) return "deployer is a platform key";
   if (!a.onCurve) return "deployer is off curve";
   return null;
 }

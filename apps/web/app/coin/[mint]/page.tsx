@@ -60,6 +60,13 @@ const firstPage = kept(async (mint) => {
 });
 const coinRow = kept(coinByMint);
 
+// The worker's fee window length (D-10), so the countdown closes when the sweep runs. Shortened only for local e2e.
+const DAY = 86_400_000;
+const windowMs = (): number => {
+  const n = Number(process.env.FEE_WINDOW_MS ?? DAY);
+  return Number.isInteger(n) && n >= 60_000 ? n : DAY;
+};
+
 /** UI-SPEC token page proof sentence; the token count is left out until the facts are written. */
 function sentence(v: LaunchView): string {
   const tokens = v.facts?.tokens ? ` (${compact(v.facts.tokens)} ${v.symbol})` : "";
@@ -71,6 +78,7 @@ type PanelProps = {
   v: LaunchView;
   net: Net;
   feed: Awaited<ReturnType<typeof firstPage>>;
+  launchedAt: string | null;
   chart: ReactNode;
   ledger: ReactNode;
 };
@@ -81,7 +89,7 @@ type PanelProps = {
  * chart, right column, Trades, so the one-column order needs no order rules; row 2 is 1fr so a tall right column
  * never opens a gap between chart and Trades.
  */
-function Panels({ v, net, feed, chart, ledger }: PanelProps) {
+function Panels({ v, net, feed, launchedAt, chart, ledger }: PanelProps) {
   return (
     <div className="grid gap-4 min-[1100px]:grid-cols-[minmax(0,1fr)_380px] min-[1100px]:grid-rows-[auto_1fr] min-[1100px]:gap-x-8">
       <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-1">{chart}</div>
@@ -90,7 +98,7 @@ function Panels({ v, net, feed, chart, ledger }: PanelProps) {
         <div className="grid max-[1099px]:hidden">
           <TradePanel />
         </div>
-        <BondPanel symbol={v.symbol} net={net} />
+        <BondPanel symbol={v.symbol} net={net} launchedAt={launchedAt} windowMs={windowMs()} />
         {ledger}
       </div>
       <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-2 min-[1100px]:self-start">
@@ -153,6 +161,7 @@ export default async function CoinPage({ params }: Props) {
               v={v}
               net={net}
               feed={feed}
+              launchedAt={coin?.launchedAt ?? null}
               ledger={
                 <FeeLedger
                   mint={v.mint}

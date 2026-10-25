@@ -241,12 +241,14 @@ test.describe("stats and bond", () => {
     await expect(stat(page, "1h volume")).toHaveText(/^[\d,.]+ SOL$/);
     await expect(stat(page, "Holders")).toHaveText("–not counted yet");
     const panel = bondPanel(page);
-    await expect(panel).toContainText("Read from the pump curve on-chain.");
+    await expect(panel).toContainText(
+      "Pre-bond, creator fees can only force the bond or be swept to the BONDR buyback.",
+    );
     await expect(panel).toContainText("Curve filled");
     await expect(panel).toContainText("64.2%");
     await expect(panel.getByRole("img", { name: "Curve 64.2 percent filled" })).toBeVisible();
     await expect(panel).toContainText("2,940,180 of 4,580,000 BONDR in the curve. Bonds at about 84.30 SOL.");
-    await expect(panel).not.toContainText(/budget|window|ledger/i); // D-10
+    await expect(panel.getByRole("heading", { name: /Burn budget ready/, level: 3 })).toBeVisible();
   });
 
   test("a bonded coin shows Bonded, PumpSwap, 100% and the bond tx", async ({ page }) => {

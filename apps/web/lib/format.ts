@@ -85,6 +85,9 @@ export function relTime(iso: string, now = Date.now()): string {
 /** Integer with a thousands separator: "2,940,180". */
 export const thousands = (n: number | bigint): string => fixed(Number(n), 0);
 
+/** 6-decimal base units (BONDR, a coin) as whole tokens, floored: "2,940,180". */
+export const whole = (base: string): string => thousands(BigInt(base) / 1_000_000n);
+
 export type Interval = "1m" | "5m" | "1h" | "1d";
 
 /** The chart's default candle (D-17), from coin age at page load: 1m under 6 hours, 5m under 3 days, else 1h. */

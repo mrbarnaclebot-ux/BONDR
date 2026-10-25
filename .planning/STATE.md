@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-18-PLAN.md
-last_updated: "2026-10-25T18:36:31.142Z"
-last_activity: 2026-10-25 -- Completed 06-18 (simulation dialog)
+stopped_at: Completed 06-20-PLAN.md
+last_updated: "2026-10-25T18:52:34.861Z"
+last_activity: 2026-10-26 -- Completed 06-20 (moderation web)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 88
+  completed_plans: 89
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 20 of 26 (06-18 complete)
+Plan: 21 of 26 (06-20 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-18 (simulation dialog)
+Last activity: 2026-10-26 -- Completed 06-20 (moderation web)
 
-Progress: [█████████░] 93%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -318,6 +318,8 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-18: no wallet connected shows 'Connect Phantom' in the send slot; a wrong signer is left to the worker (403 bad_intent_signature, intent stays usable, back to ready)
 - [Phase 06]: 06-18: a lost execute answer is polled; a missing intent or 90 s without a final state reads 'Sent, not confirmed yet', never 'nothing was sent'
 - [Phase 06]: 06-18: OQ1 note 'Later transactions are simulated again by the RPC before they are sent.' when any step is estimated (Claude's discretion)
+- [Phase 06]: 06-20: the hide status line takes the symbol from overview.rows when the query is a mint; moderation forms use noValidate so an empty reason shows the worker's 'Add a reason.'
+- [Phase 06]: 06-20: AdminOverview.moderation (hidden coins, blocked deployers, newest first) rides in overviewData's one Promise.all; reasons render only in the console, the public launch line never shows one (D-30)
 
 ### Pending Todos
 
@@ -350,6 +352,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T18:36:00.000Z
-Stopped at: Completed 06-18-PLAN.md
+Last session: 2026-10-25T18:53:00.000Z
+Stopped at: Completed 06-20-PLAN.md
 Resume file: None

@@ -75,7 +75,7 @@
 - [ ] **ADMIN-04**: Every action simulates first and shows balance changes before confirm; destinations are limited to burn, treasury, buyback, or that coin's deployer
 - [x] **ADMIN-05**: Owner can flip kill switches per job (launches, forced bond, sweeps, finalize, buyback burn)
 - [x] **ADMIN-06**: Owner sees health: worker heartbeat, leader lock, last run per job, RPC latency and errors, Sentry issue count, vanity pool size
-- [ ] **ADMIN-07**: Owner can hide a coin from lists and block a deployer wallet from launching
+- [x] **ADMIN-07**: Owner can hide a coin from lists and block a deployer wallet from launching
 - [x] **ADMIN-08**: Owner sees a per-coin timeline with each state, transaction, next expected step, and retry for a stuck step
 - [ ] **ADMIN-09**: Owner can paste a signature and see the decoded instructions, the error and an explorer link
 - [x] **ADMIN-10**: Every admin action is written to an audit log: actor, time, simulation result, signature
@@ -159,7 +159,7 @@
 | ADMIN-04 | Phase 6 | Pending |
 | ADMIN-05 | Phase 6 | Complete |
 | ADMIN-06 | Phase 6 | Complete |
-| ADMIN-07 | Phase 6 | Pending |
+| ADMIN-07 | Phase 6 | Complete |
 | ADMIN-08 | Phase 6 | Complete |
 | ADMIN-09 | Phase 6 | Pending |
 | ADMIN-10 | Phase 6 | Complete |

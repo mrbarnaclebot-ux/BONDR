@@ -1,9 +1,19 @@
 // Simulate-first (D-04, D-12, Pattern 2): the capture deps simulate each job tx instead of sending it. The base
 // deps throw on land, publish and every ledger write, so a passing test proves nothing was sent or written.
-import { AccountLayout, getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID as T22 } from "@solana/spl-token";
-import { type AccountInfo, Keypair, PublicKey, SystemProgram, type VersionedTransaction } from "@solana/web3.js";
+import {
+  AccountLayout,
+  getAssociatedTokenAddressSync,
+  TOKEN_2022_PROGRAM_ID as T22,
+} from "@solana/spl-token";
+import {
+  type AccountInfo,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  type VersionedTransaction,
+} from "@solana/web3.js";
 import { beforeEach, expect, test } from "vitest";
-import { balanceRows, captureDeps, simSummary, simulateJob, type Step, type Watched } from "./admin-sim.ts";
+import { balanceRows, captureDeps, type Step, simSummary, simulateJob, type Watched } from "./admin-sim.ts";
 import { windowJob } from "./fee-guard.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
 import type { FeeCoin, FeeDeps, Job } from "./fee-send.ts";
@@ -63,7 +73,16 @@ function setup(): FeeDeps {
     },
   };
   return {
-    ...{ net: "devnet", mode: "on", Q, ops: OPS, treasury: TREASURY, buyback: BUYBACK, ledger, windowMs: 1000 },
+    ...{
+      net: "devnet",
+      mode: "on",
+      Q,
+      ops: OPS,
+      treasury: TREASURY,
+      buyback: BUYBACK,
+      ledger,
+      windowMs: 1000,
+    },
     ...{ conn: conn as never, bondrSol: () => 1, allowed: () => false },
     publish: boom("publish"),
     land: boom("land"),
@@ -103,6 +122,8 @@ test("land simulates once with the watched accounts, records a step and never se
   expect(sink).toHaveLength(1);
   expect(sink[0]?.ixs).toHaveLength(1);
   d.publish("m", []);
+  expect(() => d.ledger.settle("s", "landed")).toThrow(/write the fee ledger \(settle\)/);
+  await expect(d.ledger.pending()).resolves.toEqual([]);
 });
 
 test("windowJob through the capture deps leaves the engine's coin untouched", async () => {

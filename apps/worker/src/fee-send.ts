@@ -89,7 +89,7 @@ export type FeeCoin = {
 };
 
 const SENDER_TIMEOUT_MS = 10_000;
-const DEFAULT_CU = 400_000;
+export const DEFAULT_CU = 400_000;
 
 // ponytail: per-process flag while the worker runs one replica (D-07). Set from each landed meta and the
 // boot balance read, so the floor costs no extra RPC call while ops is above it.

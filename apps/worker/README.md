@@ -76,7 +76,7 @@ Behind `FEE_ENGINE`. Off, the worker behaves as in Phase 4 plus `cost_to_complet
 
 ### Runbook
 
-- **Flag.** `FEE_ENGINE=off` (default), `dry` (build and simulate, write nothing) or `on` (send). Set `on` only on staging and for the local devnet e2e; stop that local worker after the run, because both sign with the one devnet ops wallet (Pitfall 11). To pause the engine, set it back to `off` and redeploy.
+- **Flag.** `FEE_ENGINE=off` (default), `dry` (build and simulate, write nothing) or `on` (send). Set `on` only on staging and for the local devnet e2e; stop that local worker after the run, because both sign with the one devnet ops wallet (Pitfall 11). To pause the engine, set it back to `off` and redeploy. Staging runs `FEE_ENGINE=on` since 2026-10-25 (24 h window, `FEE_WINDOW_MS` unset); local stays `off` (Pitfall 11). With nothing pending, recovery logs nothing; the `coins armed` line prints only after it finishes.
 - **Window.** `FEE_WINDOW_MS`, default 24 h, counted from each coin's launch. Shorten it only locally (the e2e uses 600000); give web the same value, it draws the Bond and burn countdown from it.
 - **Batch.** `FEE_BATCH_HOUR_UTC`, default 4: the buyback burn, the distribution crank, the bond and finalize retries, then the reconciliation. Run it now with `curl -X POST -H "Authorization: Bearer $WORKER_TOKEN" "$WORKER_URL/fee/batch"` (both read from your shell; never paste the token into a file or a log).
 - **Release a held finalize.** `curl -X POST -H "Authorization: Bearer $WORKER_TOKEN" -H "content-type: application/json" -d '{"mint":"<mint>","deployer":"<address>"}' "$WORKER_URL/fee/release"`, after a manual check of the deployer. A held finalize is never retried by itself, the batch included; Phase 6 adds a UI.

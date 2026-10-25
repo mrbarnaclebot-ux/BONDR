@@ -48,7 +48,7 @@ export async function loadCoin(mint: string): Promise<FeeCoin | undefined> {
 }
 
 // Every coin whose W derives from this seed, for EVACUATE (06-22); [] before startEngine.
-export async function loadCoins(): Promise<FeeCoin[]> {
+export async function loadFeeCoins(): Promise<FeeCoin[]> {
   const c = costCtx;
   return c ? (await loadRows()).flatMap((r) => coinFrom(r, c.wOf) ?? []) : [];
 }

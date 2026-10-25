@@ -77,6 +77,16 @@ Web forwards the session wallet as `actor`; the worker answers 403 `forbidden` u
 
 The console's switch, hold, release and re-check actions are audited: one `admin_audit` row each, written before the change. The bearer `POST /kill-switch` and `POST /fee/release` stay for the runbook and are not audited (OQ6).
 
+### EVACUATE
+
+The break-glass path for a leaked master seed (ADMIN-11, D-35 to D-37). Use it only when the seed, or any W key derived from it, may be in someone else's hands: it drains every coin's W at once and stops all automation.
+
+- **Preview first.** `POST /admin/simulate` with `{ action: "evacuate", mint: null }` reads every W and its BONDR and child accounts (100 accounts per read), packs several W per transaction under the 1232-byte limit, simulates the batches 8 at a time and returns totals: wallets, BONDR and its SOL value, SOL, wallets with child tokens to burn, failures. W's BONDR and SOL go to the treasury; child tokens are burned, never moved (D-36).
+- **Execute needs `ADMIN_EVACUATE=on`.** The default `simulate` previews only and never creates an intent. `on` is refused at boot on any net but devnet, and the execute loop refuses again (409 `not_applicable`, reason `simulate_only` or `devnet_only`). Mainnet stays refused until the Phase 7 runbook flips it (A2).
+- **Same money path.** The owner signs the intent (D-12); the worker writes one pending `admin_audit` row (`action evacuate`, `params.wallets`) before anything is sent and settles it once with every signature.
+- **Everything pauses first.** Before the first transfer the worker switches every job off, launches included, and stamps `settings.evacuated_at` in one write. Then each batch waits for its coins' queued engine jobs, re-reads its balances and sends through the gated land (treasury and burn only), paced like the engine. Each W writes a public `evacuate` row with its own amount and SOL value, and a `leftover_burn` row when it held child tokens. A failed batch leaves later W to go; an unknown one is never resent.
+- **Afterwards.** Every switch stays off until the owner turns each back on, one at a time, from the console. W's emptied token accounts stay open with their rent. Rotating the master seed is a separate Phase 7 runbook; EVACUATE does not rotate anything.
+
 ## Fee engine
 
 Behind `FEE_ENGINE`. Off, the worker behaves as in Phase 4 plus `cost_to_complete` on every curve patch. Dry builds and simulates every job and writes nothing. On sends. At boot (`startEngine`, after `loadCoins`): one read of every coin with its launch's W, one ops balance read for the floor, then `recover` settles every pending fee row from its signature (never a resend) and splits every landed collect with no split, and only then are window timers armed. A coin whose W does not derive from this seed is skipped. Each unbonded coin has one in-memory timer for its current window's end, counted from launch; at the end it collects, splits and sweeps (`windowJob`) through a per-coin serial queue. Trade hooks keep the fee numbers in memory and enqueue nothing before the engine is ready. Run one worker replica only (D-07): a second would send every window twice. Local and staging share the devnet ops wallet, so keep `FEE_ENGINE=off` locally except for the e2e (Pitfall 11).

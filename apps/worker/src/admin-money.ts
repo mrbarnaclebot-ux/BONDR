@@ -9,7 +9,7 @@ import type { Connection } from "@solana/web3.js";
 import { ACTIONS, type ActionDef, type ActionView, actionView, runOn } from "./admin-actions.ts";
 import type { AuditStore } from "./admin-audit.ts";
 import { type Allowed, passedLines, refusedDestination } from "./admin-dest.ts";
-import type { EvacCoin } from "./admin-evacuate.ts";
+import { type EvacCoin, evacuateRefusal, executeEvacuate, simulateEvacuate } from "./admin-evacuate.ts";
 import { type Intent, putIntent, take, updateIntent, viewIntent } from "./admin-intent.ts";
 import { codeOf, gatedDeps, logged, outcome, progress } from "./admin-send.ts";
 import { captureDeps, type Step, simSummary } from "./admin-sim.ts";
@@ -42,7 +42,7 @@ export function adminBase(env: WorkerEnv, conn: Connection): FeeDeps {
   return feeDeps({ conn, online, Q: env.quoteMint, priorityFee: env.priorityFee }, env, "on");
 }
 
-// Evacuate has no registry entry (06-22), so an intent for it can never reach a job.
+// Evacuate dispatches to admin-evacuate.ts before this; any other action without an entry refuses.
 function defOf(action: AdminTxAction): ActionDef {
   const def = (ACTIONS as Partial<Record<AdminTxAction, ActionDef>>)[action];
   if (!def) throw fail({ error: "not_applicable", reason: "unknown_action" });
@@ -60,6 +60,7 @@ const named = (a: Allowed) =>
   [...a.owners].filter(([, n]) => !n.startsWith("W ")).map(([k, n]) => `${n.split(" ")[0]} ${k}`);
 
 export async function simulateAction(ctx: MoneyCtx, req: SimReq): Promise<AdminSimResult> {
+  if (req.action === "evacuate") return simulateEvacuate(ctx);
   const def = defOf(req.action);
   const view = await viewOf(ctx, req.mint);
   const reason = def.applies(view);
@@ -80,11 +81,12 @@ export async function simulateAction(ctx: MoneyCtx, req: SimReq): Promise<AdminS
   return { ...sum, intent: { id: e.id, message: e.message, expiresAt: e.expiresAt } };
 }
 
-// The audit keeps the verdict the owner saw, not the intent or its message.
+// The audit keeps the verdict the owner saw (EVACUATE's totals too), not the intent or its message.
 function trimmed(s: AdminSimResult): Record<string, unknown> {
-  const { ok, cu, feeLamports, balances, destinations } = s;
-  return { ok, cu, feeLamports, balances, destinations };
+  const { ok, cu, feeLamports, balances, destinations, totals } = s;
+  return { ok, cu, feeLamports, balances, destinations, ...(totals && { totals }) };
 }
+const sigText = (req: ExecReq) => Buffer.from(req.signature).toString("base64");
 
 // D-33: the pending row goes in before anything is sent; a failed write throws and the action stops. The
 // coin's state is read again, and a change since simulate refuses with nothing sent (T-06-13-05).
@@ -94,7 +96,7 @@ async function begin(ctx: MoneyCtx, e: Intent, req: ExecReq): Promise<Run> {
   const { allowed, summary } = e.data as IntentData;
   const auditId = await ctx.audit.insertPending({
     ...{ actor: req.actor, action: e.action, mint: e.mint, params: { intent: e.id } },
-    ...{ simulation: trimmed(summary), intentSig: Buffer.from(req.signature).toString("base64") },
+    ...{ simulation: trimmed(summary), intentSig: sigText(req) },
   });
   const reason = def.applies(view);
   if (reason) {
@@ -104,20 +106,35 @@ async function begin(ctx: MoneyCtx, e: Intent, req: ExecReq): Promise<Run> {
   return { def, view, allowed, auditId };
 }
 
+// EVACUATE's pending row (D-33), after the mode and net re-check so a refusal writes nothing. The audit names
+// the wallet count (params.wallets, read by the audit panel); the loop settles it.
+async function beginEvacuate(ctx: MoneyCtx, e: Intent, req: ExecReq): Promise<string> {
+  evacuateRefusal(ctx);
+  const { summary } = e.data as IntentData;
+  return ctx.audit.insertPending({
+    ...{ actor: req.actor, action: e.action, mint: null, params: { wallets: summary.totals?.wallets ?? 0 } },
+    ...{ simulation: trimmed(summary), intentSig: sigText(req) },
+  });
+}
+
 // Answers once the signature, the re-check and the audit row are in; the send continues in the background and
 // the browser polls intentView.
 export async function executeAction(ctx: MoneyCtx, req: ExecReq): Promise<{ id: string }> {
   if (!ctx.admin) throw fail({ error: "forbidden" });
   const e = take(req.id, req.signature, ctx.admin, clock(ctx));
-  let run: Run;
   try {
-    run = await begin(ctx, e, req);
+    if (e.action === "evacuate") {
+      const auditId = await beginEvacuate(ctx, e, req);
+      void executeEvacuate(ctx, e, auditId).catch(logged(e.action));
+    } else {
+      const run = await begin(ctx, e, req);
+      void send(ctx, e, run).catch(logged(e.action));
+    }
   } catch (err) {
     const code = err instanceof Fail ? err.body.error : "build_failed";
     updateIntent(e.id, { state: code === "not_applicable" ? "refused" : "failed", code }, clock(ctx));
     throw err;
   }
-  void send(ctx, e, run).catch(logged(e.action));
   return { id: e.id };
 }
 

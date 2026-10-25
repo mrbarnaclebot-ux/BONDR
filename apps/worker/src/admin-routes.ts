@@ -39,7 +39,7 @@ export type AdminOpts = {
 
 const TX = [
   ...["sweep_now", "retry_forced_bond", "burn_w_tokens", "run_migrate", "finalize_split"],
-  ...["retry_sweep", "distribute_now", "sweep_leftovers", "burn_buyback"],
+  ...["retry_sweep", "distribute_now", "sweep_leftovers", "burn_buyback", "evacuate"],
 ] as const;
 const ID = /^[0-9a-f]{32}$/; // admin-intent ids: 16 random bytes in hex
 const SIG = /^[A-Za-z0-9+/]{86}==$/; // exactly 64 bytes of base64
@@ -47,11 +47,11 @@ type Body = Record<string, unknown>;
 const bodyOf = (b: unknown): Body => (b ?? {}) as Body;
 const invalid = () => fail({ error: "invalid_input" });
 
-// The mint is a base58 key, and absent only for burn_buyback, the one platform action.
+// The mint is a base58 key, and absent only for the platform actions, burn_buyback and evacuate.
 function simReq(b: Body) {
   const action = TX.find((a) => a === b.action);
   if (!action) throw invalid();
-  const platform = action === "burn_buyback";
+  const platform = action === "burn_buyback" || action === "evacuate";
   if (platform !== (b.mint === undefined || b.mint === null)) throw invalid();
   return { actor: String(b.actor), action, mint: platform ? null : key(b.mint).toBase58() };
 }
@@ -82,7 +82,7 @@ function moneyOf(o: AdminOpts): () => MoneyCtx {
   return () => {
     base ??= adminBase(o.env, o.conn);
     audit ??= pgAudit();
-    return { deps: base, engine: o.engine(), audit, admin: o.env.adminWallet };
+    return { deps: base, engine: o.engine(), audit, admin: o.env.adminWallet, evacuate: o.env.adminEvacuate };
   };
 }
 

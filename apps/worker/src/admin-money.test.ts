@@ -248,24 +248,19 @@ test("with an engine the run goes through its queue for the mint, or platform fo
   expect(exclusive.mock.calls.map(([mint]) => mint)).toEqual([MINT, "platform"]);
 });
 
-// Evacuate (06-22) dispatches with mint null; its W hold only SOL here, so each batch is one system transfer each.
+// Evacuate (06-22) dispatches with mint null; its two W hold only SOL here, so one batch of system transfers.
 const evacuate = () => simulateAction(ctx, { actor: admin.wallet, action: "evacuate", mint: null });
-function evacuateCtx(mode: "simulate" | "on") {
-  const ws = [Keypair.generate(), Keypair.generate()];
-  const conn = {
-    ...(base.conn as object),
-    getMultipleAccountsInfo: async (keys: PublicKey[]) =>
-      keys.map((_, i) =>
-        i % 3 ? null : { lamports: 7_000, data: Buffer.alloc(0), owner: SystemProgram.programId },
-      ),
-  };
-  base = { ...base, conn } as unknown as FeeDeps;
-  ctx = {
-    ...ctx,
-    deps: base,
-    evacuate: mode,
-    coins: async () => ws.map((w) => ({ mint: PublicKey.unique(), w })),
-  };
+function evacuateCtx(evacuate: "simulate" | "on") {
+  const coins = [Keypair.generate(), Keypair.generate()].map((w) => ({ mint: PublicKey.unique(), w }));
+  const sol = { lamports: 7_000, data: Buffer.alloc(0), owner: SystemProgram.programId };
+  const read = async (keys: PublicKey[]) => keys.map((_, i) => (i % 3 ? null : sol));
+  base = { ...base, conn: { ...(base.conn as object), getMultipleAccountsInfo: read } } as unknown as FeeDeps;
+  ctx = { ...ctx, deps: base, evacuate, coins: async () => coins };
+}
+async function evacuateIntent() {
+  const r = await evacuate();
+  if (!r.intent) throw new Error("expected an intent");
+  return { actor: admin.wallet, id: r.intent.id, signature: signText(r.intent.message) };
 }
 
 test("evacuate in simulate mode returns totals and no intent, so nothing can execute", async () => {
@@ -278,30 +273,20 @@ test("evacuate in simulate mode returns totals and no intent, so nothing can exe
 
 test("evacuate on devnet: the signed intent audits first with params wallets, then pauses and lands", async () => {
   evacuateCtx("on");
-  const r = await evacuate();
-  if (!r.intent) throw new Error("expected an intent");
-  const a = { id: r.intent.id, signature: signText(r.intent.message) };
-  expect(await executeAction(ctx, { actor: admin.wallet, ...a })).toEqual({ id: a.id });
-  expect(await finished(a.id)).toMatchObject({ state: "landed", moved: 2, failed: 0 });
+  const req = await evacuateIntent();
+  expect(await executeAction(ctx, req)).toEqual({ id: req.id });
+  expect(await finished(req.id)).toMatchObject({ state: "landed", moved: 2, failed: 0 });
   expect(order).toEqual(["audit", "land"]);
-  expect(audit.rows[0]).toMatchObject({
-    action: "evacuate",
-    mint: null,
-    params: { wallets: 2 },
-    result: "landed",
-  });
+  const row = { action: "evacuate", mint: null, params: { wallets: 2 }, result: "landed" };
+  expect(audit.rows[0]).toMatchObject(row);
   expect(audit.rows[0]?.simulation).toHaveProperty("totals.wallets", 2);
 });
 
 test("an evacuate intent refuses at execute once the mode is back to simulate, with no audit row", async () => {
   evacuateCtx("on");
-  const r = await evacuate();
-  if (!r.intent) throw new Error("expected an intent");
+  const req = await evacuateIntent();
   ctx.evacuate = "simulate";
-  const a = { id: r.intent.id, signature: signText(r.intent.message) };
-  expect(await refusal(executeAction(ctx, { actor: admin.wallet, ...a }))).toBe(
-    "not_applicable 409 simulate_only",
-  );
+  expect(await refusal(executeAction(ctx, req))).toBe("not_applicable 409 simulate_only");
   expect(audit.rows).toEqual([]);
-  expect(intentView(a.id).state).toBe("refused");
+  expect(intentView(req.id).state).toBe("refused");
 });

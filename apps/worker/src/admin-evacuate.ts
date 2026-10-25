@@ -5,7 +5,7 @@
 import type { AdminSimResult, EvacuateTotals } from "@bondr/core/api-admin";
 import { COIN_DECIMALS } from "@bondr/core/launch";
 import { toSol } from "@bondr/core/price";
-import { budget, PACKET_LIMIT, wireSize } from "@bondr/core/send";
+import { budget, PACKET_LIMIT, pace, wireSize } from "@bondr/core/send";
 import { ataIx } from "@bondr/core/trade";
 import {
   AccountLayout,
@@ -22,13 +22,16 @@ import {
   type TransactionInstruction,
 } from "@solana/web3.js";
 import { type Allowed, allowFor, passedLines, refusedDestination } from "./admin-dest.ts";
-import { putIntent } from "./admin-intent.ts";
+import { type Intent, putIntent, updateIntent } from "./admin-intent.ts";
 import type { MoneyCtx } from "./admin-money.ts";
-import { codeOf } from "./admin-send.ts";
+import { codeOf, gatedDeps, logged, outcome, progress } from "./admin-send.ts";
 import { type Step, simulateJob } from "./admin-sim.ts";
-import { loadCoins } from "./fee-boot.ts";
+import { loadFeeCoins } from "./fee-boot.ts";
+import { feeConfig } from "./fee-config.ts";
 import type { NewEntry } from "./fee-ledger.ts";
-import { DEFAULT_CU, type FeeCoin, type FeeDeps, type Job } from "./fee-send.ts";
+import { DEFAULT_CU, type FeeCoin, type FeeDeps, type Job, type Landed } from "./fee-send.ts";
+import { fail } from "./http.ts";
+import { pauseAll } from "./switches.ts";
 
 export type EvacCoin = Pick<FeeCoin, "mint" | "w">;
 export type WBalance = {
@@ -51,7 +54,7 @@ export const EVAC_SIM_CONCURRENCY = 8;
 const ataOf = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true, T22);
 const units = (a: AccountInfo<Buffer> | null | undefined) => (a ? AccountLayout.decode(a.data).amount : 0n);
 const sum = (xs: bigint[]) => xs.reduce((n, x) => n + x, 0n);
-export const coinsOf = (ctx: MoneyCtx): Promise<EvacCoin[]> => (ctx.coins ?? loadCoins)();
+export const coinsOf = (ctx: MoneyCtx): Promise<EvacCoin[]> => (ctx.coins ?? loadFeeCoins)();
 
 // W and its BONDR and child accounts, 100 accounts per read; a W with nothing anywhere is left out.
 export async function evacuateBalances(
@@ -196,4 +199,55 @@ export async function simulateEvacuate(ctx: MoneyCtx): Promise<AdminSimResult> {
     (ctx.now ?? Date.now)(),
   );
   return { ...sum, intent: { id: e.id, message: e.message, expiresAt: e.expiresAt } };
+}
+
+// A2, D-37: execution needs ADMIN_EVACUATE=on and devnet. Boot already refuses "on" off devnet; this re-check
+// keeps mainnet, or any other net, refused in the loop itself, before anything is paused or sent.
+export function evacuateRefusal(ctx: MoneyCtx): void {
+  if (ctx.evacuate !== "on") throw fail({ error: "not_applicable", reason: "simulate_only" });
+  if (ctx.deps.net !== "devnet") throw fail({ error: "not_applicable", reason: "devnet_only" });
+}
+
+type Run = { id: string; seen: Landed[]; moved: number; failed: number; refused: string | null };
+const counts = (r: Run) => ({ ...progress(r.seen), moved: r.moved, failed: r.failed });
+
+// T-06-22-02: the batch's coins' queued jobs settle first, then balances are read again, so no engine job races
+// a W move. A W emptied since the plan drops out; a grown one re-packs.
+async function moveBatch(ctx: MoneyCtx, d: FeeDeps, batch: WBalance[], r: Run): Promise<void> {
+  await ctx.engine?.idle(batch.map((b) => b.mint.toBase58()));
+  for (const p of planBatches(d, await evacuateBalances(d, batch))) {
+    const l = await d.land(p.job);
+    r.seen.push(l);
+    if (l.state === "landed") r.moved += p.batch.length;
+    else r.failed += p.batch.length;
+    updateIntent(r.id, counts(r), (ctx.now ?? Date.now)());
+  }
+}
+
+// D-35 step 4: every switch off and evacuated_at first, then the batches one by one through the gated land (the
+// allowlist the owner signed, D-14), paced like the engine. A failed batch leaves later W to go; an unknown one
+// is never resent. The audit row settles once at the end with every signature (D-33).
+export async function executeEvacuate(ctx: MoneyCtx, e: Intent, auditId: string): Promise<void> {
+  evacuateRefusal(ctx);
+  const r: Run = { id: e.id, seen: [], moved: 0, failed: 0, refused: null };
+  const d = gatedDeps(ctx.deps, (e.data as { allowed: Allowed }).allowed, (to) => {
+    r.refused ??= to;
+  });
+  let threw = false;
+  try {
+    await pauseAll();
+    const plan = planBatches(d, await evacuateBalances(d, await coinsOf(ctx)));
+    for (const [i, p] of plan.entries()) {
+      if (i) await pace(feeConfig(d.net).paceMs);
+      await moveBatch(ctx, d, p.batch, r);
+      if (r.refused) break;
+    }
+  } catch (err) {
+    threw = true;
+    logged("evacuate")(err);
+  }
+  const out = outcome(r.seen, r.refused, threw);
+  const view = { ...counts(r), state: out.state, ...(out.error && { code: out.error }) };
+  updateIntent(e.id, view, (ctx.now ?? Date.now)());
+  await ctx.audit.settle(auditId, out.result, { sigs: view.sigs, ...(out.error && { error: out.error }) });
 }

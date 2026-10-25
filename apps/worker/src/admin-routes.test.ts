@@ -49,6 +49,7 @@ m.def = {
 
 const deps = {
   ...{ net: "devnet", mode: "on", ops: OPS, treasury: TREASURY, ledger: memoryLedger(), publish: () => {} },
+  ...{ Q: PublicKey.unique(), bondrSol: () => null },
   conn: {
     getMultipleAccountsInfo: async () => [],
     simulateTransaction: async () => ({ value: { err: null, unitsConsumed: 1, accounts: null } }),

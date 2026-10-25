@@ -34,12 +34,18 @@ export const consentNonces = pgTable("consent_nonces", {
   expiresAt: tstz().notNull(),
 });
 
-// One row (id 1) so the owner pauses launches with a single UPDATE (LAUNCH-06).
+// One row (id 1) so the owner pauses launches with a single UPDATE (LAUNCH-06), and each fee job with its own
+// switch (D-18). Every switch defaults on, so adding one never pauses a running engine.
 export const settings = pgTable(
   "settings",
   {
     id: integer().primaryKey(),
     launchesEnabled: boolean().notNull().default(true),
+    forcedBondEnabled: boolean().notNull().default(true),
+    sweepsEnabled: boolean().notNull().default(true),
+    finalizeEnabled: boolean().notNull().default(true),
+    buybackBurnEnabled: boolean().notNull().default(true),
+    evacuatedAt: tstz(),
   },
   () => [check("settings_single_row", sql`id = 1`)],
 );
@@ -150,6 +156,11 @@ export const coins = pgTable(
     deployerEarnedSol: big().notNull().default("0"),
     finalize: text().notNull().default("none"),
     deployerBps: smallint(),
+    // Moderation (D-29) and the owner's hold for review, separate from finalize = 'held' (Pitfall 13, A4).
+    hiddenAt: tstz(),
+    hiddenReason: text(),
+    heldAt: tstz(),
+    heldReason: text(),
   },
   (t) => [
     check("coins_venue", sql`venue in ('curve','complete','pool')`),
@@ -157,6 +168,13 @@ export const coins = pgTable(
     check("coins_progress", sql`progress between 0 and 1`),
     check("coins_holders", sql`holders >= 0`),
     check("coins_finalize", sql`finalize in ('none','held','done')`),
+    check("coins_hidden", sql`(hidden_at is null) = (hidden_reason is null)`),
+    check("coins_held", sql`(held_at is null) = (held_reason is null)`),
+    check(
+      "coins_reasons",
+      sql`(hidden_reason is null or char_length(hidden_reason) between 1 and 120)
+        and (held_reason is null or char_length(held_reason) between 1 and 120)`,
+    ),
     check(
       "coins_fee_totals",
       sql`fee_budget >= 0 and to_buyback >= 0 and to_buyback_sol >= 0 and to_treasury >= 0 and to_treasury_sol >= 0
@@ -195,7 +213,8 @@ export const feeLedger = pgTable(
     check(
       "fee_ledger_kind",
       sql`kind in ('collect','split_treasury','sweep_buyback','sweep_treasury','forced_bond','pool_burn',
-        'buyback_burn','finalize_config','finalize_update','distribute','held','reconcile_diff')`,
+        'buyback_burn','finalize_config','finalize_update','distribute','held','reconcile_diff','leftover_burn',
+        'evacuate')`,
     ),
     check("fee_ledger_state", sql`state in ('pending','landed','failed','expired')`),
     check(
@@ -220,7 +239,8 @@ export const feeLedger = pgTable(
       .on(t.mint, t.kind, t.windowIndex)
       .where(sql`${LIVE} and kind in ('sweep_buyback','sweep_treasury')`),
     uniqueIndex("fee_ledger_split").on(t.ref).where(sql`${LIVE} and kind = 'split_treasury'`),
-    uniqueIndex("fee_ledger_sig_kind").on(t.signature, t.kind),
+    // Per mint, because one EVACUATE tx moves several W and writes a row for each (Pitfall 3, A7).
+    uniqueIndex("fee_ledger_sig_kind").on(t.signature, t.kind, sql`coalesce(mint, '')`),
     index("fee_ledger_public").on(t.mint, t.landedAt.desc(), t.id.desc()).where(sql`state = 'landed'`),
   ],
 );
@@ -257,3 +277,7 @@ export const trades = pgTable(
     index("trades_at").on(t.at),
   ],
 );
+
+// The admin tables live in their own file to keep this one under 300 lines; drizzle.config.ts and db.ts read
+// only this file, so they are re-exported here.
+export * from "./schema-admin.ts";

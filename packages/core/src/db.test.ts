@@ -118,7 +118,10 @@ describe.skipIf(!process.env.DATABASE_URL)("database constraints", { timeout: 30
   });
 
   test("settings has the one seeded row and refuses a second", async () => {
-    const rows = await db().select().from(settings).where(eq(settings.id, 1));
+    const rows = await db()
+      .select({ id: settings.id, launchesEnabled: settings.launchesEnabled })
+      .from(settings)
+      .where(eq(settings.id, 1));
     expect(rows).toEqual([{ id: 1, launchesEnabled: true }]);
     expect(await pgCode(db().insert(settings).values({ id: 2 }).execute())).toBe("23514");
   });

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 5 context gathered
-last_updated: "2026-10-24T20:18:37.526Z"
-last_activity: 2026-10-24
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-10-25T01:16:45.083Z"
+last_activity: 2026-10-25
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 56
-  completed_plans: 56
+  total_plans: 69
+  completed_plans: 57
   percent: 57
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 5
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-24
+Plan: 2 of 13 (05-01 complete)
+Status: Executing
+Last activity: 2026-10-25
 
-Progress: [██████████] 100%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -99,6 +99,7 @@ Progress: [██████████] 100%
 | Phase 04 P10 | 17 min | 3 tasks | 12 files |
 | Phase 04 P11 | 17min | 2 tasks | 11 files |
 | Phase 04 P13 | 12 min | 3 tasks | 4 files |
+| Phase 05 P01 | 15 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -221,6 +222,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-11: The callout slot shows one callout: result, migration, impact, quote failed, in that order
 - [Phase 04]: 04-13: staging runs exactly one worker replica because prepared trades live in worker memory (D-07)
 - [Phase 04]: 04-13: on staging the devnet trade group takes the first curve coin of /api/coins?sort=top; the seeded trade panel group is local only
+- [Phase 05]: 05-01: no window-start column on coins; the window is derived from launched_at and FEE_WINDOW_MS (D-23 discretion)
+- [Phase 05]: 05-01: totalsFor distribute splits the row SOL by share; collect clears fees_unclaimed via set.feesUnclaimed; the store clamps fee_budget at 0
+- [Phase 05]: 05-01: FEE-01/04/05 and TOKEN-04 stay pending until the plans that ship them (05-02 onward)
 
 ### Pending Todos
 
@@ -253,6 +257,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-24T20:18:37.520Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-fee-engine-and-public-ledger/05-CONTEXT.md
+Last session: 2026-10-25T01:16:45.077Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: .planning/phases/05-fee-engine-and-public-ledger/05-02-PLAN.md

@@ -232,11 +232,11 @@ Plans:
   4. After bond, the worker sweeps pending fees, passes the deployer pre-flight check, and runs the single 8000 / 2000 fee-share update; the token page then shows the deployer share
   5. User sees bond progress, burn budget vs cost to complete, time left in the 24h window, and totals (burned supply %, fees to burn, buyback, treasury); a nightly reconciliation records any ledger vs chain mismatch
 
-**Plans:** 13 plans
+**Plans:** 1/13 plans executed
 
 Plans:
 
-- [ ] 05-01-PLAN.md - Failing ledger spec, fee_ledger table and coin fee columns with the D-08 constraints, contract types, pure fee rules
+- [x] 05-01-PLAN.md - Failing ledger spec, fee_ledger table and coin fee columns with the D-08 constraints, contract types, pure fee rules
 - [ ] 05-02-PLAN.md - Coin row fee fields, server-only ledger read and route, Fee ledger panel on the token page (spec green)
 - [ ] 05-03-PLAN.md - Core prep: signTx, buyback role, wFloat in core, costFromReserves, unclaimed fees on the curve patch
 - [ ] 05-04-PLAN.md - Ledger store, intent-first land pipeline with ops floor and mainnet-only Sender, collect, split and window sweep jobs
@@ -293,6 +293,6 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 2. Launch Flow | 18/18 | Complete | 2026-10-23 |
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
-| 5. Fee Engine and Public Ledger | 0/TBD | Not started | - |
+| 5. Fee Engine and Public Ledger | 1/13 | In Progress|  |
 | 6. Admin Dashboard | 0/TBD | Not started | - |
 | 7. Go-Live | 0/TBD | Not started | - |

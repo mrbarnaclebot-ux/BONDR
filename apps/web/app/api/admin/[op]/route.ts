@@ -1,8 +1,11 @@
 // The one door into admin (D-11): a same-origin POST with a live bondr_admin cookie, checked before the rate
 // limit and before any body is read. Every admin call is POST, so sameOrigin always sees an Origin (Pitfall 8).
+
+import type { AdminCoinLive } from "@bondr/core/api-admin";
 import { auditPage, parseAuditCursor } from "@/lib/admin-audit-page";
 import { overviewData } from "@/lib/admin-data";
-import { json, rateLimited, sameOrigin } from "@/lib/guard";
+import { coinTimeline } from "@/lib/admin-timeline-data";
+import { BASE58_KEY, json, rateLimited, sameOrigin } from "@/lib/guard";
 import { adminSession, adminWalletEnv } from "@/lib/session";
 import { workerPost } from "@/lib/worker";
 
@@ -56,6 +59,19 @@ const LOCAL: Record<string, Op> = {
     const before = typeof b.before === "string" ? parseAuditCursor(b.before) : null;
     if (!before) return reply({ error: "invalid_input" }, 400);
     return read("audit", () => auditPage(before));
+  },
+  // One request per selection (D-21): the coin's DB timeline and the worker's live W read. live is null when the
+  // worker did not answer or does not hold the coin (FEE_ENGINE off), so the panel still shows the history.
+  coin: async (b, s) => {
+    const mint = typeof b.mint === "string" && BASE58_KEY.test(b.mint) ? b.mint : null;
+    if (!mint) return reply({ error: "invalid_input" }, 400); // T-06-17-03: before any read
+    return read("coin", async () => {
+      const [timeline, r] = await Promise.all([
+        coinTimeline(mint),
+        workerPost<AdminCoinLive>(FORWARD["coin-live"], { mint, actor: s.wallet }),
+      ]);
+      return { timeline, live: r.status === 200 ? (r.body as AdminCoinLive) : null };
+    });
   },
 };
 

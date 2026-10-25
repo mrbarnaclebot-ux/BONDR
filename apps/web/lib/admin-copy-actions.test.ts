@@ -30,19 +30,25 @@ test("reasons match the UI-SPEC Not applicable table", () => {
   expect(reason("retry_forced_bond")).toBe(
     "Retry forced bond applies only to a curve coin whose budget is at 105% of the cost or more.",
   );
-  expect(reason("burn_w_tokens")).toBe("Burn W token balance applies only when this coin's W holds SWMP tokens.");
+  expect(reason("burn_w_tokens")).toBe(
+    "Burn W token balance applies only when this coin's W holds SWMP tokens.",
+  );
   expect(reason("run_migrate")).toBe("Run migrate applies only to a complete curve that has not migrated.");
   expect(reason("finalize_split")).toBe(
     "Finalize split applies only to a bonded coin whose fee shares are not set yet.",
   );
-  expect(reason("retry_sweep")).toBe("Retry sweep applies only when this coin has a failed or expired sweep.");
+  expect(reason("retry_sweep")).toBe(
+    "Retry sweep applies only when this coin has a failed or expired sweep.",
+  );
   expect(reason("distribute_now")).toBe("Distribute now applies only after finalize.");
   expect(reason("recheck_launch")).toBe(
     "Re-check launch applies only to a launch that is still signed, sent or unknown.",
   );
   expect(reason("sweep_leftovers")).toBe("Sweep leftovers applies only after finalize.");
   expect(reason("burn_buyback")).toBe("The buyback wallet holds no BONDR to burn.");
-  expect(DEFAULT_HINT).toMatch(/^Greyed actions do not apply to this coin now\. Every action simulates first;/);
+  expect(DEFAULT_HINT).toMatch(
+    /^Greyed actions do not apply to this coin now\. Every action simulates first;/,
+  );
 });
 
 test("permanent callouts exist only for finalize and the burns", () => {

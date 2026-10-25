@@ -55,7 +55,11 @@ test("complete, bonded, held finalize and finalized", () => {
   expect(applying(row({ venue: "pool" }))).toEqual(["finalize_split", "hold"]);
   const held = row({ venue: "pool", finalize: "held" });
   expect(applying(held)).toEqual(["finalize_split", "release_hold"]);
-  expect(applying(row({ venue: "pool", finalize: "done" }))).toEqual(["distribute_now", "hold", "sweep_leftovers"]);
+  expect(applying(row({ venue: "pool", finalize: "done" }))).toEqual([
+    "distribute_now",
+    "hold",
+    "sweep_leftovers",
+  ]);
 });
 
 test("retry sweep needs a failed or expired sweep with no live twin", () => {
@@ -77,7 +81,15 @@ test("burn buyback needs BONDR in the buyback wallet", () => {
 
 test("a reason is the filled copy when the action does not apply, empty when it does", () => {
   const r = row();
-  const s = actionStates({ row: r, state: wState(r, undefined, NOW, 1), live: null, timeline: tl(), balances: null });
-  expect(s.burn_w_tokens.reason).toBe("Burn W token balance applies only when this coin's W holds SWMP tokens.");
+  const s = actionStates({
+    row: r,
+    state: wState(r, undefined, NOW, 1),
+    live: null,
+    timeline: tl(),
+    balances: null,
+  });
+  expect(s.burn_w_tokens.reason).toBe(
+    "Burn W token balance applies only when this coin's W holds SWMP tokens.",
+  );
   expect(s.sweep_now.reason).toBe("");
 });

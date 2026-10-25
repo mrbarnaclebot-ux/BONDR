@@ -16,7 +16,14 @@ const row = (over: Partial<WRow> = {}): WRow => ({
   ...over,
 });
 const entry = (kind: TimelineRow["kind"], hAgo: number, over: Partial<TimelineRow> = {}): TimelineRow => ({
-  ...{ kind, state: "landed", amount: "35444000000", burned: null, sol: null, signature: `sig-${kind}-${hAgo}` },
+  ...{
+    kind,
+    state: "landed",
+    amount: "35444000000",
+    burned: null,
+    sol: null,
+    signature: `sig-${kind}-${hAgo}`,
+  },
   ...{ windowIndex: null, detail: null, createdAt: at(hAgo), landedAt: at(hAgo) },
   ...over,
 });
@@ -40,12 +47,14 @@ test("a curve coin: launch, folded collect and split, then the next collect", ()
   const s = steps(t);
   expect(s.map((x) => x.title)).toEqual(["Launched, insta burn", "Collect and split, 2 runs", "Up next"]);
   expect(s[0]).toMatchObject({ state: "done", sig: "sig-launch", detail: "5h 30m ago, 17.2M SWMP burned" });
-  expect(s[1]).toMatchObject({ state: "done", sig: "sig-collect-2", detail: "2h ago, 70,888 BONDR" });
+  expect(s[1]).toMatchObject({ state: "done", sig: "sig-collect-2", detail: "2h 0m ago, 70,888 BONDR" });
   expect(s[2]).toMatchObject({ state: "next", detail: "Collect in 2h 30m", sig: null, at: null });
 });
 
 test("insta sell names the launch so", () => {
-  expect(titles({ launch: launch({ exit: "sell", tokens: null }), rows: [] })[0]).toBe("Launched, insta sell");
+  expect(titles({ launch: launch({ exit: "sell", tokens: null }), rows: [] })[0]).toBe(
+    "Launched, insta sell",
+  );
 });
 
 test("a finalized coin lists the engine steps in time order", () => {
@@ -56,7 +65,12 @@ test("a finalized coin lists the engine steps in time order", () => {
       entry("finalize_config", 2.5),
       entry("finalize_update", 2.4, { amount: null, detail: { dBps: 8000, tBps: 2000 } }),
       entry("distribute", 1),
-      entry("reconcile_diff", 0.5, { state: null, signature: null, amount: null, detail: { diff: "-12000000" } }),
+      entry("reconcile_diff", 0.5, {
+        state: null,
+        signature: null,
+        amount: null,
+        detail: { diff: "-12000000" },
+      }),
     ],
   };
   const r = row({ venue: "pool", finalize: "done", bondedAt: at(2.9) });
@@ -72,7 +86,7 @@ test("a finalized coin lists the engine steps in time order", () => {
     "Reconcile mismatch, -12 BONDR",
     "Up next",
   ]);
-  expect(s[1].detail).toBe("3h ago, 118.2M SWMP burned");
+  expect(s[1].detail).toBe("3h 0m ago, 118.2M SWMP burned");
   expect(s[5].detail).toBe("2h 24m ago, 8000 / 2000 bps");
   expect(s[8].detail).toMatch(/^Distribute in /);
 });
@@ -99,8 +113,15 @@ test("sweeps show per window, a fallback burn and leftovers have their names, fa
 
 test("a stuck memory entry ends the timeline with a stuck step", () => {
   const m = mem({ stuck: { step: "finalize", attempts: 3, code: "blockhash_expired", at: NOW - H } });
-  const s = steps({ launch: launch(), rows: [] }, row({ venue: "pool" }), m).at(-1);
-  expect(s).toMatchObject({ key: "stuck", state: "stuck", title: "update_fee_shares_v2", detail: "Stuck, 3 attempts" });
+  const pool = row({ venue: "pool" });
+  const s = steps({ launch: launch(), rows: [entry("finalize_config", 2)] }, pool, m).at(-1);
+  expect(s).toMatchObject({
+    key: "stuck",
+    state: "stuck",
+    title: "update_fee_shares_v2",
+    detail: "Stuck, 3 attempts",
+  });
+  expect(steps({ launch: launch(), rows: [] }, pool, m).at(-1)?.title).toBe("create_fee_sharing_config");
 });
 
 test("a held coin ends with a held step from its hold time", () => {
@@ -110,9 +131,9 @@ test("a held coin ends with a held step from its hold time", () => {
     rows: [entry("held", 2, { state: null, signature: null, amount: null, detail: { reason: "deployer" } })],
   };
   const s = steps(t, r).at(-1);
-  expect(s).toMatchObject({ key: "held", state: "held", detail: "Held 2h ago" });
+  expect(s).toMatchObject({ key: "held", state: "held", detail: "Held 2h 0m ago" });
   const manual = steps({ launch: launch(), rows: [] }, row({ heldAt: at(1), heldReason: "review" })).at(-1);
-  expect(manual).toMatchObject({ state: "held", detail: "Held 1h ago" });
+  expect(manual).toMatchObject({ state: "held", detail: "Held 1h 0m ago" });
 });
 
 test("an unconfirmed launch is the only step and asks for a re-check", () => {

@@ -69,7 +69,7 @@ test("three rejections mark the coin stuck with its step, attempts, a short code
     busy: false,
   });
   expect(JSON.stringify(m)).not.toContain("SECRET");
-  expect(e.stuckCount()).toEqual({ count: 1, first: A });
+  expect(e.stuckCount()).toEqual({ count: 1, first: { mint: A, step: "finalize", attempts: 3 } });
 });
 
 test("the step name comes from the job label", async () => {

@@ -3,7 +3,7 @@
 import type { Connection } from "@solana/web3.js";
 import type { WorkerEnv } from "./env.ts";
 import type { Engine } from "./fee-engine.ts";
-import { bootAt, instance } from "./health.ts";
+import { healthSnapshot } from "./health.ts";
 import { fail, type Handler, type Routes } from "./http.ts";
 
 // Fail closed: no ADMIN_WALLET, or any other actor, is forbidden. The handler gets the whole body, actor included,
@@ -21,7 +21,7 @@ export type AdminOpts = { env: WorkerEnv; engine: () => Engine | null; conn: Con
 // Every route is wrapped here in one place, so no admin route can skip the gate.
 export function adminRoutes(o: AdminOpts): Routes {
   const routes: Routes = {
-    "POST /admin/health": async () => ({ bootAt, instance }),
+    "POST /admin/health": () => healthSnapshot(o),
   };
   return Object.fromEntries(Object.entries(routes).map(([k, h]) => [k, gated(o.env.adminWallet, h)]));
 }

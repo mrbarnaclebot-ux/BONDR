@@ -8,6 +8,7 @@ vi.mock("@bondr/core/db", () => ({}));
 const { adminRoutes } = await import("./admin-routes.ts");
 const { bootAt, healthSnapshot, instance, mark } = await import("./health.ts");
 const { note } = await import("./rpc-stats.ts");
+
 import type { WorkerEnv } from "./env.ts";
 import type { Engine } from "./fee-engine.ts";
 

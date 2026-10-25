@@ -5,7 +5,7 @@
 // ponytail: one replica, all engine state in this process. Add a Postgres advisory lock if the worker ever
 // runs two, or both would send every window.
 import type { Venue } from "@bondr/core/api";
-import type { AdminCoinMemory } from "@bondr/core/api-admin";
+import type { AdminCoinMemory, AdminHealth } from "@bondr/core/api-admin";
 import { type LandedRow, totalsFor, windowEnd, windowOf } from "@bondr/core/fees";
 import { redact } from "@bondr/core/net";
 import type { CoinPatch } from "@bondr/core/trades";
@@ -150,11 +150,12 @@ export class Engine {
     });
   }
 
-  stuckCount(): { count: number; first: string | null } {
+  stuckCount(): AdminHealth["stuck"] {
     const stuck = [...this.failures]
       .filter(([, f]) => f.attempts >= STUCK_AT)
       .sort(([, a], [, b]) => a.at - b.at);
-    return { count: stuck.length, first: stuck[0]?.[0] ?? null };
+    const [mint, f] = stuck[0] ?? [];
+    return { count: stuck.length, first: mint && f ? { mint, step: f.step, attempts: f.attempts } : null };
   }
 
   private track(mint: string, run: Promise<unknown>, what: string, onError?: (e: unknown) => void) {

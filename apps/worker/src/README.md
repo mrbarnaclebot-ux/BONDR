@@ -3,7 +3,7 @@
 The worker: the only process that holds the seed, signs, and reads the chain. Web calls it over a private bearer-token HTTP API.
 
 - `main.ts`: entry; config, one RPC connection, the route table, index boot and the stream.
-- `env.ts`: `loadEnv` (fails at boot on bad config, devnet only; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`), `ops`, `treasury` and the per-lane `buyback` keys.
+- `env.ts`: `loadEnv` (fails at boot on bad config, devnet only; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`, `ADMIN_WALLET` (invalid is null), `ADMIN_EVACUATE`, `SENTRY_READ_TOKEN`), `ops`, `treasury` and the per-lane `buyback` keys.
 - `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Routes` keyed "METHOD /path".
 - `sentry.ts`: OPS-01 Sentry init with the shared scrub; imported first by main.ts.
 - `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache), POST /kill-switch (through switches.ts), `Ctx`, `MAX_SOL_IN`.
@@ -43,5 +43,8 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `fee-engine.ts`: the `Engine` (per-coin serial queue, window timers from launch, ready gate, forced bond trigger per curve patch, bonded job on venue pool) and `coinFrom`; the admin controls `exclusive` (a result-returning run on a coin's queue in every mode), `idle`, `setHold` (the manual hold, never finalize), `memory` and `stuckCount`. One worker replica only (D-07).
 - `fee-stuck.ts`: stuck-step bookkeeping since boot: `STUCK_AT`, `stepOf` (step from the job label), `verdict` (failed or landed result), `codeOf` (short redacted error code).
 - `fee-boot.ts`: `startEngine` (one boot read, recover, then arm), the engine singleton (`feeEngine`, `onIngest`), `feeDeps`, `loadCoin` (one coin for the engine-off admin path) and `withCost` (cost to complete on every curve patch).
-- `health.ts`: memory-only health facts (D-26): `bootAt`, `instance`, and `mark`/`marks`, each fee job's last run since boot.
+- `health.ts`: memory-only health facts (D-26): `bootAt`, `instance`, `mark`/`marks` (the stream's last message and each fee job's last run since boot) and `healthSnapshot`, the POST /admin/health answer (never a database read, D-22).
+- `admin-routes.ts`: `adminRoutes`, every owner console route, each wrapped once by `gated` (403 unless ADMIN_WALLET is set and body.actor matches it); POST /admin/health.
+- `rpc-stats.ts`: `timedFetch` (the worker Connection's fetch) keeps the last hour of RPC calls in memory, 50,000 cap; `rpcStats` gives p50, p95, error rate and 429s.
+- `sentry-count.ts`: `sentryCount`, open issues for bondr-web and bondr-worker from the Sentry API with SENTRY_READ_TOKEN, cached 60 s, no request without a token.
 - `*.test.ts`: vitest checks; DB-backed ones skip without DATABASE_URL.

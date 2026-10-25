@@ -6,6 +6,7 @@ import "./sentry.ts";
 import { close, db } from "@bondr/core/db";
 import { connect, redact } from "@bondr/core/net";
 import { OnlinePumpSdk } from "@bondr/core/pump";
+import { adminRoutes } from "./admin-routes.ts";
 import { seedBondrPrice } from "./bondr-price.ts";
 import { loadEnv, type WorkerEnv } from "./env.ts";
 import { endStreams, eventsHandler } from "./events-route.ts";
@@ -15,6 +16,7 @@ import { startRefill } from "./grind.ts";
 import { start } from "./http.ts";
 import { backfillLaunches, loadCoins } from "./ingest.ts";
 import { type PrepareCtx, prepare } from "./prepare.ts";
+import { timedFetch } from "./rpc-stats.ts";
 import { flush } from "./sentry.ts";
 import { resumeLaunches } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
@@ -54,7 +56,7 @@ const SAMPLE_ADDR = "9wRtPq3yq1ZJ8yQd2ynVfUKAnx3bK2SMQkkjD8Kq4e3F";
 
 async function main() {
   const env = loadEnv();
-  const conn = await connect(env.net);
+  const conn = await connect(env.net, { fetch: timedFetch });
   const ctx: Ctx = { conn, online: new OnlinePumpSdk(conn), Q: env.quoteMint, priorityFee: env.priorityFee };
   const pctx: PrepareCtx = { ...ctx, env };
   const tctx = { ...ctx, net: env.net };
@@ -71,6 +73,7 @@ async function main() {
       "POST /trade/submit": (body) => submitTrade(tctx, body),
       "POST /trade/view": async (body) => viewTrade(body),
       ...feeRoutes(feeEngine),
+      ...adminRoutes({ env, engine: feeEngine, conn }),
       // OPS-01 check: the 500 path logs this through redact and Sentry must show [addr], not the address.
       "POST /sentry-test": async () => {
         throw new Error(`sentry test from worker: wallet ${SAMPLE_ADDR}`);

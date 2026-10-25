@@ -266,7 +266,7 @@ Plans:
   4. Owner flips per-job kill switches (launches, forced bond, sweeps, finalize, buyback burn), hides a coin from lists, blocks a deployer from launching, and inspects any pasted signature's decoded instructions, error and explorer link
   5. Owner runs EVACUATE by typing the phrase and signing; all jobs pause and every W balance moves to the treasury
 
-**Plans:** 1/26 plans executed
+**Plans:** 2/26 plans executed
 
 Plans:
 
@@ -276,7 +276,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 06-02-PLAN.md - Contracts: admin payload types, error codes, leftover_burn and evacuate kinds with copy and totals, scrub, STATE todo
+- [x] 06-02-PLAN.md - Contracts: admin payload types, error codes, leftover_burn and evacuate kinds with copy and totals, scrub, STATE todo
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 1/26 | In Progress|  |
+| 6. Admin Dashboard | 2/26 | In Progress|  |
 | 7. Go-Live | 0/TBD | Not started | - |

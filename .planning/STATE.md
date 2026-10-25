@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-10-25T12:42:32.390Z"
-last_activity: 2026-10-25 -- Completed 06-01 (admin harness, red sign-in spec, migration 0007)
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-10-25T12:55:27.413Z"
+last_activity: 2026-10-25 -- Completed 06-02 (admin contracts, public ledger kinds, error codes)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 70
+  completed_plans: 71
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 2 of 26 (06-01 complete)
-Status: Executing
-Last activity: 2026-10-25 -- Completed 06-01 (admin harness, red sign-in spec, migration 0007)
+Plan: 3 of 26 (06-02 complete)
+Status: Ready to execute
+Last activity: 2026-10-25 -- Completed 06-02 (admin contracts, public ledger kinds, error codes)
 
-Progress: [███████░░░] 74%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -108,6 +108,7 @@ Progress: [███████░░░] 74%
 | Phase 05 P09 | 35 min | 3 tasks | 18 files |
 | Phase 05 P12 | 31 min | 3 tasks | 21 files |
 | Phase 06 P01 | 25 min | 2 tasks | 16 files |
+| Phase 06 P02 | 15 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -248,6 +249,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-01: the manual hold is coins.held_at and held_reason, separate from finalize = 'held' (A4)
 - [Phase 06]: 06-01: fee_ledger_sig_kind is unique on (signature, kind, coalesce(mint, '')); the worker memoryLedger.keysOf must mirror it
 - [Phase 06]: 06-01: ADMIN-01/05/07/10/11 stay pending until the plans that ship them; until 06-03, Playwright runs add --grep-invert admin-signin
+- [Phase 06]: 06-02: leftover_burn adds only bond_burned; evacuate uses the sweep_treasury totals shape
+- [Phase 06]: 06-02: admin error statuses: forbidden, blocked, bad_intent_signature 403; intent_used, not_applicable 409; intent_expired 410; simulation_failed, destination_refused 422
+- [Phase 06]: 06-02: ADMIN-01/03/04/06/10/11 contracts only, not marked complete; the worker reconcile and send kind lists learn evacuate and leftover_burn in the plans that write those rows
 
 ### Pending Todos
 
@@ -280,6 +284,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T12:42:32.385Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-10-25T12:55:27.407Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None

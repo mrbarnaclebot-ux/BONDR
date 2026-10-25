@@ -7,7 +7,7 @@ const NO_STORE = { "cache-control": "no-store" };
 
 /**
  * The next 20 older fee ledger rows of a coin (Load more on the token page); `before` is the page's `next`
- * ("landedMs.id"). Without `before` it is the first page, kept 10 s per mint (D-04).
+ * ("landedMs.id"). Without `before` it is the first page, kept 10 s per mint and hub head (D-04).
  */
 export async function GET(
   req: Request,

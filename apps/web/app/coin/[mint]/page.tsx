@@ -16,7 +16,7 @@ import { TradeSheet } from "@/components/trade-sheet";
 import { coinByMint, feeWindowMs } from "@/lib/coins";
 import { chartInterval, compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
-import { firstLedgerPage } from "@/lib/ledger";
+import { ledgerPage } from "@/lib/ledger";
 import { hub } from "@/lib/live-hub";
 import { imageUrl } from "@/lib/pinata";
 import { tradesPage } from "@/lib/trades";
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// The first feed page and the coin row are kept 10 s, so a burst of views of one coin (a shared link) is one
+// The first feed and ledger pages and the coin row are kept 10 s, so a burst of views of one coin (a shared link) is one
 // Neon read each; Load more and the live stream bring anything newer or older.
 // ponytail: per-process map cleared at 1000 entries; move to a shared cache if web runs more than one instance.
 const TTL = 10_000;
@@ -54,10 +54,19 @@ function kept<T>(read: (mint: string) => Promise<T>) {
   };
 }
 
-// The hub id is taken before the read, so the stream replays anything that lands after it.
+/** A failed ledger read shows the panel's error line, not a failed page. */
+const ledgerOrNull = (mint: string): Promise<LedgerFirst | null> =>
+  ledgerPage(mint).catch((e: { cause?: { code?: string } }) => {
+    console.error("ledger read failed", e.cause?.code ?? "unknown");
+    return null;
+  });
+
+// The hub id is taken before both reads, so the stream replays anything that lands after them. Trades and
+// ledger share one entry: a ledger snapshot older than the head would drop a fee row until reload.
 const firstPage = kept(async (mint) => {
   const head = hub.head();
-  return { ...(await tradesPage(mint)), head };
+  const [t, ledger] = await Promise.all([tradesPage(mint), ledgerOrNull(mint)]);
+  return { ...t, ledger, head };
 });
 const coinRow = kept(coinByMint);
 
@@ -116,13 +125,6 @@ function Panels({ v, net, feed, launchedAt, chart, ledger }: PanelProps) {
   );
 }
 
-/** A failed ledger read shows the panel's error line, not a failed page. */
-const ledgerOrNull = (mint: string): Promise<LedgerFirst | null> =>
-  firstLedgerPage(mint).catch((e: { cause?: { code?: string } }) => {
-    console.error("ledger read failed", e.cause?.code ?? "unknown");
-    return null;
-  });
-
 /** The ledger's synthesized oldest row, from the launch already loaded for the page. */
 const launchEntry = (v: LaunchView, launchedAt?: string): LaunchEntry | null =>
   v.signature
@@ -140,7 +142,7 @@ export default async function CoinPage({ params }: Props) {
   const v = await landedCoin((await params).mint);
   if (!v) notFound();
   const net: Net = process.env.SOLANA_NET === "mainnet" ? "mainnet" : "devnet";
-  const [feed, coin, ledger] = await Promise.all([firstPage(v.mint), coinRow(v.mint), ledgerOrNull(v.mint)]);
+  const [feed, coin] = await Promise.all([firstPage(v.mint), coinRow(v.mint)]);
   const launch = launchEntry(v, coin?.launchedAt);
   return (
     // One provider, so one EventSource serves the venue tag, stats, bond panel and feed (D-18); one trade state
@@ -168,7 +170,7 @@ export default async function CoinPage({ params }: Props) {
                   symbol={v.symbol}
                   w={coin?.fees?.w ?? null}
                   net={net}
-                  initial={ledger}
+                  initial={feed.ledger}
                   launch={launch}
                 />
               }

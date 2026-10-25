@@ -5,6 +5,7 @@ import type { LedgerRow } from "@bondr/core/api";
 import { PUBLIC_KINDS } from "@bondr/core/fees";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, feeLedger } from "./db";
+import { hub } from "./live-hub";
 import { kept } from "./trades";
 
 export const PAGE = 20;
@@ -79,6 +80,9 @@ export async function ledgerPage(mint: string, before?: LedgerCursor): Promise<L
   return { rows, more, next: more && last ? `${Date.parse(last.landedAt)}.${last.id}` : null };
 }
 
-/** The token page's first ledger page, kept 10 s per mint with its other reads (D-04). */
+/**
+ * A resync's first ledger page, kept 10 s per mint and hub position (D-04): a burst of resyncs at one head is
+ * one read, and a page read before a newer event is never served after it.
+ */
 export const firstLedgerPage = (mint: string): Promise<LedgerPage> =>
-  kept(`ledger:${mint}`, () => ledgerPage(mint));
+  kept(`ledger:${mint}:${hub.head() ?? ""}`, () => ledgerPage(mint));

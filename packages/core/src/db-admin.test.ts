@@ -1,8 +1,9 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { coinRow, coinRows } from "./coin-row.ts";
 import {
   adminAudit,
   blockedDeployers,
@@ -118,6 +119,18 @@ describe.skipIf(!process.env.DATABASE_URL)("admin database constraints", { timeo
       expect(await set({ heldAt: new Date(), heldReason: "" })).toBe("23514");
       expect(await set({ hiddenAt: new Date(), hiddenReason: "x".repeat(120) })).toBeUndefined();
       expect(await set({ heldAt: new Date(), heldReason: "review" })).toBeUndefined();
+    });
+  });
+
+  test("a hidden coin leaves coinRows and stays reachable through coinRow (D-29)", async () => {
+    await rolledBack(async (tx) => {
+      const mint = await seedCoin(tx);
+      const listed = async () =>
+        (await coinRows(tx, [desc(coins.launchedAt)], 10, 0, eq(coins.mint, mint))).map((c) => c.mint);
+      expect(await listed()).toEqual([mint]);
+      await tx.update(coins).set({ hiddenAt: new Date(), hiddenReason: "spam" }).where(eq(coins.mint, mint));
+      expect(await listed()).toEqual([]);
+      expect((await coinRow(tx, mint))?.mint).toBe(mint);
     });
   });
 

@@ -122,3 +122,14 @@ export function resyncFeed<T extends Trade>(feed: Feed<T>, page: Feed<T>): Feed<
   const live = feed.rows.filter((r) => r.fresh && newestFirst(r, oldest) < 0);
   return { rows: addTrades(page.rows, live), more: true };
 }
+
+type Entry = { id: string; landedAt: string };
+const newestEntry = (a: Entry, b: Entry) =>
+  Date.parse(b.landedAt) - Date.parse(a.landedAt) || desc(a.id, b.id);
+
+/** Fee ledger rows merged by id in the server's order (landed time, then id, newest first); same array if none is new. */
+export function addLedger<T extends Entry>(rows: T[], add: T[]): T[] {
+  const seen = new Set(rows.map((r) => r.id));
+  const unseen = add.filter((r) => !seen.has(r.id) && !!seen.add(r.id));
+  return unseen.length ? [...unseen, ...rows].toSorted(newestEntry) : rows;
+}

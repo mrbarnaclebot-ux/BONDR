@@ -129,7 +129,7 @@ test.describe("trade panel", () => {
     await trade.getByText("Fees 0.0062 SOL").click();
     const hop = (title: string) => trade.locator("details dl > div", { hasText: title });
     const coinHop = hop(`Fees on the ${coin.symbol} curve, 0.3%`);
-    await expect(coinHop).toContainText(`Creator 0.3%, to the ${coin.symbol} fee wallet`);
+    await expect(coinHop).toContainText(`Creator 0.3%, to the ${coin.symbol} burn budget`);
     await expect(coinHop).not.toContainText("Pump protocol");
     await expect(hop("SOL to BONDR on the BONDR curve, 0.95%")).toContainText("Pump protocol 0.95%");
     await expect(row(trade, "BONDR platform fee")).toHaveText("0");
@@ -139,7 +139,7 @@ test.describe("trade panel", () => {
     await trade.getByRole("textbox", { name: "You pay" }).fill("0.6");
     const poolHop = hop(`Fees on ${coin.symbol} PumpSwap, 0.25%`);
     await expect(poolHop).toContainText("LP 0.2%");
-    await expect(poolHop).toContainText(`Creator 0.05%, to the ${coin.symbol} fee wallet`);
+    await expect(poolHop).toContainText("Creator 0.05%, shared 80 deployer / 20 treasury once finalized");
     await expect(poolHop).not.toContainText("Pump protocol");
   });
 

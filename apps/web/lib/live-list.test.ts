@@ -1,6 +1,7 @@
 import type { CoinLive, CoinRow } from "@bondr/core/api";
 import { expect, test } from "vitest";
 import {
+  addLedger,
   addTrades,
   applyBond,
   applyTrade,
@@ -161,4 +162,12 @@ test("resyncFeed merges a page that overlaps the loaded rows and replaces one th
     "s3.0",
     "s2.0",
   ]);
+});
+
+test("addLedger merges fee rows by id, newest first, and keeps the array when nothing is new", () => {
+  const r = (id: string, min: number) => ({ id, landedAt: ago(min * 60_000) });
+  const rows = [r("3", 5), r("1", 20)];
+  const got = addLedger(rows, [r("4", 1), r("5", 1), r("3", 5), r("2", 10), r("4", 1)]);
+  expect(got.map((x) => x.id)).toEqual(["5", "4", "3", "2", "1"]);
+  expect(addLedger(rows, [r("3", 5)])).toBe(rows);
 });

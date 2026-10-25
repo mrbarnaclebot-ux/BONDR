@@ -5,6 +5,7 @@
 import type { LedgerKind } from "@bondr/core/api";
 import { forcedBondIxs, poolBaseOut, poolBuyBurnIxs, poolExactInBurnIxs } from "@bondr/core/bond";
 import { costToComplete } from "@bondr/core/curve";
+import { budgetOf } from "@bondr/core/fees";
 import { wFloat } from "@bondr/core/float";
 import { applyBps, trigger105 } from "@bondr/core/math";
 import { redact } from "@bondr/core/net";
@@ -13,17 +14,13 @@ import type { TransactionInstruction } from "@solana/web3.js";
 import { finalizeJob } from "./fee-finalize.ts";
 import { guard, spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
-import { collectJob, settled, wBondr } from "./fee-prebond.ts";
+import { collectJob, settled, wBondr, worthCollecting } from "./fee-prebond.ts";
 import { type FeeCoin, type FeeDeps, factsFor, type Landed } from "./fee-send.ts";
 
 const BOND_KINDS: LedgerKind[] = ["forced_bond", "pool_burn"];
 const CU = 600_000;
 const DONE: Landed = { state: "done" };
 const big = (x: BN): bigint => BigInt(x.toString());
-
-// Urgent collect, then the guard's urgent splits, so W's BONDR is all burn budget before send sizes from it.
-const collectThen = async (d: FeeDeps, coin: FeeCoin, send: () => Promise<Landed>) =>
-  spend(d, coin, [await collectJob(d, coin, true)], send, true);
 
 // The row's amount is the intent (W's whole balance); the landed amount is what W actually spent.
 function burnLand(d: FeeDeps, coin: FeeCoin, row: NewEntry, ixs: TransactionInstruction[]): Promise<Landed> {
@@ -43,6 +40,7 @@ async function forcedSend(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
   const balance = await wBondr(d, coin);
   if (cost === 0n || !trigger105(balance, cost)) {
     console.log(`forced bond not ready ${mint}: budget ${balance}, cost ${cost}`);
+    coin.notReady = { budget: budgetOf(coin.feeBudget, coin.feesUnclaimed), cost: coin.cost ?? cost };
     return DONE;
   }
   const { ixs, burnAmount } = await forcedBondIxs({
@@ -53,9 +51,19 @@ async function forcedSend(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
   return burnLand(d, coin, { kind: "forced_bond", mint, amount: balance, burned: big(burnAmount) }, ixs);
 }
 
+// D-15 on memory: the budget clears 105% of the cost and, after a chain "not ready" verdict, memory has moved
+// by at least 1% since (WR-06), so a coin at the boundary does not rerun an urgent collect on every trade.
+export function forceDue(coin: FeeCoin, cost: bigint): boolean {
+  const [budget, n] = [budgetOf(coin.feeBudget, coin.feesUnclaimed), coin.notReady];
+  if (!trigger105(budget, cost)) return false;
+  return !n || budget * 100n >= n.budget * 101n || cost * 100n <= n.cost * 99n;
+}
+
+// The urgent collect only when worth its fee (D-11): the forced bond can retrigger on every curve trade.
 export async function forcedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   if (await d.ledger.has(coin.mint.toBase58(), BOND_KINDS)) return [DONE];
-  return collectThen(d, coin, () => forcedSend(d, coin));
+  const out = worthCollecting(d, coin) ? [await collectJob(d, coin, true)] : [];
+  return spend(d, coin, out, () => forcedSend(d, coin), true);
 }
 
 type PoolIxs = { ixs: TransactionInstruction[]; burnAmount: BN; path: "exact_quote_in" | "buy_v2" };
@@ -105,7 +113,7 @@ export async function bondedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   const out = await guard(d, coin, true);
   if (!out.every(settled)) return out;
   if (!(await d.ledger.has(coin.mint.toBase58(), BOND_KINDS))) {
-    out.push(...(await collectThen(d, coin, () => poolBurnJob(d, coin))));
+    out.push(...(await spend(d, coin, [await collectJob(d, coin, true)], () => poolBurnJob(d, coin), true)));
     if (!out.every(settled)) return out;
   }
   out.push(...(await finalizeJob(d, coin)));

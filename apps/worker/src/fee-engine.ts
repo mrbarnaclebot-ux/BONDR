@@ -7,9 +7,8 @@
 import type { Venue } from "@bondr/core/api";
 import { costFromReserves } from "@bondr/core/curve";
 import { coins, db, launches } from "@bondr/core/db";
-import { budgetOf, type LandedRow, totalsFor, windowEnd, windowOf } from "@bondr/core/fees";
+import { type LandedRow, totalsFor, windowEnd, windowOf } from "@bondr/core/fees";
 import { derive } from "@bondr/core/keys";
-import { trigger105 } from "@bondr/core/math";
 import { redact } from "@bondr/core/net";
 import { OnlinePumpAmmSdk, type OnlinePumpSdk } from "@bondr/core/pump";
 import type { CoinPatch, Parsed } from "@bondr/core/trades";
@@ -19,7 +18,7 @@ import { publishFee } from "./announce.ts";
 import { bondrPrice } from "./bondr-price.ts";
 import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
 import { scheduleBatch } from "./fee-batch.ts";
-import { bondedJob, forcedJob } from "./fee-burns.ts";
+import { bondedJob, forceDue, forcedJob } from "./fee-burns.ts";
 import { feeConfig } from "./fee-config.ts";
 import { finalizeJob } from "./fee-finalize.ts";
 import { windowJob } from "./fee-guard.ts";
@@ -177,7 +176,7 @@ export class Engine {
   private force(coin: FeeCoin): void {
     const [mint, deps, cost] = [coin.mint.toBase58(), this.o.deps, coin.cost];
     if (!this.ready || !deps || coin.venue !== "curve" || !cost || this.forcing.has(mint)) return;
-    if (!trigger105(budgetOf(coin.feeBudget, coin.feesUnclaimed), cost)) return;
+    if (!forceDue(coin, cost)) return;
     this.forcing.add(mint);
     const job = async () => console.log(`forced bond ${mint}: ${summary(await forcedJob(deps, coin))}`);
     void this.enqueue(mint, job, `forced bond ${mint}`).then(() => this.forcing.delete(mint));

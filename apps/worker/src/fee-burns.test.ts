@@ -3,7 +3,7 @@
 import { BN } from "@bondr/core/pump";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
-import { bondedJob, forcedJob, poolBurnJob } from "./fee-burns.ts";
+import { bondedJob, forceDue, forcedJob, poolBurnJob } from "./fee-burns.ts";
 import { memoryLedger } from "./fee-ledger.ts";
 import type { FeeCoin, FeeDeps, Job, Landed } from "./fee-send.ts";
 
@@ -36,7 +36,7 @@ const Q = PublicKey.unique();
 const W = Keypair.generate();
 const MINT = PublicKey.unique();
 const coin: FeeCoin = {
-  ...{ mint: MINT, w: W, launchedAt: 0, venue: "curve", feesUnclaimed: 10n, feeBudget: 0n },
+  ...{ mint: MINT, w: W, launchedAt: 0, venue: "curve", feesUnclaimed: 10_000n, feeBudget: 0n },
   ...{ cost: null, launchSig: "launch", wallet: PublicKey.unique(), finalize: "none" },
 };
 const qMeta = (wDelta: bigint) => ({
@@ -184,4 +184,18 @@ test("bondedJob sends the pool burn again once the pending one failed on chain, 
   await bondedJob(d, { ...coin, venue: "pool", open: true });
   expect(kinds()).toEqual(["collect", "pool_burn"]);
   expect(core.finalize).toHaveBeenCalledOnce();
+});
+
+// WR-06: a chain "not ready" verdict must not rerun the urgent collect on every curve trade.
+test("after a not-ready verdict the trigger waits until memory moves 1%; fees under the minimum skip the collect", async () => {
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  const c = { ...coin, feeBudget: 1050n, feesUnclaimed: 0n, cost: 1000n, notReady: undefined };
+  expect(forceDue(c, 1000n)).toBe(true);
+  await forcedJob(deps({ balance: 1049n }), c);
+  expect(kinds()).toEqual([]); // nothing worth collecting
+  expect(c.notReady).toEqual({ budget: 1050n, cost: 1000n });
+  expect(forceDue(c, 1000n)).toBe(false);
+  expect(forceDue(c, 990n)).toBe(true); // cost fell 1%
+  expect(forceDue({ ...c, feeBudget: 1061n }, 1000n)).toBe(true); // budget grew 1%
+  vi.restoreAllMocks();
 });

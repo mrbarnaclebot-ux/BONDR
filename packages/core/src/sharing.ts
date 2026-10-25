@@ -1,12 +1,19 @@
 // Creator fee sharing (RESEARCH Pattern 5). update_fee_shares_v2 revokes the admin after its one use, so
-// finalizeIxs is the only shares write a BONDR coin ever makes. Sweeps go first (Pitfall 6).
+// finalizeUpdateIxs is the only shares write a BONDR coin ever makes. Sweeps go first (Pitfall 6).
 import {
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
   TOKEN_2022_PROGRAM_ID as T22,
 } from "@solana/spl-token";
 import type { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { creatorVaultPda, feeSharingConfigPda, type OnlinePumpSdk, PUMP_SDK } from "./pump.ts";
+import {
+  bondingCurvePda,
+  canonicalPumpPoolPdaWithQuote,
+  creatorVaultPda,
+  feeSharingConfigPda,
+  type OnlinePumpSdk,
+  PUMP_SDK,
+} from "./pump.ts";
 
 // PROJECT.md 80/20: deployer, then treasury. Locked after the one allowed update, so it lives here only.
 export const FINAL_SHARES = { deployer: 8000, treasury: 2000 } as const;
@@ -38,22 +45,12 @@ function vaultAta(payer: PublicKey, mint: PublicKey, quoteMint: PublicKey): Tran
   return createAssociatedTokenAccountIdempotentInstruction(payer, ata, vault, quoteMint, T22);
 }
 
-// [sweep curve fee, (sweep pool fee), create_fee_sharing_config, config vault ATA, update to FINAL_SHARES].
-// The config makes its PDA the curve creator, and the update's inner distribute reads that PDA's creator
-// vault quote ATA, which a sweep only creates when it moves fees (devnet: InvalidAccountData without it).
-export async function finalizeIxs(o: {
-  creator: PublicKey;
-  payer: PublicKey;
-  mint: PublicKey;
-  quoteMint: PublicKey;
-  deployer: PublicKey;
-  treasury: PublicKey;
-  bondingCurveComplete: boolean;
-  pool?: PublicKey;
-}): Promise<TransactionInstruction[]> {
+type Finalize = Sweep & { deployer: PublicKey; treasury: PublicKey };
+
+// The config makes its PDA the curve creator, and the update's inner distribute reads that PDA's creator vault
+// quote ATA, which a sweep only creates when it moves fees (devnet: InvalidAccountData without it).
+async function updateTail(o: Finalize): Promise<TransactionInstruction[]> {
   return [
-    ...(await sweeps(o)),
-    await PUMP_SDK.createFeeSharingConfig({ creator: o.creator, mint: o.mint, pool: o.pool ?? null }),
     vaultAta(o.payer, o.mint, o.quoteMint),
     await PUMP_SDK.updateFeeSharesV2({
       authority: o.creator,
@@ -68,6 +65,24 @@ export async function finalizeIxs(o: {
       bondingCurveComplete: o.bondingCurveComplete,
     }),
   ];
+}
+
+// Tx 1 of the proven split (A2): [sweep curve fee, (sweep pool fee), create_fee_sharing_config].
+export async function finalizeConfigIxs(o: Sweep): Promise<TransactionInstruction[]> {
+  return [
+    ...(await sweeps(o)),
+    await PUMP_SDK.createFeeSharingConfig({ creator: o.creator, mint: o.mint, pool: o.pool ?? null }),
+  ];
+}
+
+// Tx 2: the sweeps again under the new creator, the config vault ATA and the one update to FINAL_SHARES.
+export async function finalizeUpdateIxs(o: Finalize): Promise<TransactionInstruction[]> {
+  return [...(await configSweeps(o)), ...(await updateTail(o))];
+}
+
+// Both txs as one list, for the spike's size check: [sweeps, config, vault ATA, update].
+export async function finalizeIxs(o: Finalize): Promise<TransactionInstruction[]> {
+  return [...(await finalizeConfigIxs(o)), ...(await updateTail(o))];
 }
 
 // After create_fee_sharing_config the curve and pool creator is the sharing config PDA, so later sweeps
@@ -101,6 +116,34 @@ export async function updateIxs(o: {
       bondingCurveComplete: o.bondingCurveComplete,
     }),
   ];
+}
+
+export type FinalizeState = {
+  complete: boolean;
+  pool: PublicKey | null;
+  sharing: "none" | "configured" | "revoked";
+};
+
+// Where a finalize stands, from chain in one call, so a restart resumes at the right step (STATE blocker:
+// complete and pool come from chain, never from a caller boolean). A missing curve reads as not complete.
+export async function finalizeState(
+  conn: Connection,
+  mint: PublicKey,
+  quoteMint: PublicKey,
+): Promise<FinalizeState> {
+  const pool = canonicalPumpPoolPdaWithQuote(mint, quoteMint);
+  const keys = [bondingCurvePda(mint), pool, feeSharingConfigPda(mint)];
+  const [curve, poolInfo, config] = await conn.getMultipleAccountsInfo(keys);
+  const sharing = !config
+    ? "none"
+    : PUMP_SDK.decodeSharingConfig(config).adminRevoked
+      ? "revoked"
+      : "configured";
+  return {
+    complete: curve ? PUMP_SDK.decodeBondingCurve(curve).complete : false,
+    pool: poolInfo ? pool : null,
+    sharing,
+  };
 }
 
 // OnlinePumpSdk has no SharingConfig fetcher, so this reads the PDA and decodes through the SDK.

@@ -1,7 +1,21 @@
 // The one map from a simulation, preflight or on-chain failure to a contract code, for launch and trade
 // (RESEARCH Error Mapping, D-17). Pure, so every probe shape is unit tested.
 import type { ApiError } from "./api.ts";
-import { customCode, fromLogs } from "./send.ts";
+
+// Anchor logs carry the readable name and the program logs carry the hex code; both make the row evidence.
+export function fromLogs(logs: readonly string[] | null | undefined): { code?: number; name?: string } {
+  const text = (logs ?? []).join("\n");
+  const hex = text.match(/custom program error: (0x[0-9a-f]+)/i)?.[1];
+  const num = text.match(/Error Number: (\d+)/)?.[1];
+  const code = hex ? Number.parseInt(hex, 16) : num ? Number(num) : undefined;
+  return { code, name: text.match(/Error Code: (\w+)/)?.[1] };
+}
+
+export function customCode(err: unknown): number | undefined {
+  const ie = (err as { InstructionError?: [number, unknown] } | null)?.InstructionError;
+  const custom = (ie?.[1] as { Custom?: number } | undefined)?.Custom;
+  return typeof custom === "number" ? custom : undefined;
+}
 
 const PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 const AMM = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";

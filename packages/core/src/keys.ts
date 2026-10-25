@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { Keypair } from "@solana/web3.js";
 
-export type Role = "w" | "treasury" | "ops" | "sim" | "mint";
+export type Role = "w" | "treasury" | "ops" | "sim" | "mint" | "buyback";
 export type Net = "devnet" | "fork";
 
 export const derive = (master: Buffer, role: Role, net: Net, id: string): Keypair =>

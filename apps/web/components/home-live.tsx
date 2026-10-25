@@ -1,7 +1,7 @@
 "use client";
 
 // The home page's one live stream (D-12 to D-15): one useLive shared through context by the hero counts,
-// Trending and All coins. A trade updates every card of its coin at once; positions move only on the 60 s tick,
+// the Next to bond rail, Trending and All coins. A trade updates every card of its coin at once; positions move only on the 60 s tick,
 // which waits while the pointer is over, or focus is inside, a region spreading `hold`. The tick never reads;
 // the only fetch is the resync catch-up (T-03-13-02).
 import type { CoinRow } from "@bondr/core/api";
@@ -25,6 +25,7 @@ import {
   fresher,
   insertLaunch,
   mergePage,
+  railRank,
   rerank,
   type Sort,
   type TrendMode,
@@ -35,7 +36,9 @@ import { useLive } from "@/lib/use-live";
 
 export type CoinPage = { coins: CoinRow[]; more: boolean };
 export type Trend = { mode: TrendMode; coins: CoinRow[] };
-type Counts = { launched: number; bonded: number };
+type Counts = { launched: number; bonded: number; forced: number };
+/** The Next to bond rail's coins and the clock its sweep countdowns read, both moved only by the tick. */
+export type Rail = { at: number; coins: CoinRow[] };
 type Setter<T> = Dispatch<SetStateAction<T>>;
 type State<T> = [T, Setter<T>];
 
@@ -45,6 +48,7 @@ type Ctx = {
   q: State<string>;
   trend: Trend | null;
   counts: Counts | null;
+  rail: Rail;
   /** The last trade side per mint; `n` changes per trade so a flashing value remounts and replays. */
   flash: Record<string, { side: Side; n: number }>;
   /** Launches that just slid into Latest, glowing for 3.6 s (UI-SPEC Motion). */
@@ -65,7 +69,14 @@ export function useHome(): Ctx {
 const HELD = "[data-hold]:hover, [data-hold]:focus-within";
 const TOP = 10;
 
-type Props = { list: CoinPage | null; sort: Sort; q: string; trend: Trend | null; counts: Counts | null };
+type Props = {
+  list: CoinPage | null;
+  sort: Sort;
+  q: string;
+  trend: Trend | null;
+  counts: Counts | null;
+  rail: Rail;
+};
 /** The provider's state as of the last render, read when an event or a fetch lands instead of captured. */
 type View = { sort: Sort; q: string; list: CoinPage | null; trend: Trend | null };
 
@@ -77,12 +88,14 @@ const keep =
     return s && coins !== s.coins ? { ...s, coins } : s;
   };
 
+type Ranked = { setList: Setter<CoinPage | null>; setTrend: Setter<Trend | null>; setRail: Setter<Rail> };
+
 /**
- * The one 60 s tick (D-12): decay, re-sort both lists and refresh ages, unless a `hold` region is hovered or
+ * The one 60 s tick (D-12): decay, re-sort the lists and the rail and refresh ages and countdowns, unless a `hold` region is hovered or
  * holds focus; then it runs when the pointer or focus leaves. Trending is re-picked from every coin on the page,
  * so a grid coin that starts trading can enter it and the mode and caption follow (D-13). No reads here.
  */
-function useReRank(now: RefObject<View>, setList: Setter<CoinPage | null>, setTrend: Setter<Trend | null>) {
+function useReRank(now: RefObject<View>, { setList, setTrend, setRail }: Ranked) {
   const due = useRef(false);
   const release = useCallback(() => {
     if (!due.current || document.querySelector(HELD)) return;
@@ -94,7 +107,8 @@ function useReRank(now: RefObject<View>, setList: Setter<CoinPage | null>, setTr
       const coins = rerank(decay(union(t?.coins ?? [], list?.coins ?? []), at), "trending").slice(0, TOP);
       return { mode: trendingMode(coins), coins };
     });
-  }, [now, setList, setTrend]);
+    setRail((r) => ({ at, coins: railRank(r.coins) }));
+  }, [now, setList, setTrend, setRail]);
   useEffect(() => {
     const id = setInterval(() => {
       due.current = true;
@@ -124,9 +138,7 @@ async function catchUp(sort: Sort, q: string) {
   return res?.ok ? ((await res.json()) as CoinPage & { trending: Trend; counts: Counts }) : null;
 }
 
-type Sets = {
-  setList: Setter<CoinPage | null>;
-  setTrend: Setter<Trend | null>;
+type Sets = Ranked & {
   setCounts: Setter<Counts | null>;
   setFlash: Setter<Ctx["flash"]>;
   glow(mint: string): void;
@@ -135,7 +147,13 @@ type Sets = {
 const listed = (mint: string, p: { coins: CoinRow[] } | null) => !!p?.coins.some((c) => c.mint === mint);
 // Counts only grow; the kept server count may lag a live launch by 10 s, a live count may have missed a gap.
 const most = (c: Counts | null, s: Counts): Counts =>
-  c ? { launched: Math.max(c.launched, s.launched), bonded: Math.max(c.bonded, s.bonded) } : s;
+  c
+    ? {
+        launched: Math.max(c.launched, s.launched),
+        bonded: Math.max(c.bonded, s.bonded),
+        forced: Math.max(c.forced, s.forced),
+      }
+    : s;
 
 /** A resync's catch-up, dropped when the sort or search changed while it was in flight. */
 function resync(view: RefObject<View>, s: Sets) {
@@ -160,6 +178,7 @@ function useHomeStream(view: RefObject<View>, s: Sets) {
   const both = (fn: (l: CoinRow[]) => CoinRow[]) => {
     s.setList(keep(fn));
     s.setTrend(keep(fn));
+    s.setRail((r) => keep(fn)(r) ?? r);
   };
   useLive({
     onTrade: (d) => {
@@ -172,6 +191,11 @@ function useHomeStream(view: RefObject<View>, s: Sets) {
     onBond: (d) => {
       both((l) => applyBond(l, d));
       if (d.venue === "complete") s.setCounts((c) => c && { ...c, bonded: c.bonded + 1 });
+    },
+    // A fee movement changes the coin's budget; a landed forced bond is one more coin bonded by its own fees.
+    onFee: ({ coin, rows }) => {
+      if (coin) both((l) => applyTrade(l, { coin }));
+      if (rows.some((r) => r.kind === "forced_bond")) s.setCounts((c) => c && { ...c, forced: c.forced + 1 });
     },
     onLaunch: (c) => {
       const at = view.current;
@@ -189,14 +213,15 @@ export function HomeLiveProvider({ children, ...init }: Props & { children: Reac
   const q = useState(init.q);
   const [trend, setTrend] = useState(init.trend);
   const [counts, setCounts] = useState(init.counts);
+  const [rail, setRail] = useState(init.rail);
   const [flash, setFlash] = useState<Ctx["flash"]>({});
   const [fresh, glow] = useFresh();
   const view = useRef<View>({ sort: sort[0], q: q[0], list: list[0], trend });
   useEffect(() => {
     view.current = { sort: sort[0], q: q[0], list: list[0], trend };
   });
-  const hold = useReRank(view, list[1], setTrend);
-  useHomeStream(view, { setList: list[1], setTrend, setCounts, setFlash, glow });
-  const value = { list, sort, q, trend, counts, flash, fresh, hold };
+  const hold = useReRank(view, { setList: list[1], setTrend, setRail });
+  useHomeStream(view, { setList: list[1], setTrend, setRail, setCounts, setFlash, glow });
+  const value = { list, sort, q, trend, counts, rail, flash, fresh, hold };
   return <LiveCtx.Provider value={value}>{children}</LiveCtx.Provider>;
 }

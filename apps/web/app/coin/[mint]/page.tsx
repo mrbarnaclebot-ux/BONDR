@@ -13,7 +13,7 @@ import { TokenStats } from "@/components/token-stats";
 import { TradeFeed } from "@/components/token-trades";
 import { TradePanel } from "@/components/trade-panel";
 import { TradeSheet } from "@/components/trade-sheet";
-import { coinByMint } from "@/lib/coins";
+import { coinByMint, feeWindowMs } from "@/lib/coins";
 import { chartInterval, compact, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
 import { firstLedgerPage } from "@/lib/ledger";
@@ -61,13 +61,6 @@ const firstPage = kept(async (mint) => {
 });
 const coinRow = kept(coinByMint);
 
-// The worker's fee window length (D-10), so the countdown closes when the sweep runs. Shortened only for local e2e.
-const DAY = 86_400_000;
-const windowMs = (): number => {
-  const n = Number(process.env.FEE_WINDOW_MS ?? DAY);
-  return Number.isInteger(n) && n >= 60_000 ? n : DAY;
-};
-
 /** UI-SPEC token page proof sentence; the token count is left out until the facts are written. */
 function sentence(v: LaunchView): string {
   const tokens = v.facts?.tokens ? ` (${compact(v.facts.tokens)} ${v.symbol})` : "";
@@ -103,7 +96,7 @@ function Panels({ v, net, feed, launchedAt, chart, ledger }: PanelProps) {
           symbol={v.symbol}
           net={net}
           launchedAt={launchedAt}
-          windowMs={windowMs()}
+          windowMs={feeWindowMs()}
           image={imageUrl(v.imageCid)}
         />
         {ledger}

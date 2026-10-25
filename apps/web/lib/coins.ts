@@ -124,3 +124,10 @@ export const heroCounts = (): Promise<Counts> =>
       .from(coins);
     return r;
   });
+
+// The worker's fee window length (D-10), so a countdown closes when the sweep runs. Shortened only for local e2e.
+const DAY = 86_400_000;
+export const feeWindowMs = (): number => {
+  const n = Number(process.env.FEE_WINDOW_MS ?? DAY);
+  return Number.isInteger(n) && n >= 60_000 ? n : DAY;
+};

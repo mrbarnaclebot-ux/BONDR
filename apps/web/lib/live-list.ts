@@ -57,6 +57,19 @@ const ORDER: Record<Sort | "trending", Cmp> = {
 
 export const rerank = (list: CoinRow[], order: Sort | "trending"): CoinRow[] => list.toSorted(ORDER[order]);
 
+const railable = (c: CoinRow) =>
+  c.venue === "curve" && !!c.fees?.cost && BigInt(c.fees.cost) > 0n && BigInt(c.fees.budget) > 0n;
+// budget_a / cost_a against budget_b / cost_b, cross-multiplied in base units so no float rounds a tie away.
+const byReady: Cmp = (a, b) => {
+  const x = BigInt(a.fees?.budget ?? 0) * BigInt(b.fees?.cost ?? 0);
+  const y = BigInt(b.fees?.budget ?? 0) * BigInt(a.fees?.cost ?? 0);
+  return x > y ? -1 : x < y ? 1 : 0;
+};
+
+/** The Next to bond rail's tick (D-24): bonded or budgetless coins leave, the rest re-sort as lib/coins.ts does. */
+export const railRank = (list: CoinRow[]): CoinRow[] =>
+  list.filter(railable).toSorted((a, b) => byReady(a, b) || newer(a, b));
+
 /** D-13 over the whole list: any 1h volume, else any 24h volume, else the latest launches. */
 export const trendingMode = (list: CoinRow[]): TrendMode =>
   list.some((c) => c.vol1h > 0) ? "1h" : list.some((c) => c.vol24h > 0) ? "24h" : "latest";

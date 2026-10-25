@@ -14,8 +14,8 @@ type Props = {
 
 /**
  * The burn budget track (token page "lg" with the 100% and 105% labels, home rail "md" and "sm"). The width
- * transition is added after the first render and never under reduced motion, so a page load draws the bar
- * at its value (UI-SPEC Motion).
+ * transition is added after the first render and never under reduced motion, so a page load draws the token
+ * page bar at its value; the rail bars grow in from zero once (UI-SPEC Motion).
  */
 export function ReadyBar({ ratio, size, label }: Props) {
   const [motion, setMotion] = useState(false);
@@ -47,6 +47,8 @@ export function ReadyBar({ ratio, size, label }: Props) {
             className={cn(
               "h-full rounded-full bg-linear-to-r from-forest to-leaf shadow-[0_0_18px_-2px_color-mix(in_oklch,var(--leaf)_60%,transparent)]",
               motion && "transition-[width] duration-900 ease-(--ease-spring)",
+              // The rail's bars grow in once as they mount (mockup `grow`); never under reduced motion.
+              size !== "lg" && "origin-left motion-safe:animate-[bond-draw_1200ms_var(--ease-spring)_both]",
             )}
             style={{ width: `${fill}%` }}
           />

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
-import { thousands } from "@/lib/format";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
+import { ratioPct, thousands } from "@/lib/format";
 import { useHome } from "./home-live";
+import { NextToBond } from "./home-next";
 import { Button, buttonVariants } from "./ui-button";
 
 // 16 motes at fixed pseudo-random spots (the mockup's seeded rng), so server and client render the same markup.
@@ -69,15 +70,41 @@ function HeroArt({ motion, paused }: { motion: boolean; paused: boolean }) {
   );
 }
 
-/** The D-09 counts, counting up on live launch and bond events; hidden when the read failed. */
+const Num = ({ children }: { children: ReactNode }) => (
+  <b className="num font-normal text-foreground">{children}</b>
+);
+
+/** D-24: coins bonded by their own fees, and the rail's top coin when there is one. */
+function Forced({ forced }: { forced: number }) {
+  const top = useHome().rail.coins[0];
+  return (
+    <span>
+      <Num>{thousands(forced)}</Num>{" "}
+      {forced === 1 ? "coin bonded by its own fees." : "coins bonded by their own fees."}
+      {top?.fees && (
+        <>
+          {" Next up: "}
+          <Num>{top.symbol}</Num>, <Num>{ratioPct(top.fees.budget, top.fees.cost)}</Num> ready.
+        </>
+      )}
+    </span>
+  );
+}
+
+/**
+ * The D-09 counts, counting up on live launch and bond events, or from the first forced bond the D-24 line, which
+ * counts up on live forced bond fee events; hidden when the read failed.
+ */
 function Pulse() {
   const { counts } = useHome();
   if (!counts) return null;
-  const { launched, bonded } = counts;
+  const { launched, bonded, forced } = counts;
   return (
     <p className="mt-6 flex items-center gap-2.5 text-sm text-muted-foreground">
       <span aria-hidden="true" className="size-2 flex-none animate-live rounded-full bg-leaf text-leaf" />
-      {launched === 0 ? (
+      {forced > 0 ? (
+        <Forced forced={forced} />
+      ) : launched === 0 ? (
         <span>No coins launched yet.</span>
       ) : (
         <span>
@@ -90,8 +117,10 @@ function Pulse() {
   );
 }
 
-/** Launch a coin (or the disabled Launches paused) and See all coins. */
+/** Launch a coin (or the disabled Launches paused), and Watch a coin bond to the rail's top coin or See all coins. */
 function Ctas({ paused }: { paused: boolean }) {
+  const top = useHome().rail.coins[0];
+  const quiet = buttonVariants({ variant: "quiet", size: "lg" });
   return (
     <div className="mt-8 flex flex-wrap gap-3">
       {paused ? (
@@ -103,18 +132,25 @@ function Ctas({ paused }: { paused: boolean }) {
           Launch a coin
         </Link>
       )}
-      <a href="#all-coins" className={buttonVariants({ variant: "quiet", size: "lg" })}>
-        See all coins
-      </a>
+      {top ? (
+        <Link href={`/coin/${top.mint}`} className={quiet}>
+          Watch a coin bond
+        </Link>
+      ) : (
+        <a href="#all-coins" className={quiet}>
+          See all coins
+        </a>
+      )}
     </div>
   );
 }
 
 /**
- * Home hero (UI-SPEC Hero): headline, lede, Launch a coin and See all coins, the D-09 pulse line, the art. The
- * looping art gets a Pause animation toggle (WCAG 2.2.2); under reduced motion nothing moves, so there is none.
+ * Home hero (UI-SPEC Hero): headline, lede, the two CTAs, the pulse line, the art, and the Next to bond rail (below
+ * the copy under 1080px, the right column from 1080px). The looping art gets a Pause animation toggle (WCAG 2.2.2);
+ * under reduced motion nothing moves, so there is none.
  */
-export function HomeHero({ paused }: { paused: boolean }) {
+export function HomeHero({ paused, windowMs }: { paused: boolean; windowMs: number }) {
   const art = useHeroMotion();
   return (
     <section aria-labelledby="hero-h" className="hero" data-paused={art.paused || undefined}>
@@ -138,6 +174,7 @@ export function HomeHero({ paused }: { paused: boolean }) {
             </Button>
           )}
         </div>
+        <NextToBond windowMs={windowMs} />
       </div>
     </section>
   );

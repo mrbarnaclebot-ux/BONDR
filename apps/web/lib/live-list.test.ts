@@ -8,6 +8,7 @@ import {
   decay,
   insertLaunch,
   mergePage,
+  railRank,
   rerank,
   resyncFeed,
   trendingMode,
@@ -170,4 +171,17 @@ test("addLedger merges fee rows by id, newest first, and keeps the array when no
   const got = addLedger(rows, [r("4", 1), r("5", 1), r("3", 5), r("2", 10), r("4", 1)]);
   expect(got.map((x) => x.id)).toEqual(["5", "4", "3", "2", "1"]);
   expect(addLedger(rows, [r("3", 5)])).toBe(rows);
+});
+
+test("railRank drops bonded and budgetless coins and orders by budget / cost, newer first on a tie", () => {
+  const f = (budget: string, cost: string | null) => ({ fees: { budget, cost } as CoinRow["fees"] });
+  const list = [
+    coin("half", f("500", "1000")),
+    coin("bonded", { ...f("900", "1000"), venue: "complete" }),
+    coin("old", { ...f("1800", "2000"), launchedAt: ago(60_000) }),
+    coin("none", f("0", "1000")),
+    coin("new", f("900", "1000")),
+    coin("nocost", f("900", null)),
+  ];
+  expect(mints(railRank(list))).toEqual(["new", "old", "half"]);
 });

@@ -97,8 +97,8 @@ async function buyAndBurn(
 // since the owner chose to burn the full budget (PROJECT.md item 5). Past the remaining supply the buy
 // completes the curve and buys the rest from the pool-to-be, so simOut covers both legs. A front-run buy
 // between simulate and land reverts the tx as slippage instead of burning more than W holds; the caller
-// re-simulates. A front-run sell gives W more than simOut; that remainder is burned by the next forced bond
-// or the closing sweep.
+// re-simulates. A front-run sell gives W more than simOut; that remainder stays in W (the closing sweep moves
+// only BONDR) and finalize's empty check logs it as an error. Burning it needs a ledger kind of its own.
 export async function forcedBondIxs(
   o: W & { conn: Connection; global: Global; mint: PublicKey; quoteMint: PublicKey; budget: BN },
 ): Promise<{ ixs: TransactionInstruction[]; burnAmount: BN }> {

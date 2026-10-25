@@ -8,10 +8,11 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { WorkerEnv } from "./env.ts";
 import { bondedJob, forcedJob } from "./fee-burns.ts";
 import { type CoinLoad, Engine, startEngine, withCost } from "./fee-engine.ts";
-import { windowJob } from "./fee-prebond.ts";
+import { windowJob } from "./fee-guard.ts";
 import type { FeeDeps } from "./fee-send.ts";
 
-vi.mock("./fee-prebond.ts", () => ({ windowJob: vi.fn(async () => []), splitJob: vi.fn() }));
+vi.mock("./fee-guard.ts", () => ({ windowJob: vi.fn(async () => []) }));
+vi.mock("./fee-prebond.ts", () => ({ splitJob: vi.fn() }));
 vi.mock("./fee-burns.ts", () => ({ forcedJob: vi.fn(async () => []), bondedJob: vi.fn(async () => []) }));
 vi.mock("./trade-state.ts", () => ({ configs: async () => ({ global: "g", feeConfig: "fc" }) }));
 vi.mock("@bondr/core/curve", () => ({ costFromReserves: vi.fn(() => 123n) }));

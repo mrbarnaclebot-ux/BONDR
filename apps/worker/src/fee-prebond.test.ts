@@ -7,8 +7,9 @@ import {
 } from "@solana/spl-token";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
+import { windowJob } from "./fee-guard.ts";
 import { memoryLedger } from "./fee-ledger.ts";
-import { collectJob, splitJob, sweepJob, windowJob } from "./fee-prebond.ts";
+import { collectJob, splitJob, sweepJob } from "./fee-prebond.ts";
 import type { FeeCoin, FeeDeps, Job, Landed } from "./fee-send.ts";
 
 vi.mock("@bondr/core/collect", async (orig) => ({
@@ -30,8 +31,11 @@ const qMeta = (wDelta: bigint) => ({
   ],
 });
 
+type Status = { confirmationStatus: string; err: unknown } | null;
+type Opts = { balance?: bigint; metas?: object[]; bondrSol?: number | null; statuses?: () => Status[] };
+
 let jobs: Job[];
-function deps(o: { balance?: bigint; metas?: object[]; bondrSol?: number | null } = {}): FeeDeps {
+function deps(o: Opts = {}): FeeDeps {
   const ledger = memoryLedger();
   const metas = [...(o.metas ?? [])];
   let n = 0;
@@ -44,6 +48,13 @@ function deps(o: { balance?: bigint; metas?: object[]; bondrSol?: number | null 
         if (o.balance === undefined) throw new Error("Invalid param: could not find account");
         return { value: { amount: String(o.balance) } };
       }),
+      // An earlier row's chain status: an RPC error unless the test scripts one.
+      getSignatureStatuses: async () => {
+        if (!o.statuses) throw new Error("rpc down");
+        return { value: o.statuses() };
+      },
+      getBlockHeight: async () => 100,
+      getTransaction: async () => ({ slot: 9, meta: qMeta(2000n) }),
     },
     async land(job: Job): Promise<Landed> {
       jobs.push(job);
@@ -139,4 +150,40 @@ test("collectJob takes its amount from W's BONDR delta in the meta", async () =>
   const r = await collectJob(d, coin);
   expect(r.rows?.[0]).toMatchObject({ kind: "collect", amount: 777n, state: "landed" });
   expect(jobs[0]?.signers).toEqual([]);
+});
+
+// CR-01: W's balance still holds the treasury tenth of a collect that is pending, or whose split is.
+test("a pending collect from an earlier window defers the sweep while its status is unknown", async () => {
+  const err = vi.spyOn(console, "error").mockImplementation(() => {});
+  const d = deps({ metas: [qMeta(1000n)], balance: 5_000n });
+  await d.ledger.insertPending([{ kind: "collect", mint: coin.mint.toBase58() }], "old", 50n);
+  const out = await windowJob(d, { ...coin, feesUnclaimed: 20_000n }, 4);
+  expect(jobs.map((j) => j.rows[0]?.kind)).toEqual(["collect", "split_treasury"]); // no sweep
+  expect(out.at(-1)?.state).toBe("unknown");
+  expect(err.mock.calls.flat().join(" ")).toContain("balance-sized send deferred");
+  err.mockRestore();
+});
+
+test("a pending collect that landed on chain is settled from its meta, split, then swept", async () => {
+  const ok = { confirmationStatus: "confirmed", err: null };
+  const d = deps({ balance: 5_000n, statuses: () => [ok] });
+  await d.ledger.insertPending([{ kind: "collect", mint: coin.mint.toBase58() }], "old", 50n);
+  const out = await windowJob(d, coin, 4);
+  expect(out.map((r) => r.state)).toEqual(["landed", "landed"]);
+  expect(jobs.map((j) => [j.rows[0]?.kind, j.rows[0]?.amount])).toEqual([
+    ["split_treasury", 200n], // a tenth of the 2000 the old collect's own meta shows
+    ["sweep_buyback", 4500n],
+  ]);
+});
+
+test("a landed collect whose split is pending defers the sweep", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const d = deps({ balance: 5_000n });
+  const mint = coin.mint.toBase58();
+  const [c] = (await d.ledger.insertPending([{ kind: "collect", mint }], "c", 50n)) ?? [];
+  await d.ledger.settle("c", "landed", { facts: { collect: { amount: 1000n } } });
+  await d.ledger.insertPending([{ kind: "split_treasury", mint, ref: c?.id, amount: 100n }], "s", 50n);
+  expect((await windowJob(d, coin, 4)).map((r) => r.state)).toEqual(["unknown"]);
+  expect(jobs).toEqual([]);
+  vi.restoreAllMocks();
 });

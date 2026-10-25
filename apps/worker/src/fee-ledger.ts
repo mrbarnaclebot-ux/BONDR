@@ -36,7 +36,8 @@ export type LedgerStore = {
   // Moves only this signature's pending rows; returns them as settled.
   settle(sig: string, to: Settled, o?: SettleOpts): Promise<Entry[]>;
   pending(): Promise<Entry[]>;
-  openCollects(): Promise<Entry[]>; // landed collects with no live split referencing them
+  pendingFor(mint: string, kinds: LedgerKind[]): Promise<Entry[]>; // the mint's pending rows of the kinds
+  openCollects(mint?: string): Promise<Entry[]>; // landed collects with no live split referencing them
   has(mint: string, kinds: LedgerKind[]): Promise<boolean>; // a live (pending or landed) row of the kinds
   hold(mint: string, reason: string): Promise<void>;
   release(mint: string): Promise<void>; // held -> none; the held row stays as history
@@ -118,9 +119,13 @@ export function memoryLedger(): LedgerStore {
       all()
         .filter((e) => e.state === "pending")
         .map(copy),
-    openCollects: async () =>
+    pendingFor: async (mint, kinds) =>
       all()
-        .filter((c) => c.kind === "collect" && c.state === "landed")
+        .filter((e) => e.state === "pending" && e.mint === mint && kinds.includes(e.kind))
+        .map(copy),
+    openCollects: async (mint) =>
+      all()
+        .filter((c) => c.kind === "collect" && c.state === "landed" && (!mint || c.mint === mint))
         .filter((c) => !all().some((s) => s.kind === "split_treasury" && s.ref === c.id && live(s.state)))
         .map(copy),
     has: async (mint, kinds) => all().some((e) => e.mint === mint && kinds.includes(e.kind) && live(e.state)),
@@ -265,8 +270,14 @@ export function pgLedger(dbFn: () => Conn = db): LedgerStore {
     insertPending: (news, sig, lvbh) => pgInsert(dbFn(), news, sig, lvbh),
     settle: (sig, to, o = {}) => pgSettle(dbFn(), sig, to, o),
     pending: () => rowsWhere(eq(feeLedger.state, "pending")),
-    openCollects: () =>
-      rowsWhere(and(eq(feeLedger.kind, "collect"), eq(feeLedger.state, "landed"), NO_LIVE_SPLIT)),
+    pendingFor: (mint, kinds) =>
+      rowsWhere(
+        and(eq(feeLedger.mint, mint), inArray(feeLedger.kind, kinds), eq(feeLedger.state, "pending")),
+      ),
+    openCollects: (mint) => {
+      const own = mint ? eq(feeLedger.mint, mint) : undefined;
+      return rowsWhere(and(eq(feeLedger.kind, "collect"), eq(feeLedger.state, "landed"), own, NO_LIVE_SPLIT));
+    },
     has: async (mint, kinds) =>
       (await rowsWhere(and(eq(feeLedger.mint, mint), inArray(feeLedger.kind, kinds), LIVE_STATES), 1))
         .length > 0,

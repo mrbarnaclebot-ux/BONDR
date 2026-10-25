@@ -12,8 +12,9 @@ import { BN } from "@bondr/core/pump";
 import { tokenDelta } from "@bondr/core/trade";
 import type { TransactionInstruction } from "@solana/web3.js";
 import { finalizeJob } from "./fee-finalize.ts";
+import { spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
-import { collectJob, settled, splitJob, wBondr } from "./fee-prebond.ts";
+import { collectJob, settled, wBondr } from "./fee-prebond.ts";
 import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
 
 const BOND_KINDS: LedgerKind[] = ["forced_bond", "pool_burn"];
@@ -21,14 +22,9 @@ const CU = 600_000;
 const DONE: Landed = { state: "done" };
 const big = (x: BN): bigint => BigInt(x.toString());
 
-// Urgent collect, then the split of every open collect of this coin, so W's BONDR is all burn budget.
-async function collectSplit(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
-  const mint = coin.mint.toBase58();
-  const out = [await collectJob(d, coin, true)];
-  for (const c of (await d.ledger.openCollects()).filter((e) => e.mint === mint))
-    out.push(await splitJob(d, coin, c, true));
-  return out;
-}
+// Urgent collect, then the guard's urgent splits, so W's BONDR is all burn budget before send sizes from it.
+const collectThen = async (d: FeeDeps, coin: FeeCoin, send: () => Promise<Landed>) =>
+  spend(d, coin, [await collectJob(d, coin, true)], send, true);
 
 // The row's amount is the intent (W's whole balance); the landed amount is what W actually spent.
 function burnLand(d: FeeDeps, coin: FeeCoin, row: NewEntry, ixs: TransactionInstruction[]): Promise<Landed> {
@@ -59,10 +55,7 @@ async function forcedSend(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
 
 export async function forcedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   if (await d.ledger.has(coin.mint.toBase58(), BOND_KINDS)) return [DONE];
-  const out = await collectSplit(d, coin);
-  if (!out.every(settled)) return out;
-  out.push(await forcedSend(d, coin));
-  return out;
+  return collectThen(d, coin, () => forcedSend(d, coin));
 }
 
 type PoolIxs = { ixs: TransactionInstruction[]; burnAmount: BN; path: "exact_quote_in" | "buy_v2" };
@@ -110,8 +103,7 @@ export async function poolBurnJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
 export async function bondedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   const out: Landed[] = [];
   if (!(await d.ledger.has(coin.mint.toBase58(), BOND_KINDS))) {
-    out.push(...(await collectSplit(d, coin)));
-    if (out.every(settled)) out.push(await poolBurnJob(d, coin));
+    out.push(...(await collectThen(d, coin, () => poolBurnJob(d, coin))));
     if (!out.every(settled)) return out;
   }
   out.push(...(await finalizeJob(d, coin)));

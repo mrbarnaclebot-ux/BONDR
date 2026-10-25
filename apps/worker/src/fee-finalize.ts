@@ -22,8 +22,9 @@ import {
   SystemProgram,
   type TransactionInstruction,
 } from "@solana/web3.js";
+import { spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
-import { collectJob, settled, splitJob, sweepJob, wBondr } from "./fee-prebond.ts";
+import { collectJob, settled, sweepJob, wBondr } from "./fee-prebond.ts";
 import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
 
 const W_BUFFER = 0.01 * LAMPORTS_PER_SOL; // proven float on top of the config rent (01-08)
@@ -115,13 +116,8 @@ async function lockedFinal(d: FeeDeps, coin: FeeCoin, deployer: PublicKey): Prom
 // pays out nothing (fork, 05-08), so a collect comes first. After the update the creator is the sharing config,
 // so this collect takes the last fee W will ever earn; no curve sweep (the curve names the config now).
 async function closing(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
-  const mint = coin.mint.toBase58();
   const out = [await collectJob(d, coin, false, false)];
-  for (const c of (await d.ledger.openCollects()).filter((e) => e.mint === mint))
-    out.push(await splitJob(d, coin, c));
-  if (!out.every(settled)) return out;
-  out.push(await sweepJob(d, coin, windowOf(coin.launchedAt, Date.now(), d.windowMs)));
-  return out;
+  return spend(d, coin, out, () => sweepJob(d, coin, windowOf(coin.launchedAt, Date.now(), d.windowMs)));
 }
 
 // One read after the closing sweep: W should hold 0 BONDR and 0 child tokens. A miss is an error, not a throw.

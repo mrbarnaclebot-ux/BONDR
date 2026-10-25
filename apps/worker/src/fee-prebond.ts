@@ -79,23 +79,10 @@ export async function sweepJob(d: FeeDeps, coin: FeeCoin, windowIndex: number): 
 }
 
 // D-11: collect only when the bucket is worth an ops fee; with no BONDR price yet, any fees are.
-function worthCollecting(d: FeeDeps, coin: FeeCoin): boolean {
+export function worthCollecting(d: FeeDeps, coin: FeeCoin): boolean {
   if (coin.feesUnclaimed <= 0n) return false;
   const price = d.bondrSol();
   return price === null || toSol(coin.feesUnclaimed, price) >= BigInt(feeConfig(d.net).collectMinLamports);
 }
 
 export const settled = (r: Landed) => r.state === "landed" || r.state === "done" || r.state === "dry";
-
-// Window end (D-10, D-12): collect, split every open collect of this coin, then sweep. The sweep waits for a
-// later window while any step is unsettled, so a treasury tenth is never swept 90/10 by mistake.
-export async function windowJob(d: FeeDeps, coin: FeeCoin, index: number): Promise<Landed[]> {
-  const mint = coin.mint.toBase58();
-  const out: Landed[] = [];
-  if (worthCollecting(d, coin)) out.push(await collectJob(d, coin));
-  for (const c of (await d.ledger.openCollects()).filter((e) => e.mint === mint))
-    out.push(await splitJob(d, coin, c));
-  if (!out.every(settled)) return out;
-  out.push(await sweepJob(d, coin, index));
-  return out;
-}

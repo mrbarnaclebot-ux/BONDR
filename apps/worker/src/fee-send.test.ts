@@ -15,10 +15,12 @@ import { type LedgerStore, memoryLedger } from "./fee-ledger.ts";
 import { type FeeDeps, type Job, land, noteOps, opsLow, tipIxs, urgentBroadcast } from "./fee-send.ts";
 
 const calls = vi.hoisted(() => [] as string[]);
+const metaMisses = vi.hoisted(() => ({ n: 0 })); // fetchTx tries that find no meta yet
 vi.mock("@bondr/core/send", async (orig) => {
   const m = (await orig()) as typeof import("@bondr/core/send");
   return {
     ...m,
+    fetchTx: async (...a: Parameters<typeof m.fetchTx>) => (metaMisses.n-- > 0 ? undefined : m.fetchTx(...a)),
     signTx: (o: Parameters<typeof m.signTx>[0]) => {
       calls.push("sign");
       return m.signTx(o);
@@ -84,6 +86,7 @@ const job = (over: Partial<Job> = {}): Job => ({
 
 beforeEach(() => {
   calls.length = 0;
+  metaMisses.n = 0;
   noteOps(LAMPORTS_PER_SOL);
 });
 afterEach(() => vi.restoreAllMocks());
@@ -127,6 +130,13 @@ describe("land (D-08)", () => {
     expect(r.state).toBe("landed");
     expect(r.rows?.[0]).toMatchObject({ kind: "collect", state: "landed", amount: 1000n, sol: 2000n });
     expect(d.publish).toHaveBeenCalledOnce();
+    expect(await d.ledger.pending()).toEqual([]);
+  });
+
+  test("a confirmed tx whose meta lags is fetched again, not left pending (CR-01)", async () => {
+    metaMisses.n = 2;
+    const d = deps();
+    expect((await land(d, job())).state).toBe("landed");
     expect(await d.ledger.pending()).toEqual([]);
   });
 

@@ -157,8 +157,18 @@ async function dry(d: FeeDeps, job: Job, raw: Uint8Array): Promise<Landed> {
   return { state: "dry" };
 }
 
+// A confirmed signature has landed; only its meta lags on a load-balanced RPC. fetchTx polls 10 s per try.
+const META_TRIES = 3;
+export async function metaOf(conn: Connection, sig: string): Promise<Awaited<ReturnType<typeof fetchTx>>> {
+  for (let i = 0; i < META_TRIES; i++) {
+    const tx = await fetchTx(conn, sig);
+    if (tx) return tx;
+  }
+  return undefined;
+}
+
 async function landed(d: FeeDeps, job: Job, sig: string): Promise<Landed> {
-  const tx = await fetchTx(d.conn, sig);
+  const tx = await metaOf(d.conn, sig);
   if (!tx) {
     console.error(`fee ${what(job)} landed without meta, left pending: ${sig}`);
     return { state: "unknown", sig };

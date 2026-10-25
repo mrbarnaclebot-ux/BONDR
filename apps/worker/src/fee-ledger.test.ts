@@ -58,7 +58,9 @@ describe("memoryLedger", () => {
     expect(landed?.landedAt).toBeInstanceOf(Date);
     expect(await l.settle("s1", "failed")).toEqual([]); // only pending rows move
     expect((await l.openCollects()).map((e) => e.id)).toEqual([c?.id]);
+    expect(await l.openCollects("other")).toEqual([]);
     await l.insertPending([{ kind: "split_treasury", mint: M, ref: c?.id, amount: 100n }], "s2", 10n);
+    expect((await l.pendingFor(M, ["split_treasury"])).map((e) => e.signature)).toEqual(["s2"]);
     expect(await l.openCollects()).toEqual([]);
     await l.settle("s2", "expired");
     expect((await l.openCollects()).map((e) => e.id)).toEqual([c?.id]);
@@ -119,8 +121,11 @@ describe.skipIf(!DB)("pgLedger", { timeout: 60_000 }, () => {
       const mint = (await read()).mint;
       const [c] = (await l.insertPending([{ kind: "collect", mint }], `a${mint}`, 10n)) ?? [];
       expect(c?.state).toBe("pending");
+      expect((await l.pendingFor(mint, ["collect"])).map((e) => e.id)).toEqual([c?.id]);
+      expect(await l.pendingFor(mint, ["split_treasury"])).toEqual([]);
       await l.settle(`a${mint}`, "landed", { facts: { collect: { amount: 1000n } }, slot: 100n });
-      expect((await l.openCollects()).some((e) => e.id === c?.id)).toBe(true);
+      expect(await l.pendingFor(mint, ["collect"])).toEqual([]);
+      expect((await l.openCollects(mint)).map((e) => e.id)).toEqual([c?.id]);
       const split = { kind: "split_treasury", mint, ref: c?.id, amount: 100n } as const;
       expect(await l.insertPending([split], `b${mint}`, 10n)).toHaveLength(1);
       expect(await l.insertPending([split], `c${mint}`, 10n)).toBeNull(); // 23505, not thrown

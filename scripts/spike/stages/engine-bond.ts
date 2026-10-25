@@ -20,7 +20,7 @@ import type { Row, Rule, Stage } from "../results.ts";
 import { burned, createChild, land, newRun, type Run, sigOk, supply, topUp } from "./bond.ts";
 import { tokenAmount } from "./launch.ts";
 
-type E = Run & { d: FeeDeps };
+export type E = Run & { d: FeeDeps };
 type Facts = NonNullable<Row["facts"]>;
 
 export function feeDeps(run: Run): FeeDeps {
@@ -60,10 +60,10 @@ async function migrate(e: E, id: string, mint: PublicKey): Promise<void> {
   await land(e, { id, step, payer: e.ops, ixs }, async () => ({}));
 }
 
-const pick = (out: Landed[], kind: string) => out.find((l) => l.rows?.[0]?.kind === kind);
+export const pick = (out: Landed[], kind: string) => out.find((l) => l.rows?.[0]?.kind === kind);
 
 // One row per engine tx, its facts from the landed ledger entry. A step that did not land records, then throws.
-function record(e: E, id: string, step: string, l: Landed | undefined, facts: Facts = {}): void {
+export function record(e: E, id: string, step: string, l: Landed | undefined, facts: Facts = {}): void {
   const entry = l?.rows?.[0];
   const detail = (entry?.detail ?? {}) as Record<string, string>;
   e.ctx.record({

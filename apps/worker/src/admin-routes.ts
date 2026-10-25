@@ -4,6 +4,7 @@ import { db } from "@bondr/core/db";
 import type { Connection } from "@solana/web3.js";
 import { type ActDeps, act, switchRoute } from "./admin-act.ts";
 import { type AuditStore, pgAudit } from "./admin-audit.ts";
+import { type ModStore, moderate, modReq, pgMod } from "./admin-moderate.ts";
 import { adminBase, executeAction, intentView, type MoneyCtx, simulateAction } from "./admin-money.ts";
 import { coinLive, overview } from "./admin-overview.ts";
 import type { WorkerEnv } from "./env.ts";
@@ -25,12 +26,13 @@ export function gated(admin: string | null, h: Handler): Handler {
   };
 }
 
-// money: a test seam; the worker builds its MoneyCtx from env, the engine getter, conn and pgAudit.
+// money and mod: test seams; the worker builds them from env, the engine getter, conn, pgAudit and pgMod.
 export type AdminOpts = {
   env: WorkerEnv;
   engine: () => Engine | null;
   conn: Connection;
   money?: () => MoneyCtx;
+  mod?: () => { store: ModStore; audit: AuditStore };
 };
 
 const TX = [
@@ -88,6 +90,7 @@ export function adminRoutes(o: AdminOpts): Routes {
     setJob,
   });
   const money = o.money ?? moneyOf(o);
+  const mod = o.mod ?? (() => ({ store: pgMod(), audit: pgAudit() }));
   const routes: Routes = {
     "POST /admin/health": () => healthSnapshot(o),
     "POST /admin/switch": (b) => switchRoute(deps(), b),
@@ -97,6 +100,11 @@ export function adminRoutes(o: AdminOpts): Routes {
     "POST /admin/simulate": (b) => simulateAction(money(), simReq(bodyOf(b))),
     "POST /admin/execute": async (b) => new Reply(202, await executeAction(money(), execReq(bodyOf(b)))),
     "POST /admin/intent": async (b) => intentView(idOf(bodyOf(b))),
+    "POST /admin/moderate": (b) => {
+      const req = modReq(b); // before mod(): a bad body never builds a store
+      const m = mod();
+      return moderate(m.store, m.audit, req);
+    },
   };
   return Object.fromEntries(Object.entries(routes).map(([k, h]) => [k, gated(o.env.adminWallet, h)]));
 }

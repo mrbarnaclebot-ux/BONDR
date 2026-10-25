@@ -8,6 +8,7 @@ const DB = [
   "apps/web/lib/trades.test.ts",
   "apps/worker/src/admin-act.test.ts",
   "apps/worker/src/admin-audit.test.ts",
+  "apps/worker/src/admin-moderate.test.ts",
   "apps/worker/src/fee-ledger.test.ts",
   "apps/worker/src/ingest.test.ts",
   "apps/worker/src/prepare.test.ts",

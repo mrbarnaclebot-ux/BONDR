@@ -7,6 +7,7 @@ import { expect, test, vi } from "vitest";
 import type { ActionDef } from "./admin-actions.ts";
 import { memoryAudit } from "./admin-audit.ts";
 import { allowFor } from "./admin-dest.ts";
+import { memoryMod } from "./admin-moderate.ts";
 import { adminRoutes, gated } from "./admin-routes.ts";
 import type { WorkerEnv } from "./env.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
@@ -62,12 +63,14 @@ const envOf = (adminWallet: string | null) =>
     adminEvacuate: "simulate",
     sentryReadToken: null,
   }) as unknown as WorkerEnv;
+const mod = { store: memoryMod([{ mint: MINT, symbol: "FOO", hiddenAt: null }]), audit: memoryAudit() };
 const routesFor = (adminWallet: string | null) =>
   adminRoutes({
     env: envOf(adminWallet),
     engine: () => null,
     conn: {} as never,
     money: () => ({ deps, engine: null, audit: memoryAudit(), admin: adminWallet }),
+    mod: () => mod,
   });
 
 async function status(p: Promise<unknown>, code = "forbidden"): Promise<number | "ok"> {
@@ -93,7 +96,9 @@ test("another or a missing actor answers 403; the admin actor reaches the handle
 
 test("every admin route is a POST behind the gate", async () => {
   const routes = routesFor(A);
-  const names = ["health", "switch", "act", "overview", "coin-live", "simulate", "execute", "intent"];
+  const names = [
+    ...["health", "switch", "act", "overview", "coin-live", "simulate", "execute", "intent", "moderate"],
+  ];
   expect(Object.keys(routes)).toEqual(names.map((r) => `POST /admin/${r}`));
   for (const [key, h] of Object.entries(routes)) {
     expect(key).toMatch(/^POST \/admin\//);
@@ -134,4 +139,18 @@ test("simulate then execute through the route map answers 202 and the intent rea
   const view = () => r["POST /admin/intent"]({ actor: A, id: sim.intent.id });
   await vi.waitFor(async () => expect(await view()).toMatchObject({ state: "landed", landed: 1, total: 1 }));
   expect(await status(r["POST /admin/intent"]({ actor: A, id: "cd".repeat(16) }), "not_found")).toBe(404);
+});
+
+test("moderate refuses a bad op or an over-length field with 400 and touches nothing; a good body hides", async () => {
+  const r = routesFor(A)["POST /admin/moderate"];
+  const bad = [
+    { op: "drop" },
+    { op: "hide", query: "FOO", reason: "x".repeat(201) },
+    { op: "block", wallet: 1 },
+  ];
+  for (const body of bad) expect(await status(r({ actor: A, ...body }), "invalid_input")).toBe(400);
+  expect(mod.audit.rows).toHaveLength(0);
+  expect(mod.store.coins[0]?.hiddenAt).toBeNull();
+  expect(await r({ actor: A, op: "hide", query: "foo", reason: "spam" })).toEqual({ ok: true });
+  expect(mod.audit.rows.map((x) => [x.actor, x.action, x.mint])).toEqual([[A, "hide", MINT]]);
 });

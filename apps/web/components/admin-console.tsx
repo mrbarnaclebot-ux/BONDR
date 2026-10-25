@@ -10,6 +10,7 @@ import { type Console, useConsole } from "@/lib/use-console";
 import { useHealth } from "@/lib/use-health";
 import { AuditLog } from "./admin-audit";
 import { AdminHealth } from "./admin-health";
+import { AdminModeration } from "./admin-moderation";
 import { type AdminSessionView, AdminSignIn, type SignInNotice } from "./admin-signin";
 import { SimDialog } from "./admin-sim";
 import { KillSwitches } from "./admin-switches";
@@ -114,7 +115,7 @@ function Grid({ con, onUnauthorized, windowMs }: { con: Console; onUnauthorized(
           onChanged={con.reload}
           onTx={(action) => con.openSim(action, con.selected)}
         />
-        {/* 06-19, 06-20: a "grid gap-8" stack of <AdminInspect /> and <AdminModeration /> */}
+        <AdminModeration overview={overview} onChanged={con.reload} />
       </div>
       <AuditLog key={overview.loadedAt} overview={overview} busy={loading} />
       {/* 06-23: <Evacuate /> */}

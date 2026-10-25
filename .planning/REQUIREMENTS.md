@@ -77,7 +77,7 @@
 - [x] **ADMIN-06**: Owner sees health: worker heartbeat, leader lock, last run per job, RPC latency and errors, Sentry issue count, vanity pool size
 - [x] **ADMIN-07**: Owner can hide a coin from lists and block a deployer wallet from launching
 - [x] **ADMIN-08**: Owner sees a per-coin timeline with each state, transaction, next expected step, and retry for a stuck step
-- [ ] **ADMIN-09**: Owner can paste a signature and see the decoded instructions, the error and an explorer link
+- [x] **ADMIN-09**: Owner can paste a signature and see the decoded instructions, the error and an explorer link
 - [x] **ADMIN-10**: Every admin action is written to an audit log: actor, time, simulation result, signature
 - [ ] **ADMIN-11**: Owner can run EVACUATE: type the phrase, sign, then all jobs pause and every W balance moves to the treasury
 
@@ -161,7 +161,7 @@
 | ADMIN-06 | Phase 6 | Complete |
 | ADMIN-07 | Phase 6 | Complete |
 | ADMIN-08 | Phase 6 | Complete |
-| ADMIN-09 | Phase 6 | Pending |
+| ADMIN-09 | Phase 6 | Complete |
 | ADMIN-10 | Phase 6 | Complete |
 | ADMIN-11 | Phase 6 | Pending |
 | OPS-01 | Phase 2 | Complete |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-20-PLAN.md
-last_updated: "2026-10-25T18:52:34.861Z"
-last_activity: 2026-10-26 -- Completed 06-20 (moderation web)
+stopped_at: Completed 06-21-PLAN.md
+last_updated: "2026-10-25T19:09:22.083Z"
+last_activity: 2026-10-26 -- Completed 06-21 (transaction inspector)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 89
+  completed_plans: 90
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 21 of 26 (06-20 complete)
+Plan: 22 of 26 (06-21 complete)
 Status: Ready to execute
-Last activity: 2026-10-26 -- Completed 06-20 (moderation web)
+Last activity: 2026-10-26 -- Completed 06-21 (transaction inspector)
 
-Progress: [█████████░] 94%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -320,6 +320,8 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-18: OQ1 note 'Later transactions are simulated again by the RPC before they are sent.' when any step is estimated (Claude's discretion)
 - [Phase 06]: 06-20: the hide status line takes the symbol from overview.rows when the query is a mint; moderation forms use noValidate so an empty reason shows the worker's 'Add a reason.'
 - [Phase 06]: 06-20: AdminOverview.moderation (hidden coins, blocked deployers, newest first) rides in overviewData's one Promise.all; reasons render only in the console, the public launch line never shows one (D-30)
+- [Phase 06]: 06-21: POST /admin/inspect decodes top-level instructions in the worker (web3.js, spl-token, SDK coders built from an offline Connection) and answers labelled strings only; bad signature 400 invalid_input, missing 200 found false, RPC failure 503 rpc_failed (new code)
+- [Phase 06]: 06-21: the inspector labels a W fee payer 'W {SYMBOL}' from the worker's mint or overview.rows' w, so it works with FEE_ENGINE off; Refresh moved to admin-topbar.tsx
 
 ### Pending Todos
 

@@ -32,7 +32,8 @@ function account() {
 }
 const admin = account();
 const stranger = account();
-const signText = (text: string, key: KeyObject = admin.key) => new Uint8Array(sign(null, Buffer.from(text), key));
+const signText = (text: string, key: KeyObject = admin.key) =>
+  new Uint8Array(sign(null, Buffer.from(text), key));
 
 const Q = PublicKey.unique();
 const OPS = Keypair.generate();
@@ -51,7 +52,8 @@ let audit: ReturnType<typeof memoryAudit>;
 let clock: number;
 let ctx: MoneyCtx;
 
-const transfer = (to: PublicKey) => SystemProgram.transfer({ fromPubkey: OPS.publicKey, toPubkey: to, lamports: 1 });
+const transfer = (to: PublicKey) =>
+  SystemProgram.transfer({ fromPubkey: OPS.publicKey, toPubkey: to, lamports: 1 });
 m.def = {
   applies: () => reasons.shift() ?? null,
   allow: () => allowFor({ treasury: TREASURY, internal: [W.publicKey], mints: [Q], closeTo: TREASURY }),
@@ -162,13 +164,14 @@ test("execute refuses another key's signature, an expired intent and a second us
   const wrong = { actor: admin.wallet, id: a.id, signature: signText("x", stranger.key) };
   expect(await refusal(executeAction(ctx, wrong))).toBe("bad_intent_signature 403");
   expect(audit.rows).toEqual([]);
-  const b = await ready();
-  clock += 120_000;
-  expect(await refusal(executeAction(ctx, { actor: admin.wallet, ...b }))).toBe("intent_expired 410");
-  expect(audit.rows).toEqual([]);
   expect(await executeAction(ctx, { actor: admin.wallet, ...a })).toEqual({ id: a.id });
   expect(await refusal(executeAction(ctx, { actor: admin.wallet, ...a }))).toBe("intent_used 409");
   await finished(a.id);
+  expect(audit.rows).toHaveLength(1);
+  const b = await ready();
+  clock += 120_000;
+  expect(await refusal(executeAction(ctx, { actor: admin.wallet, ...b }))).toBe("intent_expired 410");
+  expect(audit.rows).toHaveLength(1);
 });
 
 test("execute writes the pending audit row before the first send, lands, then settles it once", async () => {
@@ -183,13 +186,21 @@ test("execute writes the pending audit row before the first send, lands, then se
   expect(row?.params).toEqual({ intent: a.id });
   expect(row?.sigs).toEqual(v.sigs);
   expect(row?.intentSig).toBe(Buffer.from(a.signature).toString("base64"));
-  expect(Object.keys(row?.simulation ?? {}).sort()).toEqual(["balances", "cu", "destinations", "feeLamports", "ok"]);
+  expect(Object.keys(row?.simulation ?? {}).sort()).toEqual([
+    "balances",
+    "cu",
+    "destinations",
+    "feeLamports",
+    "ok",
+  ]);
 });
 
 test("a state change since simulate settles the audit refused and sends nothing", async () => {
   reasons = [null, "not_curve"];
   const a = await ready();
-  expect(await refusal(executeAction(ctx, { actor: admin.wallet, ...a }))).toBe("not_applicable 409 not_curve");
+  expect(await refusal(executeAction(ctx, { actor: admin.wallet, ...a }))).toBe(
+    "not_applicable 409 not_curve",
+  );
   expect(audit.rows[0]).toMatchObject({ result: "refused", error: "not_applicable" });
   expect(intentView(a.id).state).toBe("refused");
   expect(base.land).not.toHaveBeenCalled();

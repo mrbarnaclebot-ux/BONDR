@@ -45,7 +45,8 @@ export type LaunchErrorCode =
   | "simulation_failed"
   | "destination_refused";
 
-export type ApiError = { error: LaunchErrorCode; paused?: PauseReason };
+// reason: the admin not_applicable code the console maps to copy (D-12).
+export type ApiError = { error: LaunchErrorCode; paused?: PauseReason; reason?: string };
 
 export type Links = { x?: string; telegram?: string; website?: string };
 

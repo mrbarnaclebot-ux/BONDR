@@ -1,0 +1,55 @@
+# OPS-03 (D-23..D-25): lint, typecheck, both Vitest projects against a throwaway Postgres, the web build with the
+# client bundle check, and the worker-free @smoke Playwright set. CI holds no secrets: suites that need a seed or
+# an RPC skip with a printed reason. No step reads .env (Pitfall 12); every Playwright run sets E2E_BASE_URL so
+# the config never boots the worker (Pitfall 13).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18.6
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # version from packageManager
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node packages/core/src/migrate.ts # not db:migrate: --env-file=.env exits 9 without a file
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter @bondr/web build
+      - run: pnpm check:bundle # D-23: fails if pump SDK, web3.js or spl-token reached the client bundle
+      - name: smoke
+        run: |
+          (cd apps/web && WORKER_URL=http://127.0.0.1:9 pnpm exec next start -p 3000 > ../../web.log 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:3000/terms >/dev/null && break; sleep 1; done
+          E2E_BASE_URL=http://127.0.0.1:3000 pnpm exec playwright test --project=chromium --grep @smoke
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright
+          path: |
+            test-results/
+            web.log
+          retention-days: 7

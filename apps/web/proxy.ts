@@ -11,7 +11,8 @@ const READ_PATHS = /^\/$|^\/api\/(coins|status|live)$|^\/api\/launch\/[^/]+$|^\/
 
 // www.trybondr.fun answers 308 to SITE_URL, so the admin sign-in domain line always matches it (D-07).
 // Railway terminates TLS in front of Next, so the public host is in x-forwarded-host and req.url may be internal.
-// The Location is built from SITE_URL only: a client can set x-forwarded-host, but never steer the redirect.
+// The Location is SITE_URL's origin with the path and query set as fields: a client can set x-forwarded-host, but
+// never steer the redirect, and a `//host` or `/\host` path cannot replace the authority (a relative resolve would).
 function toApex(req: Request): Response | undefined {
   let site: URL;
   try {
@@ -22,7 +23,10 @@ function toApex(req: Request): Response | undefined {
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   if (host !== `www.${site.host}`) return undefined;
   const { pathname, search } = new URL(req.url);
-  return Response.redirect(new URL(pathname + search, site), 308);
+  const to = new URL(site.origin);
+  to.pathname = pathname;
+  to.search = search;
+  return Response.redirect(to, 308);
 }
 
 export function proxy(req: Request): Response | undefined {

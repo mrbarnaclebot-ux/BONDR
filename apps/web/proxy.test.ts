@@ -22,6 +22,13 @@ test("www answers 308 to the apex with the same path and query, for any method",
   expect(byHost?.headers.get("location")).toBe("https://trybondr.fun/");
 });
 
+test("a protocol-relative path never leaves SITE_URL's origin", () => {
+  for (const path of ["//evil.example/x?y=1", "/\\evil.example/x?y=1"]) {
+    const r = proxy(req(`http://internal:8080${path}`, { fwd: "www.trybondr.fun" }));
+    expect(r?.headers.get("location")).toBe("https://trybondr.fun//evil.example/x?y=1");
+  }
+});
+
 test("no other host is redirected, and none without SITE_URL", () => {
   for (const fwd of [
     "www.evil.example",

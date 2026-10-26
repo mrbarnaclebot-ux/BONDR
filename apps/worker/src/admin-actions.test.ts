@@ -10,7 +10,7 @@ import {
 import { type AccountInfo, Keypair, PublicKey, type TransactionInstruction } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
 import { ACTIONS, type ActionView, actionView, runOn } from "./admin-actions.ts";
-import { type Allowed, refusedDestination, short } from "./admin-dest.ts";
+import { type Allowed, passedLines, refusedDestination, short } from "./admin-dest.ts";
 import { leftoverBurnJob, sweepLeftoversJob } from "./admin-leftover.ts";
 import { captureDeps, type Step } from "./admin-sim.ts";
 import { buybackBurnJob, distributeJob } from "./fee-batch.ts";
@@ -161,6 +161,9 @@ test("finalize_split allows the launch wallet as the only deployer (D-15)", () =
   expect(names(a)).toEqual(["Buyback", `Deployer ${short(DEPLOYER)}`, "Treasury", W_NAME]);
   expect(a.owners.has(DEPLOYER.toBase58())).toBe(true);
   expect(a.owners.has(Keypair.generate().publicKey.toBase58())).toBe(false);
+  expect(passedLines(a)[0]).toBe("deployer matches the launch signer");
+  const h = ACTIONS.finalize_split.allow(view({ coin: pool({ finalize: "held" }) }), d);
+  expect(passedLines(h)[0]).toBe("deployer is the recorded launch wallet"); // WR-W-03: no signer proof ran
 });
 
 test("each action's allowlist names only its destinations plus the coin's own W", () => {
@@ -191,9 +194,12 @@ test("run maps each action to its engine job", async () => {
   vi.mocked(windowJob).mockResolvedValue([]);
   await ACTIONS.sweep_now.run(d, v);
   expect(windowJob).toHaveBeenCalledWith(d, c, 3); // that window's sweep, early (A9)
-  vi.mocked(finalizeJob).mockResolvedValueOnce([]);
+  vi.mocked(finalizeJob).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
   await ACTIONS.finalize_split.run(d, v);
-  expect(finalizeJob).toHaveBeenCalledWith(d, c, DEPLOYER);
+  expect(finalizeJob).toHaveBeenLastCalledWith(d, c, undefined); // never held: the launch-signer proof runs
+  const h = coin({ finalize: "held" });
+  await ACTIONS.finalize_split.run(d, view({ coin: h }));
+  expect(finalizeJob).toHaveBeenLastCalledWith(d, h, DEPLOYER); // held: the owner's override (WR-W-03)
   vi.mocked(distributeJob).mockResolvedValueOnce({ state: "done" });
   expect(await ACTIONS.distribute_now.run(d, v)).toEqual([{ state: "done" }]);
   expect(distributeJob).toHaveBeenCalledWith(d, c, { anyAmount: true });

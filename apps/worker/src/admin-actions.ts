@@ -44,7 +44,7 @@ export type ActionDef = {
   run(d: FeeDeps, v: ActionView): Promise<Landed[]>;
 };
 type Watch = Watched[number];
-type Dest = Partial<Pick<Parameters<typeof allowFor>[0], "treasury" | "buyback" | "deployer">>;
+type Dest = Partial<Pick<Parameters<typeof allowFor>[0], "treasury" | "buyback" | "deployer" | "recorded">>;
 
 const SWEEPS = ["sweep_buyback", "sweep_treasury"] as const;
 const MIGRATE_CU = 600_000; // 342,473 used on the fork (bond.migrate)
@@ -142,10 +142,16 @@ const runMigrate: ActionDef = {
 
 // D-15: the deployer is always the coin's recorded launch wallet, never a typed address. The buyback is listed
 // because finalize's closing sweep sends the post-bond fees 90/10 like any window (A6, 2026-10-25).
+// WR-W-03: only a held coin (the owner read its hold reason) skips the launch-signer proof; any other coin runs
+// the automatic preflight, so the irreversible share lock never trusts an unproven launches.wallet.
+const held = (v: ActionView) => need(v).finalize === "held";
 const finalizeSplit: ActionDef = {
   applies: on((c) => c.venue === "pool" && c.finalize !== "done", "not_bonded"),
   allow: (v, d) =>
-    allowed(v, d, { treasury: d.treasury, buyback: d.buyback.publicKey, deployer: need(v).wallet }),
+    allowed(v, d, {
+      ...{ treasury: d.treasury, buyback: d.buyback.publicKey, deployer: need(v).wallet },
+      ...(held(v) && { recorded: true }),
+    }),
   watch: (v, d) => {
     const c = need(v);
     const config = sol(feeSharingConfigPda(c.mint), "Fee sharing config");
@@ -159,10 +165,7 @@ const finalizeSplit: ActionDef = {
       config,
     ];
   },
-  run: (d, v) => {
-    const coin = need(v);
-    return finalizeJob(d, coin, coin.wallet);
-  },
+  run: (d, v) => finalizeJob(d, need(v), held(v) ? need(v).wallet : undefined),
 };
 
 const finalized = (c: FeeCoin) => c.finalize === "done";

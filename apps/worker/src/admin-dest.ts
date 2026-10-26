@@ -24,6 +24,7 @@ export type Allowed = {
   atas: Map<string, string>;
   closeTo: string;
   mints: string[];
+  recorded?: true; // WR-W-03: the deployer is the recorded launch wallet, not proven against the launch signer
 };
 type Who = {
   treasury?: PublicKey;
@@ -32,6 +33,7 @@ type Who = {
   internal: PublicKey[];
   mints: PublicKey[];
   closeTo: PublicKey;
+  recorded?: true;
 };
 
 export const short = (k: PublicKey) => `${k.toBase58().slice(0, 4)}...`;
@@ -49,7 +51,8 @@ export function allowFor(w: Who): Allowed {
       for (const p of PROGRAMS)
         atas.set(getAssociatedTokenAddressSync(mint, owner, true, p).toBase58(), name);
   const owners = new Map(named.map(([k, n]) => [k.toBase58(), n]));
-  return { owners, atas, closeTo: w.closeTo.toBase58(), mints: w.mints.map((m) => m.toBase58()) };
+  const mints = w.mints.map((m) => m.toBase58());
+  return { owners, atas, closeTo: w.closeTo.toBase58(), mints, ...(w.recorded && { recorded: true }) };
 }
 
 function systemRecipient(ix: TransactionInstruction): PublicKey | null {
@@ -102,8 +105,8 @@ export function refusedDestination(ixs: TransactionInstruction[], a: Allowed): s
   return null;
 }
 
-const LINES: [string, string][] = [
-  ["Deployer ", "deployer matches the launch signer"],
+const linesOf = (a: Allowed): [string, string][] => [
+  ["Deployer ", a.recorded ? "deployer is the recorded launch wallet" : "deployer matches the launch signer"],
   ["Treasury", "treasury matches config"],
   ["Buyback", "buyback matches config"],
 ];
@@ -111,6 +114,8 @@ const LINES: [string, string][] = [
 // For "Destinations check passed: ...". The coin's own W is an internal move, not a destination worth naming.
 export function passedLines(a: Allowed): string[] {
   const names = [...a.owners.values()];
-  const out = LINES.filter(([prefix]) => names.some((n) => n.startsWith(prefix))).map(([, line]) => line);
+  const out = linesOf(a)
+    .filter(([prefix]) => names.some((n) => n.startsWith(prefix)))
+    .map(([, line]) => line);
   return out.length ? out : ["burn only"];
 }

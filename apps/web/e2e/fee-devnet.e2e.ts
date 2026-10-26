@@ -21,11 +21,14 @@ const Q = env.BONDR_QUOTE_MINT as string;
 const bondr = (owner: string) => tokens(owner, Q);
 
 test.describe.configure({ mode: "serial", timeout: 20 * 60_000 });
-test.skip(process.env.E2E_DEVNET !== "1" || !sql, "real devnet fee movements: set E2E_DEVNET=1");
+const devnet = process.env.E2E_DEVNET === "1" && !!sql;
+test.skip(!devnet, "real devnet fee movements: set E2E_DEVNET=1");
 
-const ops = seedAccount("ops:devnet:main").address;
-const sim = seedAccount("sim:devnet:dev").address;
-const buyback = seedAccount(`buyback:devnet:${env.VANITY_LANE}`).address;
+// Derived only when the group runs: Playwright loads every file even under --grep, and CI has no seed.
+const addr = (id: string) => (devnet ? seedAccount(id).address : "");
+const ops = addr("ops:devnet:main");
+const sim = addr("sim:devnet:dev");
+const buyback = addr(`buyback:devnet:${env.VANITY_LANE}`);
 const both = async () => ({ ops: await lamports(ops), sim: await lamports(sim) });
 
 type Coin = { mint: string; symbol: string; w: string; launchedAt: number };

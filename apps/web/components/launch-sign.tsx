@@ -2,10 +2,11 @@
 // Step 4: the five rows, the failure table and the restore after a reload. The network sequence is
 // lib/launch-run.ts.
 import { Check, X } from "lucide-react";
+import Link from "next/link";
 import { type Dispatch, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { short } from "@/lib/format";
-import { FAULTS, NOT_FOUND } from "@/lib/launch-faults";
+import { FAULTS, type Fault, GENESIS_FAULTS, NOT_FOUND } from "@/lib/launch-faults";
 import { type Code, launch, type Progress, poll, type Run, Stop } from "@/lib/launch-run";
 import { tickerFault } from "@/lib/ticker-copy";
 import { Callout } from "./callout";
@@ -134,9 +135,22 @@ function SignRow({ n, p, exit }: { n: number; p: Progress; exit: string }) {
   );
 }
 
-type OutcomeProps = { p: Progress; net: Live["status"]; symbol: string; onRetry(): void };
+type OutcomeProps = { p: Progress; net: Live["status"]; symbol: string; genesis: boolean; onRetry(): void };
 
-function Outcome({ p, net, symbol, onRetry }: OutcomeProps) {
+// fault.link names a path inside the text that renders as a link (the genesis session line names /admin).
+function FaultText({ fault, text }: { fault: Fault; text: string }) {
+  if (!fault.link) return text;
+  const [before, after] = text.split(fault.link);
+  return (
+    <>
+      {before}
+      <Link href={fault.link}>{fault.link}</Link>
+      {after}
+    </>
+  );
+}
+
+function Outcome({ p, net, symbol, genesis, onRetry }: OutcomeProps) {
   const link = p.sig && (
     <TxLink signature={p.sig} net={net?.net ?? "devnet"}>{`Launch tx ${short(p.sig)}`}</TxLink>
   );
@@ -147,14 +161,14 @@ function Outcome({ p, net, symbol, onRetry }: OutcomeProps) {
       </Callout>
     ) : null;
   const code = p.failed;
-  const fault = FAULTS[code];
+  const fault = (genesis && GENESIS_FAULTS[code]) || FAULTS[code];
   const text =
     code === "ticker_locked" || code === "ticker_reserved"
       ? tickerFault(code, symbol, p.refusal ?? {})
       : fault.text;
   return (
     <Callout variant="error">
-      {text} {code === "onchain" && link}
+      <FaultText fault={fault} text={text} /> {code === "onchain" && link}
       {fault.action && (
         <Button type="button" variant="solid" className="mt-3 flex" onClick={onRetry}>
           {fault.action}
@@ -205,7 +219,13 @@ export function LaunchSign(props: StepProps) {
       <p className="sr-only" aria-live="polite">
         {done}
       </p>
-      <Outcome p={p} net={live.status} symbol={state.fields.symbol.trim().toUpperCase()} onRetry={retry} />
+      <Outcome
+        p={p}
+        net={live.status}
+        symbol={state.fields.symbol.trim().toUpperCase()}
+        genesis={live.genesis}
+        onRetry={retry}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <p className="text-xs text-muted-foreground">
           Keep this tab open until your coin is live.

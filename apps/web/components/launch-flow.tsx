@@ -58,6 +58,8 @@ export type Live = {
   refresh(): void;
   buy: Buy;
   quote: QuoteState;
+  /** The owner genesis variant (UI-SPEC surface 2): status reads unpaused and steps show genesis copy. */
+  genesis: boolean;
 };
 export type StepProps = { state: Launch; dispatch: Dispatch<Action>; live: Live };
 
@@ -145,11 +147,15 @@ const PAUSED: Record<PauseReason, { title: string; body: string }> = {
   },
 };
 
-function useLaunchStatus(devBuy: string): Live {
+// The owner with an admin session sees genesis mode as open; everyone else keeps the banner. The worker refuses
+// any genesis prepare that is not the owner's (D-29), so this only changes what the page shows.
+function useLaunchStatus(devBuy: string, owner: boolean): Live {
   const { status, error, refresh } = useStatus();
   const buy = checkBuy(devBuy, minOf(status));
   const quote = useQuote(buy.ok ? buy.lamports : null);
-  return { status, statusError: error, refresh, buy, quote };
+  const genesis = owner && status?.paused === "genesis";
+  const shown = genesis && status ? { ...status, paused: null } : status;
+  return { status: shown, statusError: error, refresh, buy, quote, genesis };
 }
 
 // A prepared row older than this can never be sent: its blockhash died long ago.
@@ -187,9 +193,15 @@ function useStepFocus(step: Step, focus: string | null) {
 }
 
 /** `children` is the server-rendered title and lede, so they stay out of the client bundle. */
-export function LaunchFlow({ children }: { children: ReactNode }) {
+export function LaunchFlow({
+  children,
+  ownerGenesis = false,
+}: {
+  children: ReactNode;
+  ownerGenesis?: boolean;
+}) {
   const [state, dispatch] = useReducer(reduce, INITIAL);
-  const live = useLaunchStatus(state.devBuy);
+  const live = useLaunchStatus(state.devBuy, ownerGenesis);
   const paused = live.status?.paused;
   const heading = useStepFocus(state.step, state.focus);
   useRestore(dispatch);
@@ -201,6 +213,13 @@ export function LaunchFlow({ children }: { children: ReactNode }) {
         <LaunchStepper step={state.step} />
         {/* Always mounted, so the pause is announced when it starts, not only when the page loads. */}
         <div aria-live="polite">
+          {live.genesis && (
+            <Callout title="Genesis launch." className="mb-6">
+              This launch creates the BONDR token itself: SOL pair, the treasury as creator, insta burn. Only
+              the owner wallet can send it, and only once. Child launches stay closed until you set
+              BONDR_QUOTE_MINT to the new mint and redeploy.
+            </Callout>
+          )}
           {paused && (
             <Callout variant="warn" title={PAUSED[paused].title} className="mb-6">
               {PAUSED[paused].body}

@@ -1,5 +1,5 @@
 import { json, rateLimited, sameOrigin } from "@/lib/guard";
-import { consentRequired, pinnedHere, sessionWallet } from "@/lib/session";
+import { adminSession, adminWalletEnv, consentRequired, pinnedHere, sessionWallet } from "@/lib/session";
 import { workerPost } from "@/lib/worker";
 
 const MAX_BODY = 16 * 1024;
@@ -22,6 +22,10 @@ export async function POST(req: Request): Promise<Response> {
   if (!body || !pinnedHere(body.proof, body.uri, body.imageCid))
     return Response.json({ error: "invalid_input" }, { status: 400 });
   const fields = Object.fromEntries(FIELDS.map((k) => [k, body[k]]));
-  const { status, body: out } = await workerPost("/prepare", { ...fields, wallet }, PREPARE_TIMEOUT_MS);
+  // D-29: actor only from a valid admin cookie, spread last so no body can forge it (FIELDS never names it).
+  // The worker treats it as a genesis prepare and re-checks it against ADMIN_WALLET.
+  const admin = adminSession(req.headers.get("cookie"), adminWalletEnv());
+  const forward = { ...fields, wallet, ...(admin ? { actor: admin.wallet } : {}) };
+  const { status, body: out } = await workerPost("/prepare", forward, PREPARE_TIMEOUT_MS);
   return Response.json(out, { status, headers: { "cache-control": "no-store" } });
 }

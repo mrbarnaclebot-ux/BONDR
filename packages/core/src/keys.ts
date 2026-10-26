@@ -5,7 +5,7 @@ import { readFileSync, statSync } from "node:fs";
 import { Keypair } from "@solana/web3.js";
 
 export type Role = "w" | "treasury" | "ops" | "sim" | "mint" | "buyback";
-export type Net = "devnet" | "fork";
+export type Net = "devnet" | "fork" | "mainnet";
 
 export const derive = (master: Buffer, role: Role, net: Net, id: string): Keypair =>
   Keypair.fromSeed(createHmac("sha256", master).update(`${role}:${net}:${id}`).digest());

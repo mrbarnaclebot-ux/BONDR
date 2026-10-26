@@ -10,7 +10,7 @@ import {
 import { type AccountInfo, Keypair, PublicKey, type TransactionInstruction } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
 import { ACTIONS, type ActionView, actionView, runOn } from "./admin-actions.ts";
-import { type Allowed, passedLines, refusedDestination, short } from "./admin-dest.ts";
+import { type Allowed, refusedDestination, short } from "./admin-dest.ts";
 import { leftoverBurnJob, sweepLeftoversJob } from "./admin-leftover.ts";
 import { captureDeps, type Step } from "./admin-sim.ts";
 import { buybackBurnJob, distributeJob } from "./fee-batch.ts";
@@ -161,9 +161,7 @@ test("finalize_split allows the launch wallet as the only deployer (D-15)", () =
   expect(names(a)).toEqual(["Buyback", `Deployer ${short(DEPLOYER)}`, "Treasury", W_NAME]);
   expect(a.owners.has(DEPLOYER.toBase58())).toBe(true);
   expect(a.owners.has(Keypair.generate().publicKey.toBase58())).toBe(false);
-  expect(passedLines(a)[0]).toBe("deployer matches the launch signer");
-  const h = ACTIONS.finalize_split.allow(view({ coin: pool({ finalize: "held" }) }), d);
-  expect(passedLines(h)[0]).toBe("deployer is the recorded launch wallet"); // WR-W-03: no signer proof ran
+  expect(ACTIONS.finalize_split.allow(view({ coin: pool({ finalize: "held" }) }), d).recorded).toBe(true);
 });
 
 test("each action's allowlist names only its destinations plus the coin's own W", () => {
@@ -197,9 +195,8 @@ test("run maps each action to its engine job", async () => {
   vi.mocked(finalizeJob).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
   await ACTIONS.finalize_split.run(d, v);
   expect(finalizeJob).toHaveBeenLastCalledWith(d, c, undefined); // never held: the launch-signer proof runs
-  const h = coin({ finalize: "held" });
-  await ACTIONS.finalize_split.run(d, view({ coin: h }));
-  expect(finalizeJob).toHaveBeenLastCalledWith(d, h, DEPLOYER); // held: the owner's override (WR-W-03)
+  await ACTIONS.finalize_split.run(d, view({ coin: coin({ finalize: "held" }) })); // the owner's override
+  expect(finalizeJob).toHaveBeenLastCalledWith(d, expect.objectContaining({ finalize: "held" }), DEPLOYER);
   vi.mocked(distributeJob).mockResolvedValueOnce({ state: "done" });
   expect(await ACTIONS.distribute_now.run(d, v)).toEqual([{ state: "done" }]);
   expect(distributeJob).toHaveBeenCalledWith(d, c, { anyAmount: true });
@@ -245,12 +242,10 @@ test("retry_sweep settles the pending sweeps from chain, then reruns the failed 
 test("runOn uses the coin's queue when the engine exists and runs directly without it", async () => {
   const exclusive = vi.fn(async (_mint: string, fn: () => Promise<unknown>) => fn());
   const engine = { exclusive } as never;
-  expect(await runOn(engine, "m", async () => 7)).toBe(7);
-  expect(exclusive).toHaveBeenLastCalledWith("m", expect.any(Function), undefined);
+  expect(await runOn(engine, "m", async () => 7, "forced bond")).toBe(7); // WR-W-09: the stuck step's label
+  expect(exclusive).toHaveBeenLastCalledWith("m", expect.any(Function), "forced bond m");
   await runOn(engine, null, async () => 1);
   expect(exclusive).toHaveBeenLastCalledWith("platform", expect.any(Function), undefined); // burn_buyback's queue
-  await runOn(engine, "m", async () => 2, "forced bond");
-  expect(exclusive).toHaveBeenLastCalledWith("m", expect.any(Function), "forced bond m");
   expect(await runOn(null, "m", async () => 8)).toBe(8);
 });
 

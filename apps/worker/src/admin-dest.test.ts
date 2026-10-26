@@ -143,5 +143,14 @@ test("names each allowed owner and its ATAs under both token programs", () => {
 test("passed lines read as the dialog copy", () => {
   expect(passedLines(finalize)).toEqual(["deployer matches the launch signer", "treasury matches config"]);
   expect(passedLines(sweep)).toEqual(["treasury matches config", "buyback matches config"]);
+  const held = allowFor({
+    treasury,
+    deployer,
+    internal: [w],
+    mints: [bondr],
+    closeTo: treasury,
+    recorded: true,
+  });
+  expect(passedLines(held)[0]).toBe("deployer is the recorded launch wallet"); // WR-W-03: no signer proof ran
   expect(passedLines(allowFor({ internal: [w], mints: [coin], closeTo: treasury }))).toEqual(["burn only"]);
 });

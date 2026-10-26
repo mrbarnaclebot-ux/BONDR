@@ -12,6 +12,7 @@ import { prepare } from "./prepare.ts";
 import { setGenesis } from "./settle.ts";
 import { liveStatus, setSwitch } from "./status.ts";
 import { submit } from "./submit.ts";
+import { gateFor } from "./switch-gate.ts";
 import { loadSwitches, switchesLine, switchesOff, switchState } from "./switches.ts";
 
 // Trades need a coin and the fee engine needs BONDR: neither exists before genesis lands.
@@ -40,7 +41,7 @@ export function genesisRoutes(gctx: GenesisCtx, admin: Routes): Routes {
     "POST /quote": (body) => genesisQuote(gctx, body),
     "POST /prepare": (body) => prepare(gctx, body, genesisOne),
     "POST /submit": (body) => submit(gctx, body),
-    "POST /kill-switch": (body) => setSwitch(body, pgAudit()),
+    "POST /kill-switch": (body) => setSwitch(body, pgAudit(), gateFor(gctx.env)),
     ...Object.fromEntries(NOT_READY_ROUTES.map((k) => [k, notReady])),
     ...admin,
   };

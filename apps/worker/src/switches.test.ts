@@ -80,10 +80,12 @@ test("setJob writes the column, then memory; a failed write leaves memory as it 
   expect(switchOn("finalize")).toBe(false);
 });
 
+const open = async () => {};
+
 test("POST /kill-switch answers { enabled }, moves the launches switch and audits as the runbook", async () => {
   await loadSwitches();
   const audit = memoryAudit();
-  expect(await setSwitch({ enabled: false }, audit)).toEqual({ enabled: false });
+  expect(await setSwitch({ enabled: false }, audit, open)).toEqual({ enabled: false });
   expect(m.sets).toEqual([{ launchesEnabled: false }]);
   expect(switchOn("launches")).toBe(false);
   expect(audit.rows[0]).toMatchObject({
@@ -95,13 +97,13 @@ test("POST /kill-switch answers { enabled }, moves the launches switch and audit
 test("POST /kill-switch never re-enables launches after EVACUATE (WR-W-08)", async () => {
   m.rows = [row({ launchesEnabled: false, evacuatedAt: new Date() })];
   const audit = memoryAudit();
-  await expect(setSwitch({ enabled: true }, audit)).rejects.toMatchObject({
+  await expect(setSwitch({ enabled: true }, audit, open)).rejects.toMatchObject({
     status: 409,
     body: { error: "not_applicable", reason: "evacuated" },
   });
   expect(m.sets).toEqual([]);
   expect(audit.rows).toEqual([]);
-  expect(await setSwitch({ enabled: false }, audit)).toEqual({ enabled: false }); // pausing still works
+  expect(await setSwitch({ enabled: false }, audit, open)).toEqual({ enabled: false }); // pausing still works
 });
 
 test("liveStatus reads launches from memory, and fresh re-reads the row into the same memory", async () => {

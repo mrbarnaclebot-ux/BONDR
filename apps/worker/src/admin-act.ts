@@ -10,6 +10,7 @@ import { key } from "./fee-routes.ts";
 import { fail } from "./http.ts";
 import type { Exec } from "./launches.ts";
 import type { landed, observe } from "./settle.ts";
+import type { Gate } from "./switch-gate.ts";
 import { isJob, type setJob } from "./switches.ts";
 
 export type ActDeps = {
@@ -20,6 +21,7 @@ export type ActDeps = {
   observe: typeof observe;
   landed: typeof landed;
   setJob: typeof setJob;
+  gate: Gate; // WR-W-02: genesis and D-30 refusals, before any audit row
 };
 export type ActOutcome = "held" | "released" | "landed" | "not_on_chain";
 
@@ -36,6 +38,7 @@ const bodyOf = (b: unknown) => (b ?? {}) as Body;
 export async function switchRoute(d: ActDeps, body: unknown): Promise<AdminSwitches> {
   const { actor, job, enabled } = bodyOf(body);
   if (!isJob(job) || typeof enabled !== "boolean") throw fail({ error: "invalid_input" });
+  await d.gate(job, enabled);
   const r = { actor: String(actor), action: "switch" as const, mint: null, params: { job, enabled } };
   return audited(d.audit, r, () => d.setJob(job, enabled));
 }

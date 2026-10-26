@@ -26,6 +26,7 @@ import { resumeLaunches } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
 import { backoff, startStream } from "./stream.ts";
 import { submit } from "./submit.ts";
+import { gateFor } from "./switch-gate.ts";
 import { loadSwitches, switchesLine } from "./switches.ts";
 import { prepareTrade } from "./trade-prepare.ts";
 import { quoteTrade, tradeBalance } from "./trade-quote.ts";
@@ -61,7 +62,7 @@ function childRoutes(ctx: Ctx, env: WorkerEnv): Routes {
     "POST /quote": (body) => quote(ctx, body),
     "POST /prepare": (body) => prepare(pctx, body),
     "POST /submit": (body) => submit(pctx, body),
-    "POST /kill-switch": (body) => setSwitch(body, pgAudit()),
+    "POST /kill-switch": (body) => setSwitch(body, pgAudit(), gateFor(env)),
     "POST /trade/quote": (body) => quoteTrade(ctx, body),
     "POST /trade/balance": (body) => tradeBalance(ctx, body),
     "POST /trade/prepare": (body) => prepareTrade(ctx, body),

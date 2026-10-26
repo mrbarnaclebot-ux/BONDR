@@ -40,6 +40,13 @@ test("a ticker refusal keeps retryAfter and lock and drops every other worker fi
   expect(body).not.toHaveProperty("raw");
 });
 
+test("a switch refusal keeps a known not_ready reason only (WR-W-02)", async () => {
+  reply(409, { error: "not_ready", reason: "vanity_pool" });
+  expect((await workerPost("/admin/switch", {})).body).toEqual({ error: "not_ready", reason: "vanity_pool" });
+  reply(409, { error: "not_ready", reason: "<script>" });
+  expect((await workerPost("/admin/switch", {})).body).not.toHaveProperty("reason");
+});
+
 test.each([
   [{ retryAfter: "75600", lock: "held" }],
   [{ retryAfter: Number.POSITIVE_INFINITY, lock: 1 }],

@@ -16,26 +16,38 @@ import { Callout } from "./callout";
 const JOBS = Object.keys(JOB_LABEL) as AdminJob[];
 
 type Answer = { at: number; switches: AdminSwitches };
+type Refusal = { job: AdminJob; reason?: string };
+
+// The worker's 409 not_ready reasons for a switch-on it refuses (WR-W-02: genesis, D-30).
+const REFUSED: Record<string, string> = {
+  genesis:
+    "Switches stay off in genesis mode. Turn them on after BONDR_QUOTE_MINT is set and the worker restarts.",
+  contract_check: "Launches stay paused until the pump contract check passes. Use Run check now in Health.",
+  vanity_pool: "Launches stay paused until the vanity pool holds 100 free mints.",
+};
+const refusedCopy = (e: Refusal) =>
+  (e.reason && REFUSED[e.reason]) || `Could not change ${JOB_LABEL[e.job]}. Try again.`;
 
 async function post(
   job: AdminJob,
   enabled: boolean,
-): Promise<{ status: number; body: AdminSwitches | null }> {
+): Promise<{ status: number; body: AdminSwitches | null; reason?: string }> {
   const r = await fetch("/api/admin/switch", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ job, enabled }),
     cache: "no-store",
   }).catch(() => null);
-  const body = r?.ok ? ((await r.json().catch(() => null)) as AdminSwitches | null) : null;
-  return { status: r?.status ?? 0, body };
+  const json = r ? ((await r.json().catch(() => null)) as Record<string, unknown> | null) : null;
+  const reason = r?.status === 409 && typeof json?.reason === "string" ? json.reason : undefined;
+  return { status: r?.status ?? 0, body: r?.ok ? (json as AdminSwitches | null) : null, reason };
 }
 
 function useFlips(poll: HealthPoll, onChanged: () => void) {
   const { onUnauthorized } = useAdmin();
   const [saving, setSaving] = useState<Partial<Record<AdminJob, boolean>>>({});
   const [answer, setAnswer] = useState<Answer | null>(null);
-  const [error, setError] = useState<AdminJob | null>(null);
+  const [error, setError] = useState<Refusal | null>(null);
   const known = answer && answer.at > (poll.lastOk ?? 0) ? answer.switches : poll.health?.switches;
   async function flip(job: AdminJob, enabled: boolean) {
     setError(null);
@@ -43,7 +55,7 @@ function useFlips(poll: HealthPoll, onChanged: () => void) {
     const r = await post(job, enabled);
     setSaving(({ [job]: _, ...rest }) => rest);
     if (r.status === 401) return onUnauthorized();
-    if (!r.body) return setError(job);
+    if (!r.body) return setError({ job, reason: r.reason });
     setAnswer({ at: Date.now(), switches: r.body });
     onChanged(); // the audit log shows the new row (D-21)
   }
@@ -100,7 +112,7 @@ function Notices({ poll }: { poll: HealthPoll }) {
         </Callout>
       )}
       {h.genesis && (
-        // UI-SPEC surface 6: Launches stays flippable, since child prepares answer not_ready in genesis regardless.
+        // WR-W-02: the worker refuses every switch-on in genesis (409 not_ready genesis); the alert names why.
         <Callout variant="warn" title="Genesis mode." className="mb-4">
           Child launches stay closed until the BONDR token is live and BONDR_QUOTE_MINT is set. Send the
           genesis launch from <Link href="/launch">/launch</Link> while signed in here.
@@ -138,7 +150,7 @@ export function KillSwitches({ poll, onChanged }: { poll: HealthPoll; onChanged(
       </div>
       {error ? (
         <p role="alert" className="mt-3 text-xs text-destructive">
-          {`Could not change ${JOB_LABEL[error]}. Try again.`}
+          {refusedCopy(error)}
         </p>
       ) : (
         <p className="mt-3 text-xs text-muted-foreground">

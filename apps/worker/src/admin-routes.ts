@@ -17,6 +17,7 @@ import type { FeeDeps } from "./fee-send.ts";
 import { healthSnapshot } from "./health.ts";
 import { fail, type Handler, Reply, type Routes } from "./http.ts";
 import { landed, observe } from "./settle.ts";
+import { gateFor } from "./switch-gate.ts";
 import { setJob } from "./switches.ts";
 
 // Fail closed: no ADMIN_WALLET, or any other actor, is forbidden. The handler gets the whole body, actor included,
@@ -101,6 +102,7 @@ export function adminRoutes(o: AdminOpts): Routes {
     observe,
     landed,
     setJob,
+    gate: gateFor(o.env),
   });
   const money = o.money ?? moneyOf(o);
   const mod = o.mod ?? (() => ({ store: pgMod(), audit: pgAudit() }));

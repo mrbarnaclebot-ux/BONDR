@@ -7,10 +7,12 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Reply` for a non-200 success, `Routes` keyed "METHOD /path".
 - `sentry.ts`: OPS-01 Sentry init with the shared scrub; imported first by main.ts.
 - `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache), POST /kill-switch (through switches.ts, audited as `runbook`, refuses re-enable after EVACUATE), `Ctx`, `MAX_SOL_IN`.
-- `switches.ts`: the owner's five switches (D-18) in memory: `loadSwitches` (one settings read at boot; a missing row is all off), `switchOn`, `switchState`, `setJob` (DB first, then memory), `pauseAll` (EVACUATE: every switch off and `evacuated_at` in one write, then memory). No timer reads.
-- `prepare.ts`: POST /prepare, the unsigned launch tx behind every cheap guard; `walletOf`.
-- `build.ts`: prepare's chain steps (table keys, per-coin table, compiled message, simulation).
-- `submit.ts`: POST /submit, co-sign after the byte compare, then send.
+- `switches.ts`: the owner's five switches (D-18) in memory: `loadSwitches` (one settings read at boot; a missing row is all off), `switchOn`, `switchState`, `setJob` (DB first, then memory), `pauseAll` (EVACUATE: every switch off and `evacuated_at` in one write, then memory), `switchesOff` (the contract check pause: the five columns only, no `evacuated_at`). No timer reads.
+- `contract-check.ts`: the pump contract check (OPS-02) in memory: `runCheck` (single-flight; a mismatch turns every switch off with one `contract_check` audit row), `scheduleCheck` (own Monday timer at FEE_BATCH_HOUR_UTC), `contractState`, `contractFailed` (launch pause reason until a run passes), `nextCheckAt`.
+- `prepare.ts`: POST /prepare, the unsigned launch tx behind every cheap guard; the mainnet Sender tip priced as a fee.
+- `prepare-rules.ts`: prepare's pure request rules (`walletOf`, `parseRequest`, `prepareGuard`, `signBy`, `sellFloor`, the table caps), re-exported from prepare.ts.
+- `build.ts`: prepare's chain steps (table keys, per-coin table, compiled message with the Sender tip and its size guard, `tipped`, simulation).
+- `submit.ts`: POST /submit, co-sign after the byte compare, then send (Sender for a tipped message, one RPC resend on a Sender error).
 - `settle.ts`: settles a sent launch and resumes in-flight launches on boot.
 - `launches.ts`: launch row reads and guarded state updates.
 - `vanity.ts`: the bndr mint pool (seed-derived mint keys, reserve and release).

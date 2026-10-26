@@ -8,7 +8,7 @@ One-command tools. Each file's header comment lists its flags and the run comman
 - `dev.sh` (`pnpm dev:all`): worker and web together with `[worker]` and `[web]` log prefixes; Ctrl-C stops both.
 - `test.sh` (`pnpm verify`, `pnpm verify --full`): the CI steps (lint, typecheck, Vitest, web build, `check:bundle`, `@smoke` against `next start` on port 3100); `--full` adds the whole Playwright run. `pnpm test` stays plain Vitest, which CI runs.
 - `deploy.sh` (`pnpm run deploy -- <staging|production> [--yes] [--only web|worker] [--dry-run]`): `railway up` per service, web first when a migration changed since the local `deployed-<env>` tag (or it is missing), waits for SUCCESS, then moves the tag. Production needs a clean tree on `main` and the typed word `production` (or `--yes`). Always `--dry-run` first.
-- `env-diff.ts` (`node scripts/env-diff.ts --from staging --to production --service web|worker [--phase g1|g3|g5]`): compares two Railway environments by variable name and SHA-256 only, never a value; exit 1 when a D-12 secret is shared, `ALLOW_MAINNET` is not `1`, or a gate's seed or quote mint rule fails.
+- `env-diff.ts` (`node scripts/env-diff.ts --from staging --to production --service web|worker [--phase g1|g2|g3|g5]`): checks production's variables against staging and the go-live policy by name and fact only (railway's output goes straight into jq; no value reaches node or the terminal, the seed is read for presence only); exit 1 when a required name is missing, a D-12 secret equals staging, a public value is not exact (`SOLANA_NET=mainnet`, `SITE_URL`, `VANITY_LANE`, `ALLOW_MAINNET=1`), any value has surrounding whitespace, or a gate's treasury, seed or quote mint rule fails. Pinned to the Railway project bondr.
 
 ## Devnet and fork tools
 

@@ -6,7 +6,7 @@
 import type { AdminIntentView, AdminSimResult, AdminTxAction } from "@bondr/core/api-admin";
 import { OnlinePumpSdk } from "@bondr/core/pump";
 import type { Connection } from "@solana/web3.js";
-import { ACTIONS, type ActionDef, type ActionView, actionView, runOn } from "./admin-actions.ts";
+import { ACTIONS, type ActionDef, type ActionView, actionView, runOn, STEP_LABEL } from "./admin-actions.ts";
 import type { AuditStore } from "./admin-audit.ts";
 import { type Allowed, passedLines, refusedDestination } from "./admin-dest.ts";
 import { type EvacCoin, evacuateRefusal, executeEvacuate, simulateEvacuate } from "./admin-evacuate.ts";
@@ -156,7 +156,7 @@ async function send(ctx: MoneyCtx, e: Intent, r: Run): Promise<void> {
   });
   let threw = false;
   try {
-    await runOn(ctx.engine, e.mint, () => r.def.run(d, r.view));
+    await runOn(ctx.engine, e.mint, () => r.def.run(d, r.view), STEP_LABEL[e.action]);
   } catch (err) {
     threw = true;
     logged(e.action)(err);

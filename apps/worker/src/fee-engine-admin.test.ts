@@ -137,12 +137,18 @@ test("exclusive waits for a queued job, rethrows to the caller and the next job 
   expect(e.busy(A)).toBe(false);
 });
 
-test("exclusive records failures like enqueue", async () => {
+test("an owner run never counts a failure; only the stuck step landing clears it (WR-W-09)", async () => {
   const e = engine();
   e.add(row());
-  for (let i = 0; i < 3; i++) await e.exclusive(A, boom, `fee finalize ${A}`).catch(() => {});
-  expect(e.memory()[0]?.stuck).toMatchObject({ step: "finalize", attempts: 3 });
-  expect(await e.exclusive(A, async () => landed("landed"), `fee finalize ${A}`)).toEqual(landed("landed"));
+  for (let i = 0; i < 3; i++) await e.enqueue(A, boom, `forced bond ${A}`);
+  expect(e.memory()[0]?.stuck).toMatchObject({ step: "forced bond", attempts: 3 });
+  await e.exclusive(A, boom, `forced bond ${A}`).catch(() => {});
+  await e.exclusive(A, boom).catch(() => {});
+  expect(e.memory()[0]?.stuck).toMatchObject({ step: "forced bond", attempts: 3 });
+  await e.enqueue(A, async () => landed("landed"), `fee window ${A} 2`); // another step landing
+  await e.exclusive(A, async () => landed("landed")); // Burn W token balance
+  expect(e.memory()[0]?.stuck).toMatchObject({ step: "forced bond", attempts: 3 });
+  expect(await e.exclusive(A, async () => landed("landed"), `forced bond ${A}`)).toEqual(landed("landed"));
   expect(e.memory()[0]?.stuck).toBeNull();
 });
 

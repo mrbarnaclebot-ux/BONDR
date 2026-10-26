@@ -246,9 +246,11 @@ test("runOn uses the coin's queue when the engine exists and runs directly witho
   const exclusive = vi.fn(async (_mint: string, fn: () => Promise<unknown>) => fn());
   const engine = { exclusive } as never;
   expect(await runOn(engine, "m", async () => 7)).toBe(7);
-  expect(exclusive).toHaveBeenLastCalledWith("m", expect.any(Function));
+  expect(exclusive).toHaveBeenLastCalledWith("m", expect.any(Function), undefined);
   await runOn(engine, null, async () => 1);
-  expect(exclusive).toHaveBeenLastCalledWith("platform", expect.any(Function)); // burn_buyback's queue
+  expect(exclusive).toHaveBeenLastCalledWith("platform", expect.any(Function), undefined); // burn_buyback's queue
+  await runOn(engine, "m", async () => 2, "forced bond");
+  expect(exclusive).toHaveBeenLastCalledWith("m", expect.any(Function), "forced bond m");
   expect(await runOn(null, "m", async () => 8)).toBe(8);
 });
 

@@ -229,12 +229,20 @@ export async function actionView(
   };
 }
 
+// WR-W-09: an owner retry carries its automatic job's label, so landing clears that step's stuck count only.
+export const STEP_LABEL: Partial<Record<AdminTxAction, string>> = {
+  ...{ sweep_now: "fee window", retry_sweep: "fee window", retry_forced_bond: "forced bond" },
+  ...{ finalize_split: "fee finalize", distribute_now: "fee distribute" },
+};
+
 // Pitfall 9: on the coin's queue (burn_buyback's is "platform") so an admin run never overlaps the coin's
 // automatic jobs; with FEE_ENGINE off there is no queue and fn runs directly.
 export function runOn<T>(
   engine: Pick<Engine, "exclusive"> | null,
   mint: string | null,
   fn: () => Promise<T>,
+  label?: string,
 ) {
-  return engine ? engine.exclusive(mint ?? "platform", fn) : fn();
+  const q = mint ?? "platform";
+  return engine ? engine.exclusive(q, fn, label && `${label} ${q}`) : fn();
 }

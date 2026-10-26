@@ -123,7 +123,7 @@ export class Engine {
   // while the stored tail swallows it so later jobs on the coin still run.
   exclusive<T>(mint: string, fn: () => Promise<T>, what = `admin ${mint}`): Promise<T> {
     const run = (this.queue.get(mint) ?? Promise.resolve()).then(fn);
-    void this.track(mint, run, what);
+    void this.track(mint, run, what, undefined, true);
     return run;
   }
 
@@ -158,12 +158,18 @@ export class Engine {
     return { count: stuck.length, first: mint && f ? { mint, step: f.step, attempts: f.attempts } : null };
   }
 
-  private track(mint: string, run: Promise<unknown>, what: string, onError?: (e: unknown) => void) {
+  private track(
+    mint: string,
+    run: Promise<unknown>,
+    what: string,
+    onError?: (e: unknown) => void,
+    admin = false,
+  ) {
     const tail = run.then(
-      (r) => this.note(mint, what, verdict(r)),
+      (r) => this.note(mint, what, verdict(r), admin),
       (e) => {
         onError?.(e);
-        this.note(mint, what, { fail: codeOf(e) });
+        this.note(mint, what, { fail: codeOf(e) }, admin);
       },
     );
     this.queue.set(mint, tail);
@@ -171,11 +177,12 @@ export class Engine {
     return tail;
   }
 
-  // A repeat of the same step counts up; another step failing starts its own count.
-  private note(mint: string, what: string, v: Verdict): void {
-    if (v === "clear") this.failures.delete(mint);
-    if (!v || v === "clear") return;
+  // A repeat of the same step counts up; another step failing starts its own count. WR-W-09: only that step
+  // landing clears it, and an owner run never counts a failure (it may still clear its own step).
+  private note(mint: string, what: string, v: Verdict, admin = false): void {
     const [prev, step] = [this.failures.get(mint), stepOf(what, mint)];
+    if (v === "clear" && prev?.step === step) this.failures.delete(mint);
+    if (!v || v === "clear" || admin) return;
     const attempts = prev?.step === step ? prev.attempts + 1 : 1;
     this.failures.set(mint, { step, attempts, code: v.fail, at: Date.now() });
   }

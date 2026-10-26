@@ -9,7 +9,7 @@ import { redact } from "@bondr/core/net";
 import { bondingCurvePda, canonicalPumpPoolPdaWithQuote } from "@bondr/core/pump";
 import { fetchTx, pace } from "@bondr/core/send";
 import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } from "@bondr/core/trades";
-import { type Connection, PublicKey } from "@solana/web3.js";
+import { type Connection, PublicKey, SolanaJSONRPCError } from "@solana/web3.js";
 import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { arm, type Inserted } from "./announce.ts";
 import { bondr, bondrPrice } from "./bondr-price.ts";
@@ -170,12 +170,19 @@ const PAGE = 1000;
 const failed = new Map<string, number>(); // signature -> failed tries
 const TRIES = 20;
 export const failedSigs = (): string[] => [...failed.keys()];
+// A version this client cannot read never becomes readable by retrying (Solana -32015).
+const unsupported = (e: unknown) => e instanceof SolanaJSONRPCError && e.code === -32015;
 
 export async function ingestOrKeep(conn: Connection, sig: string, ingest: Ingest = ingestTx): Promise<void> {
   try {
     await ingest(conn, sig);
     failed.delete(sig);
   } catch (e) {
+    if (unsupported(e)) {
+      failed.delete(sig);
+      console.warn(`ingest ${sig} dropped: transaction version not supported`);
+      return;
+    }
     const n = (failed.get(sig) ?? 0) + 1;
     logged(`ingest ${sig} (try ${n}${n < TRIES ? "" : ", giving up"})`)(e);
     if (n < TRIES) failed.set(sig, n);

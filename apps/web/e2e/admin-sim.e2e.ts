@@ -71,6 +71,7 @@ test.describe("admin-sim", () => {
     await expect(d.getByText("Compute")).toContainText("48,210");
     await expect(d.getByRole("row", { name: /Deployer Dep1…1111/ })).toContainText("+0.4 SOL");
     await expect(d.getByText("Destinations check passed:")).toBeVisible();
+    await expect(d.locator("pre")).toHaveText(MESSAGE); // the bytes Phantom will show (WR-B-05)
     await expect(
       d.getByText("This is the single allowed update_fee_shares_v2 for HELD.", { exact: false }),
     ).toBeVisible();

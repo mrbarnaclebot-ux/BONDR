@@ -113,11 +113,23 @@ function SimBody({ s, action, symbol }: { s: SimState; action: AdminTxAction; sy
       {s.note && <Callout variant={s.note.variant}>{s.note.text}</Callout>}
       {s.sim && permanent && <Callout variant="warn">{fill(permanent, symbol)}</Callout>}
       {note && <p className="text-xs text-muted-foreground">{note}</p>}
-      <p className="text-xs text-muted-foreground">
-        Phantom shows a message, not a transaction. It names this action, {symbol} and the destinations, and
-        the worker checks it before sending.
-      </p>
+      {s.sim?.intent && <Message text={s.sim.intent.message} />}
     </>
+  );
+}
+
+// The exact bytes Phantom will show (WR-B-05), so the owner can check the popup against this dialog.
+function Message({ text }: { text: string }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs text-muted-foreground">
+        Phantom shows exactly this message, not a transaction. Check that the action, mint and destination
+        addresses match before you sign. The worker checks it again before sending.
+      </p>
+      <pre className="num rounded-md border border-line p-3 text-xs break-all whitespace-pre-wrap">
+        {text}
+      </pre>
+    </div>
   );
 }
 

@@ -11,7 +11,7 @@ import type { PauseReason, Status } from "@bondr/core/api";
 import type { AdminContract } from "@bondr/core/api-admin";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { openConsole } from "./admin.ts";
+import { openConsole, skipRefused } from "./admin.ts";
 import { stubConsole } from "./admin-stubs.ts";
 import { field, receipt, row, solText, toStep2 } from "./coin.ts";
 import { dropCoin, type Seeded, seedCoin } from "./fixtures.ts";
@@ -96,7 +96,7 @@ async function asOwner(page: Page) {
   }
   const res = await adminSignIn(page.request, admin);
   const error = res.ok() ? null : (await res.json().catch(() => null))?.error;
-  test.skip(error === "not_configured" || error === "not_admin", `owner sign-in refused: ${error}`);
+  skipRefused(error);
   expect(res.status()).toBe(200);
   await stubStatus(page, status("genesis"));
   await page.route("**/api/quote", (r) =>

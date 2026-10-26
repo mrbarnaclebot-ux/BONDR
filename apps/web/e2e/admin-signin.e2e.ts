@@ -4,6 +4,7 @@
 // drops the cookie. ADMIN_WALLET is the seed-derived test key playwright.config.ts injects (A10).
 import { randomInt, sign } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
+import { EXTERNAL, skipRefused } from "./admin.ts";
 import {
   adminAccount,
   adminSignIn,
@@ -14,7 +15,6 @@ import {
 } from "./phantom.ts";
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
-const REUSED = "reused dev server has another ADMIN_WALLET";
 let admin: TestAccount | undefined;
 try {
   admin = adminAccount();
@@ -25,12 +25,14 @@ try {
 const adminCookie = async (page: Page) =>
   (await page.context().cookies()).find((c) => c.name === "bondr_admin");
 
-// A dev server started earlier without ADMIN_WALLET shows the closed card; that is the setup, not a bug.
+// An external server without this run's ADMIN_WALLET shows the closed card; that is its setup, not a bug. A server
+// Playwright started always has it (skipRefused), so the closed card there fails the test.
 async function openAdmin(page: Page) {
   await page.goto("/admin");
   await expect(page.getByRole("heading", { level: 1, name: "Owner console" })).toBeVisible();
   const closed = page.getByRole("heading", { level: 2, name: "Admin is not configured" });
-  test.skip(await closed.isVisible(), "dev server runs without ADMIN_WALLET or SITE_URL (reused server)");
+  test.skip(EXTERNAL && (await closed.isVisible()), "external server runs without ADMIN_WALLET or SITE_URL");
+  await expect(closed).toHaveCount(0);
 }
 
 async function signInThroughCard(page: Page, account: TestAccount) {
@@ -63,7 +65,7 @@ test.describe("admin-signin", () => {
   test("the admin key signs in and sees the console with a 30-minute session", async ({ page }) => {
     const account = admin as TestAccount;
     const res = await signInThroughCard(page, account);
-    if (res.status() === 403) test.skip((await res.json()).error === "not_admin", REUSED);
+    if (res.status() === 403) skipRefused((await res.json()).error);
     await expect(page.getByText(`Signed in ${short(account.address)}, the allowlisted wallet`)).toBeVisible();
     await expect(page.getByText(/Session ends in (29|30)m/)).toBeVisible();
     const cookie = await adminCookie(page);
@@ -101,7 +103,7 @@ test.describe("admin-signin", () => {
       signature: sign(null, Buffer.from(message), key).toString("base64"),
     };
     const first = await post(verify);
-    if (first.status() === 403) test.skip((await first.json()).error === "not_admin", REUSED);
+    if (first.status() === 403) skipRefused((await first.json()).error);
     expect(first.status()).toBe(200);
     const again = await post(verify);
     expect(again.status()).toBe(401);
@@ -110,7 +112,7 @@ test.describe("admin-signin", () => {
 
   test("Sign out ends the session and drops the cookie", async ({ page }) => {
     const res = await adminSignIn(page.request, admin as TestAccount);
-    if (res.status() === 403) test.skip((await res.json()).error === "not_admin", REUSED);
+    if (res.status() === 403) skipRefused((await res.json()).error);
     expect(res.status()).toBe(200);
     await openAdmin(page);
     await page.getByRole("button", { name: "Sign out" }).click();

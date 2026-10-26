@@ -2,6 +2,7 @@
 // a signed-in admin. Status, quote, pin and prepare are stubbed, so no worker runs in genesis mode for real.
 import type { Status } from "@bondr/core/api";
 import { expect, type Page, test } from "@playwright/test";
+import { skipRefused } from "./admin.ts";
 import { field, receipt, row, solText, toStep2, toStep3 } from "./coin.ts";
 import { signRow, stub } from "./launch-stubs.ts";
 import {
@@ -40,8 +41,7 @@ async function asOwner(page: Page): Promise<TestAccount> {
   }
   const res = await adminSignIn(page.request, admin);
   const error = res.ok() ? null : (await res.json().catch(() => null))?.error;
-  test.skip(error === "not_configured", "dev server runs without ADMIN_WALLET or SITE_URL (reused server)");
-  test.skip(error === "not_admin", "reused dev server has another ADMIN_WALLET");
+  skipRefused(error);
   expect(res.status()).toBe(200);
   await stubGenesis(page);
   await injectPhantom(page, admin);

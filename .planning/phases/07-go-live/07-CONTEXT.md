@@ -242,6 +242,17 @@ Not in Phase 7:
 
   HV-05-02 is checked on the first mainnet forced bond.
 
+### Anti-vamp: 24h ticker cooldown (owner request 2026-10-26)
+
+Source: owner asked for "anti vamp measures like ticker cooldowns for 24 hours"; design in `.planning/research/ANTI-VAMP.md`. BONDR lists only coins it launched (`ingest.ts:19` knownCoins), so the cooldown covers the whole BONDR namespace; coins launched directly on pump.fun are outside it by nature.
+
+- **D-40 (owner-delegated (auto)):** A ticker cannot be launched through BONDR again within 24h of the last landed BONDR launch with the same ticker. The window is fixed from landing (not traction-based). Checked in `admit` (`prepare.ts:132`) as one more read in the existing `Promise.all`, before the balance RPC, vanity reservation and table spend. One indexed read per prepare, no polling (Neon quota).
+- **D-41 (owner-delegated (auto)):** Key = the stored symbol as is: `checkSymbol` (`rules.ts:31`) already restricts tickers to uppercase A-Z0-9, so case, `$`, whitespace, homoglyph and zero-width tricks cannot reach it. No leet fold (`0`/`O`, `1`/`I`). No exemption for the original creator wallet. Hidden coins keep their lock.
+- **D-42 (owner-delegated (auto)):** What holds the lock: landed launches for 24h; signed, sent and unknown launches; a fresh `prepared` row from another wallet for its 3-minute life. Failed and expired launches free it. Index: a partial index on `launches (symbol, landed_at)` over non-failed states in a NEW migration (0008, alongside the D-xx admin_audit TRUNCATE trigger; 0007 is Phase 6's and is already applied on staging). Race safety comes from prepare's single-flight (`prepare.ts:285-291`); `ponytail:` comment naming the `ticker_locks` upsert upgrade if the worker is ever duplicated.
+- **D-43 (owner-delegated (auto)):** Refusal: new `LaunchErrorCode` `ticker_locked` (409 in `http.ts`, a FAULTS entry in `launch-sign.tsx`), `ApiError.retryAfter` seconds, copy shows exact time remaining, e.g. "$PEPE launched on BONDR 3h ago. Try again in 21h." The terms page gains one sentence about the 24h ticker cooldown.
+- **D-44 (owner-delegated (auto)):** A static reserved-ticker list in code (BONDR, SOL, USDC, USDT, WSOL) refused with its own copy. Search lists the oldest coin first among exact ticker matches and marks it "First" (UI spec addendum for the marker).
+- Deferred: traction-based lock start (anti-squat), image-CID duplicate check, name normalisation match, admin "release ticker" override, perceptual image hashing.
+
 ### Claude's Discretion
 - The v1 ingest fix method (D-15), as long as the proof holds.
 - How the contract check compares IDL layouts (sizes and discriminators at minimum; an on-chain IDL hash if available), and where its last result is held (memory, like the other health rows).

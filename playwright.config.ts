@@ -26,6 +26,9 @@ if (adminWallet) webEnv.ADMIN_WALLET = adminWallet;
 // The admin sign-in message names SITE_URL and refuses any other origin (WR-B-03), so it must be baseURL.
 webEnv.SITE_URL ??= new URL(baseURL).origin;
 const ADMIN = ["**/admin-switch.e2e.ts", "**/admin-moderation.e2e.ts"];
+// The console money path on devnet needs its own worker flags and drains every W, so it never shares a run with
+// other specs (CR-E-02): E2E_DEVNET_ADMIN=1 pnpm exec playwright test --project=devnet-admin --no-deps.
+const DEVNET_ADMIN = "**/admin-devnet.e2e.ts";
 
 export default defineConfig({
   testDir: "apps/web/e2e",
@@ -45,7 +48,11 @@ export default defineConfig({
   // paused.e2e.ts flips the shared kill switch, so it runs alone after every other spec. The admin specs
   // that flip switches or hide and block coins change shared state too, so they run alone after it.
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: ["**/paused.e2e.ts", ...ADMIN] },
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+      testIgnore: ["**/paused.e2e.ts", ...ADMIN, DEVNET_ADMIN],
+    },
     {
       name: "paused",
       use: { ...devices["Desktop Chrome"] },
@@ -57,6 +64,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: ADMIN,
       dependencies: ["paused"],
+    },
+    {
+      name: "devnet-admin",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: DEVNET_ADMIN,
+      dependencies: ["admin-serial"],
     },
   ],
   webServer: process.env.E2E_BASE_URL

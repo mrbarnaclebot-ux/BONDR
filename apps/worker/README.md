@@ -92,7 +92,7 @@ The break-glass path for a leaked master seed (ADMIN-11, D-35 to D-37). Use it o
   ADMIN_WALLET=$(node --input-type=module -e "import { seedAccount } from './apps/web/e2e/keys.ts'; console.log(seedAccount('admin:devnet:e2e').address)") ADMIN_EVACUATE=on FEE_ENGINE=off VANITY_THREADS=0 WORKER_PORT=8080 node --env-file=.env apps/worker/src/main.ts
   ```
 
-  Check the boot log's switches line and `http://127.0.0.1:8080/healthz`, then run `E2E_DEVNET=1 pnpm exec playwright test apps/web/e2e/admin-devnet.e2e.ts --project=chromium --reporter=line` (Playwright starts web with the same ADMIN_WALLET). Its afterAll turns every switch back on and clears `settings.evacuated_at`. Stop the worker with Ctrl-C afterwards: local and staging share the devnet ops wallet (Pitfall 12).
+  Check the boot log's switches line and `http://127.0.0.1:8080/healthz`, then run `E2E_DEVNET_ADMIN=1 pnpm exec playwright test --project=devnet-admin --no-deps --reporter=line` alone, never with `E2E_DEVNET=1` (Playwright starts web with the same ADMIN_WALLET). Its afterAll restores the switches and `settings.evacuated_at` it found before the run. Stop the worker with Ctrl-C afterwards: local and staging share the devnet ops wallet (Pitfall 12).
 
 ## Fee engine
 

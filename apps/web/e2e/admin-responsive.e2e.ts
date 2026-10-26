@@ -162,7 +162,7 @@ for (const width of WIDTHS)
       await console_(page);
       await expect(page.getByRole("heading", { level: 2, name: "Timeline", exact: true })).toBeVisible();
       const audit = page.getByRole("region", { name: "Audit log", exact: true });
-      expect(await audit.locator("tbody tr").count()).toBeGreaterThan(0);
+      await expect(audit.locator("tbody tr").first()).toBeVisible(); // retries while the section renders
       await targets(page, width);
       await shot(page, "console-healthy", width);
     });

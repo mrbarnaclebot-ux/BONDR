@@ -206,6 +206,8 @@ for (const width of WIDTHS)
       await preConsent(page, admin.address);
       await stubSim(page, { simulate: { json: evacFixture() } });
       await console_(page, { health: { evacuate: "on" } });
+      // Under load the first health poll can still be out, and until it lands the section is simulate-only.
+      await expect(page.getByText(/^Updated /)).toBeVisible({ timeout: 15_000 });
       const box = page.getByRole("region", { name: "EVACUATE" });
       await expect(box.getByText("Disarmed. The phrase must match exactly.")).toBeVisible();
       await targets(page, width);

@@ -58,7 +58,7 @@ async function hold(d: ActDeps, actor: string, mint: string, reason: string): Pr
   return audited(d.audit, { actor, action: "hold", mint, params: { reason } }, async () => {
     await d.exec.update(coins).set({ heldAt: new Date(), heldReason: reason }).where(eq(coins.mint, mint));
     d.engine()?.setHold(mint, reason);
-    return "held";
+    return "held" as const;
   });
 }
 
@@ -70,7 +70,7 @@ async function release(d: ActDeps, actor: string, mint: string): Promise<ActOutc
   return audited(d.audit, { actor, action: "release_hold", mint, params: { resetFinalize } }, async () => {
     await d.exec.update(coins).set(set).where(eq(coins.mint, mint));
     d.engine()?.setHold(mint, null, resetFinalize);
-    return "released";
+    return "released" as const;
   });
 }
 

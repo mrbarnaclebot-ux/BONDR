@@ -13,6 +13,15 @@ export type WorkerReply<T> = { status: number; body: T | ApiError };
 
 const unavailable: WorkerReply<never> = { status: 503, body: { error: "worker_unavailable" } };
 
+// The ticker cooldown's wait and lock kind (D-43): a finite number of seconds and one of two words, else dropped.
+function ticker(b: Partial<ApiError>): Pick<ApiError, "retryAfter" | "lock"> {
+  const lock = b.lock === "landed" || b.lock === "pending" ? b.lock : undefined;
+  return {
+    ...(Number.isFinite(b.retryAfter) && { retryAfter: b.retryAfter }),
+    ...(lock && { lock }),
+  };
+}
+
 async function call<T>(path: string, init: RequestInit, timeoutMs = TIMEOUT_MS): Promise<WorkerReply<T>> {
   const base = process.env.WORKER_URL;
   const token = process.env.WORKER_TOKEN;
@@ -26,9 +35,9 @@ async function call<T>(path: string, init: RequestInit, timeoutMs = TIMEOUT_MS):
     });
     const body = (await res.json().catch(() => null)) as (T & Partial<ApiError>) | null;
     if (res.ok && body) return { status: res.status, body };
-    // Rebuilt from the two contract fields, so no raw worker text reaches the browser.
+    // Rebuilt from the contract fields only, so no raw worker text reaches the browser (Pitfall 24).
     if (PASS.has(res.status) && typeof body?.error === "string")
-      return { status: res.status, body: { error: body.error, paused: body.paused } };
+      return { status: res.status, body: { error: body.error, paused: body.paused, ...ticker(body) } };
     return unavailable;
   } catch {
     return unavailable;

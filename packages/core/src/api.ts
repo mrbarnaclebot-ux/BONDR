@@ -45,10 +45,20 @@ export type LaunchErrorCode =
   | "not_applicable"
   | "simulation_failed"
   | "destination_refused"
-  | "rpc_failed";
+  | "rpc_failed"
+  // Phase 7 anti-vamp (D-43, D-44): a ticker inside its 24h cooldown, and a reserved ticker.
+  | "ticker_locked"
+  | "ticker_reserved";
 
-// reason: the admin not_applicable code the console maps to copy (D-12).
-export type ApiError = { error: LaunchErrorCode; paused?: PauseReason; reason?: string };
+// reason: the admin not_applicable code the console maps to copy (D-12). retryAfter (seconds) and lock come with
+// ticker_locked (D-43): "landed" is a landed launch's 24h window, "pending" a launch still being signed or sent.
+export type ApiError = {
+  error: LaunchErrorCode;
+  paused?: PauseReason;
+  reason?: string;
+  retryAfter?: number;
+  lock?: "landed" | "pending";
+};
 
 export type Links = { x?: string; telegram?: string; website?: string };
 

@@ -64,7 +64,7 @@ test("mainnet refuses a missing, malformed, off-curve or derivable TREASURY_PUBK
   const bad = [
     "",
     "not-base58-0OIl",
-    `${TREASURY}x`,
+    "365efUdXGhRExyDEUeKXWPg1zTZyfvuJQJDLsS7JZqzyt", // 33 bytes: a random key plus one char sometimes still decodes to 32
     pda,
     ops(seed, "mainnet").publicKey.toBase58(),
     buyback(seed, "mainnet", "local").publicKey.toBase58(),

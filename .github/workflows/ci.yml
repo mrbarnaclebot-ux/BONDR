@@ -27,6 +27,8 @@ jobs:
       DATABASE_URL: postgres://bondr:bondr@localhost:5432/bondr # a throwaway container, not a secret
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false # no later step pushes; keep the token out of .git/config during installs
       - uses: pnpm/action-setup@v6 # version from packageManager
       - uses: actions/setup-node@v7
         with:

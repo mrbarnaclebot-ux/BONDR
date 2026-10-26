@@ -1,5 +1,6 @@
 // Real devnet reads and trades for the E2E_DEVNET specs: the public devnet RPC (as fixtures.ts blockTime, so the
-// runner needs no Helius key; a 429 waits and retries), token balances by owner and mint, and devnet-trades runs.
+// runner needs no Helius key; a rate limit backs off and retries), token balances by owner and mint, and
+// devnet-trades runs.
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -15,11 +16,13 @@ export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
-    if (res.status === 429 && i < 5) {
-      await new Promise((done) => setTimeout(done, 2000));
+    const body = (await res.json().catch(() => ({}))) as { result?: T; error?: { message: string } };
+    // The public RPC also answers a burst with 200 and "Too many requests" (06-26 post-review run).
+    const limited = res.status === 429 || /too many requests/i.test(body.error?.message ?? "");
+    if (limited && i < 6) {
+      await new Promise((done) => setTimeout(done, 2000 * 2 ** i)); // 2 s doubling, about 2 minutes in all
       continue;
     }
-    const body = (await res.json()) as { result?: T; error?: { message: string } };
     if (body.result === undefined) throw new Error(`${method}: ${body.error?.message ?? res.status}`);
     return body.result;
   }

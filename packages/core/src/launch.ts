@@ -178,13 +178,16 @@ function qBuyIxs(o: LaunchOpts, p: Priced): Promise<TransactionInstruction[]> {
   return buyExactIn({ ...side, global: p.g, spend: o.solIn, minOut: p.qMin });
 }
 
+// The dev burns what the buy gave it, from its Token-2022 ATA (cosign exitPresent looks for exactly this).
+function burnIx(mint: PublicKey, dev: PublicKey, amount: BN): TransactionInstruction {
+  const devAta = getAssociatedTokenAddressSync(mint, dev, true, T22);
+  return createBurnCheckedInstruction(devAta, mint, dev, big(amount), COIN_DECIMALS, [], T22);
+}
+
 // Hop 1 is always the child's curve (the child is new); hop 2 trades Q on Q's venue. The pool's buyback
 // wallet is the one whose WSOL ATA the pool buy just created.
 async function exitIxs(o: LaunchOpts, p: Priced): Promise<TransactionInstruction[]> {
-  if (o.exit === "burn") {
-    const devAta = getAssociatedTokenAddressSync(o.mint, o.dev, true, T22);
-    return [createBurnCheckedInstruction(devAta, o.mint, o.dev, big(p.amount), COIN_DECIMALS, [], T22)];
-  }
+  if (o.exit === "burn") return [burnIx(o.mint, o.dev, p.amount)];
   const side = { global: p.g, mint: o.mint, user: o.dev, quoteMint: o.Q, amount: p.amount };
   if (o.exit === "sellq") return sellExactIn({ ...side, minQuote: new BN(1) });
   const qHop = {
@@ -234,4 +237,41 @@ export async function buildLaunch(o: LaunchOpts) {
     ...(await exitIxs(o, p)),
   ];
   return { ixs, amount: p.amount, qMin: p.qMin, venue: p.venue };
+}
+
+export type GenesisOpts = Coin & {
+  online: Online;
+  mint: PublicKey;
+  dev: PublicKey;
+  treasury: PublicKey;
+  solIn: BN;
+  cuLimit: number;
+  priorityFee?: number;
+};
+
+// D-28: BONDR's own launch. A SOL coin (create_v2 with no quote) with the treasury as creator and no
+// creator_fee_bps (the network default; the SDK ignores it on SOL coins), an exact-out SOL buy, and the burn of
+// it in the same tx, so the co-sign rule (the exit must be present) holds unchanged. The combined create + buy +
+// burn is new: the fork rehearsal (07-21) runs it before mainnet.
+export async function buildGenesis(o: GenesisOpts) {
+  const [g, fc] = await Promise.all([o.online.fetchGlobal(), o.online.fetchFeeConfig()]);
+  const out = getBuyV3TokenAmountFromQuoteAmount({
+    global: g,
+    feeConfig: fc,
+    mintSupply: g.tokenTotalSupply,
+    bondingCurve: newBondingCurve(g),
+    amount: o.solIn,
+    curveBaseTokenBalance: g.tokenTotalSupply,
+  });
+  const amount = pct(out, 9800); // 2% under for rounding, as childAmount
+  const coin = { name: o.name, symbol: o.symbol, uri: o.uri };
+  const create = await buildCreate({ ...coin, mint: o.mint, creator: o.treasury, user: o.dev });
+  const buy = { global: g, mint: o.mint, user: o.dev, quoteMint: NATIVE_MINT, amount, maxQuote: o.solIn };
+  const ixs: TransactionInstruction[] = [
+    ...budget(o.cuLimit, o.priorityFee),
+    create,
+    ...(await buyExactOut(buy)), // with the dev's child ATA create, as in buildLaunch
+    burnIx(o.mint, o.dev, amount),
+  ];
+  return { ixs, amount };
 }

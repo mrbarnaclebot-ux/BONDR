@@ -9,7 +9,7 @@ import { BN, OnlinePumpAmmSdk } from "@bondr/core/pump";
 import { buyExactIn } from "@bondr/core/trade";
 import type { Keypair, PublicKey } from "@solana/web3.js";
 import { bondedJob, forcedJob } from "../../../apps/worker/src/fee-burns.ts";
-import { memoryLedger } from "../../../apps/worker/src/fee-ledger.ts";
+import { memoryLedger } from "../../../apps/worker/src/fee-ledger-memory.ts";
 import {
   type FeeCoin,
   type FeeDeps,
@@ -45,7 +45,7 @@ const coinOf = (e: E, mint: PublicKey, w: Keypair, venue: FeeCoin["venue"]): Fee
   ...{ launchSig: "", wallet: e.ctx.key("sim", "dev").publicKey, finalize: "held" },
 });
 
-async function whaleBuy(e: E, id: string, mint: PublicKey, spend: BN, step: string): Promise<void> {
+export async function whaleBuy(e: E, id: string, mint: PublicKey, spend: BN, step: string): Promise<void> {
   const side = { global: e.g, mint, user: e.whale.publicKey, quoteMint: e.Q };
   const ixs = await buyExactIn({ ...side, spend, minOut: new BN(1) });
   await land(e, { id, step, payer: e.whale, ixs }, async () => ({
@@ -95,7 +95,9 @@ async function forcedPath(e: E): Promise<void> {
     cost: cost.toString(),
     budget: budget.toString(),
   });
-  const coin = coinOf(e, mint, W, "curve");
+  // The indexer's memory after the whale buy: forcedJob collects only when fees are unclaimed (73853e4), and
+  // with no BONDR price any amount is worth it.
+  const coin = { ...coinOf(e, mint, W, "curve"), feesUnclaimed: 1n };
   const before = await supply(e, mint);
   const out = await forcedJob(e.d, coin);
   record(

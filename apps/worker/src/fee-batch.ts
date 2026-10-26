@@ -29,9 +29,11 @@ import { tokenBalance } from "./fee-prebond.ts";
 import { reconcile } from "./fee-reconcile.ts";
 import { settleStale } from "./fee-recover.ts";
 import { type FeeCoin, type FeeDeps, factsFor, type Landed, refreshOps } from "./fee-send.ts";
+import { mark } from "./health.ts";
 
 const DECIMALS = 6; // BONDR, the quote mint (price.ts)
 const DONE: Landed = { state: "done" };
+const SKIPPED: Landed = { state: "skipped" };
 const DISTRIBUTE_CU = 400_000;
 // D-19, A8: the signature fee plus budget()'s priority price (1,000 micro-lamports per CU) at this limit.
 const DISTRIBUTE_FEE = 5_000 + Math.ceil((DISTRIBUTE_CU * 1_000) / 1_000_000);
@@ -53,6 +55,8 @@ export type BatchSummary = {
 // D-13, T-05-09-01: the buyback's whole BONDR balance in one BurnChecked (a burn, never a transfer), signed by
 // the buyback key with ops paying. The platform row has no mint.
 export async function buybackBurnJob(d: FeeDeps): Promise<Landed> {
+  if (d.allowed && !d.allowed("buybackBurn", null)) return SKIPPED;
+  if (!d.sim) mark("buyback");
   const owner = d.buyback.publicKey;
   const amount = await tokenBalance(d, owner);
   if (amount === 0n) return DONE;
@@ -82,19 +86,26 @@ async function pendingOf(d: FeeDeps, mint: PublicKey) {
 }
 
 // D-19: worth it only while the ops fee is under 1% of the payout; with no BONDR price yet, any fees are (as a
-// collect, D-11).
-function worthPaying(d: FeeDeps, pending: bigint): boolean {
+// collect, D-11). The owner's Distribute now (anyAmount, D-16) skips the minimum but never pays nothing.
+function worthPaying(d: FeeDeps, pending: bigint, anyAmount = false): boolean {
   if (pending <= 0n) return false;
+  if (anyAmount) return true;
   const price = d.bondrSol();
   return price === null || toSol(pending, price) >= distributeMin(DISTRIBUTE_FEE);
 }
 
 // FEE-07, T-05-09-02: permissionless, ops pays, and the SDK pays the shareholders the verified finalize locked;
 // the engine names no recipient. The row's split is the two holders' BONDR deltas in this tx's own meta.
-export async function distributeJob(d: FeeDeps, coin: FeeCoin): Promise<Landed> {
+export async function distributeJob(
+  d: FeeDeps,
+  coin: FeeCoin,
+  o: { anyAmount?: boolean } = {},
+): Promise<Landed> {
+  if (d.allowed && !d.allowed("finalize", coin)) return SKIPPED;
+  if (!d.sim) mark("distribute");
   const p = await pendingOf(d, coin.mint);
   const [deployer, treasury] = p?.holders ?? [];
-  if (!p || !deployer || !treasury || !worthPaying(d, p.pending)) return DONE;
+  if (!p || !deployer || !treasury || !worthPaying(d, p.pending, o.anyAmount)) return DONE;
   const ixs = await distributeIxs({
     online: d.online,
     mint: coin.mint,
@@ -119,12 +130,17 @@ async function sends(d: FeeDeps, engine: BatchEngine, s: BatchSummary): Promise<
   await engine.enqueue("platform", burn, "buyback burn");
   const runs = [...engine.coins.values()].map((coin) => {
     const mint = coin.mint.toBase58();
+    // Each returns its result so the engine can mark a failing step stuck (D-20).
     const pay = async () => {
-      if ((await distributeJob(d, coin)).state === "landed") s.distribute++;
+      const out = await distributeJob(d, coin);
+      if (out.state === "landed") s.distribute++;
+      return out;
     };
     const retry = async () => {
       s.finalize++;
-      console.log(`fee batch bonded ${mint}: ${(await bondedJob(d, coin)).map((l) => l.state).join(", ")}`);
+      const out = await bondedJob(d, coin);
+      console.log(`fee batch bonded ${mint}: ${out.map((l) => l.state).join(", ")}`);
+      return out;
     };
     if (coin.finalize === "done") return engine.enqueue(mint, pay, `fee distribute ${mint}`);
     if (coin.venue === "pool" && coin.finalize === "none")

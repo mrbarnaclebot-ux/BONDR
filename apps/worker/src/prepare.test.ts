@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { close, db, vanityMints, wallets } from "@bondr/core/db";
+import { blockedDeployers, close, db, vanityMints, wallets } from "@bondr/core/db";
 import { Keypair } from "@solana/web3.js";
 import { eq, sql, TransactionRollbackError } from "drizzle-orm";
-import { afterAll, describe, expect, test } from "vitest";
+import { afterAll, describe, expect, test, vi } from "vitest";
 import { ensureTable, previewCosts, simError } from "./build.ts";
 import {
   advance,
@@ -17,13 +17,21 @@ import {
 } from "./launches.ts";
 import {
   type GuardInput,
+  type PrepareCtx,
   parseRequest,
+  prepare,
   prepareGuard,
   sellFloor,
   signBy,
   TABLE_CAP,
   WALLET_TABLE_CAP,
 } from "./prepare.ts";
+
+// An open, priced launch, so only the blocked check can refuse before prepareGuard.
+vi.mock("./status.ts", async (orig) => ({
+  ...((await orig()) as object),
+  liveStatus: async () => ({ paused: null, minLamports: "2500000", createCostEstimate: "0" }),
+}));
 
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
 if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFile);
@@ -159,5 +167,19 @@ describe.skipIf(!process.env.DATABASE_URL)("launch rows", { timeout: 30_000 }, (
       expect(await tableFor(tx, wallet, mint)).toEqual({ mint, table: "TABLE1" });
       expect(await tableFor(tx, "test-other-wallet", mint)).toBe(null);
     });
+  });
+
+  // prepare's own db() reads the row, so it is committed and always deleted.
+  test("a blocked wallet is refused with 403 blocked before the guard and any chain call", async () => {
+    const wallet = Keypair.generate().publicKey.toBase58();
+    const chain = new Proxy({}, { get: () => () => Promise.reject(new Error("chain call")) });
+    const ctx = { conn: chain, online: {}, Q: Keypair.generate().publicKey, priorityFee: 0 };
+    await db().insert(blockedDeployers).values({ wallet, reason: "test block" });
+    try {
+      const run = prepare(ctx as unknown as PrepareCtx, { ...body, wallet });
+      await expect(run).rejects.toMatchObject({ status: 403, body: { error: "blocked" } });
+    } finally {
+      await db().delete(blockedDeployers).where(eq(blockedDeployers.wallet, wallet));
+    }
   });
 });

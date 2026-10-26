@@ -1,45 +1,21 @@
 // A fake Phantom for Playwright. It registers through the Wallet Standard window events, the same way the
 // extension does (event names confirmed in @wallet-standard/app 1.1.1 lib/esm/wallets.js).
-import {
-  createHmac,
-  createPrivateKey,
-  createPublicKey,
-  type KeyObject,
-  randomBytes,
-  randomInt,
-  sign,
-} from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { parseEnv } from "node:util";
+import { type KeyObject, randomBytes, randomInt, sign } from "node:crypto";
 import { type APIRequestContext, type Page, test } from "@playwright/test";
-import bs58 from "bs58";
 import { consentMessage } from "../lib/terms.ts";
+import { accountFromSeed, seedAccount, type TestAccount } from "./keys.ts";
 
-/** `key` stays in Node: the page only ever sees the address and the public key. */
-export type TestAccount = { address: string; publicKey: number[]; key: KeyObject };
+export { accountFromSeed, rootEnv, seedAccount, type TestAccount } from "./keys.ts";
+
 type PageAccount = Omit<TestAccount, "key">;
-
-// A 32-byte Ed25519 seed becomes a private key through this fixed PKCS8 header (RFC 8410).
-const PKCS8_ED25519 = Buffer.from("302e020100300506032b657004220420", "hex");
-
-export function accountFromSeed(seed: Buffer): TestAccount {
-  const key = createPrivateKey({ key: Buffer.concat([PKCS8_ED25519, seed]), format: "der", type: "pkcs8" });
-  const raw = Buffer.from(createPublicKey(key).export({ format: "jwk" }).x as string, "base64url");
-  return { address: bs58.encode(raw), publicKey: [...raw], key };
-}
 
 export const newTestAccount = (): TestAccount => accountFromSeed(randomBytes(32));
 
-/** derive(seed, role, net, id) in core/keys.ts for `id` = "role:net:id", without a Solana import. */
-export function seedAccount(id: string): TestAccount {
-  const file = rootEnv().MASTER_SEED_FILE;
-  if (!file) throw new Error("needs MASTER_SEED_FILE in the root .env");
-  return accountFromSeed(createHmac("sha256", readFileSync(file)).update(id).digest());
-}
-
 /** The worker's sim dev, derive(seed, "sim", "devnet", "dev"). */
 export const simDevAccount = (): TestAccount => seedAccount("sim:devnet:dev");
+
+/** The test owner key; playwright.config.ts sets its address as ADMIN_WALLET on the local servers. */
+export const adminAccount = (): TestAccount => seedAccount("admin:devnet:e2e");
 
 /** Signs slot 0 of a v0 wire over its message bytes, as Phantom does; the count is one shortvec byte. */
 export function signWire(b64: string, key: KeyObject): string {
@@ -47,34 +23,6 @@ export function signWire(b64: string, key: KeyObject): string {
   const message = wire.subarray(1 + 64 * (wire[0] as number));
   sign(null, message, key).copy(wire, 1);
   return wire.toString("base64");
-}
-
-/**
- * playwright.config.ts deliberately keeps the root .env out of the runner (02-02), so specs that check the
- * database read it here. Never copy these values into process.env: the dev server inherits that.
- */
-export function rootEnv(): {
-  DATABASE_URL?: string;
-  MASTER_SEED_FILE?: string;
-  SESSION_SECRET?: string;
-  WORKER_URL?: string;
-  WORKER_TOKEN?: string;
-  BONDR_QUOTE_MINT?: string;
-  VANITY_LANE?: string;
-} {
-  const file = fileURLToPath(new URL("../../../.env", import.meta.url));
-  const all = existsSync(file) ? parseEnv(readFileSync(file, "utf8")) : {};
-  const { DATABASE_URL, MASTER_SEED_FILE, SESSION_SECRET, WORKER_URL, WORKER_TOKEN } = all;
-  const { BONDR_QUOTE_MINT, VANITY_LANE } = all;
-  return {
-    DATABASE_URL,
-    MASTER_SEED_FILE,
-    SESSION_SECRET,
-    WORKER_URL,
-    WORKER_TOKEN,
-    BONDR_QUOTE_MINT,
-    VANITY_LANE,
-  };
 }
 
 /**
@@ -101,6 +49,21 @@ export async function signIn(request: APIRequestContext, account: TestAccount) {
   const message = Buffer.from(consentMessage(account.address, nonce, expires));
   const signature = sign(null, message, account.key).toString("base64");
   return request.post("/api/consent", { headers, data: { wallet: account.address, nonce, signature } });
+}
+
+/**
+ * The admin sign-in through the API: a nonce, the account's signature over the returned message bytes
+ * verbatim, then verify. The bondr_admin cookie lands in `request`'s cookie jar (page.request shares it).
+ */
+export async function adminSignIn(request: APIRequestContext, account: TestAccount) {
+  const ip = `10.${randomInt(256)}.${randomInt(256)}.${randomInt(256)}`;
+  const headers = { origin: new URL(test.info().project.use.baseURL as string).origin, "x-real-ip": ip };
+  const wallet = account.address;
+  const nonceRes = await request.post("/api/admin/session", { headers, data: { op: "nonce", wallet } });
+  if (!nonceRes.ok()) return nonceRes; // not_configured without SITE_URL: the caller skips on it
+  const { nonce, message } = await nonceRes.json();
+  const signature = sign(null, Buffer.from(message), account.key).toString("base64");
+  return request.post("/api/admin/session", { headers, data: { op: "verify", wallet, nonce, signature } });
 }
 
 const pageAccount = ({ address, publicKey }: TestAccount): PageAccount => ({ address, publicKey });

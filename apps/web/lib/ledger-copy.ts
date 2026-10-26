@@ -74,6 +74,19 @@ export const COPY: Record<PublicKind, Entry> = {
     text: (r) =>
       `Paid ${bondr(r)} BONDR of post-bond creator fees, ${share(r.detail?.dBps)} to the deployer and ${share(r.detail?.tBps)} to treasury.`,
   },
+  leftover_burn: {
+    tag: "Leftover burn",
+    tone: "leaf",
+    text: (r, s) => `Burned leftover ${tokens(r)} ${s} from the fee wallet.`,
+  },
+  evacuate: {
+    tag: "Emergency",
+    tone: "warn",
+    text: (r) =>
+      r.amount === null
+        ? `Moved ${feeSol(r.sol ?? "0")} SOL to treasury, emergency.`
+        : `Moved ${bondr(r)} BONDR to treasury, emergency. BONDR paused its fee jobs and moved every fee wallet balance to treasury.`,
+  },
 };
 
 /** A row this build has copy for. The worker deploys apart from web, so a live row can carry a kind added later. */

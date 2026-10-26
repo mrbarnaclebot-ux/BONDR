@@ -17,6 +17,7 @@ export const WEB_ENV = [
   "SENTRY_TEST_ROUTE",
   "SESSION_SECRET",
   "SITE_URL",
+  "ADMIN_WALLET", // a public key: the one wallet allowed into /admin; unset keeps admin closed
   "FEE_WINDOW_MS", // not a secret: the worker's fee window length, for the Bond and burn countdown
 ] as const;
 

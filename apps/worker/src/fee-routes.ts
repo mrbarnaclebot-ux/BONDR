@@ -7,7 +7,7 @@ import { fail, type Routes } from "./http.ts";
 
 const BASE58_KEY = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
-function key(v: unknown): PublicKey {
+export function key(v: unknown): PublicKey {
   if (typeof v !== "string" || !BASE58_KEY.test(v)) throw fail({ error: "invalid_input" });
   try {
     return new PublicKey(v);

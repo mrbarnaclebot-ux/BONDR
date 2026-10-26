@@ -10,7 +10,8 @@ import {
 import { type AccountInfo, Keypair, PublicKey } from "@solana/web3.js";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { buybackBurnJob, distributeJob, nextBatchAt, runBatch, scheduleBatch } from "./fee-batch.ts";
-import { memoryLedger, type NewEntry } from "./fee-ledger.ts";
+import type { NewEntry } from "./fee-ledger.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 import { impliedOf, reconcile } from "./fee-reconcile.ts";
 import { feeRoutes } from "./fee-routes.ts";
 import { type FeeCoin, type FeeDeps, type Job, type Landed, noteOps } from "./fee-send.ts";

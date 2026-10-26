@@ -7,6 +7,7 @@ import type { LedgerKind } from "@bondr/core/api";
 import { collectJob, settled, splitJob, sweepJob, worthCollecting } from "./fee-prebond.ts";
 import { settleRows } from "./fee-recover.ts";
 import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
+import { mark } from "./health.ts";
 
 const HOLDS: LedgerKind[] = ["collect", "split_treasury", "forced_bond", "pool_burn"];
 const DEFERRED: Landed = { state: "unknown" };
@@ -41,8 +42,14 @@ export async function spend(
   return out;
 }
 
-// Window end (D-10, D-12): collect, split every open collect of this coin, then sweep.
+// Window end (D-10, D-12): collect, split every open collect of this coin, then sweep. Paused (D-19), the fees
+// stay on the curve and the next window collects them.
 export async function windowJob(d: FeeDeps, coin: FeeCoin, index: number): Promise<Landed[]> {
+  if (d.allowed && !d.allowed("sweeps", coin)) return [{ state: "skipped" }];
+  if (!d.sim) mark("split");
   const out = worthCollecting(d, coin) ? [await collectJob(d, coin)] : [];
-  return spend(d, coin, out, () => sweepJob(d, coin, index));
+  return spend(d, coin, out, () => {
+    if (!d.sim) mark("sweep");
+    return sweepJob(d, coin, index);
+  });
 }

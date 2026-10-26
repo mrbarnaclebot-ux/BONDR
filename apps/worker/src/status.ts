@@ -1,7 +1,6 @@
 // The live values the launch form needs (fees, minimum, pause state, quote). Web never touches the chain
 // (D-15), so every one of them comes from here. Read on demand and cached 5 s: no polling loop (Pitfall 6).
 import type { PauseReason, Quote, Status } from "@bondr/core/api";
-import { db, settings } from "@bondr/core/db";
 import { AwaitingMigration, creatorFeeFor, launchQuote, quoteVenue, type Venue } from "@bondr/core/launch";
 import { estimateSolBack, minLamports } from "@bondr/core/math";
 import { redact } from "@bondr/core/net";
@@ -16,8 +15,9 @@ import {
 import { poolState } from "@bondr/core/trade";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { type Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { eq } from "drizzle-orm";
-import { Fail } from "./http.ts";
+import { type AuditStore, audited } from "./admin-audit.ts";
+import { Fail, fail } from "./http.ts";
+import { loadSwitches, setJob, switchesLoaded, switchOn } from "./switches.ts";
 
 type Online = Parameters<typeof quoteVenue>[0];
 type FeeConfig = Awaited<ReturnType<Online["fetchFeeConfig"]>>;
@@ -173,38 +173,31 @@ function live(ctx: Ctx): Promise<Live> {
   return entry.live;
 }
 
-// The kill switch, held in memory so the 10 s status poll of every open page never wakes Neon (500 CU-h
-// budget). Set it through POST /kill-switch; a pause written straight in SQL still stops prepare and submit,
-// which re-read it, but open pages show it only after the next launch attempt or a worker restart.
-let switchOn: boolean | undefined;
-
-async function readSwitch(): Promise<boolean> {
-  const rows = await db()
-    .select({ enabled: settings.launchesEnabled })
-    .from(settings)
-    .where(eq(settings.id, 1));
-  switchOn = rows[0]?.enabled === true; // fail closed: a missing settings row counts as switched off
-  return switchOn;
-}
-
 export function parseSwitch(body: unknown): boolean {
   const on = (body as { enabled?: unknown } | null)?.enabled;
   if (typeof on !== "boolean") throw new Fail(400, { error: "invalid_input" });
   return on;
 }
 
-export async function setSwitch(body: unknown): Promise<{ enabled: boolean }> {
+// The runbook's bearer route (paused.e2e.ts uses it). WR-W-08: audited as actor "runbook" through the same
+// writer as the console (D-34), and it never turns launches back on after EVACUATE; only the console does (D-36).
+export async function setSwitch(body: unknown, audit: AuditStore): Promise<{ enabled: boolean }> {
   const on = parseSwitch(body);
-  await db().update(settings).set({ launchesEnabled: on }).where(eq(settings.id, 1));
-  switchOn = on;
+  if (on && (await loadSwitches()).evacuatedAt) throw fail({ error: "not_applicable", reason: "evacuated" });
+  const params = { job: "launches", enabled: on };
+  await audited(audit, { actor: "runbook", action: "switch", mint: null, params }, () =>
+    setJob("launches", on),
+  );
   return { enabled: on };
 }
 
-// fresh: prepare and submit read the switch from the database before they act on it.
+// The launches switch lives in switches.ts memory, so the 10 s status poll of every open page never wakes Neon.
+// fresh: prepare and submit re-read the settings row before they act on it, so a pause written in SQL still stops
+// them; open pages show it after the next launch attempt or a restart.
 export async function liveStatus(ctx: Ctx, fresh = false): Promise<Status> {
   const [l, enabled] = await Promise.all([
     live(ctx),
-    fresh || switchOn === undefined ? readSwitch() : switchOn,
+    fresh || !switchesLoaded() ? loadSwitches().then((s) => s.launches) : switchOn("launches"),
   ]);
   return { ...l.status, paused: pauseReason({ enabled, venue: l.venue }) };
 }

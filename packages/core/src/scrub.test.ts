@@ -34,6 +34,7 @@ test("forbiddenEnv names the secrets web must never hold", () => {
     helius_api_key: "k",
     sentry_auth_token: "t",
     DATABASE_URL_STAGING: "u",
+    SENTRY_READ_TOKEN: "r",
     DATABASE_URL: "d",
     PATH: "/bin",
   };
@@ -44,6 +45,7 @@ test("forbiddenEnv names the secrets web must never hold", () => {
     "helius_api_key",
     "sentry_auth_token",
     "DATABASE_URL_STAGING",
+    "SENTRY_READ_TOKEN",
   ]);
 });
 

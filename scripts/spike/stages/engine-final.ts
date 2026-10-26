@@ -18,11 +18,11 @@ import { type E, feeDeps, pick, record } from "./engine-bond.ts";
 import { tokenAmount } from "./launch.ts";
 import { updateRule } from "./sharing.ts";
 
-type F = E & { coin: FeeCoin };
+export type F = E & { coin: FeeCoin };
 
 // A buy of a tenth of the trader's Q (an empty trader gets a whale top-up first), then a sell of all of it.
 // Both pay the pool creator fee: to W before finalize, to the sharing config after it.
-async function trades(f: F, tag: string): Promise<void> {
+export async function trades(f: F, tag: string): Promise<void> {
   const trader = f.ctx.key("sim", "trader");
   const o = {
     amm: new OnlinePumpAmmSdk(f.ctx.conn),
@@ -46,7 +46,7 @@ async function trades(f: F, tag: string): Promise<void> {
 }
 
 // The decoded SharingConfig after the update is the row's proof, not the send result (as finalize.ts).
-async function shares(f: F) {
+export async function shares(f: F) {
   const s = await readSharing(f.ctx.conn, f.coin.mint);
   return {
     ...{ deployer: f.coin.wallet.toBase58(), treasury: f.d.treasury.toBase58() },
@@ -84,7 +84,7 @@ async function distribute(f: F): Promise<void> {
 }
 
 // 80:20 by finalize.distribute's rule: both above 0, and the deployer's floor share within 1 base unit.
-const distributeRule: Rule = (row) => {
+export const distributeRule: Rule = (row) => {
   const f = row.facts ?? {};
   if (!row.sig) return "no signature";
   const [d, t] = [BigInt(f.deployerAmount ?? -1), BigInt(f.treasuryAmount ?? -1)];
@@ -102,18 +102,21 @@ const emptyRule: Rule = (row) => {
     : `W holds ${f.wBondrAfter} BONDR, ${f.wChildAfter} child`;
 };
 
-const finalUpdateRule: Rule = (row, file) => {
-  if (row.facts?.holders !== `${file.state["E2.dev"]},${row.facts?.treasury}`)
-    return "deployer is not E2's dev";
-  if (row.facts?.shares !== `${FINAL_SHARES.deployer},${FINAL_SHARES.treasury}`) return "not 8000/2000";
-  return updateRule(row, file);
-};
+// devKey: the state entry holding the coin's recorded deployer (E2.dev here, AD.dev in admin.ts).
+export const finalUpdateRule =
+  (devKey: string): Rule =>
+  (row, file) => {
+    if (row.facts?.holders !== `${file.state[devKey]},${row.facts?.treasury}`)
+      return `deployer is not ${devKey}`;
+    if (row.facts?.shares !== `${FINAL_SHARES.deployer},${FINAL_SHARES.treasury}`) return "not 8000/2000";
+    return updateRule(row, file);
+  };
 
 export const engineFinalStage: Stage = {
   name: "engine-final",
   rules: () => ({
     "engine.finalize.config": sigOk,
-    "engine.finalize.update": finalUpdateRule,
+    "engine.finalize.update": finalUpdateRule("E2.dev"),
     "engine.finalize.sweep": emptyRule,
     "engine.distribute": distributeRule,
   }),

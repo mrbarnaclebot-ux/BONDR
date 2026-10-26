@@ -102,8 +102,16 @@ test("reconcileDiff is null on a match, else chain minus implied", () => {
   expect(reconcileDiff(10n, 8n)).toBe(-2n);
 });
 
-test("PUBLIC_KINDS holds the nine public kinds only", () => {
-  expect(PUBLIC_KINDS).toHaveLength(9);
+test("PUBLIC_KINDS holds the eleven public kinds only", () => {
+  expect(PUBLIC_KINDS).toHaveLength(11);
+  for (const k of ["leftover_burn", "evacuate"] as const) expect(PUBLIC_KINDS).toContain(k);
   for (const k of ["buyback_burn", "held", "reconcile_diff"]) expect(PUBLIC_KINDS).not.toContain(k);
-  expect(new Set(PUBLIC_KINDS).size).toBe(9);
+  expect(new Set(PUBLIC_KINDS).size).toBe(11);
+});
+
+test("totalsFor counts a leftover burn in Supply burned and an evacuate as a treasury move", () => {
+  expect(totalsFor("leftover_burn", { burned: 500n, amount: 9n })).toEqual({ add: { bond_burned: 500n } });
+  expect(totalsFor("evacuate", { amount: 1000n, sol: 20n })).toEqual({
+    add: { fee_budget: -1000n, to_treasury: 1000n, to_treasury_sol: 20n },
+  });
 });

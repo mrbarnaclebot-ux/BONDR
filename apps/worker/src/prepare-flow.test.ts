@@ -28,6 +28,7 @@ vi.mock("./launches.ts", async (orig) => ({
   tableFor: async () => null,
   insertFailed: m.insertFailed,
 }));
+vi.mock("./admin-moderate.ts", async (orig) => ({ ...(await orig()), blocked: async () => false }));
 vi.mock("./vanity.ts", async (orig) => ({ ...(await orig()), reserve: m.reserve, markUsed: m.markUsed }));
 
 const body = {

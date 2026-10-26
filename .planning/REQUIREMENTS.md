@@ -69,17 +69,17 @@
 
 ### Admin
 
-- [ ] **ADMIN-01**: Owner signs in with the single allowlisted wallet; sessions expire after 30 minutes, and every money-moving action needs a fresh signature
-- [ ] **ADMIN-02**: Owner sees treasury, buyback and ops balances, every W with its state, and platform totals
-- [ ] **ADMIN-03**: Owner can run each recovery action: sweep now, retry forced bond, burn W token balance, run migrate, finalize split, hold for review, retry sweep, distribute now, re-check launch, sweep leftovers + close accounts, burn buyback now
-- [ ] **ADMIN-04**: Every action simulates first and shows balance changes before confirm; destinations are limited to burn, treasury, buyback, or that coin's deployer
-- [ ] **ADMIN-05**: Owner can flip kill switches per job (launches, forced bond, sweeps, finalize, buyback burn)
-- [ ] **ADMIN-06**: Owner sees health: worker heartbeat, leader lock, last run per job, RPC latency and errors, Sentry issue count, vanity pool size
-- [ ] **ADMIN-07**: Owner can hide a coin from lists and block a deployer wallet from launching
-- [ ] **ADMIN-08**: Owner sees a per-coin timeline with each state, transaction, next expected step, and retry for a stuck step
-- [ ] **ADMIN-09**: Owner can paste a signature and see the decoded instructions, the error and an explorer link
-- [ ] **ADMIN-10**: Every admin action is written to an audit log: actor, time, simulation result, signature
-- [ ] **ADMIN-11**: Owner can run EVACUATE: type the phrase, sign, then all jobs pause and every W balance moves to the treasury
+- [x] **ADMIN-01**: Owner signs in with the single allowlisted wallet; sessions expire after 30 minutes, and every money-moving action needs a fresh signature
+- [x] **ADMIN-02**: Owner sees treasury, buyback and ops balances, every W with its state, and platform totals
+- [x] **ADMIN-03**: Owner can run each recovery action: sweep now, retry forced bond, burn W token balance, run migrate, finalize split, hold for review, retry sweep, distribute now, re-check launch, sweep leftovers + close accounts, burn buyback now
+- [x] **ADMIN-04**: Every action simulates first and shows balance changes before confirm; destinations are limited to burn, treasury, buyback, or that coin's deployer
+- [x] **ADMIN-05**: Owner can flip kill switches per job (launches, forced bond, sweeps, finalize, buyback burn)
+- [x] **ADMIN-06**: Owner sees health: worker heartbeat, leader lock, last run per job, RPC latency and errors, Sentry issue count, vanity pool size
+- [x] **ADMIN-07**: Owner can hide a coin from lists and block a deployer wallet from launching
+- [x] **ADMIN-08**: Owner sees a per-coin timeline with each state, transaction, next expected step, and retry for a stuck step
+- [x] **ADMIN-09**: Owner can paste a signature and see the decoded instructions, the error and an explorer link
+- [x] **ADMIN-10**: Every admin action is written to an audit log: actor, time, simulation result, signature
+- [x] **ADMIN-11**: Owner can run EVACUATE: type the phrase, sign, then all jobs pause and every W balance moves to the treasury
 
 ### Operations
 
@@ -153,17 +153,17 @@
 | FEE-08 | Phase 5 | Complete |
 | FEE-09 | Phase 5 | Complete |
 | FEE-10 | Phase 2 | Complete |
-| ADMIN-01 | Phase 6 | Pending |
-| ADMIN-02 | Phase 6 | Pending |
-| ADMIN-03 | Phase 6 | Pending |
-| ADMIN-04 | Phase 6 | Pending |
-| ADMIN-05 | Phase 6 | Pending |
-| ADMIN-06 | Phase 6 | Pending |
-| ADMIN-07 | Phase 6 | Pending |
-| ADMIN-08 | Phase 6 | Pending |
-| ADMIN-09 | Phase 6 | Pending |
-| ADMIN-10 | Phase 6 | Pending |
-| ADMIN-11 | Phase 6 | Pending |
+| ADMIN-01 | Phase 6 | Complete |
+| ADMIN-02 | Phase 6 | Complete |
+| ADMIN-03 | Phase 6 | Complete |
+| ADMIN-04 | Phase 6 | Complete |
+| ADMIN-05 | Phase 6 | Complete |
+| ADMIN-06 | Phase 6 | Complete |
+| ADMIN-07 | Phase 6 | Complete |
+| ADMIN-08 | Phase 6 | Complete |
+| ADMIN-09 | Phase 6 | Complete |
+| ADMIN-10 | Phase 6 | Complete |
+| ADMIN-11 | Phase 6 | Complete |
 | OPS-01 | Phase 2 | Complete |
 | OPS-02 | Phase 7 | Pending |
 | OPS-03 | Phase 7 | Pending |

@@ -2,6 +2,7 @@
 // goes through land, so crash safety, the ops floor and the program allowlist (signTx) live here only.
 // Never resend an "unknown" tx: its row stays pending and boot recovery settles it from the signature.
 import type { LedgerKind, Venue } from "@bondr/core/api";
+import type { FeeJob } from "@bondr/core/api-admin";
 import { redact } from "@bondr/core/net";
 import { toSol } from "@bondr/core/price";
 import type { OnlinePumpAmmSdk, OnlinePumpSdk } from "@bondr/core/pump";
@@ -64,6 +65,9 @@ export type FeeDeps = {
   bondrSol(): number | null;
   publish(mint: string | null, rows: Entry[]): void;
   land(job: Job): Promise<Landed>;
+  // Absent means allowed. The engine's deps set it in 06-07 (switches, hold); admin deps always allow (D-16).
+  allowed?(job: FeeJob, coin: FeeCoin | null): boolean;
+  sim?: true; // WR-W-05: an admin preview, which must not stamp the health panel's last-run marks
 };
 
 // launchSig and wallet feed the 05-08 deployer pre-flight.
@@ -82,10 +86,11 @@ export type FeeCoin = {
   // an idle coin's window costs no database wake-up (D-03).
   open?: boolean;
   notReady?: { budget: bigint; cost: bigint }; // memory at the last chain "not ready" forced bond verdict
+  hold?: string; // the manual hold reason (coins.held_reason), separate from finalize "held" (Pitfall 13)
 };
 
 const SENDER_TIMEOUT_MS = 10_000;
-const DEFAULT_CU = 400_000;
+export const DEFAULT_CU = 400_000;
 
 // ponytail: per-process flag while the worker runs one replica (D-07). Set from each landed meta and the
 // boot balance read, so the floor costs no extra RPC call while ops is above it.
@@ -157,10 +162,12 @@ export async function urgentBroadcast(
 
 const what = (job: Job) => job.rows.map((r) => `${r.kind} ${r.mint?.slice(0, 8) ?? "platform"}`).join(", ");
 
-// Each row's SOL value at landing, from the BONDR price in memory (D-04); unknown price leaves sol unset.
+// Each row's SOL value at landing, from the BONDR price in memory (D-04); unknown price leaves sol unset. A row
+// built with its own sol keeps it: facts apply per kind, so one row's value would overwrite its siblings'.
 export function withSol(job: Pick<Job, "rows">, facts: Facts, bondrSol: number | null): Facts {
   const out: Facts = { ...facts };
   for (const r of job.rows) {
+    if (r.sol !== undefined) continue;
     const f = { ...out[r.kind] };
     const amount = f.amount ?? r.amount;
     if (f.sol === undefined && amount !== undefined && bondrSol !== null) f.sol = toSol(amount, bondrSol);
@@ -216,6 +223,11 @@ export async function metaOf(conn: Connection, sig: string): Promise<Awaited<Ret
   return undefined;
 }
 
+// One tx can carry rows for several coins (EVACUATE, the leftover sweep); each coin hears only its own.
+export function publishByMint(d: Pick<FeeDeps, "publish">, rows: Entry[]): void {
+  for (const [mint, list] of Map.groupBy(rows, (r) => r.mint)) d.publish(mint, list);
+}
+
 async function landed(d: FeeDeps, job: Job, sig: string): Promise<Landed> {
   const tx = await metaOf(d.conn, sig);
   if (!tx) {
@@ -225,7 +237,7 @@ async function landed(d: FeeDeps, job: Job, sig: string): Promise<Landed> {
   const facts = withSol(job, job.facts?.(tx.meta) ?? {}, d.bondrSol());
   const rows = await d.ledger.settle(sig, "landed", { facts, slot: BigInt(tx.slot) });
   noteOps(tx.meta.postBalances[0] ?? 0);
-  if (rows.length) d.publish(rows[0]?.mint ?? null, rows);
+  publishByMint(d, rows);
   return { state: "landed", sig, rows, meta: tx.meta };
 }
 

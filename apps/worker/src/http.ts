@@ -32,8 +32,27 @@ const STATUS: Partial<Record<LaunchErrorCode, number>> = {
   cosign_refused: 422,
   slippage: 409,
   message_changed: 422,
+  forbidden: 403,
+  blocked: 403,
+  intent_expired: 410,
+  intent_used: 409,
+  bad_intent_signature: 403,
+  not_applicable: 409,
+  simulation_failed: 422,
+  destination_refused: 422,
+  rpc_failed: 503,
 };
 export const fail = (body: ApiError): Fail => new Fail(STATUS[body.error] ?? 500, body);
+
+// A handler returns this to answer with another success status (admin execute answers 202 and sends after).
+export class Reply {
+  readonly status: number;
+  readonly body: unknown;
+  constructor(status: number, body: unknown) {
+    this.status = status;
+    this.body = body;
+  }
+}
 
 export type Handler = (body: unknown) => Promise<unknown>;
 export type Routes = Record<string, Handler>; // keyed "METHOD /path"
@@ -88,7 +107,9 @@ async function handle(
     const route = routes[key];
     if (!route) return send(res, 404, { error: "not_found" });
     const body = req.method === "POST" ? await readJson(req) : undefined;
-    send(res, 200, await route(body));
+    const out = await route(body);
+    if (out instanceof Reply) return send(res, out.status, out.body);
+    send(res, 200, out);
   } catch (e) {
     if (e instanceof Fail) return send(res, e.status, e.body);
     console.error(`${key} failed: ${redact(e instanceof Error ? e.message : String(e))}`);

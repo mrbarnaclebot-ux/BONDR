@@ -60,6 +60,17 @@ const FAULTS: Record<Code, Fault> = {
   invalid_input: BUILD_FAILED,
   slippage: BUILD_FAILED, // trade codes; a launch never gets them
   message_changed: BUILD_FAILED,
+  // D-30: a fixed line with no action; the owner's reason never reaches the deployer.
+  blocked: { text: "This wallet cannot launch coins on BONDR.", action: null },
+  // Admin codes; a launch never gets them.
+  forbidden: BUILD_FAILED,
+  intent_expired: BUILD_FAILED,
+  intent_used: BUILD_FAILED,
+  bad_intent_signature: BUILD_FAILED,
+  not_applicable: BUILD_FAILED,
+  simulation_failed: BUILD_FAILED,
+  destination_refused: BUILD_FAILED,
+  rpc_failed: BUILD_FAILED,
   rejected: {
     text: "Phantom rejected the request. Nothing was sent and no SOL left your wallet. Your mint address stays reserved for 10 minutes.",
     action: "Try again",

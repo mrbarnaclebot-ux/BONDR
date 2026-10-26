@@ -12,8 +12,14 @@ export function scrub<T>(value: T): T {
 }
 
 // FEE-10: names the web process must never hold. Web needs no seed and no seed path, the Helius key stays in
-// the worker, and the Sentry token and staging URL are owner tooling only.
-const NAMES = new Set(["MASTER_SEED_FILE", "helius_api_key", "sentry_auth_token", "DATABASE_URL_STAGING"]);
+// the worker, and the Sentry tokens and staging URL are owner tooling only (the read token is worker-only, D-27).
+const NAMES = new Set([
+  "MASTER_SEED_FILE",
+  "helius_api_key",
+  "sentry_auth_token",
+  "DATABASE_URL_STAGING",
+  "SENTRY_READ_TOKEN",
+]);
 
 export function forbiddenEnv(env: Record<string, string | undefined>): string[] {
   return Object.keys(env).filter((name) => env[name] && (name.endsWith("_SEED") || NAMES.has(name)));

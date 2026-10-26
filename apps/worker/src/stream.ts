@@ -5,6 +5,7 @@
 import type { Net } from "@bondr/core/keys";
 import { redact, wsUrl } from "@bondr/core/net";
 import type { Connection } from "@solana/web3.js";
+import { mark } from "./health.ts";
 import { gapFillAll, ingestOrKeep, lastSigs, type Marks, retryFailed } from "./ingest.ts";
 import type { Ctx } from "./status.ts";
 
@@ -138,6 +139,7 @@ export function startStream(ctx: Ctx, net: Net, attempt = 0): void {
     );
   ws.onmessage = (m) => {
     l.seen = Date.now();
+    mark("stream");
     if (!onMessage(ctx.conn, m.data)) dead("subscription refused");
   };
   // An error is always followed by close, which reconnects.

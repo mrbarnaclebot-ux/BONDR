@@ -1,5 +1,5 @@
 // Worker config. Fails at boot on anything missing or malformed, so a bad deploy never serves.
-// Never log the seed, the token or the RPC URL.
+// Never log the seed, the tokens, the admin wallet or the RPC URL.
 import { derive, readSeed } from "@bondr/core/keys";
 import { PublicKey } from "@solana/web3.js";
 
@@ -47,6 +47,34 @@ function feeEngine(raw: string | undefined): "off" | "dry" | "on" {
   return v;
 }
 
+// D-08: an unset or invalid ADMIN_WALLET closes every /admin route instead of failing boot (ship dark).
+function adminWallet(raw: string | undefined): string | null {
+  const v = raw?.trim() ?? "";
+  try {
+    return new PublicKey(v).toBase58() === v ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+// WR-B-03: the site origin the intent text names, as the web's admin sign-in does. Unset or invalid refuses
+// simulate and execute (admin-routes.ts) instead of failing boot, like ADMIN_WALLET.
+function siteOrigin(raw: string | undefined): string | null {
+  try {
+    return new URL(raw?.trim() ?? "").origin;
+  } catch {
+    return null;
+  }
+}
+
+// A2: EVACUATE only simulates unless set to on, and on is devnet only until the mainnet runbook flips it (D-37).
+function adminEvacuate(raw: string | undefined, net: string): "simulate" | "on" {
+  const v = raw?.trim() || "simulate";
+  if (v !== "simulate" && v !== "on") throw new Error("ADMIN_EVACUATE must be simulate or on");
+  if (v === "on" && net !== "devnet") throw new Error("ADMIN_EVACUATE=on is devnet only");
+  return v;
+}
+
 function batchHour(raw: string | undefined): number {
   const n = count("FEE_BATCH_HOUR_UTC", raw, 4);
   if (n > 23) throw new Error("FEE_BATCH_HOUR_UTC must be 0-23");
@@ -76,6 +104,10 @@ export function loadEnv(env: Env = process.env) {
     feeEngine: feeEngine(env.FEE_ENGINE),
     feeWindowMs: atLeast("FEE_WINDOW_MS", env.FEE_WINDOW_MS, 86_400_000, 60_000),
     feeBatchHourUtc: batchHour(env.FEE_BATCH_HOUR_UTC),
+    adminWallet: adminWallet(env.ADMIN_WALLET),
+    siteUrl: siteOrigin(env.SITE_URL),
+    adminEvacuate: adminEvacuate(env.ADMIN_EVACUATE, net),
+    sentryReadToken: env.SENTRY_READ_TOKEN?.trim() || null,
   };
 }
 

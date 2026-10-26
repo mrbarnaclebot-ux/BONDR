@@ -4,7 +4,7 @@
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
 import { finalizeJob, preflight } from "./fee-finalize.ts";
-import { memoryLedger } from "./fee-ledger.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 import { feeRoutes } from "./fee-routes.ts";
 import type { FeeCoin, FeeDeps, Job, Landed } from "./fee-send.ts";
 

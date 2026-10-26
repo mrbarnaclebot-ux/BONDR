@@ -3,10 +3,11 @@
 The worker: the only process that holds the seed, signs, and reads the chain. Web calls it over a private bearer-token HTTP API.
 
 - `main.ts`: entry; config, one RPC connection, the route table, index boot and the stream.
-- `env.ts`: `loadEnv` (fails at boot on bad config, devnet only; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`), `ops`, `treasury` and the per-lane `buyback` keys.
-- `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Routes` keyed "METHOD /path".
+- `env.ts`: `loadEnv` (fails at boot on bad config, devnet only; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`, `ADMIN_WALLET` (invalid is null), `ADMIN_EVACUATE`, `SENTRY_READ_TOKEN`), `ops`, `treasury` and the per-lane `buyback` keys.
+- `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Reply` for a non-200 success, `Routes` keyed "METHOD /path".
 - `sentry.ts`: OPS-01 Sentry init with the shared scrub; imported first by main.ts.
-- `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache), the in-memory kill switch, `Ctx`, `MAX_SOL_IN`.
+- `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache), POST /kill-switch (through switches.ts, audited as `runbook`, refuses re-enable after EVACUATE), `Ctx`, `MAX_SOL_IN`.
+- `switches.ts`: the owner's five switches (D-18) in memory: `loadSwitches` (one settings read at boot; a missing row is all off), `switchOn`, `switchState`, `setJob` (DB first, then memory), `pauseAll` (EVACUATE: every switch off and `evacuated_at` in one write, then memory). No timer reads.
 - `prepare.ts`: POST /prepare, the unsigned launch tx behind every cheap guard; `walletOf`.
 - `build.ts`: prepare's chain steps (table keys, per-coin table, compiled message, simulation).
 - `submit.ts`: POST /submit, co-sign after the byte compare, then send.
@@ -23,10 +24,19 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `trade-state.ts`: quote state caches, one chain read per mint per 2 s and the fee configs per 60 s.
 - `trade-quote.ts`: POST /trade/quote (`parseTrade`, `quoteTrade`, devnet `maxSolIn`) and POST /trade/balance (`tradeBalance`).
 - `trade-store.ts`: prepared trades in memory (exact message bytes, state), 120 s TTL, 5,000 cap.
+- `admin-intent.ts`: owner intents in memory (D-12): the worker-written text the owner signs, single-use `take` verified against ADMIN_WALLET, 2 min expiry, kept 10 min after execute for the poll, 200 cap.
+- `admin-dest.ts`: pure destination lock (D-14): `allowFor` builds the allowlist (owners and their ATAs under both token programs), `refusedDestination` names the first top-level outflow outside it, `passedLines` feeds the dialog copy.
+- `admin-leftover.ts`: leftover recovery jobs through `d.land` (D-16, D-17): `leftoverBurnJob` (W child burn, `leftover_burn` row, also run by finalize), `closeAccountsJob` (W's empty ATAs closed to the treasury, no row), `sweepLeftoversJob` (sweep at the free window index, burn, close).
+- `admin-sim.ts`: simulate-first capture (D-12): `captureDeps` (land simulates each built tx with the watched accounts, dry mode, read-only ledger, no publish), `simulateJob`, `balanceRows` and `simSummary` (first step authoritative, later ones estimated).
+- `admin-actions.ts`: the recovery action registry (D-15, D-16): `ACTIONS` (applies, allow, watch, run per transaction action), `actionView` (the live coin plus one chain read) and `runOn` (the coin's engine queue, "platform" for burn_buyback, direct with the engine off).
+- `admin-money.ts`: the money path (ADMIN-01, ADMIN-04, ADMIN-10): `simulateAction` (capture run, destination check, intent; evacuate goes to admin-evacuate.ts), `executeAction` (owner signature via `take`, pending audit row first, background send through `gatedDeps`, never resent), `intentView`, `adminBase` (mode on in every engine mode, A1).
+- `admin-send.ts`: the send-side pieces every money action shares: `gatedDeps` (land re-checks each tx's destinations), `codeOf` (contract error code only), `progress`, `outcome` (what the audit settles to), `logged`.
+- `admin-evacuate.ts`: EVACUATE (ADMIN-11, D-35, D-36): `evacuateBalances` (W, its BONDR and child accounts, 100 per read), `packBatches` (greedy, under `PACKET_LIMIT`), `buildBatch` (BONDR and SOL to the treasury, child burned, own amount and sol per row), `simulateEvacuate` (8 batch simulations in flight, totals, intent only when ADMIN_EVACUATE is on and devnet), `executeEvacuate` (`pauseAll` first, then per batch idle, fresh balances, gated land, pacing).
 - `trade-prepare.ts`: `prepareTrade`, the unsigned simulated and budgeted trade tx (`cuLimitFor`, `priorityMicroLamports`, devnet buy cap).
 - `trade-submit.ts`: POST /trade/submit (`submitTrade`: byte compare against the stored message, one paced send, background settle with the landed amount) and POST /trade/view (`viewTrade`).
 - `fee-config.ts`: per-network fee engine settings (`feeConfig`: collect minimum, pacing, creator bps), `OPS_FLOOR_LAMPORTS`, the Helius Sender URL and tip accounts.
-- `fee-ledger.ts`: `LedgerStore` (with `implied` for the reconcile), `pgLedger` (fee_ledger rows; landing moves the coin fee columns in the same transaction) and `memoryLedger` (same unique rules, for units and the fork stage).
+- `fee-ledger.ts`: `LedgerStore` (with `implied` for the reconcile), `pgLedger` (fee_ledger rows; landing moves the coin fee columns in the same transaction) and `factsOf`.
+- `fee-ledger-memory.ts`: `memoryLedger`, the in-memory `LedgerStore` with the same unique rules (signature keys include the mint, 0007), for units and the fork stage.
 - `fee-send.ts`: `land`, the one fee send path (sign, record pending, broadcast, settle), the ops floor (`opsLow`, `noteOps`, `refreshOps`), the mainnet-only Sender path (`tipIxs`, `urgentBroadcast`), `factsFor` (each kind's landed amount from its meta, shared with recovery) and `metaOf`; `FeeDeps`, `Job`, `FeeCoin`.
 - `fee-prebond.ts`: `collectJob`, `splitJob` and `sweepJob` (collect, 90/10 split, sweep), `wBondr`.
 - `fee-guard.ts`: `spend`, the guard every balance-sized send passes (settles the coin's pending collect, split and bond burn rows from chain, splits open collects, defers while any stays pending), and `windowJob`.
@@ -36,5 +46,16 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `fee-reconcile.ts`: `reconcile` (each W's and the buyback's ledger-implied BONDR against the chain, 100 accounts per read; a difference writes a reconcile_diff row and a Sentry error, never moves funds), `impliedOf`, `pgImplied`.
 - `fee-routes.ts`: `feeRoutes`, the bearer POST /fee/release (the owner names a held coin's deployer; one finalize runs with it) and POST /fee/batch (runs the batch now).
 - `fee-recover.ts`: `recover`, the boot settle of every pending fee row from chain status (never a resend) and the split of every open collect; `settleRows` (the same settle at runtime), `settleStale` (the daily batch's settle of rows past their blockhash), `recoverAction`.
-- `fee-engine.ts`: `startEngine` (one boot read, recover, then arm), the `Engine` (per-coin serial queue, window timers from launch, ready gate), `onIngest` (forced bond trigger per curve patch, bonded job on venue pool) and `withCost` (cost to complete on every curve patch). One worker replica only (D-07).
+- `fee-engine.ts`: the `Engine` (per-coin serial queue, window timers from launch, ready gate, forced bond trigger per curve patch, bonded job on venue pool) and `coinFrom`; the admin controls `exclusive` (a result-returning run on a coin's queue in every mode), `idle`, `setHold` (the manual hold, never finalize), `memory` and `stuckCount`. One worker replica only (D-07).
+- `fee-stuck.ts`: stuck-step bookkeeping since boot: `STUCK_AT`, `stepOf` (step from the job label), `verdict` (failed or landed result), `codeOf` (short redacted error code).
+- `fee-boot.ts`: `startEngine` (one boot read, recover, then arm), the engine singleton (`feeEngine`, `onIngest`), `feeDeps`, `loadCoin` (one coin for the engine-off admin path), `loadFeeCoins` (every coin of this seed, for EVACUATE) and `withCost` (cost to complete on every curve patch).
+- `health.ts`: memory-only health facts (D-26): `bootAt`, `instance`, `mark`/`marks` (the stream's last message and each fee job's last run since boot) and `healthSnapshot`, the POST /admin/health answer (never a database read, D-22).
+- `admin-routes.ts`: `adminRoutes`, every owner console route, each wrapped once by `gated` (403 unless ADMIN_WALLET is set and body.actor matches it); POST /admin/health, /admin/switch, /admin/act, /admin/overview, /admin/coin-live, /admin/simulate, /admin/execute (202), /admin/intent, /admin/inspect (400 invalid_input for a non-signature, 503 rpc_failed) and /admin/moderate.
+- `admin-audit.ts`: the one admin audit writer (D-33, D-34): `pgAudit` and `memoryAudit` with `insertPending` (money actions, before any send), `settle` (guarded update, once) and `insertLanded` (session-only actions). A failed write logs its SQLSTATE only.
+- `admin-act.ts`: session-only actions (D-13), each audited before the change: `switchRoute` (`setJob`), `act` hold, release hold (also resets a finalize-held coin to none) and re-check launch (one status read, then settle's `landed`).
+- `admin-moderate.ts`: moderation (ADMIN-07, D-29, D-30): `moderate` (hide and unhide by symbol or mint, block and unblock a deployer, each one landed audit row before the change; refusals are reason codes), `modReq` (the route body), `pgMod` / `memoryMod`, and `blocked` (prepare's one read).
+- `admin-inspect.ts`: the transaction inspector (ADMIN-09, D-32): `inspect` (one getTransaction, RPC only; status, slot, labelled fee payer, each top-level instruction decoded by `decodeIx` through web3.js, spl-token and the pinned SDK coders, the error through trade-error.ts, a Solscan link) and `knownKeys` (ops, treasury, buyback and every engine coin's W).
+- `admin-overview.ts`: `overview` (treasury, buyback, ops and their BONDR in one getMultipleAccountsInfo, plus engine memory per coin) and `coinLive` (the selected coin's W, W BONDR and W child in one call, its memory and window).
+- `rpc-stats.ts`: `timedFetch` (the worker Connection's fetch) keeps the last hour of RPC calls in memory, 50,000 cap; `rpcStats` gives p50, p95, error rate and 429s.
+- `sentry-count.ts`: `sentryCount`, open issues for bondr-web and bondr-worker from the Sentry API with SENTRY_READ_TOKEN, cached 60 s, no request without a token.
 - `*.test.ts`: vitest checks; DB-backed ones skip without DATABASE_URL.

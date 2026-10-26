@@ -1,5 +1,6 @@
 // Fork stages in run order: the Surfpool mainnet fork covers what devnet cannot (D-01), like 150 bps.
 import type { Stage } from "../results.ts";
+import { adminStage } from "../stages/admin.ts";
 import { bondStage } from "../stages/bond.ts";
 import { completeStage } from "../stages/complete.ts";
 import { configStage } from "../stages/config.ts";
@@ -26,6 +27,8 @@ const stages: Stage[] = [
   engineBondStage,
   // E2 on its pool: post-bond trades, then the engine's finalizeJob (pre-flight, config, 8000/2000, closing sweep).
   engineFinalStage,
+  // Fresh child AD on the curve Q: the five post-bond recovery actions through the worker's admin money path.
+  adminStage,
   // Q still on its curve, C2 on its PumpSwap pool: SOL -> Q curve -> C2 pool.
   multihopStage("C2", "bonded."),
   completeStage,

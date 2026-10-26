@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 5 complete (13/13) — ready to discuss Phase 6
-last_updated: 2026-10-25T09:41:29.804Z
-last_activity: 2026-10-25
+status: verifying
+stopped_at: Completed 06-26-PLAN.md
+last_updated: "2026-10-26T05:49:46.587Z"
+last_activity: 2026-10-26 -- Completed 06-26 (Phase 6 on staging dark)
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 69
-  completed_plans: 69
-  percent: 71
+  completed_phases: 6
+  total_plans: 95
+  completed_plans: 95
+  percent: 86
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-25
+Plan: 26 of 26 (06-26 complete)
+Status: Phase complete — ready for verification
+Last activity: 2026-10-26 -- Completed 06-26 (staging web 9a7f2884 with 0007, worker 1a9b6aa9, admin closed)
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 26
+- Total plans completed: 27
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -107,6 +107,27 @@ Progress: [██████████] 100%
 | Phase 05 P08 | 25 min | 3 tasks | 23 files |
 | Phase 05 P09 | 35 min | 3 tasks | 18 files |
 | Phase 05 P12 | 31 min | 3 tasks | 21 files |
+| Phase 06 P01 | 25 min | 2 tasks | 16 files |
+| Phase 06 P02 | 15 min | 2 tasks | 13 files |
+| Phase 06 P03 | 20 min | 3 tasks | 8 files |
+| Phase 06 P04 | 12 min | 2 tasks | 18 files |
+| Phase 06 P05 | 10 min | 2 tasks | 5 files |
+| Phase 06 P07 | 9 min | 2 tasks | 12 files |
+| Phase 06 P08 | 13 min | 3 tasks | 16 files |
+| Phase 06 P09 | 25 min | 2 tasks | 12 files |
+| Phase 06 P10 | 22 min | 3 tasks | 15 files |
+| Phase 06 P11 | 19 min | 2 tasks | 9 files |
+| Phase 06 P12 | 25 min | 2 tasks | 18 files |
+| Phase 06 P13 | 12 min | 2 tasks | 8 files |
+| Phase 06 P14 | 25 min | 2 tasks | 12 files |
+| Phase 06 P15 | 35 min | 1 tasks | 8 files |
+| Phase 06 P19 | 25 min | 2 tasks | 11 files |
+| Phase 06 P18 | 23 min | 2 tasks | 16 files |
+| Phase 06 P22 | 14 min | 2 tasks | 13 files |
+| Phase 06 P23 | 25 min | 2 tasks | 10 files |
+| Phase 06 P24 | 23 min | 2 tasks | 6 files |
+| Phase 06 P25 | 45 min | 2 tasks | 15 files |
+| Phase 06 P26 | 30 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -242,11 +263,92 @@ Recent decisions affecting current work:
 - [Phase 05]: 05-08: bondedJob with a live bond burn goes straight to finalizeJob so a restart between the two finalize txs resumes; POST /fee/release skips the launch-tx fetch and re-runs only the distinct and on-curve checks
 - [Phase 05]: 05-12: the devnet e2e picks the derived-W curve coin whose window closes soonest but at least 4 minutes out
 - [Phase 05]: 05-12: the batch check asserts no new coin or platform reconcile_diff right after the buyback burn
+- [Phase 06]: 06-01: admin_audit.mint has no foreign key; hide, hold and block reasons are 1 to 120 characters by CHECK
+- [Phase 06]: 06-01: the D-33 transition guard is the admin_audit_guard trigger (no DELETE; one UPDATE from pending to a final result with actor, action, at, mint, params, simulation and intent_sig unchanged), hand-written in migration 0007
+- [Phase 06]: 06-01: the manual hold is coins.held_at and held_reason, separate from finalize = 'held' (A4)
+- [Phase 06]: 06-01: fee_ledger_sig_kind is unique on (signature, kind, coalesce(mint, '')); the worker memoryLedger.keysOf must mirror it
+- [Phase 06]: 06-01: ADMIN-01/05/07/10/11 stay pending until the plans that ship them; until 06-03, Playwright runs add --grep-invert admin-signin
+- [Phase 06]: 06-02: leftover_burn adds only bond_burned; evacuate uses the sweep_treasury totals shape
+- [Phase 06]: 06-02: admin error statuses: forbidden, blocked, bad_intent_signature 403; intent_used, not_applicable 409; intent_expired 410; simulation_failed, destination_refused 422
+- [Phase 06]: 06-02: ADMIN-01/03/04/06/10/11 contracts only, not marked complete; the worker reconcile and send kind lists learn evacuate and leftover_burn in the plans that write those rows
+- [Phase 06]: 06-03: admin nonces reuse issueNonce and are spent in consent_nonces; the first message line 'BONDR admin sign-in' is the domain separation (D-09)
+- [Phase 06]: 06-03: verify refuses a non-admin wallet with 403 not_admin before the signature check (no nonce spend, no cookie)
+- [Phase 06]: 06-03: panels reach the session through useAdmin() (wallet, exp, onUnauthorized) from AdminConsole's context; ops register in OPS in api/admin/[op]/route.ts with the actor from the cookie
+- [Phase 06]: 06-04: memoryLedger lives in fee-ledger-memory.ts (not re-exported); its signature keys include the mint like the 0007 index
+- [Phase 06]: 06-04: rows built with their own sol keep it; withSol only fills rows without one
+- [Phase 06]: 06-04: landed rows publish per mint via publishByMint in send and recovery; Facts stay keyed by kind (one value per kind per tx)
+- [Phase 06]: 06-04: reconcile counts evacuate as a W outflow; leftover_burn is not a BONDR move
+- [Phase 06]: 06-05: putIntent writes the intent message itself; take sets used, state sending and the retention clock in one synchronous step; viewIntent is null before execute
+- [Phase 06]: 06-05: admin-dest refuses any token instruction other than Transfer, TransferChecked, Burn, BurnChecked and CloseAccount, plus ATA RecoverNested; TransferWithSeed is checked like Transfer
+- [Phase 06]: 06-05: passedLines derives lines from owner names (Deployer, Treasury, Buyback) and answers burn only when none apply
+- [Phase 06]: 06-06: stuck counts per step since boot (STUCK_AT 3); a different step failing starts at 1, any landed result clears the coin
+- [Phase 06]: 06-06: Engine.exclusive(mint, fn, what?) takes an optional label so a failed admin retry counts against the automatic step; default label is admin
+- [Phase 06]: 06-06: engine jobs and the batch distribute and bonded jobs return their Landed so the queue sees failed or landed steps; stuck helpers live in fee-stuck.ts
+- [Phase 06]: 06-07: a fee job stamps its last-run mark only after its gate passes, so a paused job's last run goes stale
+- [Phase 06]: 06-07: liveStatus(fresh) re-reads the whole settings row through loadSwitches, so SQL-written switches reach fee jobs at the next prepare or submit
+- [Phase 06]: 06-07: bondedJob checks the forcedBond switch before its urgent collect (a paused pool burn sends nothing)
+- [Phase 06]: 06-07: POST /fee/release uses engine deps, so it obeys the finalize switch and manual hold; admin release must use admin deps
+- [Phase 06]: 06-08: adminRoutes wraps its whole route map with gated in one place; later plans only add POST /admin keys to it
+- [Phase 06]: 06-08: lastEngine is the newest job mark; the unused engine mark was removed
+- [Phase 06]: 06-08: Engine.stuckCount() returns the AdminHealth stuck shape ({ mint, step, attempts })
+- [Phase 06]: 06-08: the Sentry read aborts after 5 s so a slow Sentry cannot hold the health poll
+- [Phase 06]: 06-09: LedgerStore.has takes an optional windowIndex; the leftover sweep picks the lowest free index at or after the current window (A9)
+- [Phase 06]: 06-09: finalize's checkEmpty burns leftover child tokens through leftoverBurnJob and returns its Landed into finalizeJob's output; leftover BONDR stays an error for Sweep leftovers
+- [Phase 06]: 06-09: insertPending([]) returns [] in both stores without touching the database, so row-less admin jobs (close accounts, Run migrate) send through land
+- [Phase 06]: 06-10: session-only admin actions validate, run read-only checks, write one landed audit row, then change state; a failed audit write stops the action
+- [Phase 06]: 06-10: re-check with no in-flight launch records { outcome: not_applicable } and answers 409 not_applicable, so every re-check is in the log
+- [Phase 06]: 06-10: coinLive with the engine on reads only engine memory (an unknown mint is not_found); with the engine off it loads the one coin
+- [Phase 06]: 06-11 (Claude's discretion, owner may override; OQ1, A6): multi-step simulations make the first step authoritative; later steps are estimated and re-checked by the RPC preflight when sent
+- [Phase 06]: 06-11: finalize_split allows treasury, buyback (closing sweep) and only the deployer = coin.wallet (D-15); captureDeps wraps the ledger read-only
+- [Phase 06]: 06-12: overviewData(actor) is the console's one Postgres load (page render, Refresh, reload after an action); the only timer is the 10 s memory-only health poll, mounted inside the signed-in Grid
+- [Phase 06]: 06-12: a failed page load renders the console with emptyOverview() (loadedAt 0) so panels show failed states and Refresh retries
+- [Phase 06]: 06-12: write the 1100px breakpoint as min-[68.75rem]; Tailwind v4 orders min-[1100px] before md (48rem) so md wins
+- [Phase 06]: 06-13: A1 (Claude's discretion, owner may override): admin money actions run on adminBase (mode on, pg ledger) in every engine mode; the engine flag governs automation only
+- [Phase 06]: 06-13: execute = take (owner signature in the worker) -> pending audit row -> applies re-check (refused settles the row, 409) -> 202, then one background run through gatedDeps on the coin queue; unknown settles failed "unconfirmed" and is never resent
+- [Phase 06]: 06-14: switch values come from the health poll only (the worker overview has no switches); rows read Unknown and are disabled until the first poll lands
+- [Phase 06]: 06-14: the audit page sends only the params keys the copy reads (job, enabled, wallet, wallets); hold reasons and intent ids stay server-side
+- [Phase 06]: 06-14: AuditLog remounts on overview.loadedAt, so any reload drops older pages; AdminOverview gains net for Solscan links
+- [Phase 06]: 06-15: the fork admin stage drives simulateAction/executeAction with a one-coin engine stub (no Postgres), memoryAudit and ctx.key("sim", "admin"); it plays the indexer between actions (venue, finalize done)
+- [Phase 06]: 06-15: Retry forced bond on the fork runs as one tx (feesUnclaimed 0, feeBudget = TOP-UP) so simulated equals landed exactly; all five admin.* rows pass with 0 base units off
+- [Phase 06]: 06-19: moderation audits before the change, so block/unblock read isBlocked first; block still inserts on conflict do nothing returning as the race guard
+- [Phase 06]: 06-19: unhide/unblock of nothing answer no_match; an exact mint beats symbol matches; the route caps strings at 200 (400), reasons over 120 answer no_reason
+- [Phase 06]: 06-19: coinRows ANDs isNull(coins.hiddenAt); coinRow and the web admin W table query stay unfiltered; prepare refuses blocked wallets (403) inside the existing admission Promise.all
+- [Phase 06]: 06-16: WRow gains bondrSol so the burn budget shows SOL (D-07); a budget with no stored price reads a muted dash
+- [Phase 06]: 06-16: after any overview load the selection is kept while its coin is listed, else it falls back to the first stuck coin (or none)
+- [Phase 06]: 06-16: stuck step names follow the engine's job labels (finalize, forced bond, sweep, distribute, bonded); the danger Tag text is destructive lifted 15% toward foreground for contrast on the selected row
+- [Phase 06]: 06-17: coinTimeline is server-only in admin-timeline-data.ts; timelineSteps stays pure in admin-timeline.ts so the client builds steps with its own clock
+- [Phase 06]: 06-17: the coin op runs once per pick and once per overview load (Refresh or the reload after an action), never on a timer; live is null when the worker does not answer
+- [Phase 06]: 06-17: hold and release toggle on the held flag (exactly one applies); the console hold reason is 'Held for review from the console'; an unconfirmed launch shows one next step 'Re-check launch'
+- [Phase 06]: 06-18: the dialog run lives in lib/use-sim.ts (signMessage over intent.message exactly); one AbortController per mount, so a signature that resolves after close or session end is never executed
+- [Phase 06]: 06-18: no wallet connected shows 'Connect Phantom' in the send slot; a wrong signer is left to the worker (403 bad_intent_signature, intent stays usable, back to ready)
+- [Phase 06]: 06-18: a lost execute answer is polled; a missing intent or 90 s without a final state reads 'Sent, not confirmed yet', never 'nothing was sent'
+- [Phase 06]: 06-18: OQ1 note 'Later transactions are simulated again by the RPC before they are sent.' when any step is estimated (Claude's discretion)
+- [Phase 06]: 06-20: the hide status line takes the symbol from overview.rows when the query is a mint; moderation forms use noValidate so an empty reason shows the worker's 'Add a reason.'
+- [Phase 06]: 06-20: AdminOverview.moderation (hidden coins, blocked deployers, newest first) rides in overviewData's one Promise.all; reasons render only in the console, the public launch line never shows one (D-30)
+- [Phase 06]: 06-21: POST /admin/inspect decodes top-level instructions in the worker (web3.js, spl-token, SDK coders built from an offline Connection) and answers labelled strings only; bad signature 400 invalid_input, missing 200 found false, RPC failure 503 rpc_failed (new code)
+- [Phase 06]: 06-21: the inspector labels a W fee payer 'W {SYMBOL}' from the worker's mint or overview.rows' w, so it works with FEE_ENGINE off; Refresh moved to admin-topbar.tsx
+- [Phase 06]: 06-22: A2 as Claude's discretion (owner may override): ADMIN_EVACUATE defaults to simulate; an EVACUATE intent exists only when on and devnet, and executeEvacuate refuses again (409 not_applicable simulate_only / devnet_only) before pausing anything
+- [Phase 06]: 06-22: the EVACUATE gate allowlist is the treasury with BONDR only (stricter than the plan's W-internal and child-mint list, so a child transfer to the treasury can never pass, D-36); every batch starts with an idempotent treasury BONDR ATA create paid by ops
+- [Phase 06]: 06-22: EVACUATE simulate gives an intent when at least one batch passes; failures counts failed batches' wallets; evacuate rows always carry sol (0 when the price is unknown, Pitfall 4)
+- [Phase 06]: 06-22: gatedDeps, codeOf, progress, outcome and logged moved to admin-send.ts (shared by admin-money.ts and admin-evacuate.ts without an import cycle)
+- [Phase 06]: 06-23: EVACUATE simulate-only is health.evacuate !== "on" or no intent; a 409 not_applicable on execute drops the intent (button turns simulate-only), so worker.ts need not pass reason through
+- [Phase 06]: 06-23: EVACUATE shows Connect Phantom before "Sign and evacuate {n} wallets" when Phantom is not connected, as the dialog does; no extra dialog (D-35)
+- [Phase 06]: 06-23: pollIntent's 90 s deadline restarts on each answer and takes an optional onView for EVACUATE progress (W counts)
+- [Phase 06]: 06-24: the devnet EVACUATE proof seeds one dev W (sim dev curve-buys 1 BONDR of the coin, then sends W 1 BONDR and those child tokens) because every dev W was empty; this also proves leftover_burn
+- [Phase 06]: 06-24: EVACUATE on devnet runs only after the spec reads every page of staging /api/coins and finds no dev mint there (Pitfall 12); afterAll restores switches through POST /api/admin/switch, then writes settings directly as a backstop
+- [Phase 06]: 06-24: neonctl 8.10.3 has no endpoints list; the Neon idle check reads branches and endpoints through `neonctl api`
+- [Phase 06]: 06-25: the simulation dialog eyebrow reads "Simulated, then sent" in the sending and done phases (the constant UI-SPEC line was false after a send)
+- [Phase 06]: 06-25: wallet counts singularize through `plural()` in lib/format.ts ("1 wallet")
+- [Phase 06]: 06-25: token page panels use `min-[68.75rem]:p-6`; Tailwind v4 sorts `min-[1100px]` before `md`
+- [Phase 06]: 06-26: staging admin ships closed; ADMIN_WALLET, ADMIN_EVACUATE and SENTRY_READ_TOKEN stay unset until the owner runs HV-06-01 (set ADMIN_WALLET on web and worker together)
+- [Phase 06]: 06-26: HV-05-01 passed on the no-fee path; both staging windows ran unattended and sent nothing because neither coin had creator fees
 
 ### Pending Todos
 
 - Replace the placeholder contact handle in the terms page
-- Phase 5: worker-core review WR-08, `forcedBondIxs` sets minOut to W's whole child balance, so any leftover in W reverts every later forced bond (`packages/core/src/bond.ts:78-88`).
+- WR-08 minOut fixed in a8758e1 (verified in 06-02); leftover burns ship in 06-09 (D-17)
+- Owner, non-blocking: HV-06-01 (staging console sign-in after setting ADMIN_WALLET on web and worker) and HV-06-02 (SENTRY_READ_TOKEN on the staging worker)
+- Before Phase 7 go-live: ingest refuses version 1 transactions (`maxSupportedTransactionVersion: 0`); see 06 deferred-items.md
 
 ### Blockers/Concerns
 
@@ -274,6 +376,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T08:52:22.136Z
-Stopped at: Completed 05-12-PLAN.md
+Last session: 2026-10-26T05:49:46.582Z
+Stopped at: Completed 06-26-PLAN.md
 Resume file: None

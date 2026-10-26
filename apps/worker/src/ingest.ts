@@ -13,7 +13,7 @@ import { type Connection, PublicKey } from "@solana/web3.js";
 import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { arm, type Inserted } from "./announce.ts";
 import { bondr, bondrPrice } from "./bondr-price.ts";
-import { withCost } from "./fee-engine.ts";
+import { withCost } from "./fee-boot.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
 
 export const knownCoins = new Map<string, KnownCoin>();

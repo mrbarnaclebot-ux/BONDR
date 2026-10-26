@@ -35,6 +35,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 | `POST /trade/quote`, `/trade/balance`, `/trade/prepare`, `/trade/submit`, `/trade/view` | bearer WORKER_TOKEN |
 | `POST /fee/release` | bearer WORKER_TOKEN |
 | `POST /fee/batch` | bearer WORKER_TOKEN |
+| `POST /admin/health`, `/admin/switch`, `/admin/act`, `/admin/overview`, `/admin/coin-live` | bearer WORKER_TOKEN and `actor` equal to ADMIN_WALLET |
 
 `POST /prepare` takes a `PrepareRequest` and returns a `PrepareResult` (see `@bondr/core/api`). Errors: 409 `paused`, 403 `consent_required`, 400 `invalid_input`, 503 `pool_empty`, 429 `rate_limited` (30 new tables an hour, worker-wide), 402 `insufficient_balance`, 500 `build_failed`. One prepare runs at a time.
 
@@ -69,6 +70,31 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 ## Env
 
 `SOLANA_NET` (devnet only), `ALLOW_MAINNET`, `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE`, `VANITY_THREADS`, `BONDR_QUOTE_MINT`, `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`, `FEE_ENGINE` (`off` default, `dry`, `on`; anything else refuses to boot), `FEE_WINDOW_MS` (default 86400000, at least 60000), `FEE_BATCH_HOUR_UTC` (0-23, default 4). See the repo-root `.env.example`.
+
+## Owner console
+
+Web forwards the session wallet as `actor`; the worker answers 403 `forbidden` unless it equals ADMIN_WALLET (unset means closed). `POST /admin/switch` takes `{ job, enabled }` and returns the five switches. `POST /admin/act` takes `{ action: "hold" | "release_hold" | "recheck_launch", mint, reason? }` (reason 1 to 120 characters, hold only) and returns `{ outcome }`. `POST /admin/overview` returns the treasury, buyback and ops balances (one account read) with each coin's engine memory; `POST /admin/coin-live` takes `{ mint }` and reads only that coin's W. Re-check is one signature status read: a confirmed launch runs the normal landed path, anything else answers `not_on_chain` and changes nothing; no in-flight launch is 409 `not_applicable`. Release hold on a finalize-held coin also sets finalize back to `none`, so the next batch re-runs the full pre-flight.
+
+Every money intent the owner signs starts with the SIWS-style domain line and `URI:` of SITE_URL's origin, like the web's admin sign-in (WR-B-03). Set SITE_URL on the worker to the web's value; unset, `POST /admin/simulate` and `/admin/execute` answer 403 `forbidden`.
+
+The console's switch, hold, release and re-check actions are audited: one `admin_audit` row each, written pending before the change and settled after it. The bearer `POST /kill-switch` stays for the runbook and `paused.e2e.ts`: it is audited with actor `runbook` and answers 409 `not_applicable` (reason `evacuated`) to a re-enable while `evacuated_at` is set, so only the console turns launches back on after EVACUATE. The bearer `POST /fee/release` is not audited (OQ6).
+
+### EVACUATE
+
+The break-glass path for a leaked master seed (ADMIN-11, D-35 to D-37). Use it only when the seed, or any W key derived from it, may be in someone else's hands: it drains every coin's W at once and stops all automation.
+
+- **Preview first.** `POST /admin/simulate` with `{ action: "evacuate", mint: null }` reads every W and its BONDR and child accounts (100 accounts per read), packs several W per transaction under the 1232-byte limit, simulates the batches 8 at a time and returns totals: wallets, BONDR and its SOL value, SOL, wallets with child tokens to burn, failures. W's BONDR and SOL go to the treasury; child tokens are burned, never moved (D-36).
+- **Execute needs `ADMIN_EVACUATE=on`.** The default `simulate` previews only and never creates an intent. `on` is refused at boot on any net but devnet, and the execute loop refuses again (409 `not_applicable`, reason `simulate_only` or `devnet_only`). Mainnet stays refused until the Phase 7 runbook flips it (A2).
+- **Same money path.** The owner signs the intent (D-12); the worker writes one pending `admin_audit` row (`action evacuate`, `params.wallets`) before anything is sent and settles it once with every signature.
+- **Everything pauses first.** Before the first transfer the worker switches every job off, launches included, and stamps `settings.evacuated_at` in one write. Then each batch waits for its coins' queued engine jobs, re-reads its balances and sends through the gated land (treasury and burn only), paced like the engine. Each W writes a public `evacuate` row with its own amount and SOL value, and a `leftover_burn` row when it held child tokens. A failed batch leaves later W to go; an unknown one is never resent.
+- **Afterwards.** Every switch stays off until the owner turns each back on, one at a time, from the console. W's emptied token accounts stay open with their rent. Rotating the master seed is a separate Phase 7 runbook; EVACUATE does not rotate anything.
+- **Local admin devnet run.** `apps/web/e2e/admin-devnet.e2e.ts` (Sweep now, Burn buyback now, Re-check launch and EVACUATE on dev coins) needs this worker, started by hand from the repo root. It prints only the public test admin address; `--env-file` never overrides variables already set:
+
+  ```sh
+  ADMIN_WALLET=$(node --input-type=module -e "import { seedAccount } from './apps/web/e2e/keys.ts'; console.log(seedAccount('admin:devnet:e2e').address)") ADMIN_EVACUATE=on FEE_ENGINE=off VANITY_THREADS=0 WORKER_PORT=8080 node --env-file=.env apps/worker/src/main.ts
+  ```
+
+  Check the boot log's switches line and `http://127.0.0.1:8080/healthz`, then run `E2E_DEVNET_ADMIN=1 pnpm exec playwright test --project=devnet-admin --no-deps --reporter=line` alone, never with `E2E_DEVNET=1` (Playwright starts web with the same ADMIN_WALLET). Its afterAll restores the switches and `settings.evacuated_at` it found before the run. Stop the worker with Ctrl-C afterwards: local and staging share the devnet ops wallet (Pitfall 12).
 
 ## Fee engine
 
@@ -112,3 +138,6 @@ Railway project `bondr`, environment `staging`, services `web` (public: https://
 - Deleting a variable does not redeploy: run `railway service redeploy --service <name> --environment staging --yes`.
 - Trade routes (Phase 4) need no new variable (`PRIORITY_FEE_MICROLAMPORTS` keeps its default) and no migration. Prepared and in-flight trades live in the worker's memory (D-07, no Postgres in the trade path), so run exactly one worker replica: a second one would 404 a submit or poll its sibling prepared.
 - Staging coins are all devnet test coins. The lists show every coins row and filter none of them (RESEARCH Open Question 4).
+- **Phase 6, migration 0007 (2026-10-26, 06-26).** Web deployed first (9a7f2884, 05:26:27 to 05:28:44 UTC): its pre-deploy printed `migrations applied`, and a read-only count shows 8 rows in `drizzle.__drizzle_migrations` with 0007_admin's stamp last, every settings switch true and `evacuated_at` null. The Phase 5 worker kept running on the additive schema. Then the worker (1a9b6aa9, 05:29:28 to 05:30:56): `worker listening on devnet`, `switches: launches=on forcedBond=on sweeps=on finalize=on buybackBurn=on`, `fee engine on: 2 coins armed`, `stream subscribed`.
+- **Staging admin is closed.** ADMIN_WALLET is unset on both services, so /admin shows "Admin is not configured" and every /api/admin call fails closed (`admin-locked.e2e.ts`). To open it, set ADMIN_WALLET on web and worker together, to the same address, and SITE_URL on the worker to the web's public origin (on web alone, every console call reaches the worker and answers 403 `forbidden`). Leave ADMIN_EVACUATE unset: EVACUATE then only simulates. SENTRY_READ_TOKEN (worker) is optional; without it the Health panel's Sentry cell reads Not configured.
+- **Devnet v1 transactions.** Since 2026-10-25 a third-party devnet program sends version 1 transactions that mention the BONDR quote mint. The stream hands them to ingest, `getTransaction` (maxSupportedTransactionVersion 0) refuses them, and each logs 20 `ingest ... failed: ... Transaction version (1) is not supported` lines before giving up. None touch a BONDR coin; see the Phase 6 deferred items.

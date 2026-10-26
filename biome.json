@@ -41,6 +41,7 @@
                       "!@bondr/core/coin-row",
                       "!@bondr/core/schema",
                       "!@bondr/core/api",
+                      "!@bondr/core/api-admin",
                       "!@bondr/core/scrub",
                       "!@bondr/core/sig",
                       "!@bondr/core/fees",

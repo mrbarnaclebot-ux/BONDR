@@ -5,31 +5,22 @@
 // ponytail: one replica, all engine state in this process. Add a Postgres advisory lock if the worker ever
 // runs two, or both would send every window.
 import type { Venue } from "@bondr/core/api";
-import { costFromReserves } from "@bondr/core/curve";
-import { coins, db, launches } from "@bondr/core/db";
+import type { AdminCoinMemory, AdminHealth } from "@bondr/core/api-admin";
 import { type LandedRow, totalsFor, windowEnd, windowOf } from "@bondr/core/fees";
-import { derive } from "@bondr/core/keys";
 import { redact } from "@bondr/core/net";
-import { OnlinePumpAmmSdk, type OnlinePumpSdk } from "@bondr/core/pump";
-import type { CoinPatch, Parsed } from "@bondr/core/trades";
-import { type Connection, type Keypair, PublicKey } from "@solana/web3.js";
-import { eq } from "drizzle-orm";
-import { publishFee } from "./announce.ts";
-import { bondrPrice } from "./bondr-price.ts";
-import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
-import { scheduleBatch } from "./fee-batch.ts";
+import type { CoinPatch } from "@bondr/core/trades";
+import { type Keypair, PublicKey } from "@solana/web3.js";
 import { bondedJob, forceDue, forcedJob } from "./fee-burns.ts";
-import { feeConfig } from "./fee-config.ts";
 import { finalizeJob } from "./fee-finalize.ts";
 import { windowJob } from "./fee-guard.ts";
-import { type Entry, pgLedger } from "./fee-ledger.ts";
-import { recover } from "./fee-recover.ts";
-import { type FeeCoin, type FeeDeps, type Landed, land, noteOps } from "./fee-send.ts";
-import type { Ctx } from "./status.ts";
-import { configs } from "./trade-state.ts";
+import type { Entry } from "./fee-ledger.ts";
+import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
+import { codeOf, type Failure, STUCK_AT, stepOf, type Verdict, verdict } from "./fee-stuck.ts";
+
+export { STUCK_AT };
 
 export type Mode = "off" | "dry" | "on";
-type WOf = (mint: string) => Keypair;
+export type WOf = (mint: string) => Keypair;
 export type CoinLoad = {
   mint: string;
   w: string; // launches.w
@@ -41,6 +32,7 @@ export type CoinLoad = {
   feesUnclaimed: string;
   cost: string | null;
   finalize: string;
+  heldReason?: string | null; // coins.held_reason, set with held_at (A4)
 };
 export type Launched = { mint: string; launchedAt: number; launchSig: string; wallet: string };
 // What one committed ingest wrote: its coin patches, the trades it inserted (for their slot) and a new launch.
@@ -54,10 +46,15 @@ type Opts = { mode: Mode; deps?: FeeDeps; windowMs: number; wOf: WOf };
 
 const RANK: Record<Venue, number> = { curve: 0, complete: 1, pool: 2 };
 
-const logged = (what: string) => (e: unknown) =>
+export const logged = (what: string) => (e: unknown) =>
   console.error(`${what} failed: ${redact(e instanceof Error ? e.message : String(e))}`);
 
 const summary = (out: Landed[]) => out.map((l) => l.state).join(", ") || "nothing";
+// The job logs its summary and hands its result on, so the queue can record a failed or landed step.
+const report = (what: string) => (out: Landed[]) => {
+  console.log(`${what}: ${summary(out)}`);
+  return out;
+};
 
 // T-05-05-02: the engine signs only for coins whose W derives from this seed (other lanes, seeded fakes).
 export function coinFrom(r: CoinLoad, wOf: WOf): FeeCoin | undefined {
@@ -70,6 +67,7 @@ export function coinFrom(r: CoinLoad, wOf: WOf): FeeCoin | undefined {
       ...{ feesUnclaimed: big(r.feesUnclaimed), feeBudget: big(r.feeBudget), launchSig: r.launchSig ?? "" },
       ...{ cost: r.cost === null ? null : big(r.cost), wallet: new PublicKey(r.wallet) },
       finalize: r.finalize as FeeCoin["finalize"],
+      ...(r.heldReason ? { hold: r.heldReason } : {}),
     };
   } catch (e) {
     console.warn(`fee engine: ${r.mint} skipped: ${e instanceof Error ? e.message : String(e)}`);
@@ -84,6 +82,7 @@ export class Engine {
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly slots = new Map<string, bigint>(); // newest trade slot applied per coin (Pitfall 10)
   private readonly forcing = new Set<string>(); // a forced bond is queued or running
+  private readonly failures = new Map<string, Failure>(); // since boot (D-26); nothing auto-pauses a job (D-20)
   private ready = false;
 
   constructor(o: Opts) {
@@ -117,10 +116,75 @@ export class Engine {
   // Serial per mint: a job starts when the previous one on that mint settled, whatever its outcome.
   enqueue(mint: string, job: () => Promise<unknown>, what = `fee job ${mint}`): Promise<void> {
     if (this.o.mode === "off") return Promise.resolve();
-    const next = (this.queue.get(mint) ?? Promise.resolve()).then(job).then(() => {}, logged(what));
-    this.queue.set(mint, next);
-    void next.then(() => this.queue.get(mint) === next && this.queue.delete(mint));
-    return next;
+    return this.track(mint, (this.queue.get(mint) ?? Promise.resolve()).then(job), what, logged(what));
+  }
+
+  // Admin work on a coin's queue in every mode (D-16, Pitfall 9): fn's result or error goes to the caller,
+  // while the stored tail swallows it so later jobs on the coin still run.
+  exclusive<T>(mint: string, fn: () => Promise<T>, what = `admin ${mint}`): Promise<T> {
+    const run = (this.queue.get(mint) ?? Promise.resolve()).then(fn);
+    void this.track(mint, run, what, undefined, true);
+    return run;
+  }
+
+  // EVACUATE's batch wait: resolves once every job queued on these mints at call time has settled.
+  async idle(mints: string[]): Promise<void> {
+    await Promise.all(mints.map((m) => this.queue.get(m)));
+  }
+
+  coin = (mint: string): FeeCoin | undefined => this.coins.get(mint);
+
+  // The manual hold (A4), never finalize; a reset clears only a finalize-held coin, not a finalized one.
+  setHold(mint: string, reason: string | null, resetFinalize = false): void {
+    const coin = this.coins.get(mint);
+    if (!coin) return;
+    coin.hold = reason ?? undefined;
+    if (resetFinalize && coin.finalize === "held") coin.finalize = "none";
+  }
+
+  memory(): AdminCoinMemory[] {
+    return [...this.coins].map(([mint, coin]) => {
+      const f = this.failures.get(mint);
+      const stuck = f && f.attempts >= STUCK_AT ? { ...f } : null;
+      return { mint, stuck, hold: coin.hold ?? null, busy: this.busy(mint) };
+    });
+  }
+
+  stuckCount(): AdminHealth["stuck"] {
+    const stuck = [...this.failures]
+      .filter(([, f]) => f.attempts >= STUCK_AT)
+      .sort(([, a], [, b]) => a.at - b.at);
+    const [mint, f] = stuck[0] ?? [];
+    return { count: stuck.length, first: mint && f ? { mint, step: f.step, attempts: f.attempts } : null };
+  }
+
+  private track(
+    mint: string,
+    run: Promise<unknown>,
+    what: string,
+    onError?: (e: unknown) => void,
+    admin = false,
+  ) {
+    const tail = run.then(
+      (r) => this.note(mint, what, verdict(r), admin),
+      (e) => {
+        onError?.(e);
+        this.note(mint, what, { fail: codeOf(e) }, admin);
+      },
+    );
+    this.queue.set(mint, tail);
+    void tail.then(() => this.queue.get(mint) === tail && this.queue.delete(mint));
+    return tail;
+  }
+
+  // A repeat of the same step counts up; another step failing starts its own count. WR-W-09: only that step
+  // landing clears it, and an owner run never counts a failure (it may still clear its own step).
+  private note(mint: string, what: string, v: Verdict, admin = false): void {
+    const [prev, step] = [this.failures.get(mint), stepOf(what, mint)];
+    if (v === "clear" && prev?.step === step) this.failures.delete(mint);
+    if (!v || v === "clear" || admin) return;
+    const attempts = prev?.step === step ? prev.attempts + 1 : 1;
+    this.failures.set(mint, { step, attempts, code: v.fail, at: Date.now() });
   }
 
   onIngest(w: Ingested): void {
@@ -158,9 +222,8 @@ export class Engine {
   release(mint: string, deployer: PublicKey): boolean {
     const [coin, deps] = [this.coins.get(mint), this.o.deps];
     if (!this.ready || !deps || coin?.finalize !== "held") return false;
-    const job = async () =>
-      console.log(`fee finalize ${mint}: ${summary(await finalizeJob(deps, coin, deployer))}`);
-    void this.enqueue(mint, job, `fee finalize ${mint}`);
+    const what = `fee finalize ${mint}`;
+    void this.enqueue(mint, () => finalizeJob(deps, coin, deployer).then(report(what)), what);
     return true;
   }
 
@@ -179,16 +242,17 @@ export class Engine {
     if (!this.ready || !deps || coin.venue !== "curve" || !cost || this.forcing.has(mint)) return;
     if (!forceDue(coin, cost)) return;
     this.forcing.add(mint);
-    const job = async () => console.log(`forced bond ${mint}: ${summary(await forcedJob(deps, coin))}`);
-    void this.enqueue(mint, job, `forced bond ${mint}`).then(() => this.forcing.delete(mint));
+    const what = `forced bond ${mint}`;
+    const job = () => forcedJob(deps, coin).then(report(what));
+    void this.enqueue(mint, job, what).then(() => this.forcing.delete(mint));
   }
 
   // FEE-03 on the migration event; complete alone runs nothing (Pitfall 6).
   private bonded(coin: FeeCoin): void {
     const [mint, deps] = [coin.mint.toBase58(), this.o.deps];
     if (!this.ready || !deps) return;
-    const job = async () => console.log(`fee bonded ${mint}: ${summary(await bondedJob(deps, coin))}`);
-    void this.enqueue(mint, job, `fee bonded ${mint}`);
+    const what = `fee bonded ${mint}`;
+    void this.enqueue(mint, () => bondedJob(deps, coin).then(report(what)), what);
   }
 
   private arm(coin: FeeCoin, index = windowOf(coin.launchedAt, Date.now(), this.o.windowMs)): void {
@@ -205,95 +269,13 @@ export class Engine {
   private fire(coin: FeeCoin, index: number): void {
     const [mint, deps] = [coin.mint.toBase58(), this.o.deps];
     this.timers.delete(mint);
-    if (deps)
-      void this.enqueue(
-        mint,
-        async () =>
-          console.log(`fee window ${mint} ${index}: ${summary(await windowJob(deps, coin, index))}`),
-        `fee window ${mint} ${index}`,
-      );
+    const what = `fee window ${mint} ${index}`;
+    if (deps) void this.enqueue(mint, () => windowJob(deps, coin, index).then(report(what)), what);
     this.arm(coin, Math.max(index + 1, windowOf(coin.launchedAt, Date.now(), this.o.windowMs)));
   }
 
   private clear(mint: string): void {
     clearTimeout(this.timers.get(mint));
     this.timers.delete(mint);
-  }
-}
-
-let engine: Engine | null = null;
-export const feeEngine = (): Engine | null => engine;
-let costCtx: { net: WorkerEnv["net"]; Q: PublicKey; wOf: WOf } | null = null;
-
-// Called by announce after every committed ingest, live and gap fill. Before startEngine it is a no-op.
-export const onIngest = (w: Ingested): void => engine?.onIngest(w);
-
-// One boot read: every coin with its launch's W, signature and wallet.
-const loadRows = (): Promise<CoinLoad[]> =>
-  db()
-    .select({
-      ...{ mint: coins.mint, w: launches.w, launchSig: launches.signature, wallet: launches.wallet },
-      ...{ launchedAt: coins.launchedAt, venue: coins.venue, feeBudget: coins.feeBudget },
-      ...{ feesUnclaimed: coins.feesUnclaimed, cost: coins.costToComplete, finalize: coins.finalize },
-    })
-    .from(coins)
-    .innerJoin(launches, eq(launches.id, coins.launchId));
-
-function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
-  const d: FeeDeps = {
-    ...{ net: env.net, mode, conn: ctx.conn, Q: ctx.Q, ledger: pgLedger(), windowMs: env.feeWindowMs },
-    online: ctx.online as InstanceType<typeof OnlinePumpSdk>,
-    amm: new OnlinePumpAmmSdk(ctx.conn),
-    ops: ops(env.seed, env.net),
-    treasury: treasury(env.seed, env.net).publicKey,
-    buyback: buyback(env.seed, env.net, env.lane),
-    bondrSol: () => bondrPrice.get(),
-    publish: (mint, rows) => {
-      engine?.landed(mint, rows);
-      publishFee(mint, rows).catch(logged("fee publish"));
-    },
-    land: (job) => land(d, job),
-  };
-  return d;
-}
-
-// Boot, after loadCoins and before the backfill and the stream: load, settle every pending row, then arm.
-// A retried index boot keeps an engine that already started, so no window is ever armed twice.
-export async function startEngine(ctx: Ctx, env: WorkerEnv): Promise<void> {
-  const wOf: WOf = (mint) => derive(env.seed, "w", env.net, mint);
-  costCtx = { net: env.net, Q: ctx.Q, wOf };
-  if (env.feeEngine === "off") return console.log("fee engine off");
-  if (engine?.isReady()) return;
-  const deps = feeDeps(ctx, env, env.feeEngine);
-  const e = new Engine({ mode: env.feeEngine, deps, windowMs: env.feeWindowMs, wOf });
-  engine = e;
-  for (const r of await loadRows()) e.add(r);
-  noteOps(await ctx.conn.getBalance(deps.ops.publicKey));
-  await recover(deps, (m) => e.coins.get(m));
-  console.log(`fee engine ${env.feeEngine}: ${e.start()} coins armed`);
-  scheduleBatch(deps, e, env.feeBatchHourUtc);
-}
-
-const hasReserves = (p: CoinPatch) =>
-  p.virtualTokenReserves !== undefined &&
-  p.virtualQuoteReserves !== undefined &&
-  p.realTokenReserves !== undefined &&
-  p.realQuoteReserves !== undefined;
-
-// Cost to complete on every curve patch, so it rides the trade write that already happens (D-23). Runs in
-// every mode: the panel shows it with the engine off. A failure leaves the cost unset, never fails the write.
-export async function withCost(conn: Connection, parsed: Parsed): Promise<void> {
-  const c = costCtx;
-  const curve = parsed.patches.filter((p) => !p.venue && hasReserves(p));
-  if (!c || !curve.length) return;
-  try {
-    const { global, feeConfig: fc } = await configs({ conn });
-    const creatorFeeBps = feeConfig(c.net).creatorFeeBps;
-    for (const p of curve) {
-      const ids = { creator: c.wOf(p.mint).publicKey, quoteMint: c.Q, creatorFeeBps };
-      p.costToComplete = String(costFromReserves(p as Required<CoinPatch>, { global, feeConfig: fc }, ids));
-    }
-  } catch (e) {
-    logged("cost to complete")(e);
   }
 }

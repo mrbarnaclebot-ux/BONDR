@@ -2,7 +2,7 @@
 // computed at read time (RESEARCH Pattern 7). Burn rows never count: they carry no SOL and their market cap
 // is not a trade price. Web reads it for the token page; the worker reads it after a write to publish the
 // coin's new numbers, so both always agree. The home lists read pages of the same rows (coinRows).
-import { eq, type SQL, sql } from "drizzle-orm";
+import { and, eq, isNull, type SQL, sql } from "drizzle-orm";
 import type { CoinFees, CoinRow, Exit, Venue } from "./api.ts";
 import type { Db } from "./db.ts";
 import { budgetOf } from "./fees.ts";
@@ -136,7 +136,8 @@ export async function coinRow(exec: Pick<Db, "select">, mint: string): Promise<C
   return r ? toRow(r) : null;
 }
 
-/** A page of indexed coins in `order` (fixed column orders from the caller, never user text), optionally filtered. */
+/** A page of indexed coins in `order` (fixed column orders from the caller, never user text), optionally filtered.
+ * Hidden coins never list (D-29); coinRow above still returns them, so the token page and proof stay reachable. */
 export async function coinRows(
   exec: Pick<Db, "select">,
   order: SQL[],
@@ -145,7 +146,7 @@ export async function coinRows(
   where?: SQL,
 ): Promise<CoinRow[]> {
   const rows = await select(exec)
-    .where(where)
+    .where(and(isNull(coins.hiddenAt), where))
     .orderBy(...order)
     .limit(limit)
     .offset(offset);

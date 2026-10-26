@@ -3,12 +3,20 @@ import { createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import bs58 from "bs58";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
+  ADMIN_COOKIE,
+  adminCookie,
+  adminMessage,
+  adminOrigin,
+  adminSession,
+  adminSignOutCookie,
+  adminWalletEnv,
   COOKIE,
   issueNonce,
   pinnedHere,
   pinProof,
   sessionCookie,
   sessionWallet,
+  verifyAdmin,
   verifyConsent,
 } from "./session";
 import { consentMessage } from "./terms";
@@ -75,4 +83,71 @@ test("a pin proof holds only for the exact uri and image it was issued for (work
   expect(pinnedHere(proof, uri, "d".repeat(59))).toBe(false);
   expect(pinnedHere(undefined, uri, cid)).toBe(false);
   expect(pinnedHere(sessionCookie("w").split(";")[0]?.split("=")[1], uri, cid)).toBe(false);
+});
+
+const cookieValue = (header: string) => header.split(";")[0]?.slice(header.indexOf("=") + 1) as string;
+
+test("ADMIN_WALLET counts only as a trimmed 32-byte base58 key (D-08 fails closed)", () => {
+  const a = account();
+  vi.stubEnv("ADMIN_WALLET", "");
+  expect(adminWalletEnv()).toBeNull();
+  vi.stubEnv("ADMIN_WALLET", "not-a-key");
+  expect(adminWalletEnv()).toBeNull();
+  vi.stubEnv("ADMIN_WALLET", "1".repeat(40)); // valid alphabet and length, decodes to 40 zero bytes
+  expect(adminWalletEnv()).toBeNull();
+  vi.stubEnv("ADMIN_WALLET", ` ${a.wallet} `);
+  expect(adminWalletEnv()).toBe(a.wallet);
+  delete process.env.ADMIN_WALLET;
+  expect(adminWalletEnv()).toBeNull();
+});
+
+test("an admin sign-in verifies only over the admin message of a live nonce (D-09)", () => {
+  const a = account();
+  const now = Date.now();
+  const n = issueNonce(now);
+  const site = "https://bondr.example";
+  const text = adminMessage(site)(a.wallet, n.nonce, n.expires);
+  expect(text.split("\n")[0]).toBe("bondr.example wants you to sign in with your Solana account:");
+  const admin = sign(null, Buffer.from(text), a.key);
+  expect(verifyAdmin(site, a.wallet, n.nonce, admin, now)?.toISOString()).toBe(n.expires);
+  expect(verifyAdmin("https://evil.example", a.wallet, n.nonce, admin, now)).toBeNull(); // another domain
+  expect(verifyAdmin(site, a.wallet, n.nonce, signed(a, n), now)).toBeNull(); // a consent signature
+  expect(verifyAdmin(site, a.wallet, n.nonce, admin, now + 5 * 60_000)).toBeNull();
+});
+
+test("the admin origin is SITE_URL's, and only a request from it gets one (WR-B-03)", () => {
+  const req = (origin: string) => new Request("http://x/api/admin/session", { headers: { origin } });
+  vi.stubEnv("SITE_URL", "");
+  expect(adminOrigin(req("https://bondr.example"))).toBeNull();
+  vi.stubEnv("SITE_URL", "https://bondr.example/");
+  expect(adminOrigin(req("https://bondr.example"))).toBe("https://bondr.example");
+  expect(adminOrigin(req("https://evil.example"))).toBeNull();
+});
+
+test("the admin cookie holds 30 minutes for the configured admin only (D-10)", () => {
+  const [a, b] = [account(), account()];
+  const now = Date.now();
+  const { header, exp } = adminCookie(a.wallet, now);
+  expect(exp).toBe(now + 30 * 60_000);
+  for (const part of ["HttpOnly", "SameSite=Strict", "Path=/", "Max-Age=1800"])
+    expect(header).toContain(part);
+  const pair = `x=1; ${ADMIN_COOKIE}=${cookieValue(header)}`;
+  expect(adminSession(pair, a.wallet, now)).toEqual({ wallet: a.wallet, exp });
+  expect(adminSession(pair, a.wallet, exp)).toBeNull();
+  expect(adminSession(pair, b.wallet, now)).toBeNull();
+  expect(adminSession(pair, null, now)).toBeNull();
+  expect(adminSession(null, a.wallet, now)).toBeNull();
+  // A minute before issue the expiry is 31 minutes ahead, past the cap.
+  expect(adminSession(pair, a.wallet, now - 60_000)).toBeNull();
+  expect(adminSignOutCookie()).toContain("Max-Age=0");
+});
+
+test("a public session value under bondr_admin is refused (Pitfall 1)", () => {
+  const a = account();
+  const now = Date.now();
+  const pub = cookieValue(sessionCookie(a.wallet, now));
+  expect(adminSession(`${ADMIN_COOKIE}=${pub}`, a.wallet, now)).toBeNull();
+  expect(
+    adminSession(`${COOKIE}=${cookieValue(adminCookie(a.wallet, now).header)}`, a.wallet, now),
+  ).toBeNull();
 });

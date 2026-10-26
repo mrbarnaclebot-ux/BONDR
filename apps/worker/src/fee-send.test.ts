@@ -11,7 +11,8 @@ import {
 } from "@solana/web3.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { OPS_FLOOR_LAMPORTS, SENDER_TIPS } from "./fee-config.ts";
-import { type LedgerStore, memoryLedger } from "./fee-ledger.ts";
+import type { LedgerStore } from "./fee-ledger.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 import {
   type FeeDeps,
   type Job,

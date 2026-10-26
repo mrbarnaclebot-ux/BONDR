@@ -7,7 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { redact } from "@bondr/core/net";
 import type { Entry } from "./fee-ledger.ts";
 import { splitJob } from "./fee-prebond.ts";
-import { type FeeCoin, type FeeDeps, factsFor, metaOf, withSol } from "./fee-send.ts";
+import { type FeeCoin, type FeeDeps, factsFor, metaOf, publishByMint, withSol } from "./fee-send.ts";
 import { HEIGHT_EVERY, nextState, type Obs, POLL_MS, RECHECK_MS, type Seen } from "./settle.ts";
 
 export type Action =
@@ -51,18 +51,23 @@ async function statuses(d: FeeDeps, sigs: string[]): Promise<Map<string, Seen> |
 }
 
 // Facts from the tx's own meta, as the job that sent it would have (D-14); the slot guards fees_unclaimed
-// (Pitfall 3). One tx's rows share a mint.
+// (Pitfall 3). A multi-mint tx reads each mint's rows against that coin's W (Pitfall 5).
+// ponytail: Facts are keyed by kind, so two mints with the same W-delta kind in one tx would share one value;
+// no job builds that today (EVACUATE rows carry their own amounts). Key facts by row if one ever does.
 async function landed(d: FeeDeps, sig: string, rows: Entry[], coinOf: CoinOf): Promise<boolean> {
   const tx = await metaOf(d.conn, sig);
   if (!tx) {
     console.error(`fee recover ${sig}: landed without meta, left pending`);
     return false;
   }
-  const mint = rows[0]?.mint;
-  const facts = factsFor(rows, tx.meta, d.Q, mint ? coinOf(mint)?.w.publicKey : undefined);
+  const facts = Object.assign(
+    {},
+    ...[...Map.groupBy(rows, (r) => r.mint)].map(([mint, list]) =>
+      factsFor(list, tx.meta, d.Q, mint ? coinOf(mint)?.w.publicKey : undefined),
+    ),
+  );
   const o = { facts: withSol({ rows }, facts, d.bondrSol()), slot: BigInt(tx.slot) };
-  const moved = await d.ledger.settle(sig, "landed", o);
-  if (moved.length) d.publish(moved[0]?.mint ?? null, moved);
+  publishByMint(d, await d.ledger.settle(sig, "landed", o));
   return true;
 }
 

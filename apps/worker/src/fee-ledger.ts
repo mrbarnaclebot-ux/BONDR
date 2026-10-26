@@ -6,7 +6,7 @@ import { coins, type Db, db, feeLedger } from "@bondr/core/db";
 import { type LandedRow, type TotalColumn, type Totals, totalsFor } from "@bondr/core/fees";
 import { and, asc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
-import { type Implied, impliedOf, pgImplied } from "./fee-reconcile.ts";
+import { type Implied, pgImplied } from "./fee-reconcile.ts";
 
 export type NewEntry = {
   kind: LedgerKind;
@@ -38,7 +38,10 @@ export type LedgerStore = {
   pending(): Promise<Entry[]>;
   pendingFor(mint: string, kinds: LedgerKind[]): Promise<Entry[]>; // the mint's pending rows of the kinds
   openCollects(mint?: string): Promise<Entry[]>; // landed collects with no live split referencing them
-  has(mint: string, kinds: LedgerKind[]): Promise<boolean>; // a live (pending or landed) row of the kinds
+  // A live (pending or landed) row of the kinds, in one window when given (the leftover sweep's free index, A9).
+  has(mint: string, kinds: LedgerKind[], windowIndex?: number): Promise<boolean>;
+  // Retry sweep: the oldest failed or expired sweep row whose window holds no live sweep of its kind.
+  failedSweep(mint: string): Promise<Entry | null>;
   hold(mint: string, reason: string): Promise<void>;
   release(mint: string): Promise<void>; // held -> none; the held row stays as history
   markFinal(mint: string, deployerBps: number): Promise<void>; // done with no landed update (shares already locked)
@@ -46,91 +49,12 @@ export type LedgerStore = {
   implied(): Promise<Implied>; // ledger-implied BONDR per W and for the buyback (D-21)
 };
 
-const live = (s: LedgerState | null) => s === "pending" || s === "landed";
-const ONCE: LedgerKind[] = ["forced_bond", "pool_burn", "finalize_config", "finalize_update"];
-const BURN: LedgerKind[] = ["forced_bond", "pool_burn"];
-const SWEEP: LedgerKind[] = ["sweep_buyback", "sweep_treasury"];
-
-// The fee_ledger unique indexes from migration 0005 as keys: once, bond_burn, sweep and split over live rows,
-// sig_kind over every row with a signature.
-function keysOf(e: Entry): string[] {
-  const k = e.signature ? [`sig:${e.signature}:${e.kind}`] : [];
-  if (!live(e.state)) return k;
-  if (ONCE.includes(e.kind)) k.push(`once:${e.mint}:${e.kind}`);
-  if (BURN.includes(e.kind)) k.push(`burn:${e.mint}`);
-  if (SWEEP.includes(e.kind)) k.push(`sweep:${e.mint}:${e.kind}:${e.windowIndex}`);
-  if (e.kind === "split_treasury") k.push(`split:${e.ref}`);
-  return k;
-}
-
-const factsOf = (f: Partial<NewEntry> = {}): Partial<NewEntry> => {
+export const factsOf = (f: Partial<NewEntry> = {}): Partial<NewEntry> => {
   const { amount, burned, sol, detail } = f;
   return Object.fromEntries(
     Object.entries({ amount, burned, sol, detail }).filter(([, v]) => v !== undefined),
   );
 };
-
-const blank = { state: null, signature: null, lastValidBlockHeight: null, error: null, landedAt: null };
-
-const pendingOf = (n: NewEntry, id: number, signature: string, lastValidBlockHeight: bigint): Entry => ({
-  ...blank,
-  ...n,
-  ...{ id, state: "pending", signature, lastValidBlockHeight },
-});
-
-// True when any new row takes a key an existing row or an earlier new row already holds.
-function refused(existing: Entry[], fresh: Entry[]): boolean {
-  const taken = new Set(existing.flatMap(keysOf));
-  for (const k of fresh.flatMap(keysOf)) {
-    if (taken.has(k)) return true;
-    taken.add(k);
-  }
-  return false;
-}
-
-// ponytail: mirrors the 0005 indexes so units and the fork stage run the engine's own code without Postgres;
-// the database stays the real guard. Coin totals are not tracked here (the engine's publish applies them).
-export function memoryLedger(): LedgerStore {
-  const rows = new Map<number, Entry>();
-  let next = 1;
-  const all = () => [...rows.values()];
-  const copy = (e: Entry): Entry => ({ ...e });
-  const where = (f: (e: Entry) => boolean) => all().filter(f).map(copy);
-  const internal = async (kind: LedgerKind, mint: string | null, detail: Record<string, unknown>) => {
-    const id = next++;
-    rows.set(id, { ...blank, id, kind, mint, detail });
-  };
-  return {
-    async insertPending(news, sig, lastValidBlockHeight) {
-      const fresh = news.map((n, i) => pendingOf(n, next + i, sig, lastValidBlockHeight));
-      if (refused(all(), fresh)) return null;
-      next += fresh.length;
-      for (const e of fresh) rows.set(e.id, e);
-      return fresh.map(copy);
-    },
-    async settle(sig, to, o = {}) {
-      const moved = all().filter((e) => e.signature === sig && e.state === "pending");
-      for (const e of moved) {
-        if (to === "landed") Object.assign(e, factsOf(o.facts?.[e.kind]), { landedAt: new Date() });
-        Object.assign(e, { state: to, error: o.error ?? null });
-      }
-      return moved.map(copy);
-    },
-    pending: async () => where((e) => e.state === "pending"),
-    pendingFor: async (mint, kinds) =>
-      where((e) => e.state === "pending" && e.mint === mint && kinds.includes(e.kind)),
-    openCollects: async (mint) =>
-      where((c) => c.kind === "collect" && c.state === "landed" && (!mint || c.mint === mint)).filter(
-        (c) => !all().some((s) => s.kind === "split_treasury" && s.ref === c.id && live(s.state)),
-      ),
-    has: async (mint, kinds) => all().some((e) => e.mint === mint && kinds.includes(e.kind) && live(e.state)),
-    hold: (mint, reason) => internal("held", mint, { reason }),
-    release: async () => {},
-    markFinal: async () => {},
-    diff: (mint, detail) => internal("reconcile_diff", mint, detail),
-    implied: async () => impliedOf(all()),
-  };
-}
 
 type Conn = Pick<Db, "select" | "insert" | "update" | "transaction" | "execute">;
 type Row = typeof feeLedger.$inferSelect;
@@ -255,6 +179,8 @@ async function pgSettle(c: Conn, sig: string, to: Settled, o: SettleOpts): Promi
 const LIVE_STATES = inArray(feeLedger.state, ["pending", "landed"]);
 const NO_LIVE_SPLIT = sql`not exists (select 1 from fee_ledger s where s.kind = 'split_treasury'
   and s.ref = ${feeLedger.id} and s.state in ('pending','landed'))`;
+const NO_LIVE_TWIN = sql`not exists (select 1 from fee_ledger s where s.mint = ${feeLedger.mint}
+  and s.kind = ${feeLedger.kind} and s.window_index = ${feeLedger.windowIndex} and s.state in ('pending','landed'))`;
 
 export function pgLedger(dbFn: () => Conn = db): LedgerStore {
   const rowsWhere = async (where: SQL | undefined, limit?: number) => {
@@ -262,7 +188,8 @@ export function pgLedger(dbFn: () => Conn = db): LedgerStore {
     return (await (limit ? q.limit(limit) : q)).map(toEntry);
   };
   return {
-    insertPending: (news, sig, lvbh) => pgInsert(dbFn(), news, sig, lvbh),
+    // Close accounts and Run migrate send with no ledger row; drizzle throws on an empty values list.
+    insertPending: async (news, sig, lvbh) => (news.length ? pgInsert(dbFn(), news, sig, lvbh) : []),
     settle: (sig, to, o = {}) => pgSettle(dbFn(), sig, to, o),
     pending: () => rowsWhere(eq(feeLedger.state, "pending")),
     pendingFor: (mint, kinds) =>
@@ -273,9 +200,16 @@ export function pgLedger(dbFn: () => Conn = db): LedgerStore {
       const own = mint ? eq(feeLedger.mint, mint) : undefined;
       return rowsWhere(and(eq(feeLedger.kind, "collect"), eq(feeLedger.state, "landed"), own, NO_LIVE_SPLIT));
     },
-    has: async (mint, kinds) =>
-      (await rowsWhere(and(eq(feeLedger.mint, mint), inArray(feeLedger.kind, kinds), LIVE_STATES), 1))
-        .length > 0,
+    has: async (mint, kinds, windowIndex) => {
+      const win = windowIndex === undefined ? undefined : eq(feeLedger.windowIndex, windowIndex);
+      const where = and(eq(feeLedger.mint, mint), inArray(feeLedger.kind, kinds), LIVE_STATES, win);
+      return (await rowsWhere(where, 1)).length > 0;
+    },
+    failedSweep: async (mint) => {
+      const sweeps = inArray(feeLedger.kind, ["sweep_buyback", "sweep_treasury"]);
+      const dead = inArray(feeLedger.state, ["failed", "expired"]);
+      return (await rowsWhere(and(eq(feeLedger.mint, mint), sweeps, dead, NO_LIVE_TWIN), 1))[0] ?? null;
+    },
     async hold(mint, reason) {
       await dbFn().transaction(async (tx) => {
         await tx.insert(feeLedger).values({ kind: "held", mint, detail: { reason } });

@@ -34,9 +34,20 @@ export type LaunchErrorCode =
   | "pin_failed"
   | "slippage"
   | "message_changed"
-  | "onchain";
+  | "onchain"
+  // Phase 6 admin and moderation (statuses in apps/worker/src/http.ts).
+  | "forbidden"
+  | "blocked"
+  | "intent_expired"
+  | "intent_used"
+  | "bad_intent_signature"
+  | "not_applicable"
+  | "simulation_failed"
+  | "destination_refused"
+  | "rpc_failed";
 
-export type ApiError = { error: LaunchErrorCode; paused?: PauseReason };
+// reason: the admin not_applicable code the console maps to copy (D-12).
+export type ApiError = { error: LaunchErrorCode; paused?: PauseReason; reason?: string };
 
 export type Links = { x?: string; telegram?: string; website?: string };
 
@@ -117,6 +128,8 @@ export type LedgerKind =
   | "finalize_config"
   | "finalize_update"
   | "distribute"
+  | "leftover_burn"
+  | "evacuate"
   | "held"
   | "reconcile_diff";
 // The platform burn and the internal rows never reach a public read.

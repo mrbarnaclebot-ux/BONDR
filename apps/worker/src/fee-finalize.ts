@@ -21,6 +21,7 @@ import {
   SystemProgram,
   type TransactionInstruction,
 } from "@solana/web3.js";
+import { leftoverBurnJob } from "./admin-leftover.ts";
 import { spend } from "./fee-guard.ts";
 import type { NewEntry } from "./fee-ledger.ts";
 import { collectJob, settled, sweepJob, wBondr } from "./fee-prebond.ts";
@@ -120,17 +121,30 @@ async function closing(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   return spend(d, coin, out, () => sweepJob(d, coin, windowOf(coin.launchedAt, Date.now(), d.windowMs)));
 }
 
-// One read after the closing sweep: W should hold 0 BONDR and 0 child tokens. A miss is an error, not a throw.
-async function checkEmpty(d: FeeDeps, coin: FeeCoin): Promise<void> {
+// One read after the closing sweep: W should hold 0 BONDR. Leftover child tokens are burned here, never held
+// (D-17, WR-08); leftover BONDR stays an error for the owner's Sweep leftovers action. A miss never throws.
+async function checkEmpty(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   const mint = coin.mint.toBase58();
+  const why = (e: unknown) => redact(e instanceof Error ? e.message : String(e));
+  let child: bigint;
   try {
-    const [child, bondr] = [await wBondr(d, coin, coin.mint), await wBondr(d, coin)];
+    child = await wBondr(d, coin, coin.mint);
+    const bondr = await wBondr(d, coin);
     const line = `finalize ${mint}: W child ${child}, BONDR ${bondr}`;
-    if (child === 0n && bondr === 0n) console.log(line);
+    if (bondr === 0n) console.log(line);
     else console.error(line);
   } catch (e) {
-    console.error(`finalize ${mint}: W read failed: ${redact(e instanceof Error ? e.message : String(e))}`);
+    console.error(`finalize ${mint}: W read failed: ${why(e)}`);
+    return [];
   }
+  if (child === 0n) return [];
+  // IN-W-02: a burn that throws (possibly after broadcast) is named as such, not as a failed read.
+  const burn = await leftoverBurnJob(d, coin).catch((e: unknown) => {
+    console.error(`finalize ${mint}: leftover burn failed: ${why(e)}`);
+    return null;
+  });
+  if (burn) console.log(`finalize ${mint}: leftover burn ${burn.state}`);
+  return burn ? [burn] : [];
 }
 
 // Resumable from any step: the chain says which txs are left. The update is sent once; a 6009 is final.
@@ -147,6 +161,7 @@ async function finalTxs(d: FeeDeps, coin: FeeCoin, pool: PublicKey, deployer: Pu
 
 // After the bond and its burn (bondedJob), the daily batch, or an owner release (override).
 export async function finalizeJob(d: FeeDeps, coin: FeeCoin, override?: PublicKey): Promise<Landed[]> {
+  if (d.allowed && !d.allowed("finalize", coin)) return [{ state: "skipped" }];
   if (coin.finalize === "done" || (coin.finalize === "held" && !override)) return [DONE];
   const s = await finalizeState(d.conn, coin.mint, d.Q);
   if (!s.complete || !s.pool) return [DONE];
@@ -159,6 +174,6 @@ export async function finalizeJob(d: FeeDeps, coin: FeeCoin, override?: PublicKe
   const { out, ok } = await finalTxs(d, coin, s.pool, deployer, s.sharing);
   if (!ok) return out;
   out.push(...(await closing(d, coin)));
-  await checkEmpty(d, coin);
+  out.push(...(await checkEmpty(d, coin)));
   return out;
 }

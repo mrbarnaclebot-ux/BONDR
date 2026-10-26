@@ -17,6 +17,7 @@ import {
   normalizeLink,
 } from "@bondr/core/rules";
 import { type AddressLookupTableAccount, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import { blocked } from "./admin-moderate.ts";
 import {
   type Builds,
   buildMessage,
@@ -136,12 +137,14 @@ async function admit(ctx: PrepareCtx, body: unknown) {
         newTablesLastHour(db()),
         newTablesToday(db(), wallet),
         tableFor(db(), wallet),
+        blocked(db(), wallet),
       ])
-    : Promise.resolve([false, 0, 0, null] as const);
-  const [status, [ok, tablesLastHour, walletTablesToday, prior]] = await Promise.all([
+    : Promise.resolve([false, 0, 0, null, false] as const);
+  const [status, [ok, tablesLastHour, walletTablesToday, prior, isBlocked]] = await Promise.all([
     liveStatus(ctx, true),
     rows,
   ]);
+  if (isBlocked) throw fail({ error: "blocked" }); // D-30: before every other guard and any build
   const min = status.minLamports === null ? null : BigInt(status.minLamports);
   const refused = prepareGuard({
     paused: status.paused,

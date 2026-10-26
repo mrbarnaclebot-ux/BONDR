@@ -5,11 +5,10 @@
 // and sweeps with no manual help; the page shows each row with its Solscan link. A bearer POST /fee/batch then
 // burns the buyback's BONDR (the supply drops by exactly that) and reconciles with no diff. Ops pays every fee;
 // the run's net devnet spend (ops plus sim) is printed and capped at 0.05 SOL. Nothing is seeded.
-import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { sweepSplit, windowEnd, windowOf } from "@bondr/core/fees";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
+import { lamports, RUN_BUDGET_LAMPORTS, sol, supply, tokens, trade, WORKER } from "./devnet.ts";
 import { rootEnv, seedAccount } from "./phantom.ts";
 
 const env = rootEnv();
@@ -18,47 +17,15 @@ const sql = env.DATABASE_URL
   : undefined;
 const db = () => sql as postgres.Sql;
 const WINDOW_MS = Number(process.env.FEE_WINDOW_MS ?? 600_000);
-const RUN_BUDGET_LAMPORTS = 0.05e9;
-const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const WORKER = "http://127.0.0.1:8080";
 const Q = env.BONDR_QUOTE_MINT as string;
+const bondr = (owner: string) => tokens(owner, Q);
 
 test.describe.configure({ mode: "serial", timeout: 20 * 60_000 });
 test.skip(process.env.E2E_DEVNET !== "1" || !sql, "real devnet fee movements: set E2E_DEVNET=1");
 
-// The public devnet RPC, as fixtures.ts blockTime, so the runner needs no Helius key; a 429 waits and retries.
-async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  for (let i = 0; ; i++) {
-    const res = await fetch("https://api.devnet.solana.com", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    });
-    if (res.status === 429 && i < 5) {
-      await new Promise((done) => setTimeout(done, 2000));
-      continue;
-    }
-    const body = (await res.json()) as { result?: T; error?: { message: string } };
-    if (body.result === undefined) throw new Error(`${method}: ${body.error?.message ?? res.status}`);
-    return body.result;
-  }
-}
-const CONFIRMED = { commitment: "confirmed" };
-const lamports = async (a: string) => (await rpc<{ value: number }>("getBalance", [a, CONFIRMED])).value;
-const supply = async () =>
-  BigInt((await rpc<{ value: { amount: string } }>("getTokenSupply", [Q, CONFIRMED])).value.amount);
-type Parsed = { account: { data: { parsed: { info: { tokenAmount: { amount: string } } } } } };
-/** An owner's BONDR across its token accounts; none is 0. */
-async function bondr(owner: string): Promise<bigint> {
-  const opts = { encoding: "jsonParsed", ...CONFIRMED };
-  const r = await rpc<{ value: Parsed[] }>("getTokenAccountsByOwner", [owner, { mint: Q }, opts]);
-  return r.value.reduce((s, a) => s + BigInt(a.account.data.parsed.info.tokenAmount.amount), 0n);
-}
-
 const ops = seedAccount("ops:devnet:main").address;
 const sim = seedAccount("sim:devnet:dev").address;
 const buyback = seedAccount(`buyback:devnet:${env.VANITY_LANE}`).address;
-const sol = (l: number) => (l / 1e9).toFixed(6);
 const both = async () => ({ ops: await lamports(ops), sim: await lamports(sim) });
 
 type Coin = { mint: string; symbol: string; w: string; launchedAt: number };
@@ -77,21 +44,6 @@ async function pickCoin(): Promise<Coin> {
   expect(ours.length, "a curve coin whose W derives from the seed").toBeGreaterThan(0);
   const at = (c: Coin) => nextEnd(c.launchedAt, Date.now() + 4 * 60_000);
   return ours.sort((a, b) => at(a) - at(b))[0] as Coin;
-}
-
-/** One devnet-trades run (its own budget and ops floor checks); returns the landed signatures. */
-function trade(mint: string, ...args: string[]): string[] {
-  const argv = ["--env-file=.env", "scripts/devnet-trades.ts", "--mint", mint, ...args, "--json"];
-  const out = execFileSync("node", [...argv, "--expect-indexed", "30"], {
-    cwd: ROOT,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "inherit"],
-    env: { ...process.env, VANITY_THREADS: "0" },
-  });
-  return out
-    .split("\n")
-    .filter((l) => l.startsWith("{"))
-    .map((l) => (JSON.parse(l) as { sig: string }).sig);
 }
 
 type Row = {
@@ -176,7 +128,7 @@ test("trades' fees are collected, split 90/10 and swept 90/10 at the window end"
 });
 
 test("a bearer batch burns the buyback's BONDR and reconciles with no diff", async ({ request }) => {
-  const [supplyBefore, held] = [await supply(), await bondr(buyback)];
+  const [supplyBefore, held] = [await supply(Q), await bondr(buyback)];
   expect(held, "the buyback holds swept BONDR").toBeGreaterThan(0n);
   const batchMark = (await rowsAfter(mark)).at(-1)?.id ?? mark;
   const res = await request.post(`${WORKER}/fee/batch`, {
@@ -194,7 +146,7 @@ test("a bearer batch burns the buyback's BONDR and reconciles with no diff", asy
   const burned = big((burns[0] as Row).burned);
   console.log(`buyback_burn ${burned} ${(burns[0] as Row).signature}`);
   expect(burned).toBe(held);
-  await expect.poll(supply, { timeout: 30_000 }).toBe(supplyBefore - burned);
+  await expect.poll(() => supply(Q), { timeout: 30_000 }).toBe(supplyBefore - burned);
   expect(await bondr(buyback)).toBe(0n);
   const diffs = rows.filter((r) => r.kind === "reconcile_diff" && (r.mint === coin.mint || r.mint === null));
   expect(diffs).toEqual([]);

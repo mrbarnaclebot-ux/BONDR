@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { start } from "./http.ts";
+import { fail, Reply, start } from "./http.ts";
 
 const token = randomBytes(32).toString("hex");
 const wrong = randomBytes(32).toString("hex");
@@ -10,6 +10,7 @@ const server = start(
     "GET /status": async () => ({ ok: "status" }),
     "POST /quote": async (body) => ({ echo: body }),
     "GET /bigint": async () => ({ n: 1n }),
+    "GET /accepted": async () => new Reply(202, { id: "x" }),
     "GET /boom": async () => {
       throw new Error("secret stack detail at /Users/x/file.ts:1");
     },
@@ -54,6 +55,12 @@ test("POST bodies over 16 KB get 413, small JSON passes through", async () => {
   expect(bad.status).toBe(400);
 });
 
+test("a Reply answers with its own status and body", async () => {
+  const res = await get("/accepted", token);
+  expect(res.status).toBe(202);
+  expect(await res.json()).toEqual({ id: "x" });
+});
+
 test("unknown paths get 404", async () => {
   expect((await get("/nope", token)).status).toBe(404);
 });
@@ -75,4 +82,22 @@ test("a result that cannot serialize answers 500, not a half-sent 200 (IN-05)", 
   expect(res.status).toBe(500);
   expect(await res.json()).toEqual({ error: "build_failed" });
   log.mockRestore();
+});
+
+// Restates PASS in apps/web/lib/worker.ts line 10 (server-only, so not importable here): a status outside it
+// reaches the browser as worker_unavailable (Pitfall 14).
+const PASS = new Set([400, 402, 403, 404, 409, 410, 413, 422, 429, 500, 503]);
+
+test.each([
+  ["forbidden", 403],
+  ["blocked", 403],
+  ["intent_expired", 410],
+  ["intent_used", 409],
+  ["bad_intent_signature", 403],
+  ["not_applicable", 409],
+  ["simulation_failed", 422],
+  ["destination_refused", 422],
+] as const)("admin code %s answers %i, a status web passes through", (error, status) => {
+  expect(fail({ error }).status).toBe(status);
+  expect(PASS.has(status)).toBe(true);
 });

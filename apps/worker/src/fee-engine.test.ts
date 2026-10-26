@@ -6,8 +6,9 @@ import type { Parsed } from "@bondr/core/trades";
 import { Keypair } from "@solana/web3.js";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { WorkerEnv } from "./env.ts";
+import { startEngine, withCost } from "./fee-boot.ts";
 import { bondedJob, forcedJob } from "./fee-burns.ts";
-import { type CoinLoad, Engine, startEngine, withCost } from "./fee-engine.ts";
+import { type CoinLoad, Engine } from "./fee-engine.ts";
 import { windowJob } from "./fee-guard.ts";
 import type { FeeDeps } from "./fee-send.ts";
 

@@ -15,7 +15,8 @@ import {
 import { poolState } from "@bondr/core/trade";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { type Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { Fail } from "./http.ts";
+import { type AuditStore, audited } from "./admin-audit.ts";
+import { Fail, fail } from "./http.ts";
 import { loadSwitches, setJob, switchesLoaded, switchOn } from "./switches.ts";
 
 type Online = Parameters<typeof quoteVenue>[0];
@@ -178,9 +179,15 @@ export function parseSwitch(body: unknown): boolean {
   return on;
 }
 
-export async function setSwitch(body: unknown): Promise<{ enabled: boolean }> {
+// The runbook's bearer route (paused.e2e.ts uses it). WR-W-08: audited as actor "runbook" through the same
+// writer as the console (D-34), and it never turns launches back on after EVACUATE; only the console does (D-36).
+export async function setSwitch(body: unknown, audit: AuditStore): Promise<{ enabled: boolean }> {
   const on = parseSwitch(body);
-  await setJob("launches", on);
+  if (on && (await loadSwitches()).evacuatedAt) throw fail({ error: "not_applicable", reason: "evacuated" });
+  const params = { job: "launches", enabled: on };
+  await audited(audit, { actor: "runbook", action: "switch", mint: null, params }, () =>
+    setJob("launches", on),
+  );
   return { enabled: on };
 }
 

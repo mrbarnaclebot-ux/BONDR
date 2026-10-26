@@ -34,6 +34,7 @@ vi.mock("@bondr/core/db", async (orig) => ({
 
 const { loadSwitches, pauseAll, setJob, switchOn, switchState } = await import("./switches.ts");
 const { liveStatus, setSwitch } = await import("./status.ts");
+const { memoryAudit } = await import("./admin-audit.ts");
 
 const row = (o: object = {}) => ({
   ...{ id: 1, launchesEnabled: true, forcedBondEnabled: true, sweepsEnabled: true },
@@ -79,11 +80,28 @@ test("setJob writes the column, then memory; a failed write leaves memory as it 
   expect(switchOn("finalize")).toBe(false);
 });
 
-test("POST /kill-switch still answers { enabled } and moves the launches switch", async () => {
+test("POST /kill-switch answers { enabled }, moves the launches switch and audits as the runbook", async () => {
   await loadSwitches();
-  expect(await setSwitch({ enabled: false })).toEqual({ enabled: false });
+  const audit = memoryAudit();
+  expect(await setSwitch({ enabled: false }, audit)).toEqual({ enabled: false });
   expect(m.sets).toEqual([{ launchesEnabled: false }]);
   expect(switchOn("launches")).toBe(false);
+  expect(audit.rows[0]).toMatchObject({
+    ...{ actor: "runbook", action: "switch", result: "landed" },
+    params: { job: "launches", enabled: false },
+  });
+});
+
+test("POST /kill-switch never re-enables launches after EVACUATE (WR-W-08)", async () => {
+  m.rows = [row({ launchesEnabled: false, evacuatedAt: new Date() })];
+  const audit = memoryAudit();
+  await expect(setSwitch({ enabled: true }, audit)).rejects.toMatchObject({
+    status: 409,
+    body: { error: "not_applicable", reason: "evacuated" },
+  });
+  expect(m.sets).toEqual([]);
+  expect(audit.rows).toEqual([]);
+  expect(await setSwitch({ enabled: false }, audit)).toEqual({ enabled: false }); // pausing still works
 });
 
 test("liveStatus reads launches from memory, and fresh re-reads the row into the same memory", async () => {

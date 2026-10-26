@@ -71,7 +71,7 @@ function Row({ r, net, now }: { r: AdminAuditRow; net: Net; now: number }) {
           {now ? auditTime(r.at, now) : " "}
         </time>
       </td>
-      <td className={cn(TD, "num")}>{short(r.actor)}</td>
+      <td className={cn(TD, "num")}>{r.actor.length > 12 ? short(r.actor) : r.actor}</td>
       <td className={cn(TD, "text-[13px]")}>{auditActionCopy(r)}</td>
       <td className={TD}>
         <Cell w={auditSim(r.simulation)} />

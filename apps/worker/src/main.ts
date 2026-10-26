@@ -6,7 +6,7 @@ import "./sentry.ts";
 import { close, db } from "@bondr/core/db";
 import { connect, redact } from "@bondr/core/net";
 import { OnlinePumpSdk } from "@bondr/core/pump";
-import { settleStale } from "./admin-audit.ts";
+import { pgAudit, settleStale } from "./admin-audit.ts";
 import { adminRoutes } from "./admin-routes.ts";
 import { seedBondrPrice } from "./bondr-price.ts";
 import { loadEnv, type WorkerEnv } from "./env.ts";
@@ -68,7 +68,7 @@ async function main() {
       "POST /quote": (body) => quote(ctx, body),
       "POST /prepare": (body) => prepare(pctx, body),
       "POST /submit": (body) => submit(pctx, body),
-      "POST /kill-switch": (body) => setSwitch(body),
+      "POST /kill-switch": (body) => setSwitch(body, pgAudit()),
       "POST /trade/quote": (body) => quoteTrade(tctx, body),
       "POST /trade/balance": (body) => tradeBalance(ctx, body),
       "POST /trade/prepare": (body) => prepareTrade(tctx, body),

@@ -6,7 +6,7 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `env.ts`: `loadEnv` (fails at boot on bad config, devnet only; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`, `ADMIN_WALLET` (invalid is null), `ADMIN_EVACUATE`, `SENTRY_READ_TOKEN`), `ops`, `treasury` and the per-lane `buyback` keys.
 - `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Reply` for a non-200 success, `Routes` keyed "METHOD /path".
 - `sentry.ts`: OPS-01 Sentry init with the shared scrub; imported first by main.ts.
-- `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache), POST /kill-switch (through switches.ts), `Ctx`, `MAX_SOL_IN`.
+- `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache), POST /kill-switch (through switches.ts, audited as `runbook`, refuses re-enable after EVACUATE), `Ctx`, `MAX_SOL_IN`.
 - `switches.ts`: the owner's five switches (D-18) in memory: `loadSwitches` (one settings read at boot; a missing row is all off), `switchOn`, `switchState`, `setJob` (DB first, then memory), `pauseAll` (EVACUATE: every switch off and `evacuated_at` in one write, then memory). No timer reads.
 - `prepare.ts`: POST /prepare, the unsigned launch tx behind every cheap guard; `walletOf`.
 - `build.ts`: prepare's chain steps (table keys, per-coin table, compiled message, simulation).

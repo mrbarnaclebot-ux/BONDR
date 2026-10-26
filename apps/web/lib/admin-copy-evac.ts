@@ -16,7 +16,7 @@ export const EVAC_HINT = {
   signing: "Waiting for Phantom…",
   evacuating:
     "Evacuating. Every job is paused. Transfers are being sent; this can take a few minutes. Keep this tab open.",
-  lost: "Lost contact with the worker. Transfers continue on the worker. Refresh to see the audit log.",
+  lost: "Lost contact with the worker. Transfers may still be running on the worker. Refresh to see the audit log.",
   simOnly: "This deploy runs EVACUATE as a simulation only.",
   nothing: "Every W is empty. Nothing to evacuate.",
 } as const;

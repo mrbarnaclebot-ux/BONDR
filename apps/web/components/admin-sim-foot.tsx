@@ -14,8 +14,9 @@ import { TxLink } from "./tx-link";
 import { Button } from "./ui-button";
 import { useWallet } from "./wallet";
 
+// Unknown covers a worker that never answered at all, so it must not claim anything was sent (WR-B-02).
 const UNKNOWN =
-  "Sent, not confirmed yet. Nothing is resent automatically. Refresh in a minute to see the result in the audit log.";
+  "No confirmation from the worker. It may or may not have sent. Nothing is resent automatically. Refresh in a minute and check the audit log.";
 
 function Links({ view, net }: { view: AdminIntentView; net: Net }) {
   if (!view.sigs.length) return null;

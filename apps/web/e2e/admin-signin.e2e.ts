@@ -29,7 +29,7 @@ async function openAdmin(page: Page) {
   await page.goto("/admin");
   await expect(page.getByRole("heading", { level: 1, name: "Owner console" })).toBeVisible();
   const closed = page.getByRole("heading", { level: 2, name: "Admin is not configured" });
-  test.skip(await closed.isVisible(), "dev server runs without ADMIN_WALLET (reused server)");
+  test.skip(await closed.isVisible(), "dev server runs without ADMIN_WALLET or SITE_URL (reused server)");
 }
 
 async function signInThroughCard(page: Page, account: TestAccount) {

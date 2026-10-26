@@ -13,7 +13,7 @@ export async function openConsole(page: Page): Promise<void> {
   }
   const res = await adminSignIn(page.request, admin);
   const error = res.ok() ? null : (await res.json().catch(() => null))?.error;
-  test.skip(error === "not_configured", "dev server runs without ADMIN_WALLET (reused server)");
+  test.skip(error === "not_configured", "dev server runs without ADMIN_WALLET or SITE_URL (reused server)");
   test.skip(error === "not_admin", "reused dev server has another ADMIN_WALLET");
   expect(res.status()).toBe(200);
   await page.goto("/admin");

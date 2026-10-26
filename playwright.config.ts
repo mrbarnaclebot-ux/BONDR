@@ -23,6 +23,8 @@ try {
   adminWallet = undefined; // no MASTER_SEED_FILE: admin specs skip with that reason
 }
 if (adminWallet) webEnv.ADMIN_WALLET = adminWallet;
+// The admin sign-in message names SITE_URL and refuses any other origin (WR-B-03), so it must be baseURL.
+webEnv.SITE_URL ??= new URL(baseURL).origin;
 const ADMIN = ["**/admin-switch.e2e.ts", "**/admin-moderation.e2e.ts"];
 
 export default defineConfig({

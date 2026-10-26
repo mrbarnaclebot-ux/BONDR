@@ -60,6 +60,7 @@ export async function adminSignIn(request: APIRequestContext, account: TestAccou
   const headers = { origin: new URL(test.info().project.use.baseURL as string).origin, "x-real-ip": ip };
   const wallet = account.address;
   const nonceRes = await request.post("/api/admin/session", { headers, data: { op: "nonce", wallet } });
+  if (!nonceRes.ok()) return nonceRes; // not_configured without SITE_URL: the caller skips on it
   const { nonce, message } = await nonceRes.json();
   const signature = sign(null, Buffer.from(message), account.key).toString("base64");
   return request.post("/api/admin/session", { headers, data: { op: "verify", wallet, nonce, signature } });

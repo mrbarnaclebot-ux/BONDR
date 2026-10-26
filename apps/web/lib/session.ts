@@ -94,21 +94,46 @@ export function adminWalletEnv(): string | null {
   return BASE58_KEY.test(key) && bs58.decode(key).length === 32 ? key : null;
 }
 
-// The first line separates it from the consent message, so a consent signature never signs anyone in (D-09).
-export const adminMessage: MessageOf = (wallet, nonce, expires) =>
-  [
-    "BONDR admin sign-in",
-    "",
-    `Wallet: ${wallet}`,
-    `Nonce: ${nonce}`,
-    `Expires: ${expires}`,
-    "",
-    "Signing this message is not a transaction and costs nothing.",
-  ].join("\n");
+/** SITE_URL's origin, or null when unset or not a URL: admin then stays closed, as the message must name it. */
+export function adminSite(): string | null {
+  try {
+    return new URL(process.env.SITE_URL ?? "").origin;
+  } catch {
+    return null;
+  }
+}
 
-/** Like verifyConsent, over the admin message. The nonce is spent in consent_nonces by the caller. */
-export const verifyAdmin = (wallet: string, nonce: string, signature: Uint8Array, now = Date.now()) =>
-  verifySigned(adminMessage, wallet, nonce, signature, now);
+/** The site origin when this request came from it, else null. The message names it, so verify rebuilds it. */
+export function adminOrigin(req: Request): string | null {
+  const site = adminSite();
+  return site && req.headers.get("origin") === site ? site : null;
+}
+
+// SIWS shape: Phantom warns when the domain line differs from the page asking for the signature, so a
+// lookalike site relaying BONDR's nonce gets flagged (WR-B-03). The first line also keeps a consent signature
+// from signing anyone in (D-09).
+export const adminMessage =
+  (origin: string): MessageOf =>
+  (wallet, nonce, expires) =>
+    [
+      `${new URL(origin).host} wants you to sign in with your Solana account:`,
+      wallet,
+      "",
+      "BONDR admin sign-in. Signing this message is not a transaction and costs nothing.",
+      "",
+      `URI: ${origin}`,
+      `Nonce: ${nonce}`,
+      `Expiration Time: ${expires}`,
+    ].join("\n");
+
+/** Like verifyConsent, over the admin message for origin. The nonce is spent in consent_nonces by the caller. */
+export const verifyAdmin = (
+  origin: string,
+  wallet: string,
+  nonce: string,
+  signature: Uint8Array,
+  now = Date.now(),
+) => verifySigned(adminMessage(origin), wallet, nonce, signature, now);
 
 /** Set-Cookie for 30 minutes, never renewed (D-10). */
 export function adminCookie(wallet: string, now = Date.now()): { header: string; exp: number } {

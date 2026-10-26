@@ -6,6 +6,7 @@ import { BASE58_KEY, json, rateLimited, sameOrigin } from "@/lib/guard";
 import {
   adminCookie,
   adminMessage,
+  adminOrigin,
   adminSignOutCookie,
   adminWalletEnv,
   issueNonce,
@@ -29,24 +30,27 @@ export async function POST(req: Request): Promise<Response> {
   if (body.op === "signout")
     return new Response(null, { status: 200, headers: { "set-cookie": adminSignOutCookie(), ...NO_STORE } });
   if (typeof body.wallet !== "string" || !BASE58_KEY.test(body.wallet)) return refuse(400, "invalid_input");
+  // Fails closed without SITE_URL, and refuses any origin but the site's: the signed text names it.
+  const origin = adminOrigin(req);
+  if (!origin) return refuse(403, "not_configured");
   if (body.op === "nonce") {
     const n = issueNonce();
     return Response.json(
-      { ...n, message: adminMessage(body.wallet, n.nonce, n.expires) },
+      { ...n, message: adminMessage(origin)(body.wallet, n.nonce, n.expires) },
       { headers: NO_STORE },
     );
   }
-  if (body.op === "verify") return verify(body.wallet, body.nonce, body.signature);
+  if (body.op === "verify") return verify(origin, body.wallet, body.nonce, body.signature);
   return refuse(400, "invalid_input");
 }
 
-async function verify(wallet: string, nonce: unknown, signature: unknown): Promise<Response> {
+async function verify(origin: string, wallet: string, nonce: unknown, signature: unknown): Promise<Response> {
   const admin = adminWalletEnv();
   if (!admin) return refuse(403, "not_configured");
   // Before the signature check and the nonce spend: another wallet costs nothing and gets no cookie (D-10).
   if (wallet !== admin) return refuse(403, "not_admin");
   if (typeof nonce !== "string" || typeof signature !== "string") return refuse(400, "invalid_input");
-  const expiresAt = verifyAdmin(wallet, nonce, Buffer.from(signature, "base64"));
+  const expiresAt = verifyAdmin(origin, wallet, nonce, Buffer.from(signature, "base64"));
   if (!expiresAt) return refuse(401, "bad_signature");
   try {
     const fresh = await db()

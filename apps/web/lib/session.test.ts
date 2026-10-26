@@ -6,6 +6,7 @@ import {
   ADMIN_COOKIE,
   adminCookie,
   adminMessage,
+  adminOrigin,
   adminSession,
   adminSignOutCookie,
   adminWalletEnv,
@@ -104,10 +105,23 @@ test("an admin sign-in verifies only over the admin message of a live nonce (D-0
   const a = account();
   const now = Date.now();
   const n = issueNonce(now);
-  const admin = sign(null, Buffer.from(adminMessage(a.wallet, n.nonce, n.expires)), a.key);
-  expect(verifyAdmin(a.wallet, n.nonce, admin, now)?.toISOString()).toBe(n.expires);
-  expect(verifyAdmin(a.wallet, n.nonce, signed(a, n), now)).toBeNull(); // a consent signature
-  expect(verifyAdmin(a.wallet, n.nonce, admin, now + 5 * 60_000)).toBeNull();
+  const site = "https://bondr.example";
+  const text = adminMessage(site)(a.wallet, n.nonce, n.expires);
+  expect(text.split("\n")[0]).toBe("bondr.example wants you to sign in with your Solana account:");
+  const admin = sign(null, Buffer.from(text), a.key);
+  expect(verifyAdmin(site, a.wallet, n.nonce, admin, now)?.toISOString()).toBe(n.expires);
+  expect(verifyAdmin("https://evil.example", a.wallet, n.nonce, admin, now)).toBeNull(); // another domain
+  expect(verifyAdmin(site, a.wallet, n.nonce, signed(a, n), now)).toBeNull(); // a consent signature
+  expect(verifyAdmin(site, a.wallet, n.nonce, admin, now + 5 * 60_000)).toBeNull();
+});
+
+test("the admin origin is SITE_URL's, and only a request from it gets one (WR-B-03)", () => {
+  const req = (origin: string) => new Request("http://x/api/admin/session", { headers: { origin } });
+  vi.stubEnv("SITE_URL", "");
+  expect(adminOrigin(req("https://bondr.example"))).toBeNull();
+  vi.stubEnv("SITE_URL", "https://bondr.example/");
+  expect(adminOrigin(req("https://bondr.example"))).toBe("https://bondr.example");
+  expect(adminOrigin(req("https://evil.example"))).toBeNull();
 });
 
 test("the admin cookie holds 30 minutes for the configured admin only (D-10)", () => {

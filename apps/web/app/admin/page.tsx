@@ -4,7 +4,7 @@ import { AdminConsole } from "@/components/admin-console";
 import { AdminSignIn } from "@/components/admin-signin";
 import { type AdminOverview, emptyOverview, overviewData } from "@/lib/admin-data";
 import { feeWindowMs } from "@/lib/coins";
-import { ADMIN_COOKIE, adminSession, adminWalletEnv } from "@/lib/session";
+import { ADMIN_COOKIE, adminSession, adminSite, adminWalletEnv } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ export default async function AdminPage() {
           windowMs={feeWindowMs()}
         />
       ) : (
-        <AdminSignIn configured={admin !== null} />
+        <AdminSignIn configured={admin !== null && adminSite() !== null} />
       )}
     </div>
   );

@@ -9,11 +9,12 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache; `StatusCtx` allows a null Q for genesis mode, paused "genesis"), POST /kill-switch (through switches.ts, audited as `runbook`, refuses re-enable after EVACUATE), `Ctx`, `MAX_SOL_IN`.
 - `switches.ts`: the owner's five switches (D-18) in memory: `loadSwitches` (one settings read at boot; a missing row is all off), `switchOn`, `switchState`, `setJob` (DB first, then memory), `pauseAll` (EVACUATE: every switch off and `evacuated_at` in one write, then memory), `switchesOff` (the contract check pause: the five columns only, no `evacuated_at`). No timer reads.
 - `contract-check.ts`: the pump contract check (OPS-02) in memory: `runCheck` (single-flight; a mismatch turns every switch off with one `contract_check` audit row), `scheduleCheck` (own Monday timer at FEE_BATCH_HOUR_UTC), `contractState`, `contractFailed` (launch pause reason until a run passes), `nextCheckAt`.
-- `prepare.ts`: POST /prepare, the unsigned launch tx behind every cheap guard; the mainnet Sender tip priced as a fee.
+- `prepare.ts`: POST /prepare, the unsigned launch tx behind every cheap guard; the mainnet Sender tip priced as a fee. `prepare(ctx, body, one = prepareOne)` is the single-flight queue the genesis builder shares.
+- `genesis.ts`: genesis mode's POST /prepare and /quote (D-28, D-29): `genesisOne` (owner actor and wallet = ADMIN_WALLET, consent, burn only, once; w = the treasury) and `genesisQuote` (fresh SOL curve, solBack 0).
 - `prepare-rules.ts`: prepare's pure request rules (`walletOf`, `parseRequest`, `prepareGuard`, `signBy`, `sellFloor`, the table caps), re-exported from prepare.ts.
 - `ticker.ts`: the 24h ticker cooldown (D-40..D-42): `tickerLock` (prepare's one indexed read) and `tickerRefusal` (pure, `ticker_locked` with `retryAfter` and `lock`).
 - `build.ts`: prepare's chain steps (table keys, per-coin table, compiled message with the Sender tip and its size guard, `tipped`, simulation).
-- `submit.ts`: POST /submit, co-sign after the byte compare, then send (Sender for a tipped message, one RPC resend on a Sender error).
+- `submit.ts`: POST /submit, co-sign after the byte compare, then send (Sender for a tipped message, one RPC resend on a Sender error); in genesis mode only the treasury's row passes the pause, never after a failed contract check).
 - `settle.ts`: settles a sent launch and resumes in-flight launches on boot.
 - `launches.ts`: launch row reads and guarded state updates.
 - `vanity.ts`: the bndr mint pool (seed-derived mint keys, reserve and release).

@@ -57,6 +57,9 @@ test("a short string shows the field error and sends no request", async ({ page 
   await expect(panel(page).getByText("That is not a transaction signature.")).toBeVisible();
   await expect(input(page)).toHaveAttribute("aria-invalid", "true");
   expect(calls).toBe(0);
+  await input(page).fill("5".repeat(86)); // a real signature can encode this short
+  await panel(page).getByRole("button", { name: "Decode" }).click();
+  await expect.poll(() => calls).toBe(1);
 });
 
 test("found false shows the not-found copy", async ({ page }) => {

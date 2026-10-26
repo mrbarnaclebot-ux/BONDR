@@ -13,7 +13,8 @@ import { FieldError, Input, Label } from "./ui-field";
 
 type Found = Inspect & { found: true; status: "success" | "failed" };
 
-const SIG = /^[1-9A-HJ-NP-Za-km-z]{87,88}$/; // 64 bytes of base58
+// About 1 in 300 real signatures encode below 87 characters (WR-B-08); the worker checks the decoded 64 bytes.
+const SIG = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
 const INVALID = "That is not a transaction signature.";
 const NOT_FOUND = "Transaction not found. It may be too new, too old for this RPC, or on another cluster.";
 const RPC = "Could not reach the RPC. Try again.";

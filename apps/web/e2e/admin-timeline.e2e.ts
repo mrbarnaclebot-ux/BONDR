@@ -108,9 +108,7 @@ test.describe("admin-timeline", () => {
     const steps = panel.getByRole("list", { name: "STUK timeline" });
     await expect(steps.getByText("Stuck: update_fee_shares_v2")).toBeVisible();
     await expect(
-      panel.getByText(
-        /^Last error 1h \dm ago: blockhash expired after send, 3 of 3 attempts\. Pre-flight: deployer Dep1…1111 matches the launch signer\.$/,
-      ),
+      panel.getByText(/^Last error 1h \d{1,2}m ago: blockhash expired after send, 3 of 3 attempts\.$/),
     ).toBeVisible();
     const recheck = panel.getByRole("button", { name: "Re-check launch" });
     await expect(recheck).toHaveAttribute("aria-disabled", "true");

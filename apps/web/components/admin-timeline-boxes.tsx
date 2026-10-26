@@ -6,7 +6,7 @@ import type { AdminActAction, AdminCoinMemory, AdminTxAction } from "@bondr/core
 import type { ActionState, GridKey } from "@/lib/admin-applies";
 import { ACTION_COPY, stuckErrorCopy } from "@/lib/admin-copy-actions";
 import { nextStepCopy } from "@/lib/admin-state";
-import { age, short } from "@/lib/format";
+import { age } from "@/lib/format";
 import { ActionButton, isAct } from "./admin-action-grid";
 
 // The engine step's retry action (fee-stuck.ts stepOf names); other steps have no retry button.
@@ -55,23 +55,22 @@ function Buttons({ keys, primary, label, ...s }: ButtonsProps) {
 
 type StuckProps = Shared & {
   stuck: NonNullable<AdminCoinMemory["stuck"]>;
-  deployer: string | null;
   held: boolean;
   now: number;
 };
 
-export function StuckBox({ stuck, deployer, held, now, ...s }: StuckProps) {
+// No pre-flight line: the live verdict is the worker's, and launches.wallet restated against itself always
+// reads as passed (WR-B-04). "after send" only where a send happened (IN-B-04).
+const SENT = new Set(["send_failed", "blockhash_expired"]);
+
+export function StuckBox({ stuck, held, now, ...s }: StuckProps) {
   const retry = RETRY[stuck.step] ?? null;
-  const preflight =
-    stuck.step === "finalize" && deployer
-      ? ` Pre-flight: deployer ${short(deployer)} matches the launch signer.`
-      : "";
   const when = age(new Date(stuck.at).toISOString(), now);
   return (
     <div className={`${BOX} border-destructive/40 bg-danger-wash`}>
       <p>
-        Last error <span className="num">{when}</span> ago: {stuckErrorCopy(stuck.code)} after send,{" "}
-        {stuck.attempts} of 3 attempts.{preflight}
+        Last error <span className="num">{when}</span> ago: {stuckErrorCopy(stuck.code)}
+        {SENT.has(stuck.code) ? " after send" : ""}, {stuck.attempts} of 3 attempts.
       </p>
       {/* The retry reads as the W table's next step ("Retry finalize split"); the grid keeps "Finalize split". */}
       <Buttons

@@ -163,12 +163,7 @@ function CoinBody({ row, overview, windowMs, onChanged, onTx }: BodyProps) {
         {timelineSteps(data.timeline, row, mem, data.live, now, windowMs).map((s) => (
           <StepItem key={s.key} step={s} net={overview.net}>
             {s.state === "stuck" && mem?.stuck && (
-              <StuckBox
-                {...shared}
-                stuck={mem.stuck}
-                deployer={data.timeline.launch?.wallet ?? null}
-                {...{ held, now }}
-              />
+              <StuckBox {...shared} stuck={mem.stuck} {...{ held, now }} />
             )}
             {s.state === "held" && (
               <HeldBox

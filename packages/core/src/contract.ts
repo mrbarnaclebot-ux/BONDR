@@ -4,7 +4,7 @@
 // the judge is pure so both measured networks are tested without a network.
 import { NATIVE_MINT } from "@solana/spl-token";
 import { type AccountInfo, type Connection, PublicKey } from "@solana/web3.js";
-import { readLiveConfig } from "./config.ts";
+import { configFacts } from "./config.ts";
 import type { Net } from "./keys.ts";
 import {
   bondingCurvePda,
@@ -32,7 +32,8 @@ export type AccountFact = {
   disc: string;
   decodes: boolean;
 };
-export type CheckInput = { programs: ProgramFact[]; accounts: AccountFact[]; config: Facts };
+// config is null when the Global or a FeeConfig account is missing or no longer decodes (CR-W-02).
+export type CheckInput = { programs: ProgramFact[]; accounts: AccountFact[]; config: Facts | null };
 export type CheckResult = { facts: string[]; slots: Record<ProgramName, string> };
 
 // PROJECT.md "Fee Mechanic" item 3 and the depth-1 pump coin quote from item 1, per network. Devnet has the
@@ -147,6 +148,7 @@ export function judge(input: CheckInput, p: Profile): string[] {
   }
   for (const a of input.accounts) for (const f of accountFacts(a)) out.add(f);
   const f = input.config;
+  if (!f) return [...out.add("live config no longer decodes with the pinned SDK")];
   if (!f.createV2Enabled) out.add("create_v2 disabled");
   for (const d of drift(f, p)) out.add(d);
   // D-19 checks the max on its own; drift reports it only when the fee is configurable.
@@ -189,21 +191,28 @@ async function programs(
   return { facts, slots };
 }
 
-/** Reads the chain and judges it. An RPC throw propagates: the worker shows "Could not run" and pauses nothing. */
+// A decode throw is a fact about the chain, not an RPC failure.
+function decoded(infos: (AccountInfo<Buffer> | null)[]): Facts | null {
+  try {
+    return configFacts([infos[0], infos[1], infos[3]]);
+  } catch {
+    return null;
+  }
+}
+
+/** Reads the chain and judges it. Only an RPC throw propagates (the worker shows "Could not run" and pauses
+ * nothing); a missing, re-owned or re-laid-out account is judged from the raw infos as a mismatch (CR-W-02). */
 export async function checkContract(conn: Connection, net: Net, bondr?: PublicKey): Promise<CheckResult> {
   const names = ["Global", "FeeConfig", "AMM GlobalConfig", "AMM FeeConfig"];
   const keys = [GLOBAL_PDA, PUMP_FEE_CONFIG_PDA, GLOBAL_CONFIG_PDA, PUMP_AMM_FEE_CONFIG_PDA];
   if (bondr) keys.push(bondingCurvePda(bondr), canonicalPumpPoolPdaWithQuote(bondr, NATIVE_MINT));
-  const [prog, infos, config] = await Promise.all([
-    programs(conn),
-    conn.getMultipleAccountsInfo(keys),
-    readLiveConfig(conn),
-  ]);
+  const [prog, infos] = await Promise.all([programs(conn), conn.getMultipleAccountsInfo(keys)]);
   const accounts = names.map((n, i) => observe(n, infos[i] ?? null));
   // Once BONDR migrates, its canonical pool is the account BONDR trades against.
   if (bondr)
     accounts.push(
       infos[5] ? observe("BONDR pool", infos[5]) : observe("BONDR bonding curve", infos[4] ?? null),
     );
+  const config = decoded(infos);
   return { facts: judge({ programs: prog.facts, accounts, config }, PROFILES[net]), slots: prog.slots };
 }

@@ -16,9 +16,12 @@ import {
   ensureTable,
   previewCosts,
   simulateLaunch,
+  tipped,
   unionTableKeys,
 } from "./build.ts";
 import { ops, type WorkerEnv } from "./env.ts";
+import { feeConfig, launchTip } from "./fee-config.ts";
+import { tipIxs } from "./fee-send.ts";
 import { startRefill } from "./grind.ts";
 import { Fail, fail } from "./http.ts";
 import {
@@ -110,19 +113,24 @@ type Sized = { o: LaunchOpts; builds: Builds; table: AddressLookupTableAccount }
 
 // Sell: the burn and sell probes give solBack, then the sell is rebuilt with its floor and simulated again.
 async function finalMessage(ctx: PrepareCtx, s: Sized, blockhash: string) {
+  const net = ctx.env.net;
   const fee = networkFee(ctx.priorityFee);
   const solIn = BigInt(s.o.solIn.toString());
-  const msgOf = (e: Exit) => compileLaunch({ ...s.o, exit: e }, s.builds[e].ixs, s.table, blockhash);
+  const tip = () => tipIxs(net, s.o.dev, feeConfig(net).launchTipLamports);
+  const msgOf = (e: Exit) => compileLaunch({ ...s.o, exit: e }, s.builds[e].ixs, s.table, blockhash, tip());
   const sim = (msg: ReturnType<typeof msgOf>) => simulateLaunch(ctx.conn, msg, s.o.dev);
+  // The simulated drop includes the tip when the message kept it (Pitfall 2): a fee, not create cost.
+  const feeOf = (msg: ReturnType<typeof msgOf>) => fee + (tipped(msg) ? launchTip(net) : 0n);
   if (s.o.exit === "burn") {
     const msg = msgOf("burn");
-    const costs = previewCosts(solIn, fee, await sim(msg));
+    const costs = previewCosts(solIn, feeOf(msg), await sim(msg));
     return { msg, amount: s.builds.burn.amount, ...costs };
   }
-  const [burnSpent, sellSpent] = await Promise.all([sim(msgOf("burn")), sim(msgOf("sell"))]);
-  const costs = previewCosts(solIn, fee, burnSpent, sellSpent);
+  const probe = msgOf("burn");
+  const [burnSpent, sellSpent] = await Promise.all([sim(probe), sim(msgOf("sell"))]);
+  const costs = previewCosts(solIn, feeOf(probe), burnSpent, sellSpent);
   const minSolOut = new BN(sellFloor(costs.solBack ?? 0n).toString());
-  const sell = await buildMessage({ ...s.o, minSolOut }, s.table, blockhash);
+  const sell = await buildMessage({ ...s.o, minSolOut }, s.table, blockhash, tip());
   await sim(sell.msg);
   return { msg: sell.msg, amount: sell.amount, ...costs };
 }
@@ -171,7 +179,7 @@ async function finish(ctx: PrepareCtx, req: Req, s: Sized, created: boolean): Pr
 async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult> {
   const { req, prior, createCost } = await admit(ctx, body);
   // Before the reservation, so a wallet that cannot pay never holds a mint out of the pool (WR-01).
-  const need = req.solIn + createCost + networkFee(ctx.priorityFee);
+  const need = req.solIn + createCost + networkFee(ctx.priorityFee) + launchTip(ctx.env.net);
   const balance = await ctx.conn.getBalance(new PublicKey(req.wallet));
   if (BigInt(balance) < need) throw fail({ error: "insufficient_balance" });
   const mint = await reserveMint(ctx, req.wallet);

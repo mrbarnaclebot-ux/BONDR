@@ -44,3 +44,7 @@ export function feeConfig(net: TradeNet): FeeConfig {
     batchHourUtc: 4,
   };
 }
+
+// The tip a launch carries: only mainnet launches go out through Sender (D-34); devnet and the fork send over RPC.
+export const launchTip = (net: TradeNet): bigint =>
+  net === "mainnet" ? BigInt(feeConfig(net).launchTipLamports) : 0n;

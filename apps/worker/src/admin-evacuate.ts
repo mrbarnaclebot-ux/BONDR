@@ -117,17 +117,21 @@ export function packBatches(
 
 // Pitfall 4: each row carries its own amount and sol and the job passes no facts, so no row takes a sibling's
 // value. An unknown price writes sol 0, never unset, or withSol would fill every row from the first one.
+// IN-W-01: a W holding no BONDR writes the SOL-only Emergency row (no amount, sol = the lamports moved), never
+// "Moved 0 BONDR"; an empty one writes none.
+function moveRow(b: WBalance, price: number | null): NewEntry[] {
+  const mint = b.mint.toBase58();
+  if (!b.bondr) return b.lamports ? [{ kind: "evacuate", mint, sol: b.lamports }] : [];
+  return [{ kind: "evacuate", mint, amount: b.bondr, sol: price === null ? 0n : toSol(b.bondr, price) }];
+}
+
 export function buildBatch(d: Pick<FeeDeps, "Q" | "ops" | "treasury" | "bondrSol">, batch: WBalance[]): Job {
   const price = d.bondrSol();
   const rows: NewEntry[] = batch.flatMap((b) => {
-    const mint = b.mint.toBase58();
-    const move = {
-      kind: "evacuate" as const,
-      mint,
-      amount: b.bondr,
-      sol: price === null ? 0n : toSol(b.bondr, price),
-    };
-    return b.child ? [move, { kind: "leftover_burn" as const, mint, burned: b.child }] : [move];
+    const burn = b.child
+      ? [{ kind: "leftover_burn" as const, mint: b.mint.toBase58(), burned: b.child }]
+      : [];
+    return [...moveRow(b, price), ...burn];
   });
   const ixs = [...head(d), ...batch.flatMap((b) => wIxs(d, b))];
   // CR-W-01: break-glass, so the ops floor never skips it; a leaked seed drains ops first.

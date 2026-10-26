@@ -212,6 +212,13 @@ test("rows: one evacuate row per W with its own amount and sol, a leftover_burn 
     { kind: "leftover_burn", mint: m0, burned: 42_000_000n },
     { kind: "evacuate", mint: m1, amount: 3_000_000n, sol: 1_500_000n },
   ]);
+  // IN-W-01: SOL only names the lamports, never "Moved 0 BONDR"; child only writes just its burn.
+  const [solOnly, childOnly] = [coin(7n, 0n, 0n), coin(0n, 0n, 9n)];
+  const more = buildBatch(deps, await evacuateBalances(deps, [solOnly, childOnly])).rows;
+  expect(more).toEqual([
+    { kind: "evacuate", mint: solOnly.mint.toBase58(), sol: 7n },
+    { kind: "leftover_burn", mint: childOnly.mint.toBase58(), burned: 9n },
+  ]);
 });
 
 test("simulate totals the wallets; simulate mode gives no intent, on mode does; nothing gives nothing", async () => {

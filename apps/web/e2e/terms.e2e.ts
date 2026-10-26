@@ -16,7 +16,7 @@ const WIDTHS = [
   { width: 1440, height: 900 },
 ];
 
-test("the footer links to /terms from any page", async ({ page }) => {
+test("the footer links to /terms from any page", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/no-such-page");
   const footer = page.getByRole("contentinfo");
   await expect(footer).toContainText("BONDR adds no platform fee.");
@@ -25,7 +25,7 @@ test("the footer links to /terms from any page", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Terms" })).toBeVisible();
 });
 
-test("/terms shows the eight numbered sections in order", async ({ page }) => {
+test("/terms shows the eight numbered sections in order", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/terms");
   await expect(page.getByText("Short on purpose. Last updated 2026-10-26.")).toBeVisible();
   const headings = page.getByRole("main").getByRole("heading", { level: 2 });
@@ -35,7 +35,9 @@ test("/terms shows the eight numbered sections in order", async ({ page }) => {
   }
 });
 
-test("/terms names the contact, the network and the 24h ticker cooldown (D-17, D-43)", async ({ page }) => {
+test("/terms names the contact, the network and the 24h ticker cooldown (D-17, D-43)", {
+  tag: "@smoke",
+}, async ({ page }) => {
   await page.goto("/terms");
   const main = page.getByRole("main");
   const mail = main.getByRole("link", { name: "hello@trybondr.fun", exact: true });
@@ -52,14 +54,14 @@ test("/terms names the contact, the network and the 24h ticker cooldown (D-17, D
   await expect(main).not.toContainText(/@BONDR\s+on X/); // the pre-go-live placeholder
 });
 
-test("the first Tab reaches Skip to content", async ({ page }) => {
+test("the first Tab reaches Skip to content", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/terms");
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
 });
 
 for (const { width, height } of WIDTHS) {
-  test(`/terms at ${width}px has no horizontal scroll`, async ({ page }) => {
+  test(`/terms at ${width}px has no horizontal scroll`, { tag: "@smoke" }, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.goto("/terms");
     await expect(page.getByRole("heading", { level: 1, name: "Terms" })).toBeVisible();

@@ -26,7 +26,7 @@ async function openLocked(page: Page) {
 }
 
 for (const width of [390, 768, 1440]) {
-  test(`locked card at ${width}`, async ({ page }) => {
+  test(`locked card at ${width}`, { tag: "@smoke" }, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await openLocked(page);
     await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
@@ -35,7 +35,9 @@ for (const width of [390, 768, 1440]) {
   });
 }
 
-test("/api/admin/* answers 401 without a cookie, 403 cross-origin, and only to POST", async ({ request }) => {
+test("/api/admin/* answers 401 without a cookie, 403 cross-origin, and only to POST", {
+  tag: "@smoke",
+}, async ({ request }) => {
   const origin = new URL(STAGING as string).origin;
   expect((await request.post("/api/admin/health", { headers: { origin } })).status()).toBe(401);
   const evil = await request.post("/api/admin/health", { headers: { origin: "https://evil.example" } });
@@ -43,7 +45,9 @@ test("/api/admin/* answers 401 without a cookie, 403 cross-origin, and only to P
   expect((await request.get("/api/admin/health")).status()).not.toBe(200); // POST only (Pitfall 8)
 });
 
-test("a valid signature is refused not_configured and sets no cookie", async ({ page }) => {
+test("a valid signature is refused not_configured and sets no cookie", { tag: "@smoke" }, async ({
+  page,
+}) => {
   await openLocked(page);
   const res = await adminSignIn(page.request, newTestAccount());
   expect(res.status()).toBe(403);

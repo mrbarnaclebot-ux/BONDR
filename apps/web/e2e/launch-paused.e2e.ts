@@ -22,9 +22,9 @@ async function open(page: Page, paused: PauseReason, title = "Launches are pause
   return page.getByRole("status").filter({ hasText: title });
 }
 
-test("a failed contract check names the check, says trading continues and keeps Launch disabled", async ({
-  page,
-}) => {
+test("a failed contract check names the check, says trading continues and keeps Launch disabled", {
+  tag: "@smoke",
+}, async ({ page }) => {
   const banner = await open(page, "contract_check");
   await expect(banner).toContainText("A weekly safety check found that pump.fun changed something");
   await expect(banner).toContainText("Trading is not affected.");
@@ -39,7 +39,9 @@ test("the kill switch keeps its own body", async ({ page }) => {
   await expect(banner).not.toContainText("Trading is not affected.");
 });
 
-test("genesis mode says launches are not open yet and keeps Launch disabled", async ({ page }) => {
+test("genesis mode says launches are not open yet and keeps Launch disabled", { tag: "@smoke" }, async ({
+  page,
+}) => {
   const banner = await open(page, "genesis", "Launches are not open yet.");
   await expect(banner).toContainText(
     "Launches open after the BONDR token is live. You can fill this in now; the Launch button unlocks automatically when launches open.",

@@ -6,7 +6,7 @@ import { injectPhantom, newTestAccount, preConsent, rootEnv } from "./phantom.ts
 const SVG = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>');
 const cont = (page: Page) => page.getByRole("button", { name: "Continue to dev buy" });
 
-test("/launch shows the title, the lede and step 1 current", async ({ page }) => {
+test("/launch shows the title, the lede and step 1 current", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/launch");
   await expect(page.getByRole("heading", { level: 1, name: "Launch a coin" })).toBeVisible();
   await expect(page.getByText("One Phantom signature creates your coin")).toBeVisible();
@@ -14,7 +14,9 @@ test("/launch shows the title, the lede and step 1 current", async ({ page }) =>
   await expect(current(page)).toHaveText(/01\s*Coin/);
 });
 
-test("Continue with everything empty shows the required errors and focuses Name", async ({ page }) => {
+test("Continue with everything empty shows the required errors and focuses Name", { tag: "@smoke" }, async ({
+  page,
+}) => {
   await page.goto("/launch");
   await cont(page).click();
   await expect(page.getByText("Name is required.")).toBeVisible();
@@ -25,7 +27,7 @@ test("Continue with everything empty shows the required errors and focuses Name"
   await expect(current(page)).toHaveText(/01\s*Coin/);
 });
 
-test("over-limit, charset and wrong-type errors show live", async ({ page }) => {
+test("over-limit, charset and wrong-type errors show live", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/launch");
   await field(page, "Name").fill("a".repeat(33));
   await expect(page.getByText("Name is 33 characters. Keep it to 32 or fewer.")).toBeVisible();
@@ -36,7 +38,7 @@ test("over-limit, charset and wrong-type errors show live", async ({ page }) => 
   await expect(page.getByText("That file is not PNG, JPG, GIF or WEBP. Choose another image.")).toBeVisible();
 });
 
-test("valid input normalizes the X link and advances to step 2", async ({ page }) => {
+test("valid input normalizes the X link and advances to step 2", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/launch");
   await field(page, "Name").fill("Grubworm");
   await field(page, "Symbol").fill("grub");
@@ -52,7 +54,7 @@ test("valid input normalizes the X link and advances to step 2", async ({ page }
 });
 
 for (const width of [390, 768, 1440]) {
-  test(`step 1 has no horizontal scroll at ${width}px`, async ({ page }) => {
+  test(`step 1 has no horizontal scroll at ${width}px`, { tag: "@smoke" }, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/launch");
     await expect(cont(page)).toBeVisible();

@@ -2,6 +2,8 @@
 
 Playwright specs (`*.e2e.ts`, run with `pnpm e2e`) and their helpers. `E2E_BASE_URL` points the run at a deployed app instead of the local worker and web servers.
 
+`@smoke` tags the tests that need no worker, seed, root .env or seeded DB (terms, wallet, admin-locked, launch-form step 1, home hero without the pulse line, launch-paused genesis and contract_check: 32 tests, about 10 s). CI runs them against `next start` with `E2E_BASE_URL=http://127.0.0.1:3000 pnpm exec playwright test --project=chromium --grep @smoke`.
+
 - `phantom.ts`: the fake Phantom (`injectPhantom` with signTransaction and signMessage, a `reject` option for both and the signed `messages`; `emitChange`), consent helpers (`preConsent` stubs the browser's session read for specs whose launch routes are stubbed; `signIn` gets a real session through the API), test keys (`newTestAccount`, `simDevAccount`, `signWire`) and `rootEnv`, which reads the root .env without loading it into the runner.
 - `keys.ts`: `accountFromSeed`, `seedAccount` and `rootEnv` with no @playwright/test import, so `playwright.config.ts` can derive the test admin address (`seedAccount("admin:devnet:e2e")`) and set it as `ADMIN_WALLET` on both local servers (plus `SITE_URL` = baseURL on web when unset: the admin sign-in message names it and refuses any other origin); `phantom.ts` re-exports them and adds `adminAccount` and `adminSignIn` (the admin nonce and verify through the API).
 - `fixtures.ts`: `seedCoin` and `dropCoin`, a throwaway indexed coin (wallet, used vanity mint, landed launch a year back, coins row, launch rows then buys and sells) named "E2E ..."; shared with `lib/trades.test.ts`.

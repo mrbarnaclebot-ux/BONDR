@@ -14,14 +14,14 @@ async function connected(page: Page): Promise<TestAccount> {
   return account;
 }
 
-test("Connect Phantom shows the short address on a solid button", async ({ page }) => {
+test("Connect Phantom shows the short address on a solid button", { tag: "@smoke" }, async ({ page }) => {
   const { address } = await connected(page);
   const button = header(page).getByRole("button", { name: short(address) });
   await page.mouse.move(0, 400); // off the button, so the hover color does not apply
   await expect(button).toHaveCSS("background-color", "rgb(50, 113, 42)");
 });
 
-test("the wallet menu copies and disconnects", async ({ page }) => {
+test("the wallet menu copies and disconnects", { tag: "@smoke" }, async ({ page }) => {
   const { address } = await connected(page);
   await header(page)
     .getByRole("button", { name: short(address) })
@@ -32,7 +32,9 @@ test("the wallet menu copies and disconnects", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Disconnect" })).toBeHidden();
 });
 
-test("a Phantom account switch updates the header and asks the new account for consent", async ({ page }) => {
+test("a Phantom account switch updates the header and asks the new account for consent", {
+  tag: "@smoke",
+}, async ({ page }) => {
   await connected(page);
   const next = newTestAccount();
   await emitChange(page, next);
@@ -42,7 +44,7 @@ test("a Phantom account switch updates the header and asks the new account for c
   await expect(header(page).getByRole("button", { name: short(next.address) })).toBeAttached();
 });
 
-test("without Phantom, Connect shows the not-installed popover", async ({ page }) => {
+test("without Phantom, Connect shows the not-installed popover", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/terms");
   await header(page).getByRole("button", { name: "Connect Phantom" }).click();
   await expect(
@@ -56,7 +58,7 @@ test("without Phantom, Connect shows the not-installed popover", async ({ page }
 
 test.describe("on a phone without Phantom", () => {
   test.use({ userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148" });
-  test("the popover deep-links into Phantom's browser", async ({ page }) => {
+  test("the popover deep-links into Phantom's browser", { tag: "@smoke" }, async ({ page }) => {
     await page.goto("/terms");
     await header(page).getByRole("button", { name: "Connect Phantom" }).click();
     const open = page.getByRole("link", { name: "Open BONDR in Phantom" });
@@ -69,7 +71,9 @@ test.describe("on a phone without Phantom", () => {
   });
 });
 
-test("at 390px the wallet button and menu items are at least 44px tall", async ({ page }) => {
+test("at 390px the wallet button and menu items are at least 44px tall", { tag: "@smoke" }, async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const { address } = await connected(page);
   const button = header(page).getByRole("button", { name: short(address) });
@@ -86,7 +90,7 @@ test("at 390px the wallet button and menu items are at least 44px tall", async (
   }
 });
 
-test("on /launch the header connects and disconnects", async ({ page }) => {
+test("on /launch the header connects and disconnects", { tag: "@smoke" }, async ({ page }) => {
   const account = newTestAccount();
   await injectPhantom(page, account);
   await preConsent(page, account.address);

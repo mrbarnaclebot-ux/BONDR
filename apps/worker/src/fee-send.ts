@@ -117,11 +117,11 @@ export async function refreshOps(d: Pick<FeeDeps, "conn" | "ops" | "net">): Prom
   return low;
 }
 
-export const tipIxs = (net: TradeNet, ops: PublicKey, lamports: number, pick = Math.random) =>
+export const tipIxs = (net: TradeNet, payer: PublicKey, lamports: number, pick = Math.random) =>
   net === "mainnet"
     ? [
         SystemProgram.transfer({
-          fromPubkey: ops,
+          fromPubkey: payer,
           toPubkey: new PublicKey(SENDER_TIPS[Math.floor(pick() * SENDER_TIPS.length)] as string),
           lamports,
         }),

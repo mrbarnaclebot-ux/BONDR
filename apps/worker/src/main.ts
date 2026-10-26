@@ -100,7 +100,9 @@ async function main() {
     console.log(`worker listening on ${env.net}${ctx ? "" : " (genesis)"}`);
     // Public keys only, so the G-3 and G-4 steps read the ops address from the logs without touching the seed.
     const [o, b] = [ops(env.seed, env.net).publicKey, buyback(env.seed, env.net, env.lane).publicKey];
-    console.log(`wallets: ops=${o.toBase58()} buyback=${b.toBase58()} treasury=${env.treasury.toBase58()}`);
+    // IN-W-06: a treasury equal to ADMIN_WALLET stays out of the log, as env.ts's header rule says.
+    const t = env.treasury.toBase58() === env.adminWallet ? "" : ` treasury=${env.treasury.toBase58()}`;
+    console.log(`wallets: ops=${o.toBase58()} buyback=${b.toBase58()}${t}`);
     void startRefill(env);
     if (ctx) void bootIndex(ctx, env); // genesis has no coins to index and no engine (D-29)
     resumeLaunches(conn).catch(failed("resume"));

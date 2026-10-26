@@ -1,6 +1,7 @@
 // admin-devnet.e2e.ts's helpers, split out to keep the spec under 300 lines: the dev DB, the coin pick, ledger
 // rows, the dialog's sign and send, the preflight that fails before any spend, the W seeding and the guard that
 // keeps EVACUATE to the one W this run seeded, and the settings snapshot and restore.
+import { windowOf } from "@bondr/core/fees";
 import { expect, type Page, request, test } from "@playwright/test";
 import {
   createAssociatedTokenAccountIdempotentInstruction as ataIx,
@@ -26,14 +27,27 @@ export const origin = () => ({ origin: new URL(test.info().project.use.baseURL a
 export type Coin = { mint: string; symbol: string; w: string };
 export const derived = (c: Coin) => seedAccount(`w:devnet:${c.mint}`).address === c.w;
 
-/** A landed curve coin whose W derives from the seed and whose symbol is unique (the W table names rows by it). */
+/** A landed curve coin whose W derives from the seed and whose symbol is unique (the W table names rows by it).
+ * Sweep now is the current window's sweep, and fee_ledger_sweep allows one per window, so a coin already swept
+ * in its current window (the worker's FEE_WINDOW_MS, 24 h unset) would collect and split but never sweep. */
 export async function pickCoin(): Promise<Coin> {
-  const rows = await db()<Coin[]>`select c.mint, l.symbol, l.w from coins c join launches l
-    on l.id = c.launch_id where c.venue = 'curve' and l.state = 'landed' order by c.launched_at desc`;
+  const rows = await db()<(Coin & { launched_at: Date; swept: number[] })[]>`
+    select c.mint, l.symbol, l.w, c.launched_at, coalesce(array_agg(f.window_index)
+      filter (where f.window_index is not null), '{}') as swept
+    from coins c join launches l on l.id = c.launch_id
+    left join fee_ledger f on f.mint = c.mint and f.kind = 'sweep_buyback' and f.state in ('pending', 'landed')
+    where c.venue = 'curve' and l.state = 'landed' group by c.mint, l.symbol, l.w, c.launched_at
+    order by c.launched_at desc`;
+  const windowMs = Number(process.env.FEE_WINDOW_MS ?? 86_400_000);
   const unique = (c: Coin) => rows.filter((r) => r.symbol === c.symbol).length === 1;
-  const ours = rows.filter((c) => derived(c) && unique(c));
-  expect(ours.length, "a unique-symbol curve coin whose W derives from the seed").toBeGreaterThan(0);
-  return ours[0] as Coin;
+  const fresh = (r: (typeof rows)[number]) =>
+    !r.swept.includes(windowOf(+r.launched_at, Date.now(), windowMs));
+  const ours = rows.filter((c) => derived(c) && unique(c) && fresh(c));
+  expect(ours.length, "a unique-symbol curve coin, W from the seed, not swept this window").toBeGreaterThan(
+    0,
+  );
+  const { mint, symbol, w } = ours[0] as Coin;
+  return { mint, symbol, w };
 }
 
 export type Ledger = Record<

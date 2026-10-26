@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-10-26T10:53:19.000Z"
-last_activity: 2026-10-26 -- Completed 07-03 (terms copy and version 2026-10-26, www to apex 308)
+stopped_at: Completed 07-04-PLAN.md
+last_updated: "2026-10-26T11:07:37.000Z"
+last_activity: 2026-10-26 -- Completed 07-04 (mainnet net, keys, external treasury, EVACUATE predicate)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 98
-  percent: 74
+  completed_plans: 99
+  percent: 75
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 3 of 36 (07-03 complete)
+Plan: 4 of 36 (07-04 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-03 (terms copy and version 2026-10-26, www to apex 308)
+Last activity: 2026-10-26 -- Completed 07-04 (mainnet net, keys, external treasury, EVACUATE predicate)
 
 Progress: [██████████] 100%
 
@@ -131,6 +131,7 @@ Progress: [██████████] 100%
 | Phase 07 P01 | 15 min | 2 tasks | 10 files |
 | Phase 07 P02 | 25 min | 2 tasks | 7 files |
 | Phase 07 P03 | 20 min | 2 tasks | 6 files |
+| Phase 07 P04 | 35 min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -350,6 +351,7 @@ Recent decisions affecting current work:
 - 07-02: a full intent store of live unused intents answers 429 rate_limited and evicts nothing (IN-W-04)
 - 07-03: TERMS_VERSION 2026-10-26 carries the contact, mainnet and cooldown sentences; existing consents are not re-asked
 - 07-03: www redirect only on an exact www. plus SITE_URL host match, Location from SITE_URL; rate limit scope kept by READ_PATHS
+- 07-04: TREASURY_PUBKEY is required on mainnet, on curve and not equal to any derived role; evacuateAllowed (devnet, or mainnet with the external treasury) is the one rule for boot and the EVACUATE loop
 
 ### Pending Todos
 
@@ -383,6 +385,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T10:53:19.000Z
-Stopped at: Completed 07-03-PLAN.md
+Last session: 2026-10-26T11:07:37.000Z
+Stopped at: Completed 07-04-PLAN.md
 Resume file: None

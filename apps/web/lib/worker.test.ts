@@ -19,6 +19,8 @@ test.each([
   [410, "expired"],
   [422, "cosign_refused"],
   [409, "paused"],
+  [503, "not_ready"], // genesis mode (D-29): the owner variant shows the session-ended line for it
+  [409, "genesis_landed"],
 ])("a %i %s passes through with only the contract fields", async (status, error) => {
   reply(status, { error, detail: "worker-only text" });
   expect(await workerPost("/submit", {})).toEqual({ status, body: { error, paused: undefined } });

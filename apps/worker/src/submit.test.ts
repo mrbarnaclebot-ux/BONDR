@@ -11,7 +11,9 @@ const m = vi.hoisted(() => ({
   status: vi.fn(),
   broadcast: vi.fn(),
   urgent: vi.fn(),
+  contractFailed: vi.fn(),
 }));
+vi.mock("./contract-check.ts", async (orig) => ({ ...(await orig()), contractFailed: m.contractFailed }));
 vi.mock("@bondr/core/db", async (orig) => ({ ...(await orig()), db: () => ({}) }));
 vi.mock("./status.ts", async (orig) => ({
   ...(await orig()),
@@ -82,8 +84,9 @@ const ctx = {
 } as unknown as PrepareCtx;
 const wire = Buffer.from([7, 7, 7]);
 const sendBody = { launchId: id, signed: wire.toString("base64") };
-const prepared = (message: Buffer) => {
+const prepared = (message: Buffer, extra: Record<string, string> = {}) => {
   const row = {
+    ...extra,
     id,
     state: "prepared",
     mint: "M",
@@ -127,4 +130,39 @@ test("an untipped launch goes through RPC only", async () => {
   await expect(submit(ctx, sendBody)).resolves.toEqual({ state: "sent", signature: "sig" });
   expect(m.urgent).not.toHaveBeenCalled();
   expect(m.broadcast).toHaveBeenCalledTimes(1);
+});
+
+const TREASURY = Keypair.generate().publicKey;
+const gctx = { ...ctx, env: { ...ctx.env, treasury: TREASURY } } as unknown as PrepareCtx;
+const genesisRow = (paused: string, w = TREASURY.toBase58()) => {
+  prepared(stored(Keypair.generate().publicKey.toBase58()), { w });
+  m.status.mockResolvedValue({ paused, minLamports: "1" });
+  m.broadcast.mockResolvedValue(null);
+};
+
+test("in genesis mode the genesis row (w = the treasury) passes the pause and is co-signed and sent", async () => {
+  genesisRow("genesis");
+  m.contractFailed.mockReturnValue(false);
+  await expect(submit(gctx, sendBody)).resolves.toEqual({ state: "sent", signature: "sig" });
+});
+
+test("a failed contract check blocks even the genesis row (D-20)", async () => {
+  genesisRow("genesis");
+  m.contractFailed.mockReturnValue(true);
+  await expect(submit(gctx, sendBody)).rejects.toMatchObject({
+    body: { error: "paused", paused: "genesis" },
+  });
+  expect(m.broadcast).not.toHaveBeenCalled();
+});
+
+test("any other pause, or a row that is not the treasury's, is refused as before", async () => {
+  m.contractFailed.mockReturnValue(false);
+  for (const [paused, w] of [
+    ["kill_switch", TREASURY.toBase58()],
+    ["genesis", dev.toBase58()],
+  ] as const) {
+    genesisRow(paused, w);
+    await expect(submit(gctx, sendBody)).rejects.toMatchObject({ body: { error: "paused", paused } });
+  }
+  expect(m.broadcast).not.toHaveBeenCalled();
 });

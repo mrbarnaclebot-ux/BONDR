@@ -48,7 +48,7 @@
 - [x] **TOKEN-04**: User sees the fee ledger: every collection, split, sweep, forced-bond buy, burn and finalize, with amount, time and a transaction link
 - [x] **TOKEN-05**: User sees totals: burned supply %, fees to burn, fees to buyback, fees to treasury, and the post-bond deployer share once finalized
 - [x] **TOKEN-06**: Shared token links render a preview card (OG image) on X and Telegram
-- [ ] **TOKEN-07**: The token page shows the share of supply bought by third parties in the first 3 slots (sniped %) (Phase 7 D-35, D-36)
+- [x] **TOKEN-07**: The token page shows the share of supply bought by third parties in the first 3 slots (sniped %) (Phase 7 D-35, D-36)
 
 ### Trading
 
@@ -144,7 +144,7 @@
 | TOKEN-04 | Phase 5 | Complete |
 | TOKEN-05 | Phase 5 | Complete |
 | TOKEN-06 | Phase 3 | Complete |
-| TOKEN-07 | Phase 7 | Pending |
+| TOKEN-07 | Phase 7 | Complete |
 | TRADE-01 | Phase 4 | Complete |
 | TRADE-02 | Phase 4 | Complete |
 | TRADE-03 | Phase 4 | Complete |

@@ -54,6 +54,14 @@ describe("switchRoute", () => {
     });
   });
 
+  test("a flip whose write throws settles its row failed, never landed (WR-W-07)", async () => {
+    const down = new Error("db down");
+    const { d, audit } = deps({ setJob: vi.fn(async () => Promise.reject(down)) });
+    await expect(switchRoute(d, { actor, job: "sweeps", enabled: false })).rejects.toBe(down);
+    expect(audit.rows).toHaveLength(1);
+    expect(audit.rows[0]).toMatchObject({ action: "switch", result: "failed", error: "change_failed" });
+  });
+
   test("an unknown job or a non-boolean answers invalid_input with no audit row", async () => {
     const { d, audit } = deps();
     expect(await code(switchRoute(d, { actor, job: "drain", enabled: false }))).toBe("invalid_input");

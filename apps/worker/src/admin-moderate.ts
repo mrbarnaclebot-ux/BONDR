@@ -1,11 +1,11 @@
 // Moderation (ADMIN-07): hide a coin from every public list (D-29) and block a deployer from launching (D-30).
-// Like admin-act, each change writes one landed audit row after validation and before the change (D-34); a
+// Like admin-act, each change writes one audit row after validation, pending before the change (D-34); a
 // refusal changes nothing and writes nothing. Refusals are answers, not errors, so the console can name them.
 import type { ModerationResult } from "@bondr/core/api-admin";
 import { blockedDeployers, coins, type Db, db, launches } from "@bondr/core/db";
 import { PublicKey } from "@solana/web3.js";
 import { eq, or, sql } from "drizzle-orm";
-import type { AuditStore } from "./admin-audit.ts";
+import { type AuditStore, audited } from "./admin-audit.ts";
 import { fail } from "./http.ts";
 
 export type ModCoin = { mint: string; symbol: string; hiddenAt: Date | null };
@@ -126,8 +126,7 @@ async function coinOp(s: ModStore, a: AuditStore, i: ModInput): Promise<Moderati
   if (pool.length > 1) return refuse("ambiguous", pool.length);
   if (hiding && c.hiddenAt) return refuse("already_hidden");
   const params = hiding ? { mint: c.mint, reason } : { mint: c.mint };
-  await a.insertLanded({ actor: i.actor, action: i.op, mint: c.mint, params });
-  await s.setHidden(c.mint, reason);
+  await audited(a, { actor: i.actor, action: i.op, mint: c.mint, params }, () => s.setHidden(c.mint, reason));
   return { ok: true };
 }
 
@@ -136,19 +135,17 @@ async function coinOp(s: ModStore, a: AuditStore, i: ModInput): Promise<Moderati
 async function walletOp(s: ModStore, a: AuditStore, i: ModInput): Promise<ModerationResult> {
   const wallet = walletOf(i.wallet);
   if (!wallet) return refuse("invalid_wallet");
-  const audit = (params: Record<string, unknown>) =>
-    a.insertLanded({ actor: i.actor, action: i.op, mint: null, params: { wallet, ...params } });
+  const audit = <T>(params: Record<string, unknown>, change: () => Promise<T>) =>
+    audited(a, { actor: i.actor, action: i.op, mint: null, params: { wallet, ...params } }, change);
   if (i.op === "unblock") {
     if (!(await s.isBlocked(wallet))) return refuse("no_match");
-    await audit({});
-    await s.unblock(wallet);
+    await audit({}, () => s.unblock(wallet));
     return { ok: true };
   }
   const reason = reasonOf(i.reason);
   if (!reason) return refuse("no_reason");
   if (await s.isBlocked(wallet)) return refuse("already_blocked");
-  await audit({ reason });
-  return (await s.block(wallet, reason)) ? { ok: true } : refuse("already_blocked");
+  return (await audit({ reason }, () => s.block(wallet, reason))) ? { ok: true } : refuse("already_blocked");
 }
 
 export function moderate(s: ModStore, a: AuditStore, i: ModInput): Promise<ModerationResult> {

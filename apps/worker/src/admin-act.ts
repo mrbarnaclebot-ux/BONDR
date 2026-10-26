@@ -1,10 +1,10 @@
 // The owner's session-only actions (D-13): a switch flip, hold for review, release hold and re-check launch. No
-// fresh signature, but each writes one landed audit row (D-34) after validation and before any state change.
+// fresh signature, but each writes one audit row (D-34) after validation: pending before the change, settled after.
 import type { AdminSwitches } from "@bondr/core/api-admin";
 import { coins, launches } from "@bondr/core/db";
 import type { Connection } from "@solana/web3.js";
 import { and, eq, inArray } from "drizzle-orm";
-import type { AuditStore } from "./admin-audit.ts";
+import { type AuditStore, audited } from "./admin-audit.ts";
 import type { Engine } from "./fee-engine.ts";
 import { key } from "./fee-routes.ts";
 import { fail } from "./http.ts";
@@ -36,13 +36,8 @@ const bodyOf = (b: unknown) => (b ?? {}) as Body;
 export async function switchRoute(d: ActDeps, body: unknown): Promise<AdminSwitches> {
   const { actor, job, enabled } = bodyOf(body);
   if (!isJob(job) || typeof enabled !== "boolean") throw fail({ error: "invalid_input" });
-  await d.audit.insertLanded({
-    actor: String(actor),
-    action: "switch",
-    mint: null,
-    params: { job, enabled },
-  });
-  return d.setJob(job, enabled);
+  const r = { actor: String(actor), action: "switch" as const, mint: null, params: { job, enabled } };
+  return audited(d.audit, r, () => d.setJob(job, enabled));
 }
 
 // The DB CHECK allows 1 to 120 characters.
@@ -60,21 +55,23 @@ async function finalizeOf(d: ActDeps, mint: string): Promise<string> {
 
 async function hold(d: ActDeps, actor: string, mint: string, reason: string): Promise<ActOutcome> {
   await finalizeOf(d, mint);
-  await d.audit.insertLanded({ actor, action: "hold", mint, params: { reason } });
-  await d.exec.update(coins).set({ heldAt: new Date(), heldReason: reason }).where(eq(coins.mint, mint));
-  d.engine()?.setHold(mint, reason);
-  return "held";
+  return audited(d.audit, { actor, action: "hold", mint, params: { reason } }, async () => {
+    await d.exec.update(coins).set({ heldAt: new Date(), heldReason: reason }).where(eq(coins.mint, mint));
+    d.engine()?.setHold(mint, reason);
+    return "held";
+  });
 }
 
 // OQ3, A5: on a finalize-held coin release also sets finalize none, so the next batch re-runs the full finalize
 // pre-flight. Finalize split with launches.wallet stays the primary release (D-05, D-15).
 async function release(d: ActDeps, actor: string, mint: string): Promise<ActOutcome> {
   const resetFinalize = (await finalizeOf(d, mint)) === "held";
-  await d.audit.insertLanded({ actor, action: "release_hold", mint, params: { resetFinalize } });
   const set = { heldAt: null, heldReason: null, ...(resetFinalize && { finalize: "none" }) };
-  await d.exec.update(coins).set(set).where(eq(coins.mint, mint));
-  d.engine()?.setHold(mint, null, resetFinalize);
-  return "released";
+  return audited(d.audit, { actor, action: "release_hold", mint, params: { resetFinalize } }, async () => {
+    await d.exec.update(coins).set(set).where(eq(coins.mint, mint));
+    d.engine()?.setHold(mint, null, resetFinalize);
+    return "released";
+  });
 }
 
 // A8: one status read, never the settleLaunch loop, which can run for minutes and time out the web route. The

@@ -14,7 +14,8 @@ export type Final = "landed" | "failed" | "refused";
 export type SettleSet = { sigs?: string[]; error?: string };
 
 export type AuditStore = {
-  insertPending(r: PendingAudit): Promise<string>;
+  // A session action (no simulation, no intent signature) passes Base; the DB CHECK pairs the two nulls.
+  insertPending(r: PendingAudit | Base): Promise<string>;
   // false when the row is not pending: it was settled already.
   settle(id: string, result: Final, set: SettleSet): Promise<boolean>;
   insertLanded(r: Base): Promise<string>;
@@ -52,6 +53,20 @@ export function pgAudit(exec: Pick<Db, "insert" | "update"> = db()): AuditStore 
   };
 }
 
+// WR-W-07: a session action's row goes in pending, the change runs, and the row settles from what happened, so a
+// change that throws never reads as done. A failed settle leaves the row pending for the boot settle.
+export async function audited<T>(a: AuditStore, r: Base, change: () => Promise<T>): Promise<T> {
+  const id = await a.insertPending(r);
+  try {
+    const out = await change();
+    await a.settle(id, "landed", {}).catch(() => {});
+    return out;
+  } catch (err) {
+    await a.settle(id, "failed", { error: "change_failed" }).catch(() => {});
+    throw err;
+  }
+}
+
 // WR-W-06: a restart loses the in-memory intent and its background send, so a pending row an earlier process
 // wrote can never settle. One UPDATE at boot marks it failed (no polling); rows this process wrote (at >= bootAt)
 // are left alone. The owner matches any signatures through the fee_ledger rows of that window.
@@ -86,7 +101,8 @@ export function memoryAudit(): AuditStore & { rows: MemoryRow[] } {
   };
   return {
     rows,
-    insertPending: (r) => push({ ...r, result: "pending", settledAt: null }),
+    insertPending: (r) =>
+      push({ simulation: null, intentSig: null, ...r, result: "pending", settledAt: null }),
     insertLanded: (r) =>
       push({ ...r, simulation: null, intentSig: null, result: "landed", settledAt: new Date() }),
     settle(id, result, set) {

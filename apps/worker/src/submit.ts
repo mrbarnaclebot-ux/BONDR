@@ -65,6 +65,9 @@ async function cosignRow(ctx: SubmitCtx, row: LaunchRow, wire: Uint8Array): Prom
 
 // Only mainnet prepares tipped messages (D-34). Sender answers "unknown" on any error, even when nothing went out,
 // so the same bytes go once through RPC: they carry the same signature, so the chain executes them at most once.
+// Sender may already have delivered them (a timeout after forwarding), so a preflight rejection of the RPC copy
+// (AlreadyProcessed, or the mint account already exists) proves nothing: the launch stays unknown and settle decides
+// from the signature status, with history, before it ever marks the row failed or frees the mint (CR-W-01).
 async function broadcastLaunch(ctx: SubmitCtx, row: LaunchRow, wire: Uint8Array, o: RawOpts) {
   if (!row.message || !tipped(VersionedMessage.deserialize(row.message))) return broadcast(ctx.conn, wire, o);
   const net = ctx.env.net;
@@ -72,7 +75,8 @@ async function broadcastLaunch(ctx: SubmitCtx, row: LaunchRow, wire: Uint8Array,
   const r = await urgentBroadcast(net, ctx.conn, wire, { ...o, swqosOnly });
   if (r?.status !== "unknown" || !r.err?.startsWith("sender")) return r;
   console.warn(`submit ${row.id}: ${r.err}, sending the same bytes over RPC`);
-  return broadcast(ctx.conn, wire, o);
+  const f = await broadcast(ctx.conn, wire, o);
+  return f?.status === "failed" ? r : f;
 }
 
 // signed is persisted before the send, so a restart can resend the same wire (Pattern 8).

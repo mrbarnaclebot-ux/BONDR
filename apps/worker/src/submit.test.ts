@@ -12,6 +12,8 @@ const m = vi.hoisted(() => ({
   broadcast: vi.fn(),
   urgent: vi.fn(),
   contractFailed: vi.fn(),
+  release: vi.fn(),
+  settle: vi.fn(),
 }));
 vi.mock("./contract-check.ts", async (orig) => ({ ...(await orig()), contractFailed: m.contractFailed }));
 vi.mock("@bondr/core/db", async (orig) => ({ ...(await orig()), db: () => ({}) }));
@@ -21,8 +23,8 @@ vi.mock("./status.ts", async (orig) => ({
 }));
 vi.mock("./settle.ts", async (orig) => ({
   ...(await orig()),
-  releaseMint: async () => undefined,
-  settleInBackground: () => undefined,
+  releaseMint: m.release,
+  settleInBackground: m.settle,
 }));
 vi.mock("./launches.ts", async (orig) => ({ ...(await orig()), advance: m.advance, getLaunch: m.getLaunch }));
 vi.mock("./vanity.ts", async (orig) => ({
@@ -110,18 +112,28 @@ test("a tipped launch goes out through Sender at the default tip, and RPC is not
   expect(m.broadcast).not.toHaveBeenCalled();
 });
 
-test("a Sender error sends the identical bytes once through RPC, and RPC decides failed or sent", async () => {
+test("a Sender error sends the identical bytes once through RPC; an accepted copy is sent", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   prepared(stored(SENDER_TIPS[1] as string));
   m.urgent.mockResolvedValue(unknown);
-  m.broadcast.mockResolvedValue({ ok: false, status: "failed", sig: "sig", err: "preflight" });
-  await expect(submit(ctx, sendBody)).resolves.toEqual({ state: "failed", signature: "sig" });
-  expect(m.broadcast).toHaveBeenCalledTimes(1);
-  expect(Buffer.from(m.broadcast.mock.calls[0]?.[1] as Uint8Array).equals(wire)).toBe(true);
   m.broadcast.mockResolvedValue(null);
-  m.broadcast.mockClear();
   await expect(submit(ctx, sendBody)).resolves.toEqual({ state: "sent", signature: "sig" });
   expect(m.broadcast).toHaveBeenCalledTimes(1);
+  expect(Buffer.from(m.broadcast.mock.calls[0]?.[1] as Uint8Array).equals(wire)).toBe(true);
+});
+
+// CR-W-01: Sender forwarded the launch, then timed out; the RPC copy fails preflight because the first one landed.
+test("a Sender timeout then an RPC 'already processed' leaves the launch to settle, never failed", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  prepared(stored(SENDER_TIPS[2] as string));
+  m.urgent.mockResolvedValue({ ...unknown, err: "sender The operation was aborted due to timeout" });
+  const already = "Transaction simulation failed: This transaction has already been processed";
+  m.broadcast.mockResolvedValue({ ok: false, status: "failed", sig: "sig", err: already });
+  await expect(submit(ctx, sendBody)).resolves.toEqual({ state: "sent", signature: "sig" });
+  const moves = m.advance.mock.calls.map((c) => `${c[2]}->${c[3]}`);
+  expect(moves).toEqual(["prepared->signed", "signed->sent"]);
+  expect(m.release).not.toHaveBeenCalled(); // the mint and the ticker lock stay held
+  expect(m.settle).toHaveBeenCalledTimes(1); // settle reads the signature status, with history past expiry
 });
 
 test("an untipped launch goes through RPC only", async () => {

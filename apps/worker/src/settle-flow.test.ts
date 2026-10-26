@@ -41,6 +41,22 @@ test("an unknown launch is checked again and lands once the RPC answers (WR-05)"
   expect(moves).toEqual(["sent->unknown", "unknown->landed"]);
 });
 
+// CR-W-01: the row submit leaves "sent" after a Sender timeout and an RPC "already processed" lands from the
+// signature status, found only by the history search past expiry; it is never failed.
+test("a launch unseen in the window lands when the history recheck finds its signature", async () => {
+  const history: boolean[] = [];
+  const conn = {
+    getSignatureStatuses: async (_s: string[], o: { searchTransactionHistory: boolean }) => {
+      history.push(o.searchTransactionHistory);
+      return { value: [o.searchTransactionHistory ? { confirmationStatus: "finalized", err: null } : null] };
+    },
+    getBlockHeight: async () => 200,
+  };
+  await settleLaunch(conn as never, row);
+  expect(history).toEqual([false, true]);
+  expect(m.advance.mock.calls.map((c) => `${c[2]}->${c[3]}`)).toEqual(["sent->landed"]);
+});
+
 test("in genesis mode a landed launch records its facts but gets no coin row (D-31)", async () => {
   m.fetchTx.mockResolvedValue({ meta: { postTokenBalances: [] } });
   setGenesis(true);

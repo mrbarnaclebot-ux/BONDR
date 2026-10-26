@@ -16,6 +16,7 @@ import { poolState } from "@bondr/core/trade";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { type Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { type AuditStore, audited } from "./admin-audit.ts";
+import { contractFailed } from "./contract-check.ts";
 import { launchTip } from "./fee-config.ts";
 import { Fail, fail } from "./http.ts";
 import { loadSwitches, setJob, switchesLoaded, switchOn } from "./switches.ts";
@@ -48,8 +49,10 @@ const CREATE_ACCOUNT_SIZES = {
   vaultBondrAta: 170, // the child curve's BONDR fee vault
 };
 
-// D-18: a migrated BONDR is not a pause; only the seconds-long complete-but-unmigrated window is.
-export function pauseReason(s: { enabled: boolean; venue: Where }): PauseReason | null {
+// D-18: a migrated BONDR is not a pause; only the seconds-long complete-but-unmigrated window is. A failed
+// contract check comes first: it turns every switch off (D-20), and the banner must name the check (D-22).
+export function pauseReason(s: { enabled: boolean; venue: Where; contract: boolean }): PauseReason | null {
+  if (s.contract) return "contract_check";
   if (!s.enabled) return "kill_switch";
   return s.venue === "awaiting" ? "awaiting_migration" : null;
 }
@@ -208,7 +211,7 @@ export async function liveStatus(ctx: Ctx, fresh = false): Promise<Status> {
     live(ctx),
     fresh || !switchesLoaded() ? loadSwitches().then((s) => s.launches) : switchOn("launches"),
   ]);
-  return { ...l.status, paused: pauseReason({ enabled, venue: l.venue }) };
+  return { ...l.status, paused: pauseReason({ enabled, venue: l.venue, contract: contractFailed() }) };
 }
 function parseQuote(body: unknown): { solIn: bigint; wallet?: PublicKey } {
   const b = (body ?? {}) as { solIn?: unknown; wallet?: unknown };

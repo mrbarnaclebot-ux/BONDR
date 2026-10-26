@@ -8,12 +8,20 @@ import { type Ctx, childFees, liveStatus, networkFee, parseSwitch, pauseReason }
 vi.mock("./switches.ts", () => ({ switchesLoaded: () => true, switchOn: () => true }));
 
 test("pauseReason: kill switch first, awaiting migration pauses, a migrated BONDR does not (D-18)", () => {
-  expect(pauseReason({ enabled: false, venue: "curve" })).toBe("kill_switch");
-  expect(pauseReason({ enabled: false, venue: "pool" })).toBe("kill_switch");
-  expect(pauseReason({ enabled: true, venue: "awaiting" })).toBe("awaiting_migration");
-  expect(pauseReason({ enabled: true, venue: "pool" })).toBe(null);
-  expect(pauseReason({ enabled: true, venue: "curve" })).toBe(null);
-  expect(pauseReason({ enabled: true, venue: null })).toBe(null);
+  const no = { contract: false };
+  expect(pauseReason({ enabled: false, venue: "curve", ...no })).toBe("kill_switch");
+  expect(pauseReason({ enabled: false, venue: "pool", ...no })).toBe("kill_switch");
+  expect(pauseReason({ enabled: false, venue: "awaiting", ...no })).toBe("kill_switch");
+  expect(pauseReason({ enabled: true, venue: "awaiting", ...no })).toBe("awaiting_migration");
+  expect(pauseReason({ enabled: true, venue: "pool", ...no })).toBe(null);
+  expect(pauseReason({ enabled: true, venue: "curve", ...no })).toBe(null);
+  expect(pauseReason({ enabled: true, venue: null, ...no })).toBe(null);
+});
+
+test("pauseReason: a failed contract check names itself ahead of every other reason (D-22)", () => {
+  expect(pauseReason({ enabled: false, venue: "curve", contract: true })).toBe("contract_check");
+  expect(pauseReason({ enabled: true, venue: "awaiting", contract: true })).toBe("contract_check");
+  expect(pauseReason({ enabled: true, venue: "pool", contract: true })).toBe("contract_check");
 });
 
 test("launchNet allows devnet, and mainnet only with ALLOW_MAINNET=1 (D-01)", () => {

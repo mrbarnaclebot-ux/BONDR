@@ -20,6 +20,8 @@ const PAUSED: Record<PauseReason, string> = {
   awaiting_migration:
     "BONDR's own curve is complete and moving to PumpSwap. Launches resume automatically once the pool is live.",
   kill_switch: "The BONDR owner has paused new launches. Browsing is unaffected.",
+  contract_check:
+    "A weekly safety check found that pump.fun changed something BONDR depends on, so new launches are paused while the owner reviews it. Trading is not affected.",
 };
 
 /** Launch status read once per render, never polled (UI-SPEC Paused banner); a failed read shows no banner. */

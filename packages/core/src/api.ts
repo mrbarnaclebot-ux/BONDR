@@ -2,7 +2,7 @@
 // Every amount is a decimal string of lamports or token base units: bigint survives JSON that way.
 
 export type Net = "devnet" | "mainnet";
-export type PauseReason = "kill_switch" | "awaiting_migration";
+export type PauseReason = "kill_switch" | "awaiting_migration" | "contract_check"; // contract_check: D-20, D-22
 export type Exit = "burn" | "sell";
 
 export type Status = {

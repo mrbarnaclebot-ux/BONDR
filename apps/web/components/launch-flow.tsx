@@ -117,11 +117,20 @@ const BODIES: Record<Step, ComponentType<StepProps>> = {
   5: LaunchLive,
 };
 
-const PAUSED: Record<PauseReason, string> = {
-  kill_switch:
-    "The BONDR owner has paused new launches. You can fill this in now; the Launch button unlocks automatically when launches resume.",
-  awaiting_migration:
-    "BONDR's own curve is complete and migrating to PumpSwap. You can fill this in now; the Launch button unlocks automatically when the pool is live.",
+const PAUSED_TITLE = "Launches are paused.";
+const PAUSED: Record<PauseReason, { title: string; body: string }> = {
+  kill_switch: {
+    title: PAUSED_TITLE,
+    body: "The BONDR owner has paused new launches. You can fill this in now; the Launch button unlocks automatically when launches resume.",
+  },
+  awaiting_migration: {
+    title: PAUSED_TITLE,
+    body: "BONDR's own curve is complete and migrating to PumpSwap. You can fill this in now; the Launch button unlocks automatically when the pool is live.",
+  },
+  contract_check: {
+    title: PAUSED_TITLE,
+    body: "A weekly safety check found that pump.fun changed something BONDR depends on, so new launches are paused while the owner reviews it. Trading is not affected. You can fill this in now; the Launch button unlocks automatically when launches resume.",
+  },
 };
 
 function useLaunchStatus(devBuy: string): Live {
@@ -181,8 +190,8 @@ export function LaunchFlow({ children }: { children: ReactNode }) {
         {/* Always mounted, so the pause is announced when it starts, not only when the page loads. */}
         <div aria-live="polite">
           {paused && (
-            <Callout variant="warn" title="Launches are paused." className="mb-6">
-              {PAUSED[paused]}
+            <Callout variant="warn" title={PAUSED[paused].title} className="mb-6">
+              {PAUSED[paused].body}
             </Callout>
           )}
         </div>

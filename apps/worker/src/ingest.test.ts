@@ -2,7 +2,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { close, coins, db, launches, trades, vanityMints, wallets } from "@bondr/core/db";
+import { close, coins, db, feeLedger, launches, trades, vanityMints, wallets } from "@bondr/core/db";
 import { type KnownCoin, parseTx, type TradeTx } from "@bondr/core/trades";
 import { and, eq, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, test } from "vitest";
@@ -55,6 +55,7 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
     try {
       await db().transaction(async (tx) => {
         await tx.delete(trades).where(eq(trades.mint, DEV));
+        await tx.delete(feeLedger).where(eq(feeLedger.mint, DEV)); // a devnet run may have given DEV fee rows
         await tx.delete(coins).where(eq(coins.mint, DEV));
         const launch = { id: await launchOf(tx), pool: "pool" };
         const bondr = { ...BONDR, sol: null };
@@ -95,6 +96,7 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
     try {
       await db().transaction(async (tx) => {
         await tx.delete(trades).where(eq(trades.mint, DEV));
+        await tx.delete(feeLedger).where(eq(feeLedger.mint, DEV)); // a devnet run may have given DEV fee rows
         await tx.delete(coins).where(eq(coins.mint, DEV));
         const bondr = { ...BONDR, sol: 3e-7 };
         const launch = parseTx(fixture("launch-burn"), new Map(), bondr, { mint: DEV, exit: "burn" });

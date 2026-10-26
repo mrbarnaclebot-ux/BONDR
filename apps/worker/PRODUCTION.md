@@ -11,9 +11,11 @@ The single runbook for BONDR on mainnet: the environment, its variables (names o
 ## 1b. Creating the environment
 
 - `railway environment new production`: empty. Never `--duplicate staging`: a duplicate copies every staging variable, the seed included, and can start a second devnet worker with the staging seed next to the real one (C-04).
-- Copy only the non-variable service settings from staging (`railway environment config -e staging --json`): root directory, build and start commands, the web pre-deploy `node packages/core/src/migrate.ts`, healthchecks, region. Never copy the GitHub repo source. Production services have no repo source and no auto-deploy, so a merge to main never reaches mainnet.
-- Production deploys only through `scripts/deploy.sh` (`railway up` of the local tree) from a clean `main`.
-- Gate records (gate SUMMARYs, edits to this file after G-1) live on the `phase-07-gates` branch. Before any production deploy: commit the records there, `git switch main`, deploy, `git switch phase-07-gates`.
+- Copy only the non-variable service settings from staging: root directory, build and start commands, the web pre-deploy `node packages/core/src/migrate.ts`, healthchecks, region. Read them through an allow-list, so no `variables` key can reach the terminal: `railway environment config -e staging --json | jq '.services | map_values({build, deploy})'`. Never copy the GitHub repo source. Production services have no repo source and no auto-deploy, so a merge to main never reaches mainnet.
+- Never run `railway environment config --json`, `railway variable list` (`--json` or `--kv`) or `railway variables` without a filter that drops every value: each prints every raw value, the staging seed and the shared Helius key included. Names only: `railway variable list --service <s> --environment <e> --json | jq 'keys'`.
+- Check there is no repo source on either production service (prints only the result; `railway status --json` holds no variables): `railway status --json | jq -e '[.environments.edges[].node | select(.name == "production") | .serviceInstances.edges[].node.source.repo] | length == 2 and all(. == null)' >/dev/null && echo "no repo source"`.
+- Production deploys only through `scripts/deploy.sh` (`railway up` of the local tree, project bondr pinned), from a clean `main` at exactly `origin/main` with CI green for that commit; it refuses anything else.
+- Gate records (gate SUMMARYs, edits to this file after G-1) live on the `phase-07-gates` branch. Before any production deploy: commit the records there, `git switch main && git pull --ff-only`, deploy, `git switch phase-07-gates`.
 
 ## 2. Variables
 
@@ -56,14 +58,14 @@ Public values (a public key, `mainnet`, a flag) may go as `railway variable set 
 | `MASTER_SEED` | worker only | G-3, set by the owner only; Claude never sees it |
 | `BONDR_QUOTE_MINT` | worker only | unset until G-5 (unset = genesis mode); web does not read it |
 
-`FEE_WINDOW_MS` and `FEE_BATCH_HOUR_UTC` keep their defaults. Check the result with env-diff, which hashes every value and prints none:
+`FEE_WINDOW_MS` and `FEE_BATCH_HOUR_UTC` keep their defaults. Check the result with env-diff, which pipes Railway's lists straight into jq and gets back names and facts only, never a value:
 
 ```sh
 node scripts/env-diff.ts --from staging --to production --service web --phase g1
 node scripts/env-diff.ts --from staging --to production --service worker --phase g1
 ```
 
-It fails when a D-12 secret (`WORKER_TOKEN`, `SESSION_SECRET`, `DATABASE_URL`, `SOLANA_NET`, `SITE_URL`, `VANITY_LANE`, `pinata_jwt`) equals staging, when `ALLOW_MAINNET` is not `1`, when `FEE_ENGINE` or `ADMIN_EVACUATE` is missing, and on the phase rule: `g1` no `MASTER_SEED` or `BONDR_QUOTE_MINT`, `g3` a seed present and different from staging, `g5` the quote mint present.
+It fails when any value has surrounding whitespace; when `WORKER_TOKEN`, `DATABASE_URL`, `SOLANA_NET` or `SITE_URL` is missing (and `SESSION_SECRET` on web, `helius_api_key`, `FEE_ENGINE` and `ADMIN_EVACUATE` on the worker); when `SOLANA_NET` is not exactly `mainnet`, `SITE_URL` not `https://trybondr.fun`, and on the worker `ALLOW_MAINNET` not `1` or `VANITY_LANE` not `production`; when a D-12 secret (`WORKER_TOKEN`, `SESSION_SECRET`, `DATABASE_URL`, `pinata_jwt`) equals staging; when web holds `MASTER_SEED` or `helius_api_key`; and on the phase rule: `g1` no `MASTER_SEED` or `BONDR_QUOTE_MINT`, `g2` also `TREASURY_PUBKEY` present and not `ADMIN_WALLET`, `g3` the seed present (by name only: env-diff never compares it, D-11), `g5` the quote mint present. It reads only the project bondr and refuses a checkout linked to another project.
 
 ## 3. Neon
 
@@ -75,10 +77,10 @@ It fails when a D-12 secret (`WORKER_TOKEN`, `SESSION_SECRET`, `DATABASE_URL`, `
 ## 4. Deploy
 
 - Always dry-run first: `pnpm run deploy -- production --dry-run` prints the order, the services and the tag move.
-- `sh scripts/deploy.sh production [--only web|worker] [--yes]` refuses a dirty tree or a branch other than `main`, then asks "Type production to deploy to trybondr.fun" unless `--yes`.
-- Order: web first when `packages/core/migrations` changed since the local tag `deployed-production` (or the tag is missing): its pre-deploy migrates, and the worker needs the new tables. Otherwise the worker first. Each service must reach SUCCESS before the next.
-- The tag `deployed-production` moves to HEAD only after a full deploy (no `--only`) succeeded. It is a local tag: push it with `git push origin deployed-production` if another machine deploys.
-- Rollback: redeploy the previous successful deployment from the Railway dashboard (its "Redeploy" action), then `git revert` the bad change on main and deploy that. deploy.sh refuses a detached checkout of an old revision, because production deploys only from main.
+- `sh scripts/deploy.sh production [--only web|worker] [--yes]` refuses a checkout not linked to the Railway project bondr, a dirty tree, a branch other than `main`, a `HEAD` that is not exactly `origin/main` after a fetch, and a commit without a green CI run; then it asks "Type production to deploy to trybondr.fun" unless `--yes`. It prints the project and commit before uploading.
+- Order: web first when `packages/core/migrations` changed since the local tag `deployed-production` (or the tag is missing): its pre-deploy migrates, and the worker needs the new tables. Otherwise the worker first. Each service must reach SUCCESS before the next. `--only worker` is refused in the web-first case: run a full deploy.
+- The tag `deployed-production` moves to the commit checked at the start only after a full deploy (no `--only`) succeeded; HEAD or the tree changing mid-deploy stops it. It is a local tag: push it with `git push origin deployed-production` if another machine deploys.
+- Rollback: redeploy the previous successful deployment from the Railway dashboard (its "Redeploy" action) right away. Then fix forward: `git revert` the bad change on a branch, open a PR, merge it with CI green, `git switch main && git pull --ff-only`, and deploy that. Never commit on main locally: deploy.sh refuses anything but the exact `origin/main` commit.
 
 ## 5. Dark boot checklist
 
@@ -90,7 +92,7 @@ Production boots dark (D-13): `FEE_ENGINE=dry`, every switch off, `ADMIN_EVACUAT
 - `wallets: ops=... buyback=... treasury=...` (public keys only)
 - `vanity <idx> <pubkey>` lines as the production pool grinds toward 150 (it refills below 100)
 - `curl -sf https://trybondr.fun/api/status` answers `"paused":"genesis"`
-- env-diff phase g1 passes for both services before the first deploy, g3 after the seed.
+- env-diff phase g1 passes for both services before the first deploy, g2 after the treasury, g3 after the seed.
 
 ## 6. Genesis and leaving genesis
 
@@ -108,17 +110,17 @@ Each gate: the default, what the owner does, what Claude runs, how it is verifie
 - Default: create it once Phase 7 is merged with CI green; about +$5-15/month of Railway usage.
 - Owner: reply "G-1 approved" with the `ADMIN_WALLET` public key; confirm hello@trybondr.fun forwards; paste a new `pinata_jwt` in the dashboard; add the DNS records (section 1).
 - Claude: sections 1b, 2 and 3; env-diff g1 for web and worker; `sh scripts/deploy.sh production --only web --yes` from main. The worker is not deployed yet (no seed).
-- Verify: `/terms` answers 200 with the contact line, www answers 308 to the apex, `/api/status` answers 503 until the worker runs.
+- Verify: the section 1b "no repo source" check, `/terms` answers 200 with the contact line, www answers 308 to the apex, `/api/status` answers 503 until the worker runs.
 
 ### G-2 Treasury address (07-27)
 - Default: a new owner-only wallet (fresh Phantom account or hardware wallet), not derived from the seed and not the admin wallet. It is locked into every finalized coin's sharing config, receives EVACUATE funds, and claims BONDR's own creator fees on pump.fun (D-31).
 - Owner: reply "G-2 approved" with the public key.
 - Claude: check it parses and differs from `ADMIN_WALLET`, then `railway variable set TREASURY_PUBKEY=<key> --service worker --environment production --skip-deploys`. No deploy.
-- Verify: env-diff g1 for the worker passes. Boot later refuses a treasury equal to ops or any derived role.
+- Verify: env-diff g2 for the worker passes (`TREASURY_PUBKEY` present, no whitespace, not `ADMIN_WALLET`). Boot later refuses a treasury equal to ops or any derived role.
 
 ### G-3 Production seed (07-28)
-- Default: the owner runs `openssl rand -base64 32` on their own machine, pastes it as `MASTER_SEED` on the production worker in the dashboard, and keeps an offline copy. Never reused from staging or local.
-- Claude: env-diff g3, then `sh scripts/deploy.sh production --only worker --yes`; section 5 checklist; record the `ops=` and `buyback=` public keys here from the wallets line.
+- Default: the production seed never touches the Mac (D-11): no file, no terminal, no shell history, no chat, no clipboard on the Mac. On the phone, with Handoff off so Universal Clipboard cannot carry it to the Mac, the owner generates it in the password manager's generator: exactly 43 characters, letters and digits only (no symbols), which is 32 random bytes in base64. They save it there as the offline copy (or write it on paper), open the Railway dashboard in the phone's browser (project bondr, environment production, service worker, Variables), add `MASTER_SEED` with that value, and do not deploy from the dashboard. Never reused from staging or local. Claude never asks for, reads or handles it.
+- Claude: env-diff g3 (the seed's presence, by name only), then a full deploy `sh scripts/deploy.sh production --yes` (web then worker from the same commit; it creates the `deployed-production` tag that later `--only worker` deploys need); section 5 checklist; record the `ops=` and `buyback=` public keys here from the wallets line.
 - Verify: the section 5 lines, and `"paused":"genesis"` on `/api/status`.
 
 ### G-4 Fund ops (07-30)
@@ -134,7 +136,7 @@ Each gate: the default, what the owner does, what Claude runs, how it is verifie
 - Claude: default changes nothing; the alternative is a code PR (`launchTipLamports`) merged, then a worker deploy. Verify `senderTipEstimate` on `/api/status`.
 
 ### G-7 EVACUATE on (07-29)
-- Default: flip `ADMIN_EVACUATE` to `on` right after G-2, once section 10 is read. Mainnet accepts it only with `TREASURY_PUBKEY` set (D-37).
+- Default: flip `ADMIN_EVACUATE` to `on` right after G-3 (the worker cannot boot before the seed), once section 10 is read. Mainnet accepts it only with `TREASURY_PUBKEY` set (D-37).
 - Claude: `railway variable set ADMIN_EVACUATE=on --service worker --environment production --skip-deploys`, worker deploy, check the boot did not refuse. Evacuate nothing.
 
 ### G-8 Fee engine on (07-32)
@@ -168,6 +170,6 @@ Use this when the production `MASTER_SEED`, or any key derived from it, may be i
 
 1. **Leak signal.** An unexpected outflow from any W, ops or buyback wallet (Solscan, the Health panel's balances, a reconcile diff).
 2. **EVACUATE.** Sign in at `https://trybondr.fun/admin` with Phantom, scroll to the EVACUATE panel (last in the console), type `EVACUATE ALL W TO TREASURY` to arm it and run the simulation, read the totals, then press "Sign and evacuate N wallets" and approve in Phantom. Every job pauses first, then every W's BONDR and SOL move to the treasury and child tokens are burned. It needs `ADMIN_EVACUATE=on` (G-7); on `simulate` the button reads "Simulation only on this deploy".
-3. **Rotate the seed.** The owner generates a new `MASTER_SEED` (as G-3) and sets it on the worker; Claude never sees it. `sh scripts/deploy.sh production --only worker --yes`. New launches then derive new W, a new ops and a new buyback (read them from the `wallets:` line). The owner funds the new ops (as G-4) and moves what is left in the old ops.
+3. **Rotate the seed.** The owner generates a new `MASTER_SEED` exactly as G-3 (on the phone, in the password manager, pasted into the Railway dashboard there; never on the Mac, which may be the leaked machine) and sets it on the worker; Claude never sees it. `sh scripts/deploy.sh production --only worker --yes`. New launches then derive new W, a new ops and a new buyback (read them from the `wallets:` line). The owner funds the new ops (as G-4) and moves what is left in the old ops.
 4. **What rotation cannot fix.** Unbonded coins keep their old W as the on-chain creator, so whoever holds the old seed can still collect those coins' future creator fees. Finalized coins pay through their sharing config and are unaffected.
 5. **Hide or announce.** Hide the affected unbonded coins in `/admin` (moderation) or announce them with the facts, then turn jobs back on one at a time.

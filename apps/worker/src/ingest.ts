@@ -15,7 +15,7 @@ import { arm, type Inserted } from "./announce.ts";
 import { bondr, bondrPrice } from "./bondr-price.ts";
 import { withCost } from "./fee-boot.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
-import { recomputeSniped, windowMints } from "./sniped.ts";
+import { closeWindows, recomputeSniped, windowMints } from "./sniped.ts";
 
 export const knownCoins = new Map<string, KnownCoin>();
 // The created coin's launch row and PumpSwap pool, which the tx itself does not name.
@@ -35,9 +35,10 @@ export async function loadCoins(exec: Exec): Promise<void> {
       pool: coins.pool,
       initialRealTokenReserves: coins.initialRealTokenReserves,
       createSlot: coins.createSlot,
+      snipedBps: coins.snipedBps,
     })
     .from(coins);
-  for (const r of rows) knownCoins.set(r.mint, r);
+  for (const { snipedBps, ...r } of rows) knownCoins.set(r.mint, { ...r, windowClosed: snipedBps !== null });
 }
 
 // created carries the launch's own patch, so a launch that already completed the curve brings venue and bondedAt.
@@ -130,6 +131,7 @@ export async function ingestTx(conn: Connection, sig: string, live = true): Prom
   await withCost(conn, parsed);
   const bonded = new Set<string>();
   const inserted = await db().transaction((t) => writeParsed(t, parsed, undefined, bonded));
+  closeWindows(inserted, knownCoins);
   return arm(conn, { inserted, bonded, patches: parsed.patches }, live);
 }
 

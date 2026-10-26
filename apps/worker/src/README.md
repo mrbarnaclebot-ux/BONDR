@@ -22,7 +22,7 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `vanity.ts`: the bndr mint pool (seed-derived mint keys, reserve and release).
 - `grind.ts`: the bndr grinder threads, refill on demand, and its CLI.
 - `ingest.ts`: the one write path for launches and trades, `knownCoins`, the boot backfill.
-- `sniped.ts`: the token page's sniped figure (D-35): `windowMints`, `snipedBps` (pure) and `recomputeSniped` (one query over the coin's first 3 slots, written only when it changes).
+- `sniped.ts`: the token page's sniped figure (D-35): `windowMints`, `closeWindows`, `snipedBps` (pure) and `recomputeSniped` (one query over the coin's first 3 slots, written only once a trade past the window is stored and only when it changes; null until then).
 - `announce.ts`: after each commit, `arm` (holder recount, launch, trade and bond events, the engine hook) and `publishFee` (landed public fee rows as `fee` events).
 - `stream.ts`: the live log subscription on the BONDR mint and the gap fill.
 - `events-route.ts`: GET /events, every indexed change as NDJSON to web.

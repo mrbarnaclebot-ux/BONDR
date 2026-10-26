@@ -44,9 +44,12 @@ test("a coin with a create slot shows the Sniped line under the proof, outside i
   }
 });
 
-test("a coin without a create slot shows no Sniped text", async ({ page }) => {
-  const c = await seed({ create_slot: null, sniped_bps: null });
-  await page.goto(`/coin/${c.mint}`);
-  await expect(page.getByRole("complementary", { name: "Launch supply proof" })).toBeVisible();
-  await expect(page.getByText(/Sniped/)).toHaveCount(0);
+// No create slot (before 07-07), or a window not yet closed: no figure, so no Sniped text (never an early 0%).
+test("a coin without a sniped figure shows no Sniped text", async ({ page }) => {
+  for (const create_slot of [null, "1000"]) {
+    const c = await seed({ create_slot, sniped_bps: null });
+    await page.goto(`/coin/${c.mint}`);
+    await expect(page.getByRole("complementary", { name: "Launch supply proof" })).toBeVisible();
+    await expect(page.getByText(/Sniped/)).toHaveCount(0);
+  }
 });

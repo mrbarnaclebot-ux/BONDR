@@ -135,7 +135,8 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
     }
   });
 
-  // D-35: third-party buys in slots createSlot..createSlot+2, over supply, rounded up to whole bps.
+  // D-35: third-party buys in slots createSlot..createSlot+2, over supply, rounded up to whole bps, written only
+  // once a trade past the window is stored (null before, so the page shows no figure).
   test("a launch records its create slot, and only third-party window buys move sniped_bps", async () => {
     try {
       await db().transaction(async (tx) => {
@@ -151,7 +152,7 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
         );
         await writeParsed(tx, lp, { id, pool: "pool" });
         const slot = String(fixture("launch-burn").slot);
-        expect(await coinOf(tx)).toMatchObject({ createSlot: slot, snipedBps: 0 });
+        expect(await coinOf(tx)).toMatchObject({ createSlot: slot, snipedBps: null });
 
         const [l] = await tx.select().from(launches).where(eq(launches.id, id));
         const init = lp.created?.initialRealTokenReserves ?? "";
@@ -195,13 +196,15 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
         const sniped = async () => (await coinOf(tx))?.snipedBps;
 
         await write("sniper-1", "1");
-        expect(await sniped()).toBe(1); // 1 base unit rounds up to 1 bps
         await write(l?.wallet ?? "", "500000000000000");
         await write(l?.w ?? "", "500000000000000", 2);
         await write("sniper-2", "500000000000000", 1, "sell");
         await write("sniper-3", "500000000000000", 0, "buy", true);
-        await write("sniper-4", "500000000000000", 3);
-        expect(await sniped()).toBe(1);
+        expect(await sniped()).toBeNull(); // the window may still be filling
+        await write("sniper-4", "500000000000000", 3, "sell"); // any trade past the window closes it
+        expect(await sniped()).toBe(1); // 1 base unit rounds up to 1 bps
+        await write("sniper-7", "500000000000000", 4);
+        expect(await sniped()).toBe(1); // buys past the window never count
         await write("sniper-5", "31999999999999", 2);
         expect(await sniped()).toBe(320); // (1 + 31_999_999_999_999) * 10_000 / 1e15
 

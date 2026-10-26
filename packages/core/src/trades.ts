@@ -21,6 +21,7 @@ export type KnownCoin = {
   pool: string;
   initialRealTokenReserves: string;
   createSlot?: string | null; // null for coins launched before 07-07: their sniped share is never computed
+  windowClosed?: boolean; // the sniped figure exists: later trades past the window no longer recompute it
 };
 export type Launch = { mint: string; exit: "burn" | "sell" };
 export type ParsedTrade = {
@@ -53,8 +54,7 @@ export type NewCoin = {
   progress: number;
   bondrAtBond: string;
   bondSol: number | null;
-  createSlot: string; // D-35: the launch tx's slot opens the 3-slot sniped window
-  snipedBps: number;
+  createSlot: string; // D-35: opens the 3-slot sniped window; sniped_bps stays null until it closes
 };
 type Reserves = "realTokenReserves" | "realQuoteReserves" | "virtualTokenReserves" | "virtualQuoteReserves";
 export type CoinPatch = { mint: string } & Partial<Pick<NewCoin, Reserves | "progress" | "bondrAtBond">> & {
@@ -215,7 +215,6 @@ function newCoin(c: Ctx, create: PumpEvent, after: CoinPatch | undefined): NewCo
     bondrAtBond: String(atBond),
     bondSol: b === null ? null : sol(toSol(atBond, b)),
     createSlot: c.slot,
-    snipedBps: 0,
     ...after, // same mint: the launch's own trades
   };
 }

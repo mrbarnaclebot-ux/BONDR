@@ -167,7 +167,7 @@ export default async function CoinPage({ params }: Props) {
                   <ProofStamp signature={v.signature} net={net}>
                     {sentence(v)}
                   </ProofStamp>
-                  {coin?.createSlot != null && <Sniped bps={coin.snipedBps ?? 0} />}
+                  {coin?.snipedBps != null && <Sniped bps={coin.snipedBps} />}
                 </div>
               )}
             </CoinIdentity>

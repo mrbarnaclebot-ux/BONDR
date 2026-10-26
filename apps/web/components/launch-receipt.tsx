@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { pct, short, sol } from "@/lib/format";
 import { EXIT_NAME } from "./launch-buy";
 import type { Launch, Live } from "./launch-flow";
+import { useWallet } from "./wallet";
 
 type Row = [string, ReactNode];
 
@@ -32,6 +33,7 @@ const GENESIS_FEE: Row[] = [["BONDR treasury, claimed on pump.fun", "100%"]];
 /** Updates on every keystroke from the flow state; every fee and cost is live (D-01), never a constant. */
 export function LaunchReceipt({ state, live }: { state: Launch; live: Live }) {
   const s = live.status;
+  const { net } = useWallet();
   // "…" while the first status is loading; "Unavailable" once the chain read is known to have failed.
   const gap =
     s === null && !live.statusError ? (
@@ -58,8 +60,8 @@ export function LaunchReceipt({ state, live }: { state: Launch; live: Live }) {
     ["Dev buy", buy],
     ["Pump create and accounts", cost(s?.createCostEstimate)],
     ["Network fee", cost(s?.networkFeeEstimate)],
-    // Mainnet only (D-34): shown while loading or unreadable, hidden once a loaded status says there is none.
-    ...(s === null || s.senderTipEstimate !== null
+    // Mainnet only (D-34): a loaded status decides; while loading or unreadable the server's SOLANA_NET does.
+    ...((s ? s.senderTipEstimate !== null : net === "mainnet")
       ? [["Sender tip", cost(s?.senderTipEstimate)] as Row]
       : []),
     ["Back to you on insta sell", back(state, live)],

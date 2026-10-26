@@ -151,8 +151,9 @@ function FaultText({ fault, text }: { fault: Fault; text: string }) {
 }
 
 function Outcome({ p, net, symbol, genesis, onRetry }: OutcomeProps) {
+  const fallback = useWallet().net; // the server's SOLANA_NET when the status read failed
   const link = p.sig && (
-    <TxLink signature={p.sig} net={net?.net ?? "devnet"}>{`Launch tx ${short(p.sig)}`}</TxLink>
+    <TxLink signature={p.sig} net={net?.net ?? fallback}>{`Launch tx ${short(p.sig)}`}</TxLink>
   );
   if (!p.failed)
     return p.unknown ? (

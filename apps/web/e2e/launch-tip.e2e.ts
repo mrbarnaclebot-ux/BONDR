@@ -43,6 +43,14 @@ test("devnet hides the Sender tip row once the status has loaded", async ({ page
   await expect(receipt(page).locator('dt:text-is("Sender tip")')).toHaveCount(0);
 });
 
+// IN-B-02: with no status, the server's SOLANA_NET (devnet here) decides, so no "Unavailable" tip row.
+test("devnet shows no Sender tip row when the status read fails", async ({ page }) => {
+  await page.route("**/api/status", (r) => r.fulfill({ status: 503, json: { error: "worker_unavailable" } }));
+  await page.goto("/launch");
+  await expect(row(receipt(page), "Network fee")).toHaveText(/Unavailable/);
+  await expect(receipt(page).locator('dt:text-is("Sender tip")')).toHaveCount(0);
+});
+
 test("a balance that covers everything but the tip gets the balance error", async ({ page }) => {
   const s = status("mainnet", "1000000");
   const covered = BigInt(MIN) + BigInt(s.createCostEstimate ?? 0) + BigInt(s.networkFeeEstimate ?? 0);

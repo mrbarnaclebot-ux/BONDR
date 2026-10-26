@@ -7,5 +7,6 @@ One-command devnet and fork tools. Each file's header comment lists its flags an
 - `devnet-trades.ts`: sim dev trades on a BONDR coin (multi-hop, curve, BONDR-only), the `--complete` A8 gate, and `--expect-indexed S` (exit 1 unless a running worker indexes each landed trade within S seconds).
 - `stream-probe.ts`: `--listen` on the BONDR-mint logsSubscribe, `--check` a signature list against it and `getSignaturesForAddress`.
 - `capture-tx.ts`: saves a tx as a fixture under `packages/core/src/fixtures/`.
+- `contract-check.ts`: the pump contract check (OPS-02) against devnet or the fork, `--bondr <mint>` adds BONDR's curve or pool; exit 1 on any failed fact. Mainnet runs only in the production worker.
 - `check-client-bundle.sh`: fails if pump SDK, web3.js or spl-token code reached the web client bundle.
 - `spike/`: the Phase 1 chain spike (its own README).

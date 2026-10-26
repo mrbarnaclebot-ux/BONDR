@@ -1,7 +1,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { coinRow, coinRows } from "./coin-row.ts";
 import {
@@ -80,6 +80,7 @@ const audit = (over: Partial<typeof adminAudit.$inferInsert> = {}): typeof admin
 const counts = async () => ({
   audit: await db().$count(adminAudit),
   blocked: await db().$count(blockedDeployers),
+  coins: await db().$count(coins),
 });
 
 // 30 s: the first query may wake a suspended Neon compute.
@@ -180,6 +181,34 @@ describe.skipIf(!process.env.DATABASE_URL)("admin database constraints", { timeo
       expect(await update(open, { params: { x: 1 }, result: "failed", settledAt: new Date() })).toBe("P0001");
       expect(await remove(open)).toBe("P0001");
     });
+  });
+
+  test("TRUNCATE admin_audit is refused by the privilege and, if re-granted, by the guard trigger", async () => {
+    await rolledBack(async (tx) => {
+      const truncate = () => attempt(tx, (t) => t.execute(sql`truncate admin_audit`));
+      expect(await truncate()).toBe("42501");
+      // The owner can re-grant itself (defence in depth only), so the statement trigger is the real guard.
+      await tx.execute(sql`grant truncate on admin_audit to current_user`);
+      expect(await truncate()).toBe("P0001");
+    });
+  });
+
+  test("sniped_bps is null or 0 to 10000", async () => {
+    await rolledBack(async (tx) => {
+      const mint = await seedCoin(tx);
+      const set = (snipedBps: number | null) =>
+        attempt(tx, (t) => t.update(coins).set({ snipedBps }).where(eq(coins.mint, mint)).execute());
+      expect(await set(10001)).toBe("23514");
+      expect(await set(-1)).toBe("23514");
+      for (const ok of [null, 0, 10000]) expect(await set(ok)).toBeUndefined();
+    });
+  });
+
+  test("launches_symbol_live is a partial index on (symbol, landed_at) without failed launches", async () => {
+    const r = await db().execute(sql`select indexdef from pg_indexes where indexname = 'launches_symbol_live'`);
+    const def = String((r as unknown as { indexdef: string }[])[0]?.indexdef);
+    expect(def).toContain("(symbol, landed_at)");
+    expect(def).toContain("state <> 'failed'");
   });
 
   test("one transaction writes an evacuate row per mint, still once per (signature, kind, mint)", async () => {

@@ -9,7 +9,7 @@ import { OnlinePumpSdk } from "@bondr/core/pump";
 import { pgAudit, settleStale } from "./admin-audit.ts";
 import { adminRoutes } from "./admin-routes.ts";
 import { seedBondrPrice } from "./bondr-price.ts";
-import { loadEnv, type WorkerEnv } from "./env.ts";
+import { buyback, loadEnv, ops, type WorkerEnv } from "./env.ts";
 import { endStreams, eventsHandler } from "./events-route.ts";
 import { feeEngine, startEngine } from "./fee-boot.ts";
 import { feeRoutes } from "./fee-routes.ts";
@@ -59,9 +59,11 @@ const SAMPLE_ADDR = "9wRtPq3yq1ZJ8yQd2ynVfUKAnx3bK2SMQkkjD8Kq4e3F";
 async function main() {
   const env = loadEnv();
   const conn = await connect(env.net, { fetch: timedFetch });
-  const ctx: Ctx = { conn, online: new OnlinePumpSdk(conn), Q: env.quoteMint, priorityFee: env.priorityFee };
+  const ctx: Ctx = {
+    ...{ conn, online: new OnlinePumpSdk(conn), Q: env.quoteMint },
+    ...{ priorityFee: env.priorityFee, net: env.net },
+  };
   const pctx: PrepareCtx = { ...ctx, env };
-  const tctx = { ...ctx, net: env.net };
   const server = start(
     {
       "GET /status": () => liveStatus(ctx),
@@ -69,10 +71,10 @@ async function main() {
       "POST /prepare": (body) => prepare(pctx, body),
       "POST /submit": (body) => submit(pctx, body),
       "POST /kill-switch": (body) => setSwitch(body, pgAudit()),
-      "POST /trade/quote": (body) => quoteTrade(tctx, body),
+      "POST /trade/quote": (body) => quoteTrade(ctx, body),
       "POST /trade/balance": (body) => tradeBalance(ctx, body),
-      "POST /trade/prepare": (body) => prepareTrade(tctx, body),
-      "POST /trade/submit": (body) => submitTrade(tctx, body),
+      "POST /trade/prepare": (body) => prepareTrade(ctx, body),
+      "POST /trade/submit": (body) => submitTrade(ctx, body),
       "POST /trade/view": async (body) => viewTrade(body),
       ...feeRoutes(feeEngine),
       ...adminRoutes({ env, engine: feeEngine, conn }),
@@ -87,6 +89,9 @@ async function main() {
   );
   server.on("listening", () => {
     console.log(`worker listening on ${env.net}`);
+    // Public keys only, so the G-3 and G-4 steps read the ops address from the logs without touching the seed.
+    const [o, b] = [ops(env.seed, env.net).publicKey, buyback(env.seed, env.net, env.lane).publicKey];
+    console.log(`wallets: ops=${o.toBase58()} buyback=${b.toBase58()} treasury=${env.treasury.toBase58()}`);
     void startRefill(env);
     void bootIndex(ctx, env);
     resumeLaunches(conn).catch(failed("resume"));

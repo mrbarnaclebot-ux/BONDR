@@ -215,6 +215,7 @@ async function main(): Promise<void> {
     online: new OnlinePumpSdk(conn),
     Q: env.quoteMint,
     priorityFee: env.priorityFee,
+    net: env.net,
     env,
   };
   const before = await balances(conn, env.seed);

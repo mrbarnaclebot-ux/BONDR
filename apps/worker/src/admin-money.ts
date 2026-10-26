@@ -42,7 +42,7 @@ export const signer = (c: MoneyCtx) => ({ site: c.site, wallet: c.admin ?? "" })
 // ledger; the engine flag governs automation only, so a recovery still works with automation off.
 export function adminBase(env: WorkerEnv, conn: Connection): FeeDeps {
   const online = new OnlinePumpSdk(conn);
-  return feeDeps({ conn, online, Q: env.quoteMint, priorityFee: env.priorityFee }, env, "on");
+  return feeDeps({ conn, online, Q: env.quoteMint, priorityFee: env.priorityFee, net: env.net }, env, "on");
 }
 
 // Evacuate dispatches to admin-evacuate.ts before this; any other action without an entry refuses.

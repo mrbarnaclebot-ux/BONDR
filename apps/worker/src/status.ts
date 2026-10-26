@@ -21,7 +21,13 @@ import { loadSwitches, setJob, switchesLoaded, switchOn } from "./switches.ts";
 
 type Online = Parameters<typeof quoteVenue>[0];
 type FeeConfig = Awaited<ReturnType<Online["fetchFeeConfig"]>>;
-export type Ctx = { conn: Connection; online: Online; Q: PublicKey; priorityFee: number };
+export type Ctx = {
+  conn: Connection;
+  online: Online;
+  Q: PublicKey;
+  priorityFee: number;
+  net: "devnet" | "mainnet";
+};
 type Where = Venue | "awaiting" | null; // null: the chain read failed
 
 const CACHE_MS = 5_000;
@@ -150,7 +156,7 @@ async function readLive(ctx: Ctx): Promise<Live> {
     return null;
   });
   const status = {
-    net: "devnet" as const,
+    net: ctx.net, // explorer links and devnet-only hints follow it (row 14)
     quoteMint: ctx.Q.toBase58(),
     fees: chain?.fees ?? null,
     minLamports: chain ? String(chain.min) : null,

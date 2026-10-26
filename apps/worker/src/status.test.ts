@@ -1,8 +1,11 @@
 import { BN, type Global } from "@bondr/core/pump";
 import { PublicKey } from "@solana/web3.js";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { launchNet } from "./env.ts";
-import { childFees, networkFee, parseSwitch, pauseReason } from "./status.ts";
+import { type Ctx, childFees, liveStatus, networkFee, parseSwitch, pauseReason } from "./status.ts";
+
+// The switches live in memory; no database in this unit file.
+vi.mock("./switches.ts", () => ({ switchesLoaded: () => true, switchOn: () => true }));
 
 test("pauseReason: kill switch first, awaiting migration pauses, a migrated BONDR does not (D-18)", () => {
   expect(pauseReason({ enabled: false, venue: "curve" })).toBe("kill_switch");
@@ -50,4 +53,24 @@ test("the kill switch route takes only a boolean", () => {
   expect(parseSwitch({ enabled: true })).toBe(true);
   for (const bad of [undefined, null, {}, { enabled: "false" }, { enabled: 0 }])
     expect(() => parseSwitch(bad)).toThrow("invalid_input");
+});
+
+test("/status reports the worker's own net (row 14)", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {}); // the stubbed chain read fails on purpose
+  const down = async () => {
+    throw new Error("no chain in this test");
+  };
+  const ctx = (net: Ctx["net"]) =>
+    ({
+      net,
+      Q: PublicKey.unique(),
+      priorityFee: 0,
+      conn: { getAccountInfo: down },
+      online: {},
+    }) as unknown as Ctx;
+  vi.useFakeTimers({ toFake: ["Date"] });
+  expect((await liveStatus(ctx("mainnet"))).net).toBe("mainnet");
+  vi.setSystemTime(Date.now() + 10_000); // past the 5 s status cache
+  expect((await liveStatus(ctx("devnet"))).net).toBe("devnet");
+  vi.useRealTimers();
 });

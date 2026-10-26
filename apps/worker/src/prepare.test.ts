@@ -1,7 +1,7 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { blockedDeployers, close, db, vanityMints, wallets } from "@bondr/core/db";
+import { blockedDeployers, close, db, launches, vanityMints, wallets } from "@bondr/core/db";
 import { Keypair } from "@solana/web3.js";
 import { eq, sql, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, test, vi } from "vitest";
@@ -26,12 +26,19 @@ import {
   TABLE_CAP,
   WALLET_TABLE_CAP,
 } from "./prepare.ts";
+import { tickerLock } from "./ticker.ts";
 
 // An open, priced launch, so only the blocked check can refuse before prepareGuard.
 vi.mock("./status.ts", async (orig) => ({
   ...((await orig()) as object),
   liveStatus: async () => ({ paused: null, minLamports: "2500000", createCostEstimate: "0" }),
 }));
+
+// A spy over the real read, so a test can prove admit skipped it.
+vi.mock("./ticker.ts", async (orig) => {
+  const m = (await orig()) as typeof import("./ticker.ts");
+  return { ...m, tickerLock: vi.fn(m.tickerLock) };
+});
 
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
 if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFile);
@@ -183,5 +190,103 @@ describe.skipIf(!process.env.DATABASE_URL)("launch rows", { timeout: 30_000 }, (
     } finally {
       await db().delete(blockedDeployers).where(eq(blockedDeployers.wallet, wallet));
     }
+  });
+
+  // The ticker refusals (D-40, D-44): after blocked, before the guard, the balance RPC, the reservation and tables.
+  describe("ticker refusals", () => {
+    const calls: string[] = [];
+    const chain = new Proxy(
+      {},
+      {
+        get: (_, k) => () => {
+          calls.push(String(k));
+          return Promise.reject(new Error("chain call"));
+        },
+      },
+    );
+    const env = { net: "devnet" };
+    const ctx = { conn: chain, online: {}, Q: Keypair.generate().publicKey, priorityFee: 0, env } as unknown;
+    const run = (wallet: string, symbol: string) => prepare(ctx as PrepareCtx, { ...body, wallet, symbol });
+    const reserved = (wallet: string) => db().$count(vanityMints, eq(vanityMints.reservedBy, wallet));
+
+    // prepare's own db() reads these rows, so they are committed and always deleted.
+    async function asker<T>(fn: (wallet: string) => Promise<T>): Promise<T> {
+      const wallet = Keypair.generate().publicKey.toBase58();
+      await db().insert(wallets).values({ address: wallet, consentedAt: new Date(), termsVersion: "test" });
+      calls.length = 0;
+      vi.mocked(tickerLock).mockClear();
+      try {
+        return await fn(wallet);
+      } finally {
+        await db().delete(wallets).where(eq(wallets.address, wallet));
+      }
+    }
+
+    test("a reserved symbol answers 409 ticker_reserved with no chain call and no reservation", async () => {
+      await asker(async (wallet) => {
+        await expect(run(wallet, "sol")).rejects.toMatchObject({
+          status: 409,
+          body: { error: "ticker_reserved" },
+        });
+        expect(calls).toEqual([]);
+        expect(await reserved(wallet)).toBe(0);
+      });
+    });
+
+    test("a symbol that landed 1h ago answers 409 ticker_locked with retryAfter and lock landed", async () => {
+      const symbol = `T${randomBytes(5).toString("hex").toUpperCase()}`;
+      const mint = `test-${randomBytes(8).toString("hex")}`;
+      await db().insert(wallets).values({ address: mint, consentedAt: new Date(), termsVersion: "test" });
+      await db()
+        .insert(vanityMints)
+        .values({ idx: -BigInt(randomInt(1, 2 ** 47)), pubkey: mint });
+      await db()
+        .insert(launches)
+        .values({
+          ...{ id: `test-${randomBytes(8).toString("hex")}`, wallet: mint, mint, w: mint, state: "landed" },
+          ...{
+            name: "T",
+            symbol,
+            uri: "ipfs://test",
+            solIn: 1n,
+            exit: "burn",
+            landedAt: sql`now() - interval '1 hour'`,
+          },
+        });
+      try {
+        await asker(async (wallet) => {
+          const err = await run(wallet, symbol.toLowerCase()).catch((e: unknown) => e);
+          expect(err).toMatchObject({ status: 409, body: { error: "ticker_locked", lock: "landed" } });
+          expect(Math.abs((err as { body: { retryAfter: number } }).body.retryAfter - 82_800)).toBeLessThan(
+            120,
+          );
+          expect(calls).toEqual([]);
+          expect(await reserved(wallet)).toBe(0);
+        });
+      } finally {
+        await db().delete(launches).where(eq(launches.mint, mint));
+        await db().delete(vanityMints).where(eq(vanityMints.pubkey, mint));
+        await db().delete(wallets).where(eq(wallets.address, mint));
+      }
+    });
+
+    test("a symbol checkSymbol refuses still answers invalid_input, and the ticker read is skipped", async () => {
+      await asker(async (wallet) => {
+        await expect(run(wallet, "BND-R")).rejects.toMatchObject({
+          status: 400,
+          body: { error: "invalid_input" },
+        });
+        expect(tickerLock).not.toHaveBeenCalled();
+      });
+    });
+
+    test("an unlocked symbol passes admit and reaches the balance RPC as before", async () => {
+      await asker(async (wallet) => {
+        const symbol = `T${randomBytes(5).toString("hex").toUpperCase()}`;
+        await expect(run(wallet, symbol)).rejects.toThrow("chain call");
+        expect(tickerLock).toHaveBeenCalledOnce();
+        expect(calls).toEqual(["getBalance"]);
+      });
+    });
   });
 });

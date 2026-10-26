@@ -7,6 +7,7 @@ import { derive } from "@bondr/core/keys";
 import type { LaunchOpts } from "@bondr/core/launch";
 import { redact } from "@bondr/core/net";
 import { BN } from "@bondr/core/pump";
+import { checkSymbol, reservedTicker } from "@bondr/core/rules";
 import { type AddressLookupTableAccount, PublicKey, VersionedTransaction } from "@solana/web3.js";
 import { blocked } from "./admin-moderate.ts";
 import {
@@ -36,6 +37,7 @@ import {
 } from "./launches.ts";
 import { parseRequest, prepareGuard, type Req, sellFloor, signBy, walletOf } from "./prepare-rules.ts";
 import { type Ctx, LAUNCH_CU_LIMIT, liveStatus, networkFee } from "./status.ts";
+import { tickerLock, tickerRefusal } from "./ticker.ts";
 import { markUsed, reserve } from "./vanity.ts";
 
 export {
@@ -52,7 +54,11 @@ export {
 export type PrepareCtx = Ctx & { env: WorkerEnv };
 
 async function admit(ctx: PrepareCtx, body: unknown) {
-  const wallet = walletOf((body as { wallet?: unknown } | null)?.wallet);
+  const raw = body as { wallet?: unknown; symbol?: unknown } | null;
+  const wallet = walletOf(raw?.wallet);
+  // An invalid symbol skips the lock read; prepareGuard refuses it as invalid_input.
+  const sym = checkSymbol(String(raw?.symbol ?? ""));
+  const free = { held: 0, until: null, lastLanded: null };
   const rows = wallet
     ? Promise.all([
         consented(db(), wallet),
@@ -60,13 +66,18 @@ async function admit(ctx: PrepareCtx, body: unknown) {
         newTablesToday(db(), wallet),
         tableFor(db(), wallet),
         blocked(db(), wallet),
+        sym.ok ? tickerLock(db(), sym.value, wallet) : free,
       ])
-    : Promise.resolve([false, 0, 0, null, false] as const);
-  const [status, [ok, tablesLastHour, walletTablesToday, prior, isBlocked]] = await Promise.all([
+    : Promise.resolve([false, 0, 0, null, false, free] as const);
+  const [status, [ok, tablesLastHour, walletTablesToday, prior, isBlocked, lock]] = await Promise.all([
     liveStatus(ctx, true),
     rows,
   ]);
   if (isBlocked) throw fail({ error: "blocked" }); // D-30: before every other guard and any build
+  // D-40, D-44: before the caps, so a refused ticker spends no table quota, and before balance, mint and table.
+  if (sym.ok && reservedTicker(sym.value)) throw fail({ error: "ticker_reserved" });
+  const locked = tickerRefusal(lock, new Date());
+  if (locked) throw fail(locked);
   const min = status.minLamports === null ? null : BigInt(status.minLamports);
   const refused = prepareGuard({
     paused: status.paused,

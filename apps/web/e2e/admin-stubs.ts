@@ -116,17 +116,21 @@ export const INSPECT: AdminInspect = {
   explorer: `https://solscan.io/tx/${SIGS[0]}?cluster=devnet`,
 };
 
-/** A passing 12-wallet EVACUATE simulation with an intent (admin-responsive.e2e.ts). */
-export const EVAC: AdminSimResult = simFixture({
-  ...{ action: "evacuate", mint: null, balances: [], steps: [{ ok: true, cu: 180_000, estimated: false }] },
-  totals: {
-    wallets: 12,
-    bondr: "18402110000000",
-    bondrSol: "9200000000",
-    sol: "410000000",
-    burnedIn: 3,
-    failures: 0,
-  },
-  destinations: { ok: true, passed: ["treasury matches config"] },
-  intent: { id: INTENT_ID, message: "BONDR admin action", expiresAt: Date.now() + 600_000 },
-});
+/**
+ * A passing 12-wallet EVACUATE simulation with an intent (admin-responsive.e2e.ts). Built per call: a worker
+ * keeps this module across files, so a load-time expiry could already have passed (WR-E-06).
+ */
+export const evacFixture = (): AdminSimResult =>
+  simFixture({
+    ...{ action: "evacuate", mint: null, balances: [], steps: [{ ok: true, cu: 180_000, estimated: false }] },
+    totals: {
+      wallets: 12,
+      bondr: "18402110000000",
+      bondrSol: "9200000000",
+      sol: "410000000",
+      burnedIn: 3,
+      failures: 0,
+    },
+    destinations: { ok: true, passed: ["treasury matches config"] },
+    intent: { id: INTENT_ID, message: "BONDR admin action", expiresAt: Date.now() + 600_000 },
+  });

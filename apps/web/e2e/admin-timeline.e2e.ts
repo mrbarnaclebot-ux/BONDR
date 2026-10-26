@@ -25,7 +25,8 @@ const ROWS: WRow[] = [
   coin("Unconf111", "UNCF", { launch: "unconfirmed", cost: null }),
   coin("Coll11111", "COLL"),
 ];
-const MEMORY: AdminCoinMemory[] = [
+// Per request, so "1h ago" holds however long after module load this file runs (WR-E-06).
+const memory = (): AdminCoinMemory[] => [
   {
     mint: "Stuck1111",
     stuck: { step: "finalize", attempts: 3, code: "blockhash_expired", at: Date.now() - H },
@@ -67,7 +68,7 @@ async function stubbed(page: Page) {
     const res = await route.fetch();
     const body = await res.json();
     body.rows = ROWS;
-    body.worker = { balances: body.worker?.balances ?? BALANCES, coins: MEMORY };
+    body.worker = { balances: body.worker?.balances ?? BALANCES, coins: memory() };
     await route.fulfill({ response: res, json: body });
   });
   await page.route("**/api/admin/coin", async (route) => {

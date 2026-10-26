@@ -14,7 +14,7 @@ import postgres from "postgres";
 import type { WRow } from "../lib/admin-data.ts";
 import type { CoinTimeline } from "../lib/admin-timeline.ts";
 import { openConsole } from "./admin.ts";
-import { EVAC, INSPECT, simFixture, stubConsole, stubSim } from "./admin-stubs.ts";
+import { evacFixture, INSPECT, simFixture, stubConsole, stubSim } from "./admin-stubs.ts";
 import { dropCoin, seedCoin, seedLedger } from "./fixtures.ts";
 import { adminAccount, injectPhantom, newTestAccount, preConsent, rootEnv } from "./phantom.ts";
 import { gate, PHASE6_SHOTS } from "./shoot.ts";
@@ -51,12 +51,13 @@ const HEALTHY = [
   coin("Bond11111", "BOND", { venue: "pool", bondedAt: iso(2 * H) }),
   coin("Fin111111", "FINL", { venue: "pool", finalize: "done", bondedAt: iso(3 * H) }),
 ];
-const STUCK: AdminCoinMemory = {
+// Per call, as admin-stubs' evacFixture: the module can load long before this file runs (WR-E-06).
+const stuck = (): AdminCoinMemory => ({
   mint: "Stuck1111",
   stuck: { step: "finalize", attempts: 3, code: "blockhash_expired", at: Date.now() - H },
   hold: null,
   busy: false,
-};
+});
 const balances = (opsSol: string) => ({
   ...{ treasurySol: "2500000000", treasuryBondr: "0", buybackSol: "0", buybackBondr: "5000000", opsSol },
   ...{ opsFloor: "100000000", bondrSol: null, nextBurnAt: Date.now() + H },
@@ -78,7 +79,10 @@ async function console_(page: Page, o: { stuck?: boolean; health?: Record<string
     const res = await route.fetch();
     const body = await res.json();
     body.rows = rows;
-    body.worker = { balances: balances(o.stuck ? "40000000" : "1000000000"), coins: o.stuck ? [STUCK] : [] };
+    body.worker = {
+      balances: balances(o.stuck ? "40000000" : "1000000000"),
+      coins: o.stuck ? [stuck()] : [],
+    };
     await route.fulfill({ response: res, json: body });
   });
   await page.route("**/api/admin/coin", (route) =>
@@ -200,7 +204,7 @@ for (const width of WIDTHS)
       const admin = phantomAdmin();
       await injectPhantom(page, admin);
       await preConsent(page, admin.address);
-      await stubSim(page, { simulate: { json: EVAC } });
+      await stubSim(page, { simulate: { json: evacFixture() } });
       await console_(page, { health: { evacuate: "on" } });
       const box = page.getByRole("region", { name: "EVACUATE" });
       await expect(box.getByText("Disarmed. The phrase must match exactly.")).toBeVisible();

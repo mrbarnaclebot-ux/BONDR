@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-13-PLAN.md
-last_updated: "2026-10-26T12:12:59.000Z"
-last_activity: 2026-10-26 -- Completed 07-13 (worker ticker cooldown and reserved list in admit)
+stopped_at: Completed 07-14-PLAN.md
+last_updated: "2026-10-26T12:29:18.000Z"
+last_activity: 2026-10-26 -- Completed 07-14 (step 1 ticker field errors and the search First marker)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 108
-  percent: 82
+  completed_plans: 109
+  percent: 83
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 13 of 36 (07-13 complete)
+Plan: 14 of 36 (07-14 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-13 (worker ticker cooldown and reserved list in admit)
+Last activity: 2026-10-26 -- Completed 07-14 (step 1 ticker field errors and the search First marker)
 
 Progress: [██████████] 100%
 
@@ -141,6 +141,7 @@ Progress: [██████████] 100%
 | Phase 07 P11 | 20min | 2 tasks | 8 files |
 | Phase 07 P12 | 25min | 2 tasks | 13 files |
 | Phase 07 P13 | 12min | 2 tasks | 8 files |
+| Phase 07 P14 | 15min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -373,6 +374,8 @@ Recent decisions affecting current work:
 - 07-12: ticker refusals carry retryAfter (s) and lock landed|pending; the web forwarder passes only validated values; step 4 renders tickerFault from Progress.refusal
 - 07-13: tickerRefusal refuses whenever a holding row exists; retryAfter clamped at 0 so a stale in-flight row still holds
 - 07-13: ticker_reserved and ticker_locked are refused in admit after blocked and before prepareGuard, balance, reservation and tables
+- 07-14: the ticker_locked field error in step 1 shows but does not block Continue; the reserved error blocks
+- 07-14: the search First flag comes from page 0's own rows (exact matches lead), no count query
 
 ### Pending Todos
 
@@ -406,6 +409,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T12:12:59.000Z
-Stopped at: Completed 07-13-PLAN.md
+Last session: 2026-10-26T12:29:18.000Z
+Stopped at: Completed 07-14-PLAN.md
 Resume file: None

@@ -1,21 +1,21 @@
 // Worker config. Fails at boot on anything missing or malformed, so a bad deploy never serves.
 // Never log the seed, the tokens, the admin wallet or the RPC URL.
-import { derive, readSeed } from "@bondr/core/keys";
+import { derive, type Net, readSeed } from "@bondr/core/keys";
 import { PublicKey } from "@solana/web3.js";
 
 type Env = Record<string, string | undefined>;
 
-// D-02: mainnet stays off until Phase 7. ALLOW_MAINNET=1 is the future switch, but even with it this phase
-// refuses, because no mainnet RPC or genesis guard is wired yet.
-export function launchNet(env: Env): "devnet" {
+// D-01: mainnet runs only behind the double flag SOLANA_NET=mainnet plus ALLOW_MAINNET=1, so a stray
+// SOLANA_NET alone never reaches mainnet. The worker never runs on the fork; only the spike does.
+export function launchNet(env: Env): "devnet" | "mainnet" {
   const net = env.SOLANA_NET?.trim();
   if (net === "devnet") return "devnet";
   if (net === "mainnet") {
     if (env.ALLOW_MAINNET !== "1")
       throw new Error("SOLANA_NET=mainnet refused: set ALLOW_MAINNET=1 to allow it");
-    throw new Error("SOLANA_NET=mainnet refused: mainnet RPC is not wired until Phase 7");
+    return "mainnet";
   }
-  throw new Error("SOLANA_NET must be devnet");
+  throw new Error("SOLANA_NET must be devnet or mainnet");
 }
 
 function seedFrom(env: Env): Buffer {
@@ -47,8 +47,9 @@ function feeEngine(raw: string | undefined): "off" | "dry" | "on" {
   return v;
 }
 
+// The address only if it round-trips exactly, so a near-miss paste never names some other key.
 // D-08: an unset or invalid ADMIN_WALLET closes every /admin route instead of failing boot (ship dark).
-function adminWallet(raw: string | undefined): string | null {
+function exactKey(raw: string | undefined): string | null {
   const v = raw?.trim() ?? "";
   try {
     return new PublicKey(v).toBase58() === v ? v : null;
@@ -65,6 +66,23 @@ function siteOrigin(raw: string | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+// D-10: on mainnet the treasury is an owner-held wallet the seed cannot derive, so EVACUATE after a seed leak
+// lands out of the attacker's reach. Errors name the variable, never its value.
+function treasuryFrom(env: Env, net: "devnet" | "mainnet", seed: Buffer, lane: "local" | "staging") {
+  if (net === "devnet") return { key: treasury(seed, "devnet").publicKey, external: false };
+  const v = exactKey(env.TREASURY_PUBKEY);
+  if (!env.TREASURY_PUBKEY?.trim()) throw new Error("TREASURY_PUBKEY is required on mainnet");
+  if (!v) throw new Error("TREASURY_PUBKEY is not a valid address");
+  const key = new PublicKey(v);
+  if (!PublicKey.isOnCurve(key.toBytes()))
+    throw new Error("TREASURY_PUBKEY must be a wallet, not a program address");
+  const derived = [ops(seed, net), buyback(seed, net, lane), treasury(seed, net)].map((k) => k.publicKey);
+  if (derived.some((d) => d.equals(key))) throw new Error("TREASURY_PUBKEY must not derive from MASTER_SEED");
+  if (v === exactKey(env.ADMIN_WALLET))
+    console.warn("TREASURY_PUBKEY equals ADMIN_WALLET: G-2 advises separate wallets");
+  return { key, external: true };
 }
 
 // A2: EVACUATE only simulates unless set to on, and on is devnet only until the mainnet runbook flips it (D-37).
@@ -93,9 +111,13 @@ export function loadEnv(env: Env = process.env) {
   } catch {
     throw new Error("BONDR_QUOTE_MINT is not a valid address");
   }
+  const seed = seedFrom(env);
+  const t = treasuryFrom(env, net, seed, lane);
   return {
     net,
-    seed: seedFrom(env),
+    seed,
+    treasury: t.key,
+    treasuryExternal: t.external,
     quoteMint,
     token,
     priorityFee: count("PRIORITY_FEE_MICROLAMPORTS", env.PRIORITY_FEE_MICROLAMPORTS, 1000),
@@ -104,7 +126,7 @@ export function loadEnv(env: Env = process.env) {
     feeEngine: feeEngine(env.FEE_ENGINE),
     feeWindowMs: atLeast("FEE_WINDOW_MS", env.FEE_WINDOW_MS, 86_400_000, 60_000),
     feeBatchHourUtc: batchHour(env.FEE_BATCH_HOUR_UTC),
-    adminWallet: adminWallet(env.ADMIN_WALLET),
+    adminWallet: exactKey(env.ADMIN_WALLET),
     siteUrl: siteOrigin(env.SITE_URL),
     adminEvacuate: adminEvacuate(env.ADMIN_EVACUATE, net),
     sentryReadToken: env.SENTRY_READ_TOKEN?.trim() || null,
@@ -113,10 +135,11 @@ export function loadEnv(env: Env = process.env) {
 
 export type WorkerEnv = ReturnType<typeof loadEnv>;
 
-// Phase 1 ids, so the worker signs with the same funded wallets the spike used.
-export const ops = (seed: Buffer, net: "devnet") => derive(seed, "ops", net, "main");
-export const treasury = (seed: Buffer, net: "devnet") => derive(seed, "treasury", net, "main");
+// Phase 1 ids, so the worker signs with the same funded wallets the spike used. The net is in the HMAC domain,
+// so mainnet ids never equal devnet ones. Jobs read env.treasury; this derived key is devnet's treasury.
+export const ops = (seed: Buffer, net: Net) => derive(seed, "ops", net, "main");
+export const treasury = (seed: Buffer, net: Net) => derive(seed, "treasury", net, "main");
 // Local and staging share the devnet seed, so the lane gives each database its own buyback wallet and one
 // lane's reconcile (05-09) never sees the other's sweeps (T-05-05-06).
-export const buyback = (seed: Buffer, net: "devnet", lane: "local" | "staging") =>
+export const buyback = (seed: Buffer, net: Net, lane: "local" | "staging") =>
   derive(seed, "buyback", net, lane);

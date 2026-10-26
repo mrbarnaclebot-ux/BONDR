@@ -9,7 +9,7 @@ import {
 } from "@solana/spl-token";
 import type { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
 import { bondrPrice } from "./bondr-price.ts";
-import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
+import { buyback, ops, type WorkerEnv } from "./env.ts";
 import { nextBatchAt } from "./fee-batch.ts";
 import { loadCoin } from "./fee-boot.ts";
 import { OPS_FLOOR_LAMPORTS } from "./fee-config.ts";
@@ -31,8 +31,8 @@ const sol = (a: Info | undefined) => String(a?.lamports ?? 0);
 const units = (a: Info | undefined) => (a ? String(AccountLayout.decode(a.data).amount) : "0");
 
 export async function overview(o: LiveOpts, now = Date.now()): Promise<AdminOverviewWorker> {
-  const { seed, net, lane, quoteMint: Q } = o.env;
-  const [t, b] = [treasury(seed, net).publicKey, buyback(seed, net, lane).publicKey];
+  const { seed, net, lane, quoteMint: Q, treasury: t } = o.env;
+  const b = buyback(seed, net, lane).publicKey;
   const keys = [t, b, ops(seed, net).publicKey, ataOf(Q, t), ataOf(Q, b)];
   const [ta, ba, oa, tq, bq] = await o.conn.getMultipleAccountsInfo(keys);
   return {

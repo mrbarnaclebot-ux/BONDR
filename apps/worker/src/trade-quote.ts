@@ -18,7 +18,7 @@ import { walletOf } from "./prepare.ts";
 import { MAX_SOL_IN } from "./status.ts";
 import { configs, mintState } from "./trade-state.ts";
 
-export type TradeNet = Net | "mainnet";
+export type TradeNet = Net;
 type QuoteCtx = { conn: Connection; Q: PublicKey; net: TradeNet };
 export type TradeReq = { side: TradeSide; mint: PublicKey; amount: bigint; slippageBps: number };
 

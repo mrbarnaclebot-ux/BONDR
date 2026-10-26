@@ -2,6 +2,7 @@
 // program, the failure mapped through trade-error.ts. RPC only, never Postgres. It answers labelled strings, so
 // no program id or raw log line reaches the browser (check-client-bundle.sh, T-06-21-02).
 import type { AdminInspect } from "@bondr/core/api-admin";
+import type { Net } from "@bondr/core/keys";
 import { getPumpAmmProgram, getPumpFeeProgram, getPumpProgram } from "@bondr/core/pump";
 import { customCode, fromLogs, tradeError } from "@bondr/core/trade-error";
 import {
@@ -22,7 +23,7 @@ import {
   TransactionInstruction,
   type VersionedTransactionResponse,
 } from "@solana/web3.js";
-import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
+import { buyback, ops, type WorkerEnv } from "./env.ts";
 import type { Engine } from "./fee-engine.ts";
 
 export type Known = Map<string, { label: string; mint?: string }>;
@@ -154,7 +155,7 @@ function instructionsOf(tx: VersionedTransactionResponse): AdminInspect["instruc
 }
 
 // A dead RPC rejects; the route answers 503 rpc_failed. null means this RPC does not have it.
-export async function inspect(conn: Connection, sig: string, known: Known): Promise<AdminInspect> {
+export async function inspect(conn: Connection, sig: string, known: Known, net: Net): Promise<AdminInspect> {
   const tx = await conn.getTransaction(sig, { maxSupportedTransactionVersion: 1, commitment: "confirmed" });
   if (!tx) return { found: false };
   const payer = tx.transaction.message.staticAccountKeys[0].toBase58();
@@ -165,7 +166,7 @@ export async function inspect(conn: Connection, sig: string, known: Known): Prom
     feePayer: { label: "", ...known.get(payer), address: payer },
     instructions: instructionsOf(tx),
     error: errorOf(tx.meta?.err, tx.meta?.logMessages ?? null),
-    explorer: `https://solscan.io/tx/${sig}?cluster=devnet`, // devnet only: env refuses mainnet
+    explorer: `https://solscan.io/tx/${sig}${net === "devnet" ? "?cluster=devnet" : ""}`, // web format.ts rule
   };
 }
 
@@ -174,7 +175,7 @@ export function knownKeys(env: WorkerEnv, engine: Pick<Engine, "coins"> | null):
   const { seed, net, lane } = env;
   const known: Known = new Map([
     [ops(seed, net).publicKey.toBase58(), { label: "ops" }],
-    [treasury(seed, net).publicKey.toBase58(), { label: "treasury" }],
+    [env.treasury.toBase58(), { label: "treasury" }],
     [buyback(seed, net, lane).publicKey.toBase58(), { label: "buyback" }],
   ]);
   for (const [mint, coin] of engine?.coins ?? [])

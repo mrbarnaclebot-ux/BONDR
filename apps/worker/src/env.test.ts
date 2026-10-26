@@ -1,8 +1,8 @@
 // The admin env names (D-08, A2): an unset or invalid ADMIN_WALLET closes the door instead of failing boot;
 // ADMIN_EVACUATE refuses anything but simulate or on.
-import { Keypair } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { expect, test } from "vitest";
-import { loadEnv } from "./env.ts";
+import { buyback, loadEnv, ops, treasury } from "./env.ts";
 
 const ADMIN = Keypair.generate().publicKey.toBase58();
 const base = {
@@ -36,4 +36,57 @@ test("SITE_URL gives its origin; unset or not a URL gives null (WR-B-03)", () =>
   expect(load({ SITE_URL: " https://trybondr.fun/admin " }).siteUrl).toBe("https://trybondr.fun");
   expect(load().siteUrl).toBeNull();
   expect(load({ SITE_URL: "trybondr.fun" }).siteUrl).toBeNull();
+});
+
+const TREASURY = Keypair.generate().publicKey.toBase58();
+const main = (extra: Record<string, string | undefined> = {}) =>
+  load({ SOLANA_NET: "mainnet", ALLOW_MAINNET: "1", TREASURY_PUBKEY: TREASURY, ...extra });
+
+test("mainnet needs ALLOW_MAINNET=1; fork and unknown nets still refuse (D-01)", () => {
+  expect(() => main({ ALLOW_MAINNET: undefined })).toThrow("ALLOW_MAINNET");
+  expect(() => main({ ALLOW_MAINNET: "true" })).toThrow("ALLOW_MAINNET");
+  expect(() => load({ SOLANA_NET: "fork", ALLOW_MAINNET: "1" })).toThrow(
+    "SOLANA_NET must be devnet or mainnet",
+  );
+  expect(() => load({ SOLANA_NET: undefined })).toThrow("SOLANA_NET");
+});
+
+test("mainnet with both flags takes TREASURY_PUBKEY as an external treasury (D-10)", () => {
+  const e = main({ TREASURY_PUBKEY: ` ${TREASURY} ` });
+  expect(e.net).toBe("mainnet");
+  expect(e.treasury.toBase58()).toBe(TREASURY);
+  expect(e.treasuryExternal).toBe(true);
+});
+
+test("mainnet refuses a missing, malformed, off-curve or derivable TREASURY_PUBKEY without echoing it", () => {
+  const seed = Buffer.from(base.MASTER_SEED, "base64");
+  const pda = PublicKey.findProgramAddressSync([Buffer.from("t")], SystemProgram.programId)[0].toBase58();
+  const bad = [
+    "",
+    "not-base58-0OIl",
+    `${TREASURY}x`,
+    pda,
+    ops(seed, "mainnet").publicKey.toBase58(),
+    buyback(seed, "mainnet", "local").publicKey.toBase58(),
+    treasury(seed, "mainnet").publicKey.toBase58(),
+  ];
+  for (const v of bad) {
+    let msg = "";
+    try {
+      main({ TREASURY_PUBKEY: v });
+    } catch (e) {
+      msg = String(e);
+    }
+    expect(msg).toContain("TREASURY_PUBKEY");
+    if (v) expect(msg).not.toContain(v);
+  }
+  expect(() => main({ TREASURY_PUBKEY: undefined })).toThrow("TREASURY_PUBKEY");
+});
+
+test("devnet ignores TREASURY_PUBKEY and keeps the derived treasury", () => {
+  const e = load({ TREASURY_PUBKEY: TREASURY });
+  expect(e.treasury.toBase58()).toBe(
+    treasury(Buffer.from(base.MASTER_SEED, "base64"), "devnet").publicKey.toBase58(),
+  );
+  expect(e.treasuryExternal).toBe(false);
 });

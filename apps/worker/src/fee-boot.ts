@@ -9,7 +9,7 @@ import type { Connection, PublicKey } from "@solana/web3.js";
 import { eq, type SQL } from "drizzle-orm";
 import { publishFee } from "./announce.ts";
 import { bondrPrice } from "./bondr-price.ts";
-import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
+import { buyback, ops, type WorkerEnv } from "./env.ts";
 import { scheduleBatch } from "./fee-batch.ts";
 import { feeConfig } from "./fee-config.ts";
 import { type CoinLoad, coinFrom, Engine, type Ingested, logged, type WOf } from "./fee-engine.ts";
@@ -59,7 +59,7 @@ export function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
     online: ctx.online as InstanceType<typeof OnlinePumpSdk>,
     amm: new OnlinePumpAmmSdk(ctx.conn),
     ops: ops(env.seed, env.net),
-    treasury: treasury(env.seed, env.net).publicKey,
+    treasury: env.treasury,
     buyback: buyback(env.seed, env.net, env.lane),
     bondrSol: () => bondrPrice.get(),
     publish: (mint, rows) => {

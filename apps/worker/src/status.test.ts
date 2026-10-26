@@ -13,12 +13,10 @@ test("pauseReason: kill switch first, awaiting migration pauses, a migrated BOND
   expect(pauseReason({ enabled: true, venue: null })).toBe(null);
 });
 
-test("launchNet allows devnet only and refuses mainnet in Phase 2 (D-02)", () => {
+test("launchNet allows devnet, and mainnet only with ALLOW_MAINNET=1 (D-01)", () => {
   expect(launchNet({ SOLANA_NET: "devnet" })).toBe("devnet");
   expect(() => launchNet({ SOLANA_NET: "mainnet" })).toThrow("ALLOW_MAINNET");
-  expect(() => launchNet({ SOLANA_NET: "mainnet", ALLOW_MAINNET: "1" })).toThrow(
-    "mainnet RPC is not wired until Phase 7",
-  );
+  expect(launchNet({ SOLANA_NET: "mainnet", ALLOW_MAINNET: "1" })).toBe("mainnet");
   expect(() => launchNet({})).toThrow();
   expect(() => launchNet({ SOLANA_NET: "fork" })).toThrow();
 });

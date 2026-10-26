@@ -114,7 +114,7 @@ export function adminRoutes(o: AdminOpts): Routes {
     "POST /admin/intent": async (b) => intentView(idOf(bodyOf(b))),
     "POST /admin/inspect": async (b) => {
       const sig = sigOf(bodyOf(b)); // before any RPC call
-      return inspect(o.conn, sig, knownKeys(o.env, o.engine())).catch(() => {
+      return inspect(o.conn, sig, knownKeys(o.env, o.engine()), o.env.net).catch(() => {
         throw fail({ error: "rpc_failed" });
       });
     },

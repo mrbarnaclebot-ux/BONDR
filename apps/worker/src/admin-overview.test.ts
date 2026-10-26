@@ -21,6 +21,7 @@ const DAY = 86_400_000;
 const seed = Buffer.alloc(32, 7);
 const env = {
   ...{ seed, net: "devnet", lane: "local", quoteMint: Q, feeBatchHourUtc: 4, feeWindowMs: DAY },
+  treasury: treasury(seed, "devnet").publicKey,
 } as unknown as WorkerEnv;
 const ataOf = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true, T22);
 

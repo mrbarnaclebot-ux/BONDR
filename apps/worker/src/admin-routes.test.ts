@@ -60,7 +60,7 @@ const deps = {
 const envOf = (adminWallet: string | null) =>
   ({
     adminWallet,
-    ...{ seed: Buffer.alloc(32, 7), net: "devnet", lane: "local" },
+    ...{ seed: Buffer.alloc(32, 7), net: "devnet", lane: "local", treasury: PublicKey.unique() },
     feeEngine: "off",
     adminEvacuate: "simulate",
     sentryReadToken: null,

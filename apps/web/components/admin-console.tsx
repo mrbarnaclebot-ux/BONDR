@@ -131,12 +131,7 @@ function Grid({ con, onUnauthorized, windowMs }: { con: Console; onUnauthorized(
         </div>
       </div>
       <AuditLog key={overview.loadedAt} overview={overview} busy={loading} />
-      <Evacuate
-        overview={overview}
-        evacuate={poll.health?.evacuate}
-        onChanged={con.reload}
-        onSending={con.sending}
-      />
+      <Evacuate evacuate={poll.health?.evacuate} onChanged={con.reload} onSending={con.sending} />
       {con.sim && (
         <SimDialog {...con.sim} overview={overview} onClose={con.closeSim} onSending={con.sending} />
       )}

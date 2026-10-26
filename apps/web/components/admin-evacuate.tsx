@@ -4,7 +4,6 @@
 // with no extra dialog. The input never submits on Enter: only the button acts.
 import { CircleAlert, Info, TriangleAlert } from "lucide-react";
 import { EVAC_HINT, EVAC_PHRASE, evacDone, evacProgress, evacSummary } from "@/lib/admin-copy-evac";
-import type { AdminOverview } from "@/lib/admin-data";
 import { cn } from "@/lib/cn";
 import { plural } from "@/lib/format";
 import { type EvacPhase, type EvacState, useEvacuate } from "@/lib/use-evacuate";
@@ -120,7 +119,8 @@ function EvacButton({ s, simOnly, onSend, onAgain }: { s: EvacState } & Act) {
 }
 
 // The left column; the departure from the mockup's third line is D-36 (seed rotation is out of scope).
-function Intro({ wallets }: { wallets: number }) {
+// The count only once the simulation knows it: overview rows include unconfirmed launches and empty W (IN-B-03).
+function Intro({ wallets }: { wallets: number | undefined }) {
   return (
     <div>
       <h2 id="evac-h" className="display text-[44px] leading-[0.95] tracking-[0.04em] text-destructive">
@@ -132,7 +132,8 @@ function Intro({ wallets }: { wallets: number }) {
       <ol className="mt-2 list-decimal pl-[1.2em] text-sm text-muted-foreground">
         <li>Every job pauses, launches included.</li>
         <li>
-          Every W balance moves to the treasury, {plural(wallets, "wallet", "wallets")}. Child tokens in W are
+          Every W balance moves to the treasury
+          {wallets === undefined ? "" : `, ${plural(wallets, "wallet", "wallets")}`}. Child tokens in W are
           burned, not moved.
         </li>
         <li>
@@ -144,14 +145,13 @@ function Intro({ wallets }: { wallets: number }) {
 }
 
 type EvacProps = {
-  overview: AdminOverview;
   evacuate: "simulate" | "on" | undefined;
   onChanged(): void;
   onSending(on: boolean): void;
 };
 
 /** `evacuate` is the worker's ADMIN_EVACUATE from the health poll; unknown counts as simulate-only (D-37). */
-export function Evacuate({ overview, evacuate, onChanged, onSending }: EvacProps) {
+export function Evacuate({ evacuate, onChanged, onSending }: EvacProps) {
   const { onUnauthorized } = useAdmin();
   const run = useEvacuate(onUnauthorized, onChanged, onSending);
   const { s } = run;
@@ -160,7 +160,7 @@ export function Evacuate({ overview, evacuate, onChanged, onSending }: EvacProps
   const locked = s.phase === "signing" || s.phase === "evacuating" || s.phase === "lost";
   return (
     <section aria-labelledby="evac-h" className={BOX}>
-      <Intro wallets={overview.rows.length} />
+      <Intro wallets={s.sim?.totals?.wallets} />
       <div className="grid content-start gap-2">
         <label htmlFor="evac-in" className="block text-sm leading-[1.9] font-semibold">
           Type <span className="num bg-surface-2 px-1.5 py-0.5 select-all">{EVAC_PHRASE}</span> to arm

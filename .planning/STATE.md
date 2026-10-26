@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-16-PLAN.md
-last_updated: "2026-10-26T12:50:26.000Z"
-last_activity: 2026-10-26 -- Completed 07-16 (genesis prepare and submit)
+stopped_at: Completed 07-17-PLAN.md
+last_updated: "2026-10-26T13:01:53.000Z"
+last_activity: 2026-10-26 -- Completed 07-17 (genesis boot and admin callout)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 111
-  percent: 84
+  completed_plans: 112
+  percent: 85
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 16 of 36 (07-16 complete)
+Plan: 17 of 36 (07-17 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-16 (genesis prepare and submit)
+Last activity: 2026-10-26 -- Completed 07-17 (genesis boot and admin callout)
 
 Progress: [██████████] 100%
 
@@ -144,6 +144,7 @@ Progress: [██████████] 100%
 | Phase 07 P14 | 15min | 2 tasks | 10 files |
 | Phase 07 P15 | 15min | 2 tasks | 9 files |
 | Phase 07 P16 | 12min | 2 tasks | 12 files |
+| Phase 07 P17 | 25min | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -382,6 +383,7 @@ Recent decisions affecting current work:
 - 07-15: pause order is genesis, contract_check, kill_switch, awaiting_migration (07-10 order kept; UI-SPEC's awaiting-before-kill order left for the owner)
 - 07-16: genesis_landed counts in-flight genesis rows as well as landed ones
 - 07-16: submit's genesis allowance requires row.w = env.treasury and no failed contract check
+- 07-17: enterGenesis writes every switch off before the server starts; quoteOf(env) answers not_ready for mint readers in genesis (EVACUATE included)
 
 ### Pending Todos
 
@@ -415,6 +417,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T12:50:26.000Z
-Stopped at: Completed 07-16-PLAN.md
+Last session: 2026-10-26T13:01:53.000Z
+Stopped at: Completed 07-17-PLAN.md
 Resume file: None

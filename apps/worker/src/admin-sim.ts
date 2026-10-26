@@ -15,7 +15,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import type { LedgerStore } from "./fee-ledger.ts";
-import { DEFAULT_CU, type FeeDeps, type Job } from "./fee-send.ts";
+import { DEFAULT_CU, type FeeDeps, type Job, refreshOps } from "./fee-send.ts";
 
 // Lamports for a "sol" watch, token units for a "token" watch; a missing or closed account reads 0.
 export type AccountSnap = bigint;
@@ -98,7 +98,13 @@ export function captureDeps(base: FeeDeps, sink: Step[], watch: Watched): FeeDep
     publish: () => {},
     allowed: () => true,
     land: async (job) => {
-      sink.push(await simulateJob(base, job, watch));
+      const step = await simulateJob(base, job, watch);
+      // CR-W-01: base land skips a non-urgent send below the ops floor, so the preview fails the same way.
+      if (!job.urgent && (await refreshOps(base))) {
+        sink.push({ ...step, ok: false, err: "ops_low", post: step.pre });
+        return { state: "skipped" };
+      }
+      sink.push(step);
       return { state: "dry" };
     },
   };

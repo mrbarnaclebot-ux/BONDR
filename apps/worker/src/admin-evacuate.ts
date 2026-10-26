@@ -129,7 +129,9 @@ export function buildBatch(d: Pick<FeeDeps, "Q" | "ops" | "treasury" | "bondrSol
     };
     return b.child ? [move, { kind: "leftover_burn" as const, mint, burned: b.child }] : [move];
   });
-  return { rows, ixs: [...head(d), ...batch.flatMap((b) => wIxs(d, b))], signers: batch.map((b) => b.w) };
+  const ixs = [...head(d), ...batch.flatMap((b) => wIxs(d, b))];
+  // CR-W-01: break-glass, so the ops floor never skips it; a leaked seed drains ops first.
+  return { rows, ixs, signers: batch.map((b) => b.w), urgent: true };
 }
 
 export function planBatches(d: FeeDeps, balances: WBalance[]): Planned[] {

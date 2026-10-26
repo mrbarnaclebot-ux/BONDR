@@ -27,6 +27,7 @@ export function gatedDeps(base: FeeDeps, allowed: Allowed, onRefused: (to: strin
 
 // Only a contract code reaches the browser, never the RPC's own text.
 export function codeOf(err: string): string {
+  if (err === "ops_low") return err; // captureDeps' own code, already browser-safe
   try {
     return tradeError(JSON.parse(err), null).error;
   } catch {

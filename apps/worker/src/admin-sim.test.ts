@@ -16,7 +16,7 @@ import { beforeEach, expect, test } from "vitest";
 import { balanceRows, captureDeps, type Step, simSummary, simulateJob, type Watched } from "./admin-sim.ts";
 import { windowJob } from "./fee-guard.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
-import type { FeeCoin, FeeDeps, Job } from "./fee-send.ts";
+import { type FeeCoin, type FeeDeps, type Job, noteOps } from "./fee-send.ts";
 
 const Q = PublicKey.unique();
 const OPS = Keypair.generate();
@@ -124,6 +124,20 @@ test("land simulates once with the watched accounts, records a step and never se
   d.publish("m", []);
   expect(() => d.ledger.settle("s", "landed")).toThrow(/write the fee ledger \(settle\)/);
   await expect(d.ledger.pending()).resolves.toEqual([]);
+});
+
+test("below the ops floor a non-urgent step previews as ops_low and stops, like base land (CR-W-01)", async () => {
+  noteOps(0);
+  try {
+    const sink: Step[] = [];
+    const d = captureDeps(setup(), sink, WATCH);
+    await expect(d.land(transferJob())).resolves.toEqual({ state: "skipped" });
+    expect(sink[0]).toMatchObject({ ok: false, err: "ops_low", post: sink[0]?.pre });
+    await expect(d.land({ ...transferJob(), urgent: true })).resolves.toEqual({ state: "dry" });
+    expect(sink[1]?.ok).toBe(true);
+  } finally {
+    noteOps(1_000_000_000);
+  }
 });
 
 test("windowJob through the capture deps leaves the engine's coin untouched", async () => {

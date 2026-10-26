@@ -133,6 +133,19 @@ test("a failed batch counts its wallets failed, later batches still go, and the 
   expect(audit.rows[0]?.sigs).toHaveLength(jobs.length);
 });
 
+test("a batch whose land throws counts its wallets failed and later batches still go (WR-W-02)", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  (deps.land as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => {
+    throw new Error("getLatestBlockhash 429");
+  });
+  const { e, auditId } = await started();
+  await executeEvacuate(ctx, e, auditId);
+  const sent = jobs.flatMap((j) => j.signers).length;
+  expect(sent).toBeGreaterThan(0);
+  expect(viewIntent(e.id)).toMatchObject({ state: "failed", code: "build_failed", moved: sent, failed: 8 - sent });
+  expect(audit.rows[0]).toMatchObject({ result: "failed", error: "build_failed" });
+});
+
 test("the gated land refuses a tx outside the signed allowlist and stops before base land", async () => {
   const { e, auditId } = await started(allowFor({ internal: [], mints: [Q], closeTo: TREASURY }));
   await executeEvacuate(ctx, e, auditId);

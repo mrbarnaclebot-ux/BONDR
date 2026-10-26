@@ -227,8 +227,8 @@ async function moveBatch(ctx: MoneyCtx, d: FeeDeps, batch: WBalance[], r: Run): 
 }
 
 // D-35 step 4: every switch off and evacuated_at first, then the batches one by one through the gated land (the
-// allowlist the owner signed, D-14), paced like the engine. A failed batch leaves later W to go; an unknown one
-// is never resent. The audit row settles once at the end with every signature (D-33).
+// allowlist the owner signed, D-14), paced like the engine. A failed or thrown batch leaves later W to go; an
+// unknown one is never resent. The audit row settles once at the end with every signature (D-33).
 export async function executeEvacuate(ctx: MoneyCtx, e: Intent, auditId: string): Promise<void> {
   evacuateRefusal(ctx);
   const r: Run = { id: e.id, seen: [], moved: 0, failed: 0, refused: null };
@@ -241,7 +241,13 @@ export async function executeEvacuate(ctx: MoneyCtx, e: Intent, auditId: string)
     const plan = planBatches(d, await evacuateBalances(d, await coinsOf(ctx)));
     for (const [i, p] of plan.entries()) {
       if (i) await pace(feeConfig(d.net).paceMs);
-      await moveBatch(ctx, d, p.batch, r);
+      // WR-W-02: a thrown RPC or database error fails only this batch's uncounted W; later W still drain.
+      const counted = r.moved + r.failed;
+      await moveBatch(ctx, d, p.batch, r).catch((err) => {
+        r.failed += Math.max(0, p.batch.length - (r.moved + r.failed - counted));
+        threw = true;
+        logged("evacuate batch")(err);
+      });
       if (r.refused) break;
     }
   } catch (err) {

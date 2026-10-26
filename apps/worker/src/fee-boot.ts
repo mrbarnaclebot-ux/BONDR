@@ -59,7 +59,7 @@ export function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
     online: ctx.online as InstanceType<typeof OnlinePumpSdk>,
     amm: new OnlinePumpAmmSdk(ctx.conn),
     ops: ops(env.seed, env.net),
-    treasury: env.treasury,
+    ...{ treasury: env.treasury, treasuryExternal: env.treasuryExternal },
     buyback: buyback(env.seed, env.net, env.lane),
     bondrSol: () => bondrPrice.get(),
     publish: (mint, rows) => {

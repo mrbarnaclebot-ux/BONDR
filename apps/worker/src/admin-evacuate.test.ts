@@ -25,6 +25,7 @@ import {
   buildBatch,
   EVAC_SIM_CONCURRENCY,
   evacuateBalances,
+  evacuateRefusal,
   packBatches,
   simulateEvacuate,
   type WBalance,
@@ -32,6 +33,7 @@ import {
 import type { MoneyCtx } from "./admin-money.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
 import { type FeeDeps, land, noteOps } from "./fee-send.ts";
+import { Fail } from "./http.ts";
 
 vi.mock("./switches.ts", () => ({ pauseAll: vi.fn() }));
 
@@ -257,6 +259,17 @@ test("simulate totals the wallets; simulate mode gives no intent, on mode does; 
   const none = await simulateEvacuate(ctx);
   expect(none).toMatchObject({ nothing: true, ok: false });
   expect(none.intent).toBeUndefined();
+});
+
+test("mainnet gives an intent and passes the loop check only with the external treasury (D-37)", async () => {
+  list = [coin()];
+  ctx.evacuate = "on";
+  ctx.deps = { ...deps, net: "mainnet", treasuryExternal: false };
+  expect((await simulateEvacuate(ctx)).intent).toBeUndefined();
+  expect(() => evacuateRefusal(ctx)).toThrow(Fail);
+  ctx.deps = { ...deps, net: "mainnet", treasuryExternal: true };
+  expect((await simulateEvacuate(ctx)).intent).toBeDefined();
+  expect(() => evacuateRefusal(ctx)).not.toThrow();
 });
 
 test("200 W simulate at most 8 at a time, each batch once; a failing batch counts only its wallets", async () => {

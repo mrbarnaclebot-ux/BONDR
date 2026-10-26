@@ -28,7 +28,7 @@ export function feeDeps(run: Run): FeeDeps {
     ...{ net: "fork", mode: "on", conn: run.ctx.conn, online: run.online, Q: run.Q, ops: run.ops },
     windowMs: 60_000,
     amm: new OnlinePumpAmmSdk(run.ctx.conn),
-    treasury: run.ctx.key("treasury", "main").publicKey,
+    ...{ treasury: run.ctx.key("treasury", "main").publicKey, treasuryExternal: false },
     buyback: run.ctx.key("buyback", "main"),
     ledger: memoryLedger(),
     bondrSol: () => null,

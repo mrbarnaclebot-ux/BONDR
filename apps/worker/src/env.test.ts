@@ -2,7 +2,7 @@
 // ADMIN_EVACUATE refuses anything but simulate or on.
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { expect, test } from "vitest";
-import { buyback, loadEnv, ops, treasury } from "./env.ts";
+import { buyback, evacuateAllowed, loadEnv, ops, treasury } from "./env.ts";
 
 const ADMIN = Keypair.generate().publicKey.toBase58();
 const base = {
@@ -89,4 +89,13 @@ test("devnet ignores TREASURY_PUBKEY and keeps the derived treasury", () => {
     treasury(Buffer.from(base.MASTER_SEED, "base64"), "devnet").publicKey.toBase58(),
   );
   expect(e.treasuryExternal).toBe(false);
+});
+
+test("EVACUATE on: devnet, or mainnet with the external treasury; nothing else (D-37)", () => {
+  expect(evacuateAllowed("devnet", false)).toBe(true);
+  expect(evacuateAllowed("mainnet", true)).toBe(true);
+  expect(evacuateAllowed("mainnet", false)).toBe(false);
+  expect(evacuateAllowed("fork", true)).toBe(false);
+  expect(main({ ADMIN_EVACUATE: "on" }).adminEvacuate).toBe("on");
+  expect(main().adminEvacuate).toBe("simulate");
 });

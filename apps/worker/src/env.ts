@@ -85,11 +85,17 @@ function treasuryFrom(env: Env, net: "devnet" | "mainnet", seed: Buffer, lane: "
   return { key, external: true };
 }
 
-// A2: EVACUATE only simulates unless set to on, and on is devnet only until the mainnet runbook flips it (D-37).
-function adminEvacuate(raw: string | undefined, net: string): "simulate" | "on" {
+// D-37: EVACUATE may execute on devnet, or on mainnet only when its destination is the external treasury, so a
+// leaked seed can never be the key to the wallet the funds flee to. Boot and the execute loop share this rule.
+export const evacuateAllowed = (net: Net, treasuryExternal: boolean): boolean =>
+  net === "devnet" || (net === "mainnet" && treasuryExternal);
+
+// A2: EVACUATE only simulates unless set to on; on is refused at boot wherever evacuateAllowed says no.
+function adminEvacuate(raw: string | undefined, allowed: boolean): "simulate" | "on" {
   const v = raw?.trim() || "simulate";
   if (v !== "simulate" && v !== "on") throw new Error("ADMIN_EVACUATE must be simulate or on");
-  if (v === "on" && net !== "devnet") throw new Error("ADMIN_EVACUATE=on is devnet only");
+  if (v === "on" && !allowed)
+    throw new Error("ADMIN_EVACUATE=on needs devnet, or mainnet with TREASURY_PUBKEY");
   return v;
 }
 
@@ -128,7 +134,7 @@ export function loadEnv(env: Env = process.env) {
     feeBatchHourUtc: batchHour(env.FEE_BATCH_HOUR_UTC),
     adminWallet: exactKey(env.ADMIN_WALLET),
     siteUrl: siteOrigin(env.SITE_URL),
-    adminEvacuate: adminEvacuate(env.ADMIN_EVACUATE, net),
+    adminEvacuate: adminEvacuate(env.ADMIN_EVACUATE, evacuateAllowed(net, t.external)),
     sentryReadToken: env.SENTRY_READ_TOKEN?.trim() || null,
   };
 }

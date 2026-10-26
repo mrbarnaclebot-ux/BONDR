@@ -59,6 +59,7 @@ export type FeeDeps = {
   Q: PublicKey;
   ops: Keypair;
   treasury: PublicKey;
+  treasuryExternal: boolean; // D-10: TREASURY_PUBKEY, a wallet the seed cannot derive (mainnet only)
   buyback: Keypair;
   ledger: LedgerStore;
   windowMs: number; // the closing sweep after finalize names the current window

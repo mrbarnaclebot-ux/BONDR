@@ -27,6 +27,7 @@ import { type Intent, putIntent, updateIntent } from "./admin-intent.ts";
 import type { MoneyCtx } from "./admin-money.ts";
 import { codeOf, gatedDeps, logged, outcome, progress } from "./admin-send.ts";
 import { type Step, simulateJob } from "./admin-sim.ts";
+import { evacuateAllowed } from "./env.ts";
 import { loadFeeCoins } from "./fee-boot.ts";
 import { feeConfig } from "./fee-config.ts";
 import type { Entry, NewEntry } from "./fee-ledger.ts";
@@ -209,25 +210,28 @@ function summaryOf(d: FeeDeps, plan: Planned[], steps: Step[], allowed: Allowed)
   };
 }
 
-// D-35 step 2. A2 (Claude's discretion, owner may override): an intent only when ADMIN_EVACUATE is on and the
-// net is devnet, so staging and the default config can preview but never execute.
+// D-35 step 2. A2, D-37: an intent only when ADMIN_EVACUATE is on and evacuateAllowed holds (devnet, or mainnet
+// with the external treasury), so the default config and a derivable treasury can preview but never execute.
 export async function simulateEvacuate(ctx: MoneyCtx): Promise<AdminSimResult> {
   const d = ctx.deps;
   const plan = planBatches(d, await evacuateBalances(d, await coinsOf(ctx)));
   const allowed = evacuateAllow(d);
   const sum = summaryOf(d, plan, await pool(plan, (p) => simulated(d, p.job)), allowed);
-  if (!sum.ok || !sum.destinations.ok || ctx.evacuate !== "on" || d.net !== "devnet") return sum;
+  if (!sum.ok || !sum.destinations.ok || ctx.evacuate !== "on" || !evacuateAllowed(d.net, d.treasuryExternal))
+    return sum;
   const to = [`Treasury ${d.treasury.toBase58()}`];
   const f = { action: "evacuate" as const, mint: null, to, data: { allowed, summary: sum } };
   const e = putIntent({ ...f, site: ctx.site, wallet: ctx.admin ?? "" }, (ctx.now ?? Date.now)());
   return { ...sum, intent: { id: e.id, message: e.message, expiresAt: e.expiresAt } };
 }
 
-// A2, D-37: execution needs ADMIN_EVACUATE=on and devnet. Boot already refuses "on" off devnet; this re-check
-// keeps mainnet, or any other net, refused in the loop itself, before anything is paused or sent.
+// A2, D-37: execution needs ADMIN_EVACUATE=on and evacuateAllowed. Boot already refuses "on" otherwise; this
+// re-check keeps a derivable treasury, or any other net, refused in the loop itself, before anything is paused or
+// sent. The reason keeps its devnet_only name because the web copy maps it.
 export function evacuateRefusal(ctx: MoneyCtx): void {
   if (ctx.evacuate !== "on") throw fail({ error: "not_applicable", reason: "simulate_only" });
-  if (ctx.deps.net !== "devnet") throw fail({ error: "not_applicable", reason: "devnet_only" });
+  if (!evacuateAllowed(ctx.deps.net, ctx.deps.treasuryExternal))
+    throw fail({ error: "not_applicable", reason: "devnet_only" });
 }
 
 type Run = { id: string; seen: Landed[]; moved: number; failed: number; refused: string | null };

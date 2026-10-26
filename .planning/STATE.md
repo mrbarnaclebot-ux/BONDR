@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-10-PLAN.md
-last_updated: "2026-10-26T11:49:22.000Z"
-last_activity: 2026-10-26 -- Completed 07-10 (contract check in the worker: boot, Monday timer, admin route, pause reason)
+stopped_at: Completed 07-11-PLAN.md
+last_updated: "2026-10-26T11:52:51.000Z"
+last_activity: 2026-10-26 -- Completed 07-11 (admin Pump contract check cell, Run check now, mismatch callout)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 105
+  completed_plans: 106
   percent: 80
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 10 of 36 (07-10 complete)
+Plan: 11 of 36 (07-11 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-10 (contract check in the worker: boot, Monday timer, admin route, pause reason)
+Last activity: 2026-10-26 -- Completed 07-11 (admin Pump contract check cell, Run check now, mismatch callout)
 
 Progress: [██████████] 100%
 
@@ -138,6 +138,7 @@ Progress: [██████████] 100%
 | Phase 07 P08 | 30 min | 2 tasks | 5 files |
 | Phase 07 P09 | 15min | 3 tasks | 13 files |
 | Phase 07 P10 | 30min | 3 tasks | 18 files |
+| Phase 07 P11 | 20min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -366,6 +367,7 @@ Recent decisions affecting current work:
 - 07-09: submit resends identical bytes once over RPC on a Sender error (unknown + err 'sender ...')
 - 07-10: contract mismatch pauses via switchesOff (no evacuated_at) with one contract_check audit row; contractFailed keeps launches paused until a passing run
 - 07-10: pause priority contract_check, then kill_switch, then awaiting_migration
+- 07-11: Run check now answer shows until a health poll that left after it lands
 
 ### Pending Todos
 
@@ -399,6 +401,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T11:49:22.000Z
-Stopped at: Completed 07-10-PLAN.md
+Last session: 2026-10-26T11:52:51.000Z
+Stopped at: Completed 07-11-PLAN.md
 Resume file: None

@@ -61,7 +61,7 @@ function systemRecipient(ix: TransactionInstruction): PublicKey | null {
     if (type === "Transfer") return ix.keys[1].pubkey;
     if (type === "TransferWithSeed") return ix.keys[2].pubkey;
   } catch {
-    // Not a decodable system instruction: the runtime rejects it anyway.
+    // Not a decodable system instruction: refused by the caller like any other non-transfer.
   }
   return null;
 }
@@ -93,8 +93,10 @@ export function refusedDestination(ixs: TransactionInstruction[], a: Allowed): s
   for (const ix of ixs) {
     const p = ix.programId;
     if (p.equals(SystemProgram.programId)) {
+      // WR-W-04: deny by default like the token side; CreateAccount, Assign or WithdrawNonce could hand W away.
       const to = systemRecipient(ix)?.toBase58();
-      if (to && !a.owners.has(to)) return to;
+      if (!to) return ix.keys[0]?.pubkey.toBase58() ?? p.toBase58();
+      if (!a.owners.has(to)) return to;
     } else if (PROGRAMS.some((t) => t.equals(p))) {
       const refused = tokenRefusal(ix, a);
       if (refused) return refused;

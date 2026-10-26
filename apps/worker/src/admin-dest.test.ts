@@ -85,6 +85,36 @@ const cases: [string, TransactionInstruction[], ReturnType<typeof allowFor>, Pub
     sweep,
     null,
   ],
+  [
+    "System CreateAccount funded by W (WR-W-04)",
+    [
+      SystemProgram.createAccount({
+        fromPubkey: w,
+        newAccountPubkey: stranger,
+        lamports: 1,
+        space: 0,
+        programId: w,
+      }),
+    ],
+    sweep,
+    w,
+  ],
+  [
+    "System Assign of W to another program",
+    [SystemProgram.assign({ accountPubkey: w, programId: stranger })],
+    sweep,
+    w,
+  ],
+  [
+    "System WithdrawNonceAccount",
+    [
+      SystemProgram.nonceWithdraw({
+        ...{ noncePubkey: w, authorizedPubkey: w, toPubkey: stranger, lamports: 1 },
+      }),
+    ],
+    sweep,
+    w,
+  ],
   ["ComputeBudget", [ComputeBudgetProgram.setComputeUnitLimit({ units: 1 })], sweep, null],
   // signTx's ALLOWED_PROGRAMS refuses an unknown program at signing; pump flows are trusted through it.
   ["an instruction from another program", [pumpIx], sweep, null],

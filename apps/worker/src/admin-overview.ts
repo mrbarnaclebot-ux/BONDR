@@ -12,7 +12,7 @@ import { bondrPrice } from "./bondr-price.ts";
 import { buyback, ops, type WorkerEnv } from "./env.ts";
 import { nextBatchAt } from "./fee-batch.ts";
 import { loadCoin } from "./fee-boot.ts";
-import { OPS_FLOOR_LAMPORTS } from "./fee-config.ts";
+import { feeConfig } from "./fee-config.ts";
 import type { Engine } from "./fee-engine.ts";
 import { key } from "./fee-routes.ts";
 import type { FeeCoin } from "./fee-send.ts";
@@ -38,7 +38,7 @@ export async function overview(o: LiveOpts, now = Date.now()): Promise<AdminOver
   return {
     balances: {
       ...{ treasurySol: sol(ta), treasuryBondr: units(tq), buybackSol: sol(ba), buybackBondr: units(bq) },
-      ...{ opsSol: sol(oa), opsFloor: String(OPS_FLOOR_LAMPORTS), bondrSol: bondrPrice.get() },
+      ...{ opsSol: sol(oa), opsFloor: String(feeConfig(net).opsFloorLamports), bondrSol: bondrPrice.get() },
       nextBurnAt: nextBatchAt(now, o.env.feeBatchHourUtc),
     },
     coins: o.engine()?.memory() ?? [],

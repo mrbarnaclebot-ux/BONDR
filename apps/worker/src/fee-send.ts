@@ -28,7 +28,7 @@ import {
   type TransactionInstruction,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { feeConfig, OPS_FLOOR_LAMPORTS, SENDER_TIPS, SENDER_URL } from "./fee-config.ts";
+import { feeConfig, SENDER_TIPS, SENDER_URL } from "./fee-config.ts";
 import type { Entry, Facts, LedgerStore, NewEntry } from "./fee-ledger.ts";
 import type { TradeNet } from "./trade-quote.ts";
 
@@ -99,20 +99,20 @@ let low = false;
 let checkedAt = 0;
 const OPS_RECHECK_MS = 60_000;
 export const opsLow = (): boolean => low;
-export function noteOps(lamports: number): void {
+export function noteOps(lamports: number, net: TradeNet): void {
   const was = low;
-  low = lamports < OPS_FLOOR_LAMPORTS;
+  low = lamports < feeConfig(net).opsFloorLamports;
   if (low && !was)
     console.error(`ops below floor: ${lamports / LAMPORTS_PER_SOL} SOL, non-urgent fee sends paused`);
 }
 
 // WR-04: while paused, ops is re-read on the RPC at most once a minute (no database), so a manual top-up resumes
 // non-urgent sends without waiting for an urgent tx to land or a redeploy. A failed read stays paused.
-export async function refreshOps(d: Pick<FeeDeps, "conn" | "ops">): Promise<boolean> {
+export async function refreshOps(d: Pick<FeeDeps, "conn" | "ops" | "net">): Promise<boolean> {
   if (!low || Date.now() - checkedAt < OPS_RECHECK_MS) return low;
   checkedAt = Date.now();
   try {
-    noteOps(await d.conn.getBalance(d.ops.publicKey));
+    noteOps(await d.conn.getBalance(d.ops.publicKey), d.net);
   } catch {}
   return low;
 }
@@ -237,7 +237,7 @@ async function landed(d: FeeDeps, job: Job, sig: string): Promise<Landed> {
   }
   const facts = withSol(job, job.facts?.(tx.meta) ?? {}, d.bondrSol());
   const rows = await d.ledger.settle(sig, "landed", { facts, slot: BigInt(tx.slot) });
-  noteOps(tx.meta.postBalances[0] ?? 0);
+  noteOps(tx.meta.postBalances[0] ?? 0, d.net);
   publishByMint(d, rows);
   return { state: "landed", sig, rows, meta: tx.meta };
 }

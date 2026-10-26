@@ -3,6 +3,7 @@
 
 import { createTable, tableKeys } from "@bondr/core/alt";
 import { exitPresent } from "@bondr/core/cosign";
+import type { Net } from "@bondr/core/keys";
 import { AwaitingMigration, buildLaunch, type LaunchOpts } from "@bondr/core/launch";
 import { redact } from "@bondr/core/net";
 import { checkMessage, messageSize, PACKET_LIMIT } from "@bondr/core/send";
@@ -18,7 +19,7 @@ import {
   type VersionedMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { OPS_FLOOR_LAMPORTS } from "./fee-config.ts";
+import { feeConfig } from "./fee-config.ts";
 import { fail } from "./http.ts";
 
 type Built = Awaited<ReturnType<typeof buildLaunch>>;
@@ -60,11 +61,18 @@ async function reusable(conn: Connection, address: string, keys: PublicKey[]) {
 // Ops pays the table rent (PROJECT.md item 9). A prior table missing a key (BONDR changed venue) is replaced.
 // A new table that is not usable is still returned with its address: ops paid for it, so the caller records
 // it before refusing (WR-02).
-export async function ensureTable(conn: Connection, ops: Keypair, keys: PublicKey[], prior: string | null) {
+export async function ensureTable(
+  conn: Connection,
+  ops: Keypair,
+  keys: PublicKey[],
+  prior: string | null,
+  net: Net,
+) {
   const old = prior ? await reusable(conn, prior, keys) : null;
   if (old) return { table: old, address: old.key.toBase58(), created: false };
   const balance = await conn.getBalance(ops.publicKey);
-  if (balance < OPS_FLOOR_LAMPORTS) throw buildFailed(`ops below floor: ${balance / LAMPORTS_PER_SOL} SOL`);
+  if (balance < feeConfig(net).opsFloorLamports)
+    throw buildFailed(`ops below floor: ${balance / LAMPORTS_PER_SOL} SOL`);
   const r = await createTable(conn, ops, keys, TABLE_PACE_MS);
   const address = r.address.toBase58();
   if (!r.table)

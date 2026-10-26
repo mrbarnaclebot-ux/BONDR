@@ -261,7 +261,7 @@ async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult
   // Same mint after an expired hold: its table still fits this wallet, so look it up by mint.
   const held = prior?.mint === mint.pubkey ? prior : await tableFor(db(), req.wallet, mint.pubkey);
   const reuse = held?.table ?? null;
-  const t = await ensureTable(ctx.conn, ops(ctx.env.seed, ctx.env.net), union.keys, reuse);
+  const t = await ensureTable(ctx.conn, ops(ctx.env.seed, ctx.env.net), union.keys, reuse, ctx.env.net);
   try {
     if (!t.table) throw fail({ error: "build_failed" }); // ensureTable logged why
     // A new table took about 5 s; price again so the probes do not run on stale amounts.

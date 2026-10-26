@@ -84,7 +84,7 @@ export async function startEngine(ctx: Ctx, env: WorkerEnv): Promise<void> {
   const e = new Engine({ mode: env.feeEngine, deps, windowMs: env.feeWindowMs, wOf });
   engine = e;
   for (const r of await loadRows()) e.add(r);
-  noteOps(await ctx.conn.getBalance(deps.ops.publicKey));
+  noteOps(await ctx.conn.getBalance(deps.ops.publicKey), deps.net);
   await recover(deps, (m) => e.coins.get(m));
   console.log(`fee engine ${env.feeEngine}: ${e.start()} coins armed`);
   scheduleBatch(deps, e, env.feeBatchHourUtc);

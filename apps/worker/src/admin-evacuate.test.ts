@@ -189,7 +189,7 @@ test("a batch pays only the treasury, burns child tokens and lets each W sign", 
 });
 
 test("an EVACUATE batch is urgent, so base land sends it below the ops floor (CR-W-01)", async () => {
-  noteOps(0);
+  noteOps(0, "devnet");
   try {
     const job = buildBatch(deps, await balances(1));
     expect(job.urgent).toBe(true);
@@ -201,7 +201,7 @@ test("an EVACUATE batch is urgent, so base land sends it below the ops floor (CR
     await expect(land(d, job)).rejects.toBe(past);
     await expect(land(d, { ...job, urgent: false })).resolves.toEqual({ state: "skipped" });
   } finally {
-    noteOps(1_000_000_000);
+    noteOps(1_000_000_000, "devnet");
   }
 });
 

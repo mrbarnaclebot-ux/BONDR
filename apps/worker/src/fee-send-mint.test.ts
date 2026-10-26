@@ -43,7 +43,7 @@ const evacuate = [
   { kind: "evacuate", mint: "B", amount: 200n, sol: 20n },
 ] as const;
 
-beforeEach(() => noteOps(LAMPORTS_PER_SOL));
+beforeEach(() => noteOps(LAMPORTS_PER_SOL, "devnet"));
 
 test("withSol leaves a row that carries its own sol alone; a collect still gets its sol from the facts", () => {
   expect(withSol({ rows: [...evacuate] }, {}, 2)).toEqual({});

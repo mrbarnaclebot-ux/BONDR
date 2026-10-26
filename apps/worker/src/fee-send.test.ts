@@ -10,7 +10,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { OPS_FLOOR_LAMPORTS, SENDER_TIPS } from "./fee-config.ts";
+import { feeConfig, SENDER_TIPS } from "./fee-config.ts";
 import type { LedgerStore } from "./fee-ledger.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
 import {
@@ -97,7 +97,7 @@ const job = (over: Partial<Job> = {}): Job => ({
 beforeEach(() => {
   calls.length = 0;
   metaMisses.n = 0;
-  noteOps(LAMPORTS_PER_SOL);
+  noteOps(LAMPORTS_PER_SOL, "devnet");
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -160,7 +160,9 @@ describe("land (D-08)", () => {
 
   test("ops below the floor pauses non-urgent sends; urgent still go; a later meta clears it", async () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
-    const low = deps({ conn: fakeConn({ meta: meta({ postBalances: [OPS_FLOOR_LAMPORTS - 1] }) }) });
+    const low = deps({
+      conn: fakeConn({ meta: meta({ postBalances: [feeConfig("devnet").opsFloorLamports - 1] }) }),
+    });
     expect((await land(low, job())).state).toBe("landed");
     expect(err.mock.calls.flat().join(" ")).toContain("ops below floor");
     expect(opsLow()).toBe(true);
@@ -171,14 +173,22 @@ describe("land (D-08)", () => {
     expect(opsLow()).toBe(false);
   });
 
+  test("the mainnet floor is 0.1 SOL: low below it, not at it (G-4)", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    noteOps(99_999_999, "mainnet");
+    expect(opsLow()).toBe(true);
+    noteOps(100_000_000, "mainnet");
+    expect(opsLow()).toBe(false);
+  });
+
   test("while paused, ops is re-read at most once a minute and a top-up clears the pause (WR-04)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    noteOps(0);
+    noteOps(0, "devnet");
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(Date.now() + 3_600_000);
     const conn = { getBalance: vi.fn(async () => LAMPORTS_PER_SOL) };
     expect(await refreshOps({ conn, ops } as never)).toBe(false);
-    noteOps(0);
+    noteOps(0, "devnet");
     expect(await refreshOps({ conn, ops } as never)).toBe(true); // read a moment ago
     expect(conn.getBalance).toHaveBeenCalledOnce();
     vi.useRealTimers();

@@ -116,7 +116,9 @@ test("simError maps 6107 to paused, low funds to insufficient_balance, the rest 
 test("ensureTable refuses a new table when ops is under the floor, before sending anything", async () => {
   const conn = { getBalance: async () => 0.049 * 1e9 } as unknown as Parameters<typeof ensureTable>[0];
   const ops = Keypair.generate();
-  await expect(ensureTable(conn, ops, [], null)).rejects.toMatchObject({ body: { error: "build_failed" } });
+  await expect(ensureTable(conn, ops, [], null, "devnet")).rejects.toMatchObject({
+    body: { error: "build_failed" },
+  });
 });
 
 test("previewCosts: rent from the burn spend, solBack from burn minus sell", () => {

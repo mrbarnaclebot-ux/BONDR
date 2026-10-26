@@ -104,7 +104,7 @@ beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
-afterEach(() => noteOps(10 ** 9));
+afterEach(() => noteOps(10 ** 9, "devnet"));
 
 test("buybackBurnJob: nothing at 0 or a missing ATA; the whole balance burns in one buyback_burn row", async () => {
   expect((await buybackBurnJob(deps({ buyback: "0" }))).state).toBe("done");
@@ -205,7 +205,7 @@ test("runBatch: burn, distributions, finalize retries, then one reconcile read, 
 });
 
 test("runBatch: below the ops floor it skips every send but still reconciles", async () => {
-  noteOps(0);
+  noteOps(0, "devnet");
   const d = deps({ buyback: "7" });
   const implied = vi.spyOn(d.ledger, "implied");
   const s = await runBatch(d, engineOf([coinOf(), coinOf({ finalize: "none" })]));

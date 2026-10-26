@@ -47,6 +47,7 @@ test("every field comes from memory, with no database", async () => {
     feeEngine: "dry",
     opsLow: false,
     evacuate: "on",
+    contract: { kind: "not_run", at: null, facts: [], programs: [], lastPass: null }, // contractState()
     sentry: { configured: false },
   });
 });

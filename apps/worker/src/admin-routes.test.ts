@@ -102,6 +102,14 @@ test("another or a missing actor answers 403; the admin actor reaches the handle
   expect(await gated(A, ok)({ actor: A, x: 1 })).toEqual({ got: { actor: A, x: 1 } });
 });
 
+test("POST /admin/contract-check answers the admin with the check state and refuses another actor", async () => {
+  const run = routesFor(A)["POST /admin/contract-check"];
+  expect(await run({ actor: A })).toEqual({
+    ...{ kind: "not_run", at: null, facts: [], programs: [], lastPass: null },
+  });
+  expect(await status(run({ actor: B }), "forbidden")).toBe(403);
+});
+
 test("without SITE_URL, simulate and execute answer 403 before any deps are built (WR-B-03)", async () => {
   const r = adminRoutes({ env: envOf(A), engine: () => null, conn: {} as never, mod: () => mod });
   const body = { actor: A, action: "sweep_now", mint: MINT };
@@ -113,8 +121,8 @@ test("without SITE_URL, simulate and execute answer 403 before any deps are buil
 test("every admin route is a POST behind the gate", async () => {
   const routes = routesFor(A);
   const names = [
-    ...["health", "switch", "act", "overview", "coin-live", "simulate", "execute", "intent", "inspect"],
-    "moderate",
+    ...["health", "contract-check", "switch", "act", "overview", "coin-live", "simulate", "execute"],
+    ...["intent", "inspect", "moderate"],
   ];
   expect(Object.keys(routes)).toEqual(names.map((r) => `POST /admin/${r}`));
   for (const [key, h] of Object.entries(routes)) {

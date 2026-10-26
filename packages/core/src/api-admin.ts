@@ -60,6 +60,7 @@ export type AdminHealth = {
   feeEngine: "off" | "dry" | "on";
   opsLow: boolean;
   evacuate: "simulate" | "on";
+  contract: AdminContract;
   sentry:
     | { configured: false }
     | { configured: true; web: number; worker: number; capped: boolean }

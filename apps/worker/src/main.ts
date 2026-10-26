@@ -9,6 +9,7 @@ import { OnlinePumpSdk } from "@bondr/core/pump";
 import { pgAudit, settleStale } from "./admin-audit.ts";
 import { adminRoutes } from "./admin-routes.ts";
 import { seedBondrPrice } from "./bondr-price.ts";
+import { contractDeps, runCheck, scheduleCheck } from "./contract-check.ts";
 import { buyback, loadEnv, ops, type WorkerEnv } from "./env.ts";
 import { endStreams, eventsHandler } from "./events-route.ts";
 import { feeEngine, startEngine } from "./fee-boot.ts";
@@ -93,6 +94,9 @@ async function main() {
     const [o, b] = [ops(env.seed, env.net).publicKey, buyback(env.seed, env.net, env.lane).publicKey];
     console.log(`wallets: ops=${o.toBase58()} buyback=${b.toBase58()} treasury=${env.treasury.toBase58()}`);
     void startRefill(env);
+    // Its own timer, apart from bootIndex and the fee batch, so it runs in every mode (Pitfall 8).
+    scheduleCheck(env.feeBatchHourUtc, contractDeps(conn, env.net, ctx.Q));
+    runCheck().catch(failed("contract check"));
     void bootIndex(ctx, env);
     resumeLaunches(conn).catch(failed("resume"));
     settleStale(new Date(bootAt))

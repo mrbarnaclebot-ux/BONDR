@@ -9,6 +9,7 @@ import { inspect, knownKeys } from "./admin-inspect.ts";
 import { type ModStore, moderate, modReq, pgMod } from "./admin-moderate.ts";
 import { adminBase, executeAction, intentView, type MoneyCtx, simulateAction } from "./admin-money.ts";
 import { coinLive, overview } from "./admin-overview.ts";
+import { runCheck } from "./contract-check.ts";
 import type { WorkerEnv } from "./env.ts";
 import type { Engine } from "./fee-engine.ts";
 import { key } from "./fee-routes.ts";
@@ -105,6 +106,7 @@ export function adminRoutes(o: AdminOpts): Routes {
   const mod = o.mod ?? (() => ({ store: pgMod(), audit: pgAudit() }));
   const routes: Routes = {
     "POST /admin/health": () => healthSnapshot(o),
+    "POST /admin/contract-check": () => runCheck(),
     "POST /admin/switch": (b) => switchRoute(deps(), b),
     "POST /admin/act": (b) => act(deps(), b),
     "POST /admin/overview": () => overview(o),

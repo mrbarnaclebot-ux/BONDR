@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-06-PLAN.md
-last_updated: "2026-10-26T11:23:26.000Z"
-last_activity: 2026-10-26 -- Completed 07-06 (production vanity lane, real net in /status, mainnet web chrome check)
+stopped_at: Completed 07-08-PLAN.md
+last_updated: "2026-10-26T11:27:35.000Z"
+last_activity: 2026-10-26 -- Completed 07-08 (pump contract check in core, devnet run passes)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 102
-  percent: 77
+  completed_plans: 103
+  percent: 78
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 6 of 36 (07-06 complete)
+Plan: 8 of 36 (07-08 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-06 (production vanity lane, real net in /status, mainnet web chrome check)
+Last activity: 2026-10-26 -- Completed 07-08 (pump contract check in core, devnet run passes)
 
 Progress: [██████████] 100%
 
@@ -135,6 +135,7 @@ Progress: [██████████] 100%
 | Phase 07 P07 | 30 min | 2 tasks | 14 files |
 | Phase 07 P05 | 25 min | 2 tasks | 16 files |
 | Phase 07 P06 | 25 min | 2 tasks | 12 files |
+| Phase 07 P08 | 30 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -358,6 +359,7 @@ Recent decisions affecting current work:
 - 07-07: sniped_bps is recomputed in the ingest transaction only when an inserted non-launch buy lands in createSlot..+2; dev and W buys excluded; rounded up to whole bps
 - 07-05: paceMs 1100, opsFloorLamports (mainnet 0.1, devnet 0.05 SOL) and launchTipLamports live in feeConfig(net); every Sender POST carries ?api-key= and swqos_only=true only on request
 - 07-06: VANITY_LANE production refills to 150 below 100 (D-30 needs 100 free mints); /status reports ctx.net; a mainnet web build shows no devnet chrome
+- 07-08: the contract check judges exact config account sizes, owners, discriminators, SDK decode and the Global flags against per-net profiles (devnet: creator fee off, AMM LP 25); the spike reuses the core drift strings
 
 ### Pending Todos
 
@@ -391,6 +393,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T11:23:26.000Z
-Stopped at: Completed 07-06-PLAN.md
+Last session: 2026-10-26T11:27:35.000Z
+Stopped at: Completed 07-08-PLAN.md
 Resume file: None

@@ -71,10 +71,15 @@ export const intentMessage = (i: {
     `Expiration Time: ${new Date(i.expiresAt).toISOString()}`,
   ].join("\n");
 
-// Sweep on insert, then drop the oldest while full (T-06-05-06).
+// Sweep on insert, then while full drop the oldest executed intent (T-06-05-06). Never a live unused one: the
+// owner may be about to sign it, so simulate spam gets 429 instead (IN-W-04).
 export function putIntent(f: NewIntent, now = Date.now()): Intent {
   for (const [k, v] of intents) if (!live(v, now)) intents.delete(k);
-  while (intents.size >= INTENT_MAX) intents.delete(intents.keys().next().value as string);
+  while (intents.size >= INTENT_MAX) {
+    const done = [...intents.values()].find((v) => v.used);
+    if (!done) throw fail({ error: "rate_limited" });
+    intents.delete(done.id);
+  }
   const id = randomBytes(16).toString("hex");
   const expiresAt = now + INTENT_TTL_MS;
   const { site, wallet } = f;

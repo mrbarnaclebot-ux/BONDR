@@ -2,6 +2,7 @@
 // through the fake Phantom and gets a 30-minute HttpOnly SameSite=Strict bondr_admin cookie, another wallet
 // is refused with no cookie, /api/admin/* answers 401 without the cookie and 403 cross-origin, and Sign out
 // drops the cookie. ADMIN_WALLET is the seed-derived test key playwright.config.ts injects (A10).
+import { randomInt, sign } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import {
   adminAccount,
@@ -83,6 +84,28 @@ test.describe("admin-signin", () => {
     expect((await request.post("/api/admin/health", { headers: { origin } })).status()).toBe(401);
     const evil = await request.post("/api/admin/health", { headers: { origin: "https://evil.example" } });
     expect(evil.status()).toBe(403);
+  });
+
+  test("a replayed sign-in signature is refused with 401 (T-06-03-03)", async ({ request }) => {
+    const { address: wallet, key } = admin as TestAccount;
+    const origin = new URL(test.info().project.use.baseURL as string).origin;
+    const post = (data: object) => {
+      const ip = `10.${randomInt(256)}.${randomInt(256)}.${randomInt(256)}`;
+      return request.post("/api/admin/session", { headers: { origin, "x-real-ip": ip }, data });
+    };
+    const { nonce, message } = await (await post({ op: "nonce", wallet })).json();
+    const verify = {
+      op: "verify",
+      wallet,
+      nonce,
+      signature: sign(null, Buffer.from(message), key).toString("base64"),
+    };
+    const first = await post(verify);
+    if (first.status() === 403) test.skip((await first.json()).error === "not_admin", REUSED);
+    expect(first.status()).toBe(200);
+    const again = await post(verify);
+    expect(again.status()).toBe(401);
+    expect((await again.json()).error).toBe("bad_signature");
   });
 
   test("Sign out ends the session and drops the cookie", async ({ page }) => {

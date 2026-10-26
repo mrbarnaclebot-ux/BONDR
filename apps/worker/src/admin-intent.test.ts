@@ -165,11 +165,35 @@ test("an executed intent stays viewable for 10 minutes, an unused one is swept a
   );
 });
 
-test("the store holds at most INTENT_MAX intents, oldest dropped", () => {
+// Each case starts far after the last one, so the sweep empties the module store first.
+const zero = new Uint8Array(64);
+const state = (id: string, t: number) => outcome(() => take(id, zero, admin.wallet, t));
+const fill = (n: number, t: number) => Array.from({ length: n }, () => putIntent(fields(), t));
+
+test("a store full of live unused intents answers 429 rate_limited and evicts nothing (IN-W-04)", () => {
   const t = 9_000_000;
-  const first = putIntent(fields(), t);
-  for (let i = 1; i < INTENT_MAX; i++) putIntent(fields(), t);
-  expect(outcome(() => take(first.id, new Uint8Array(64), admin.wallet, t))).toBe("bad_intent_signature 403");
-  putIntent(fields(), t);
-  expect(outcome(() => take(first.id, signText(first.message), admin.wallet, t))).toBe("intent_expired 410");
+  const all = fill(INTENT_MAX, t);
+  expect(outcome(() => putIntent(fields(), t))).toBe("rate_limited 429");
+  for (const e of [all[0], all.at(-1)]) expect(state(e?.id as string, t)).toBe("bad_intent_signature 403");
+});
+
+test("a full store evicts the oldest executed intent, and live unused ones survive", () => {
+  const t = 20_000_000;
+  const [oldest, done, ...rest] = fill(INTENT_MAX, t);
+  take(done?.id as string, signText(done?.message as string), admin.wallet, t);
+  const added = putIntent(fields(), t);
+  expect(state(done?.id as string, t)).toBe("intent_expired 410");
+  for (const e of [oldest, rest.at(-1), added])
+    expect(state(e?.id as string, t)).toBe("bad_intent_signature 403");
+});
+
+test("expired intents are swept before an executed one is evicted", () => {
+  const t = 40_000_000;
+  const [done] = fill(1, t);
+  take(done?.id as string, signText(done?.message as string), admin.wallet, t);
+  fill(INTENT_MAX - 2, t);
+  const [late] = fill(1, t + 1);
+  putIntent(fields(), t + INTENT_TTL_MS); // the INTENT_MAX - 2 from t have expired
+  expect(state(done?.id as string, t + INTENT_TTL_MS)).toBe("intent_used 409");
+  expect(state(late?.id as string, t + INTENT_TTL_MS)).toBe("bad_intent_signature 403");
 });

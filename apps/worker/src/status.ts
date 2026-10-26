@@ -16,6 +16,7 @@ import { poolState } from "@bondr/core/trade";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { type Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { type AuditStore, audited } from "./admin-audit.ts";
+import { launchTip } from "./fee-config.ts";
 import { Fail, fail } from "./http.ts";
 import { loadSwitches, setJob, switchesLoaded, switchOn } from "./switches.ts";
 
@@ -155,6 +156,7 @@ async function readLive(ctx: Ctx): Promise<Live> {
     console.error(`status chain read failed: ${redact(e instanceof Error ? e.message : String(e))}`);
     return null;
   });
+  const tip = launchTip(ctx.net);
   const status = {
     net: ctx.net, // explorer links and devnet-only hints follow it (row 14)
     quoteMint: ctx.Q.toBase58(),
@@ -162,6 +164,7 @@ async function readLive(ctx: Ctx): Promise<Live> {
     minLamports: chain ? String(chain.min) : null,
     createCostEstimate: chain ? String(chain.cost) : null,
     networkFeeEstimate: String(networkFee(ctx.priorityFee)),
+    senderTipEstimate: tip > 0n ? String(tip) : null,
   };
   return { status, venue: chain?.venue ?? null, legs: chain?.legs ?? null };
 }

@@ -4,8 +4,11 @@
 import type { ApiError, Exit, LaunchState, SubmitResult } from "@bondr/core/api";
 import { cosign, signatureOf } from "@bondr/core/cosign";
 import { db } from "@bondr/core/db";
-import { broadcast } from "@bondr/core/send";
-import { PublicKey } from "@solana/web3.js";
+import { broadcast, type RawOpts } from "@bondr/core/send";
+import { PublicKey, VersionedMessage } from "@solana/web3.js";
+import { tipped } from "./build.ts";
+import { feeConfig } from "./fee-config.ts";
+import { urgentBroadcast } from "./fee-send.ts";
 import { fail } from "./http.ts";
 import { advance, getLaunch, type LaunchRow } from "./launches.ts";
 import type { PrepareCtx } from "./prepare.ts";
@@ -56,6 +59,18 @@ async function cosignRow(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array): Pro
   return null;
 }
 
+// Only mainnet prepares tipped messages (D-34). Sender answers "unknown" on any error, even when nothing went out,
+// so the same bytes go once through RPC: they carry the same signature, so the chain executes them at most once.
+async function broadcastLaunch(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array, o: RawOpts) {
+  if (!row.message || !tipped(VersionedMessage.deserialize(row.message))) return broadcast(ctx.conn, wire, o);
+  const net = ctx.env.net;
+  const swqosOnly = feeConfig(net).launchTipLamports < 1_000_000; // Pitfall 10
+  const r = await urgentBroadcast(net, ctx.conn, wire, { ...o, swqosOnly });
+  if (r?.status !== "unknown" || !r.err?.startsWith("sender")) return r;
+  console.warn(`submit ${row.id}: ${r.err}, sending the same bytes over RPC`);
+  return broadcast(ctx.conn, wire, o);
+}
+
 // signed is persisted before the send, so a restart can resend the same wire (Pattern 8).
 async function send(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array): Promise<SubmitResult> {
   const signature = signatureOf(wire);
@@ -66,7 +81,7 @@ async function send(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array): Promise<
   if (!signed) return current((await getLaunch(db(), row.id)) ?? row);
   const lastValidBlockHeight = Number(row.lastValidBlockHeight);
   const base = { sig: signature, bytes: wire.length, blockhash: row.blockhash ?? "", lastValidBlockHeight };
-  const r = await broadcast(ctx.conn, wire, { ...base, paceMs: SEND_PACE_MS });
+  const r = await broadcastLaunch(ctx, row, wire, { ...base, paceMs: SEND_PACE_MS });
   if (r?.status === "failed") {
     if (await advance(db(), row.id, "signed", "failed", { error: r.err ?? "preflight rejected" }))
       await releaseMint(row.mint);

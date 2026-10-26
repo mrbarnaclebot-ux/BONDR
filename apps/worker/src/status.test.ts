@@ -55,7 +55,7 @@ test("the kill switch route takes only a boolean", () => {
     expect(() => parseSwitch(bad)).toThrow("invalid_input");
 });
 
-test("/status reports the worker's own net (row 14)", async () => {
+test("/status reports the worker's own net (row 14) and the Sender tip on mainnet only (D-34)", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {}); // the stubbed chain read fails on purpose
   const down = async () => {
     throw new Error("no chain in this test");
@@ -69,8 +69,8 @@ test("/status reports the worker's own net (row 14)", async () => {
       online: {},
     }) as unknown as Ctx;
   vi.useFakeTimers({ toFake: ["Date"] });
-  expect((await liveStatus(ctx("mainnet"))).net).toBe("mainnet");
+  expect(await liveStatus(ctx("mainnet"))).toMatchObject({ net: "mainnet", senderTipEstimate: "1000000" });
   vi.setSystemTime(Date.now() + 10_000); // past the 5 s status cache
-  expect((await liveStatus(ctx("devnet"))).net).toBe("devnet");
+  expect(await liveStatus(ctx("devnet"))).toMatchObject({ net: "devnet", senderTipEstimate: null });
   vi.useRealTimers();
 });

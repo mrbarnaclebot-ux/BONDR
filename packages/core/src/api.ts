@@ -14,6 +14,7 @@ export type Status = {
   minLamports: string | null;
   createCostEstimate: string | null;
   networkFeeEstimate: string | null;
+  senderTipEstimate: string | null; // the Sender tip a mainnet launch carries (D-34); null off mainnet
 };
 
 export type QuoteRequest = { solIn: string; wallet?: string };

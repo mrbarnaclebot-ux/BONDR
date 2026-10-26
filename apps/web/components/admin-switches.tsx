@@ -4,7 +4,7 @@
 // poll (worker memory), except while a flip is in flight or when the flip's answer is newer than the last poll.
 import type { AdminJob, AdminSwitches } from "@bondr/core/api-admin";
 import { useState } from "react";
-import { JOB_LABEL } from "@/lib/admin-copy-audit";
+import { auditTime, JOB_LABEL } from "@/lib/admin-copy-audit";
 import { cn } from "@/lib/cn";
 import { utcStamp } from "@/lib/format";
 import type { HealthPoll } from "@/lib/use-health";
@@ -89,8 +89,15 @@ function Row({ job, on, busy, onFlip }: RowProps) {
 function Notices({ poll }: { poll: HealthPoll }) {
   const h = poll.health;
   if (!h) return null;
+  const c = h.contract;
   return (
     <>
+      {c.kind === "mismatch" && (
+        // Keyed by the run, so a new mismatch mounts a new alert and is announced once (D-20).
+        <Callout key={c.at} variant="error" title="The pump contract check failed." className="mb-4">
+          {`Every job was paused at ${c.at ? auditTime(c.at, Date.now()) : "the last check"}. The failed facts are in Health. Turn jobs back on one at a time once you have reviewed them. Launches stay paused until Run check now passes.`}
+        </Callout>
+      )}
       {h.feeEngine !== "on" && (
         <Callout variant="warn" className="mb-4">
           {`The fee engine is ${h.feeEngine === "off" ? "off" : "in dry run"} for this deploy. Fee switches take effect when it is on.`}

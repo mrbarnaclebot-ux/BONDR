@@ -23,6 +23,7 @@ const reply = (body: unknown, status = 200) => Response.json(body, { status, hea
 // Pitfall 14: the web reaches only the worker routes named here; any other op is 404.
 const FORWARD: Record<string, string> = {
   health: "/admin/health",
+  "contract-check": "/admin/contract-check",
   "coin-live": "/admin/coin-live",
   switch: "/admin/switch",
   act: "/admin/act",

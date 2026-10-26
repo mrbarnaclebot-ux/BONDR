@@ -2,7 +2,7 @@
 // /api/admin/simulate, /api/admin/execute and /api/admin/intent call in the browser, so no spec reaches the
 // worker or spends devnet SOL: the route never falls through to the server. Also the console fixture: the real
 // overview answer with one held finalize coin and a buyback balance, and the coin op from a fixture.
-import type { AdminCoinMemory, AdminInspect, AdminSimResult } from "@bondr/core/api-admin";
+import type { AdminCoinMemory, AdminHealth, AdminInspect, AdminSimResult } from "@bondr/core/api-admin";
 import type { Page, Route } from "@playwright/test";
 import type { WRow } from "../lib/admin-data.ts";
 import type { CoinTimeline } from "../lib/admin-timeline.ts";
@@ -99,8 +99,16 @@ const TIMELINE: CoinTimeline = {
   rows: [],
 };
 
-/** The overview's rows and worker memory replaced (no DB writes), and the coin op answered from the fixture. */
-export async function stubConsole(page: Page): Promise<void> {
+/**
+ * The overview's rows and worker memory replaced (no DB writes), and the coin op answered from the fixture. With
+ * `health`, every health poll answers the worker's real snapshot with those fields replaced.
+ */
+export async function stubConsole(page: Page, o: { health?: Partial<AdminHealth> } = {}): Promise<void> {
+  if (o.health)
+    await page.route("**/api/admin/health", async (route) => {
+      const res = await route.fetch();
+      await route.fulfill({ response: res, json: { ...(await res.json()), ...o.health } });
+    });
   await page.route("**/api/admin/overview", async (route) => {
     const res = await route.fetch();
     const body = await res.json();

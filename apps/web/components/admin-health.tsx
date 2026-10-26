@@ -1,10 +1,12 @@
 "use client";
 // UI-SPEC Health (ADMIN-06, D-25 to D-28): six cells from the worker-memory poll and two (vanity pool, reconcile)
 // from the page load, which say so. Cells are not live regions: they change every 10 s and would be noise.
-import type { ReactNode } from "react";
+import type { AdminContract } from "@bondr/core/api-admin";
+import { type ReactNode, useState } from "react";
 import {
   type Cell,
   clock,
+  contractCopy,
   heartbeatCopy,
   lastRunsCopy,
   reconcileCopy,
@@ -17,17 +19,29 @@ import type { AdminOverview } from "@/lib/admin-data";
 import { cn } from "@/lib/cn";
 import { utcStamp } from "@/lib/format";
 import type { HealthPoll } from "@/lib/use-health";
+import { useAdmin } from "./admin-console";
 import { Panel, TONE } from "./admin-panel";
 
 const DASH: Cell = { value: "–", sub: "", tone: "muted" };
 
-type CellProps = { label: string; cell: Cell; dot?: string; busy?: boolean; children?: ReactNode };
+type CellProps = {
+  label: string;
+  cell: Cell;
+  dot?: string;
+  busy?: boolean;
+  className?: string;
+  children?: ReactNode;
+};
 
-function HealthCell({ label, cell, dot, busy, children }: CellProps) {
+function HealthCell({ label, cell, dot, busy, className, children }: CellProps) {
   return (
     <div
       aria-busy={busy || undefined}
-      className={cn("border-b border-line py-3 transition-opacity duration-(--dur)", busy && "opacity-60")}
+      className={cn(
+        "border-b border-line py-3 transition-opacity duration-(--dur)",
+        busy && "opacity-60",
+        className,
+      )}
     >
       <dt className="flex items-center gap-2 text-xs font-semibold tracking-[0.09em] text-muted-foreground uppercase">
         {dot && <span aria-hidden="true" className={cn("size-2 flex-none rounded-full", dot)} />}
@@ -54,14 +68,74 @@ function StuckLine({ cell, mint, onSelect }: StuckProps) {
   if (!mint || !onSelect) return <dd className="text-xs text-muted-foreground">{cell.sub}</dd>;
   return (
     <dd>
-      <button
-        type="button"
-        className="min-h-11 cursor-pointer text-left text-xs text-mint underline decoration-1 underline-offset-[3px] hover:text-foreground md:min-h-6"
-        onClick={() => onSelect(mint)}
-      >
+      <button type="button" className={LINK} onClick={() => onSelect(mint)}>
         {cell.sub}
       </button>
     </dd>
+  );
+}
+
+const LINK =
+  "min-h-11 cursor-pointer text-left text-xs text-mint underline decoration-1 underline-offset-[3px] hover:text-foreground md:min-h-6";
+
+// Run check now (D-18): the answer shows at once and gives way to the first poll that left after it.
+function useRunCheck(lastOk: number | null) {
+  const { onUnauthorized } = useAdmin();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [answer, setAnswer] = useState<{ c: AdminContract; at: number } | null>(null);
+  const run = async () => {
+    if (busy) return;
+    setBusy(true);
+    setFailed(false);
+    const r = await fetch("/api/admin/contract-check", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+      cache: "no-store",
+    }).catch(() => null);
+    const body = r?.ok ? ((await r.json().catch(() => null)) as AdminContract | null) : null;
+    setBusy(false);
+    if (r?.status === 401) return onUnauthorized();
+    if (!body?.kind) return setFailed(true);
+    setAnswer({ c: body, at: Date.now() });
+  };
+  const shown = answer && (lastOk === null || lastOk < answer.at) ? answer.c : null;
+  return { busy, failed, run, shown };
+}
+
+function ContractCell({ poll, now }: { poll: HealthPoll; now: number }) {
+  const check = useRunCheck(poll.lastOk);
+  const contract = check.shown ?? poll.health?.contract;
+  const answering = poll.failedAt === null && contract !== undefined;
+  const cell = answering ? contractCopy(contract, now) : DASH;
+  return (
+    <HealthCell
+      label="Pump contract check"
+      cell={cell}
+      dot={cell.dot ? "bg-destructive" : undefined}
+      className="md:col-span-2"
+    >
+      {cell.sub && <dd className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{cell.sub}</dd>}
+      {answering && (
+        <dd>
+          <button
+            type="button"
+            className={LINK}
+            aria-disabled={check.busy || undefined}
+            aria-busy={check.busy || undefined}
+            onClick={() => void check.run()}
+          >
+            {check.busy ? "Checking…" : "Run check now"}
+          </button>
+          {check.failed && (
+            <p role="alert" className="text-xs text-destructive">
+              Could not run the check. Try again.
+            </p>
+          )}
+        </dd>
+      )}
+    </HealthCell>
   );
 }
 
@@ -106,6 +180,7 @@ export function AdminHealth({ poll, overview, busy, className, onSelect }: Props
           busy={busy}
           cell={loaded ? reconcileCopy(overview.reconcile) : DASH}
         />
+        <ContractCell poll={poll} now={now} />
       </dl>
     </Panel>
   );

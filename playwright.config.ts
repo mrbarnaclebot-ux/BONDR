@@ -64,12 +64,14 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: ADMIN,
       dependencies: ["paused"],
+      workers: 1, // both files read the shared audit log's first row, so they never run side by side
     },
     {
       name: "devnet-admin",
       use: { ...devices["Desktop Chrome"] },
       testMatch: DEVNET_ADMIN,
       dependencies: ["admin-serial"],
+      workers: 1,
     },
   ],
   webServer: process.env.E2E_BASE_URL

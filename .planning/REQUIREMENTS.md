@@ -89,7 +89,7 @@
 - [x] **OPS-01**: Sentry captures errors from web and worker
 - [ ] **OPS-02**: A weekly contract check verifies the pump program IDs, the IDL account layouts and the Global flags BONDR depends on, and pauses jobs on a mismatch
 - [ ] **OPS-03**: CI runs lint, tests and a Playwright smoke test on every push
-- [ ] **OPS-04**: `scripts/` has one-command setup, dev, test and deploy
+- [x] **OPS-04**: `scripts/` has one-command setup, dev, test and deploy
 - [ ] **OPS-05**: BONDR token is launched on mainnet through BONDR; child launches enable only after it exists
 
 ## v2 Requirements
@@ -173,7 +173,7 @@
 | OPS-01 | Phase 2 | Complete |
 | OPS-02 | Phase 7 | Pending |
 | OPS-03 | Phase 7 | Pending |
-| OPS-04 | Phase 7 | Pending |
+| OPS-04 | Phase 7 | Complete |
 | OPS-05 | Phase 7 | Pending |
 
 **Coverage:** 60/60 v1 requirements mapped, no orphans, no duplicates (LAUNCH-08, LAUNCH-09 and TOKEN-07 added by Phase 7 CONTEXT).

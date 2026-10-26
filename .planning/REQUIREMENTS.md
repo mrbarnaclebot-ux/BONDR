@@ -29,6 +29,8 @@
 - [x] **LAUNCH-05**: Dev sees a success screen within 5 seconds of confirmation with "Dev holds 0 launch supply", the exit transaction link, the full contract address with a copy-to-clipboard button, and a button to open the coin page
 - [x] **LAUNCH-06**: Dev sees a clear paused state when launches are paused (kill switch, or BONDR awaiting migration)
 - [x] **LAUNCH-07**: Coin metadata and image are pinned to IPFS (Pinata) before signing
+- [ ] **LAUNCH-08**: Mainnet launches are sent through Helius Sender with the tip inside the dev-signed transaction (Phase 7 D-34)
+- [ ] **LAUNCH-09**: A ticker cannot launch again through BONDR within 24h of the last landed BONDR launch with it; BONDR, SOL, USDC, USDT and WSOL are reserved; search marks the first coin with a ticker (Phase 7 D-40..D-44)
 
 ### Discovery
 
@@ -46,6 +48,7 @@
 - [x] **TOKEN-04**: User sees the fee ledger: every collection, split, sweep, forced-bond buy, burn and finalize, with amount, time and a transaction link
 - [x] **TOKEN-05**: User sees totals: burned supply %, fees to burn, fees to buyback, fees to treasury, and the post-bond deployer share once finalized
 - [x] **TOKEN-06**: Shared token links render a preview card (OG image) on X and Telegram
+- [ ] **TOKEN-07**: The token page shows the share of supply bought by third parties in the first 3 slots (sniped %) (Phase 7 D-35, D-36)
 
 ### Trading
 
@@ -128,6 +131,8 @@
 | LAUNCH-05 | Phase 2 | Complete |
 | LAUNCH-06 | Phase 2 | Complete |
 | LAUNCH-07 | Phase 2 | Complete |
+| LAUNCH-08 | Phase 7 | Pending |
+| LAUNCH-09 | Phase 7 | Pending |
 | LIST-01 | Phase 3 | Complete |
 | LIST-02 | Phase 3 | Complete |
 | LIST-03 | Phase 3 | Complete |
@@ -139,6 +144,7 @@
 | TOKEN-04 | Phase 5 | Complete |
 | TOKEN-05 | Phase 5 | Complete |
 | TOKEN-06 | Phase 3 | Complete |
+| TOKEN-07 | Phase 7 | Pending |
 | TRADE-01 | Phase 4 | Complete |
 | TRADE-02 | Phase 4 | Complete |
 | TRADE-03 | Phase 4 | Complete |
@@ -170,7 +176,7 @@
 | OPS-04 | Phase 7 | Pending |
 | OPS-05 | Phase 7 | Pending |
 
-**Coverage:** 57/57 v1 requirements mapped, no orphans, no duplicates.
+**Coverage:** 60/60 v1 requirements mapped, no orphans, no duplicates (LAUNCH-08, LAUNCH-09 and TOKEN-07 added by Phase 7 CONTEXT).
 
 ---
 *Requirements defined: 2026-10-19*

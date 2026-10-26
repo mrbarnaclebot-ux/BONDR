@@ -919,19 +919,22 @@ jobs:
 | A8 | `drizzle-kit generate` emits 0008 for the new index and columns, and the trigger is appended by hand as in 0007 | Pattern 12 | If generate is not the repo practice, write 0008 and its journal row by hand |
 | A7 | Pump mainnet Global and the config sizes measured today stay until pump redeploys | Pattern 5 | A size change pauses jobs (by design, D-20) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Launch priority fee on mainnet.**
    - What we know: launches use `PRIORITY_FEE_MICROLAMPORTS` (default 1,000, `env.ts:101`), which is 600 lamports at 600k CU. Sender requires a CU price but sets no minimum.
    - What's unclear: whether 1,000 lands promptly on mainnet next to the tip.
    - Recommendation: keep it env-tunable and set a higher value on production. Optionally reuse `priorityMicroLamports` (`trade-prepare.ts:47-60`) for launches on mainnet. The dev pays it, and it is shown in the preview.
+   - **RESOLVED:** set `PRIORITY_FEE_MICROLAMPORTS` explicitly on the production worker at G-1 (07-26 must_haves and Task 2). No code change; the preview already shows it.
 2. **Genesis launch table.**
    - What we know: a SOL-pair create + buy + burn is much smaller than a child launch.
    - What's unclear: whether it fits without a table.
    - Recommendation: keep the table for one uniform cosign path (ops pays about 0.006 SOL), measured on the fork row.
+   - **RESOLVED:** keep the lookup table. genesisOne uses the same compileLaunch and ensureTable path as a child launch (07-16), and the fork row genesis.tip records the size (07-21).
 3. **Optional real v1 coin trade on devnet.**
    - What we know: web3.js 1.99.0 cannot build v1, and no one sends v1 to a BONDR coin today.
    - Recommendation: skip it. The captured real v1 response plus the derived fixture prove the parser. A hand-encoded v1 sender (about 40 lines over the SIMD-0385 table) is possible if the owner wants stronger evidence.
+   - **RESOLVED:** skipped. The captured devnet v1 fixture (07-01, a real devnet v1 transaction) is the proof; staging checks for no `Transaction version (1)` line since the deploy (07-24).
 
 ## Environment Availability
 

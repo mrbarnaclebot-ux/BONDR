@@ -81,7 +81,8 @@ test("at 390px the wallet button and menu items are at least 44px tall", async (
   ];
   for (const target of targets) {
     const box = await target.boundingBox();
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    // Subpixel layout can report 43.99999952 for a 44px box; 0.01 tolerance, not rounding, so 43.5 still fails.
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(43.99);
   }
 });
 

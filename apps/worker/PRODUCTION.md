@@ -115,8 +115,9 @@ Each gate: the default, what the owner does, what Claude runs, how it is verifie
 ### G-2 Treasury address (07-27)
 - Default: a new owner-only wallet (fresh Phantom account or hardware wallet), not derived from the seed and not the admin wallet. It is locked into every finalized coin's sharing config, receives EVACUATE funds, and claims BONDR's own creator fees on pump.fun (D-31).
 - Owner: reply "G-2 approved" with the public key.
-- Claude: check it parses and differs from `ADMIN_WALLET`, then `railway variable set TREASURY_PUBKEY=<key> --service worker --environment production --skip-deploys`. No deploy.
+- Claude: check it parses and differs from `ADMIN_WALLET`, then `railway variable set TREASURY_PUBKEY=<key> --project cf985056-2099-4497-a2c1-1aa639343af4 --service worker --environment production --skip-deploys`. No deploy.
 - Verify: env-diff g2 for the worker passes (`TREASURY_PUBKEY` present, no whitespace, not `ADMIN_WALLET`). Boot later refuses a treasury equal to ops or any derived role.
+- Never change `TREASURY_PUBKEY` between G-2 and the post-genesis redeploy (G-5): the one-genesis guard keys on the current treasury, so a change would admit a second BONDR genesis (07-SECURITY IN-W-02).
 
 ### G-3 Production seed (07-28)
 - Default: the production seed never touches the Mac (D-11): no file, no terminal, no shell history, no chat, no clipboard on the Mac. On the phone, with Handoff off so Universal Clipboard cannot carry it to the Mac, the owner generates it in the password manager's generator: exactly 43 characters, letters and digits only (no symbols), which is 32 random bytes in base64. They save it there as the offline copy (or write it on paper), open the Railway dashboard in the phone's browser (project bondr, environment production, service worker, Variables), add `MASTER_SEED` with that value, and do not deploy from the dashboard. Never reused from staging or local. Claude never asks for, reads or handles it.

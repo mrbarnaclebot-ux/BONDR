@@ -16,7 +16,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Two flags plus an inventory | `SOLANA_NET=mainnet` and `ALLOW_MAINNET=1`, with each refusal listed and tested | ✓ |
+| Two flags plus an inventory | `SOLANA_NET=mainnet` and `ALLOW_MAINNET=1`, with each refusal listed and tested | Chosen |
 | A single SOLANA_NET switch | Drop ALLOW_MAINNET | |
 | A per-feature mainnet flag | One flag per refusal | |
 
@@ -27,7 +27,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Railway `production` env in project bondr, Neon branch in the same project, own seed, external treasury | Reuses the staging layout, with keys separated | ✓ |
+| Railway `production` env in project bondr, Neon branch in the same project, own seed, external treasury | Reuses the staging layout, with keys separated | Chosen |
 | A separate Railway project and Neon project | More isolation, and a second Neon quota but a second bill | |
 | Derived treasury on mainnet | No change | |
 
@@ -38,7 +38,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Fix v1 ingest, fold IN-B-02, T-06-03-03 and IN-W-04, and replace the terms contact | All small, all pre-mainnet | ✓ |
+| Fix v1 ingest, fold IN-B-02, T-06-03-03 and IN-W-04, and replace the terms contact | All small, all pre-mainnet | Chosen |
 | Fix v1 only | Leave the security informationals | |
 
 **Choice:** [auto] Fold all of them (recommended)
@@ -48,7 +48,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| In the worker: at boot, weekly on the batch timer, and on demand from admin | RPC only, pauses switches on a mismatch | ✓ |
+| In the worker: at boot, weekly on the batch timer, and on demand from admin | RPC only, pauses switches on a mismatch | Chosen |
 | A GitHub Actions cron | Cannot pause the worker without a new route and a secret in CI | |
 | A Railway cron service | An extra service | |
 
@@ -58,7 +58,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| GitHub Actions with no secrets, a Postgres service container, and an @smoke Playwright set | No Neon CU spent, no secrets in CI | ✓ |
+| GitHub Actions with no secrets, a Postgres service container, and an @smoke Playwright set | No Neon CU spent, no secrets in CI | Chosen |
 | CI against a Neon CI branch | Costs quota and needs a secret | |
 | CI with Helius devnet | Needs a secret, and the tests are flaky | |
 
@@ -68,7 +68,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Through the launch page in genesis mode (admin wallet only, SOL pair, creator = treasury, insta burn) | Matches PROJECT.md default 4, "through BONDR" | ✓ |
+| Through the launch page in genesis mode (admin wallet only, SOL pair, creator = treasury, insta burn) | Matches PROJECT.md default 4, "through BONDR" | Chosen |
 | A one-off script | Not "through BONDR" | |
 | Require BONDR to bond before child launches | Delays launches; the 6107 pause already covers the window | |
 
@@ -79,7 +79,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Sender for the launch with the tip inside the dev-signed tx, plus "sniped %" | SNIPING.md plan items 1-3 | ✓ |
+| Sender for the launch with the tip inside the dev-signed tx, plus "sniped %" | SNIPING.md plan items 1-3 | Chosen |
 | Sender only | No visibility | |
 | Exclusion lists or delayed listing | Nothing to exclude from in v1 | |
 
@@ -90,7 +90,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Allow `on` on mainnet only with an external TREASURY_PUBKEY, and add a runbook | The seed-leak response actually protects funds | ✓ |
+| Allow `on` on mainnet only with an external TREASURY_PUBKEY, and add a runbook | The seed-leak response actually protects funds | Chosen |
 | Keep it devnet-locked | PROJECT.md's leak response would not exist on mainnet | |
 | Allow it on mainnet with the derived treasury | The attacker could derive the destination | |
 

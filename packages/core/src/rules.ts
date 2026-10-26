@@ -35,6 +35,14 @@ export function checkSymbol(raw: string): Check<string> {
   return /^[A-Z0-9]+$/.test(symbol) ? ok(symbol) : fail("charset");
 }
 
+// D-44: refused for child launches with ticker_reserved. Never inside checkSymbol: the genesis launch is ticker
+// BONDR and checkSymbol runs on that path too (Pitfall 22).
+export const RESERVED_TICKERS = ["BONDR", "SOL", "USDC", "USDT", "WSOL"] as const;
+
+export function reservedTicker(symbol: string): boolean {
+  return (RESERVED_TICKERS as readonly string[]).includes(symbol);
+}
+
 export function checkDescription(raw: string): Check<string> {
   const text = raw.trim();
   const n = [...text].length;

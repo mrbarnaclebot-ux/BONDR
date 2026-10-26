@@ -10,6 +10,7 @@ import {
   MAX_IMAGE_BYTES,
   normalizeLink,
   parseSol,
+  reservedTicker,
 } from "./rules.ts";
 
 test("checkName trims and counts UTF-8 bytes, not characters", () => {
@@ -25,6 +26,12 @@ test("checkSymbol trims, uppercases and allows A-Z and 0-9 up to 13", () => {
   expect(checkSymbol("BND-R")).toEqual({ ok: false, code: "charset" });
   expect(checkSymbol("A".repeat(14))).toEqual({ ok: false, code: "too_long", n: 14 });
   expect(checkSymbol("")).toEqual({ ok: false, code: "required" });
+});
+
+test("reservedTicker covers BONDR and the base tickers; checkSymbol still accepts them (Pitfall 22)", () => {
+  for (const t of ["BONDR", "SOL", "USDC", "USDT", "WSOL"]) expect(reservedTicker(t)).toBe(true);
+  expect(reservedTicker("PEPE")).toBe(false);
+  expect(checkSymbol("BONDR")).toEqual({ ok: true, value: "BONDR" });
 });
 
 test("checkDescription is optional and at most 500 characters", () => {

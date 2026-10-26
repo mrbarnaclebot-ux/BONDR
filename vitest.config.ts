@@ -12,6 +12,7 @@ const DB = [
   "apps/worker/src/fee-ledger.test.ts",
   "apps/worker/src/ingest.test.ts",
   "apps/worker/src/prepare.test.ts",
+  "apps/worker/src/ticker.test.ts",
   "apps/worker/src/trade-prepare.test.ts",
   "apps/worker/src/vanity.test.ts",
   "packages/core/src/db-admin.test.ts",

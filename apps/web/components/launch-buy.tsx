@@ -29,9 +29,12 @@ export function checkBuy(raw: string, min: bigint | null): Buy {
     : { ok: false, code: "below_min" };
 }
 
-/** Dev buy plus the create and network estimates: what the wallet must hold for the launch. */
+/** Dev buy plus the create, network and Sender tip estimates: what the wallet must hold for the launch. */
 export const needed = (lamports: bigint, s: Status | null): bigint =>
-  lamports + BigInt(s?.createCostEstimate ?? 0) + BigInt(s?.networkFeeEstimate ?? 0);
+  lamports +
+  BigInt(s?.createCostEstimate ?? 0) +
+  BigInt(s?.networkFeeEstimate ?? 0) +
+  BigInt(s?.senderTipEstimate ?? 0);
 
 function buyError(live: Live): string | null {
   const min = minOf(live.status);

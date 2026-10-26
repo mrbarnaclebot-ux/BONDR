@@ -55,6 +55,10 @@ export function LaunchReceipt({ state, live }: { state: Launch; live: Live }) {
     ["Dev buy", buy],
     ["Pump create and accounts", cost(s?.createCostEstimate)],
     ["Network fee", cost(s?.networkFeeEstimate)],
+    // Mainnet only (D-34): shown while loading or unreadable, hidden once a loaded status says there is none.
+    ...(s === null || s.senderTipEstimate !== null
+      ? [["Sender tip", cost(s?.senderTipEstimate)] as Row]
+      : []),
     ["Back to you on insta sell", back(state, live)],
   ];
   return (

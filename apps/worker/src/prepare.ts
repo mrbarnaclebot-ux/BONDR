@@ -125,7 +125,8 @@ function optsFor(ctx: PrepareCtx, req: Req, mint: string): LaunchOpts {
 export type Sized = { o: LaunchOpts; builds: Builds; table: AddressLookupTableAccount };
 
 // Sell: the burn and sell probes give solBack, then the sell is rebuilt with its floor and simulated again.
-async function finalMessage(ctx: Chain, s: Sized, blockhash: string) {
+// Exported for the fork rehearsal (spike genesis stage), which runs it without the database insert.
+export async function finalMessage(ctx: Chain, s: Sized, blockhash: string) {
   const net = ctx.env.net;
   const fee = networkFee(ctx.priorityFee);
   const solIn = BigInt(s.o.solIn.toString());

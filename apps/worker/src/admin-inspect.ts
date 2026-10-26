@@ -155,7 +155,7 @@ function instructionsOf(tx: VersionedTransactionResponse): AdminInspect["instruc
 
 // A dead RPC rejects; the route answers 503 rpc_failed. null means this RPC does not have it.
 export async function inspect(conn: Connection, sig: string, known: Known): Promise<AdminInspect> {
-  const tx = await conn.getTransaction(sig, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
+  const tx = await conn.getTransaction(sig, { maxSupportedTransactionVersion: 1, commitment: "confirmed" });
   if (!tx) return { found: false };
   const payer = tx.transaction.message.staticAccountKeys[0].toBase58();
   return {

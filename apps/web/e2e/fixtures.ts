@@ -142,7 +142,7 @@ export async function blockTime(signature: string): Promise<number> {
         jsonrpc: "2.0",
         id: 1,
         method: "getTransaction",
-        params: [signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
+        params: [signature, { commitment: "confirmed", maxSupportedTransactionVersion: 1 }],
       }),
     }).then((r) => r.json() as Promise<{ result?: { blockTime?: number } | null }>);
     if (res.result?.blockTime) return res.result.blockTime;

@@ -36,6 +36,8 @@ export async function gate(
   expect(scroll, `horizontal scroll from ${wide.join(" | ")}`).toBe(client);
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  // pnpm verify (scripts/test.sh) sets E2E_NO_SHOTS: it runs the gates locally but writes no shot into .planning.
+  if (process.env.E2E_NO_SHOTS) return;
   // An open sheet is fixed to the viewport, so a full-page shot would draw it mid-page over unblurred content.
   const path = `${dir}${name}-${width}${SUFFIX}.png`;
   if (el) return void (await el.screenshot({ path }));

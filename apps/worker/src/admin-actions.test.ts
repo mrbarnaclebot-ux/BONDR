@@ -90,7 +90,7 @@ const coin = (o: Partial<FeeCoin> = {}): FeeCoin => ({
 });
 const view = (o: Partial<ActionView> = {}): ActionView => ({
   ...{ coin: coin(), mint: MINT.toBase58(), wChild: 0n, buybackBondr: 0n, costNow: null },
-  ...{ failedSweep: null, pendingSweeps: [] },
+  ...{ failedSweep: null, pendingSweeps: [], windowSwept: false },
   ...o,
 });
 

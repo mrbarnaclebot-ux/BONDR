@@ -56,7 +56,7 @@ export function useSim(
     if (signal.aborted) return;
     if (r.ok) setS(verdict(r.body, copy));
     else if (r.status === 401) onUnauthorized();
-    else setS({ ...S0, phase: "again", note: error(copy(r.code)) });
+    else setS({ ...S0, phase: "again", note: error(copy(r.code, r.reason)) });
   }, [action, mint, copy, onUnauthorized]);
   // A fresh controller per mount, so dev StrictMode's second mount simulates again instead of staying aborted.
   useEffect(() => {
@@ -117,7 +117,7 @@ function useSend(s: SimState, setS: SetS, d: SendDeps) {
     if (!r.ok && r.code === "bad_intent_signature")
       return setS({ ...S0, phase: "ready", sim, note: error(d.copy(r.code)) });
     if (!r.ok && r.code !== "worker_unavailable") {
-      const note = r.code === "intent_expired" ? warn(d.copy(r.code)) : error(d.copy(r.code));
+      const note = r.code === "intent_expired" ? warn(d.copy(r.code)) : error(d.copy(r.code, r.reason));
       return setS({ ...S0, phase: "again", sim, note });
     }
     d.sent.current = true;

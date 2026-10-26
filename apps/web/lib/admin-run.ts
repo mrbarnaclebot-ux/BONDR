@@ -7,7 +7,8 @@ const POLL_MS = 1_500;
 const DEADLINE_MS = 90_000;
 
 /** A 401 comes back as status 401 so the caller runs onUnauthorized. */
-export type Reply<T> = { ok: true; body: T } | { ok: false; status: number; code: string };
+/** reason is the worker's not_applicable code (window_swept), when it sent one. */
+export type Reply<T> = { ok: true; body: T } | { ok: false; status: number; code: string; reason?: string };
 
 async function post<T>(op: string, body: object, signal: AbortSignal): Promise<Reply<T>> {
   const res = await fetch(`/api/admin/${op}`, {
@@ -17,10 +18,11 @@ async function post<T>(op: string, body: object, signal: AbortSignal): Promise<R
     cache: "no-store",
     signal,
   }).catch(() => null);
-  const out = (await res?.json().catch(() => null)) as (T & { error?: unknown }) | null;
+  const out = (await res?.json().catch(() => null)) as (T & { error?: unknown; reason?: unknown }) | null;
   if (res?.ok && out) return { ok: true, body: out };
   const code = typeof out?.error === "string" ? out.error : "worker_unavailable";
-  return { ok: false, status: res?.status ?? 0, code };
+  const reason = typeof out?.reason === "string" ? out.reason : undefined;
+  return { ok: false, status: res?.status ?? 0, code, ...(reason && { reason }) };
 }
 
 export const simulateAdmin = (action: AdminTxAction, mint: string | null, signal: AbortSignal) =>

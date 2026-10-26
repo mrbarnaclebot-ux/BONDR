@@ -2,10 +2,12 @@
 // and admin-act.ts, read from what the console already has. T-06-17-04: this only greys buttons; the worker
 // re-checks at simulate and execute. Pure, so the unit test pins every rule.
 import type { AdminBalances, AdminCoinLive } from "@bondr/core/api-admin";
-import { ACTION_COPY, type ActionKey, fill } from "./admin-copy-actions";
+import { windowOf } from "@bondr/core/fees";
+import { ACTION_COPY, type ActionKey, fill, sweptCopy } from "./admin-copy-actions";
 import type { WRow } from "./admin-data";
-import { triggerReady, type WState } from "./admin-state";
+import { triggerReady, type WState, windowMsLeft } from "./admin-state";
 import type { CoinTimeline, TimelineRow } from "./admin-timeline";
+import { windowLeft } from "./format";
 
 export type { ActionKey } from "./admin-copy-actions";
 export type GridKey = Exclude<ActionKey, "evacuate">;
@@ -17,6 +19,8 @@ type Input = {
   live: AdminCoinLive | null;
   timeline: CoinTimeline;
   balances: AdminBalances | null;
+  now: number;
+  windowMs: number;
 };
 
 const SWEEP = new Set(["sweep_buyback", "sweep_treasury"]);
@@ -33,17 +37,24 @@ function failedSweep(rows: TimelineRow[]): boolean {
   );
 }
 
+// fee-ledger has(): a pending or landed sweep in the coin's current window; the DB allows one per window.
+function windowSwept({ row, timeline, now, windowMs }: Input): boolean {
+  const i = windowOf(Date.parse(row.launchedAt), now, windowMs);
+  const live = (r: TimelineRow) => r.state === "pending" || r.state === "landed";
+  return timeline.rows.some((r) => isSweep(r) && live(r) && r.windowIndex === i);
+}
+
 /** Whether the coin is held: a manual hold, a finalize deployer hold or a hold the engine has in memory. */
 export const isHeld = (row: WRow, state: WState): boolean =>
   !!row.heldAt || row.finalize === "held" || state.key === "held";
 
-function rules({ row, state, live, timeline, balances }: Input): Record<GridKey, boolean> {
+function rules({ row, state, live, timeline, balances }: Input, swept: boolean): Record<GridKey, boolean> {
   const coin = row.launch === "landed"; // an unconfirmed launch has no coin row yet
   const curve = coin && row.venue === "curve";
   const finalized = coin && row.finalize === "done";
   const held = isHeld(row, state);
   return {
-    sweep_now: curve,
+    sweep_now: curve && !swept,
     retry_forced_bond: curve && triggerReady(row),
     burn_w_tokens: coin && live !== null && BigInt(live.tokens) > 0n,
     run_migrate: coin && row.venue === "complete",
@@ -60,12 +71,15 @@ function rules({ row, state, live, timeline, balances }: Input): Record<GridKey,
 
 /** Each grid action's applicability and, when it does not apply, its reason with the symbol filled in. */
 export function actionStates(input: Input): Record<GridKey, ActionState> {
-  const on = rules(input);
+  const { row, now, windowMs } = input;
+  const swept = row.venue === "curve" && windowSwept(input);
+  const on = rules(input, swept);
+  const reason = (k: GridKey) =>
+    k === "sweep_now" && swept
+      ? sweptCopy(windowLeft(windowMsLeft(row, now, windowMs)))
+      : fill(ACTION_COPY[k].reason, row.symbol);
   const keys = Object.keys(on) as GridKey[];
   return Object.fromEntries(
-    keys.map((k) => [
-      k,
-      { applies: on[k], reason: on[k] ? "" : fill(ACTION_COPY[k].reason, input.row.symbol) },
-    ]),
+    keys.map((k) => [k, { applies: on[k], reason: on[k] ? "" : reason(k) }]),
   ) as Record<GridKey, ActionState>;
 }

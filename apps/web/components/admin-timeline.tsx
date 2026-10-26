@@ -136,7 +136,15 @@ function derive(row: WRow, overview: AdminOverview, data: CoinData, windowMs: nu
   const mem = data.live?.memory ?? overview.worker?.coins.find((c) => c.mint === row.mint);
   const state = wState(row, mem, now, windowMs);
   const balances = overview.worker?.balances ?? null;
-  const states = actionStates({ row, state, live: data.live, timeline: data.timeline, balances });
+  const states = actionStates({
+    row,
+    state,
+    live: data.live,
+    timeline: data.timeline,
+    balances,
+    now,
+    windowMs,
+  });
   return { now, mem, states, held: isHeld(row, state) };
 }
 

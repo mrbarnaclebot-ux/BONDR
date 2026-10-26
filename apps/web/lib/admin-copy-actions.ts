@@ -63,6 +63,12 @@ export const DEFAULT_HINT =
 
 export const fill = (s: string, symbol: string): string => s.replaceAll("{SYMBOL}", symbol);
 
+/** Sweep now on a window that already swept (the worker's window_swept), with the time left when known. */
+export const sweptCopy = (left?: string): string =>
+  left
+    ? `Already swept this window. The next window opens in ${left}.`
+    : "Already swept this window; the next sweep runs when the window closes.";
+
 const RESULT: Record<string, string> = {
   held: "Held {SYMBOL} for review.",
   released: "Released {SYMBOL}.",

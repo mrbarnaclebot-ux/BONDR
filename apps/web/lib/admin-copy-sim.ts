@@ -2,7 +2,7 @@
 // and the OQ1 estimated note. Pure, so the unit test pins every line. T-06-18-05: an unknown code or raw RPC
 // text never renders; it falls back to the worker_unavailable line or "an unexpected error".
 import type { AdminSimResult, AdminTxAction } from "@bondr/core/api-admin";
-import { ACTION_COPY } from "./admin-copy-actions";
+import { ACTION_COPY, sweptCopy } from "./admin-copy-actions";
 import { clock } from "./admin-copy-health";
 import { sol, thousands } from "./format";
 
@@ -43,9 +43,10 @@ function words(code: string | undefined): string {
 export const refusedCopy = (account: string, symbol: string): string =>
   `Destination refused: ${account} is not burn, treasury, buyback or ${symbol}'s deployer. Nothing can be sent.`;
 
-/** `detail` is the refused account for destination_refused and the worker's code for simulation_failed. */
+/** `detail` is the refused account, the worker's simulation_failed code or the not_applicable reason. */
 export function adminErrorCopy(code: string, action: AdminTxAction, symbol: string, detail?: string): string {
   if (code === "destination_refused") return refusedCopy(detail ?? "a destination", symbol);
+  if (code === "not_applicable" && detail === "window_swept") return `${sweptCopy()} Nothing was sent.`;
   if (code === "not_applicable")
     return `${ACTION_COPY[action].label} no longer applies to ${symbol}. Refresh to see its current state.`;
   if (code === "simulation_failed") return `Simulation failed: ${words(detail)}. Nothing was sent.`;

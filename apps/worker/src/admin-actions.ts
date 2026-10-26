@@ -27,7 +27,7 @@ import type { Entry } from "./fee-ledger.ts";
 import { settleRows } from "./fee-recover.ts";
 import type { FeeCoin, FeeDeps, Landed } from "./fee-send.ts";
 
-// One chain read and two ledger reads per view; the coin is the engine's own object (copy it to simulate).
+// One chain read and three ledger reads per view; the coin is the engine's own object (copy it to simulate).
 export type ActionView = {
   coin: FeeCoin | null;
   mint: string | null;
@@ -36,6 +36,7 @@ export type ActionView = {
   costNow: bigint | null; // the fresh cost to complete, curve coins only
   failedSweep: { windowIndex: number } | null;
   pendingSweeps: Entry[];
+  windowSwept: boolean; // the current window already has a live sweep (the DB allows one per window)
 };
 export type ActionDef = {
   applies(v: ActionView): string | null; // null, or the reason code the UI maps to copy
@@ -84,8 +85,10 @@ const buyback = (d: FeeDeps) => bondr(d, d.buyback.publicKey, "Buyback");
 const deployer = (d: FeeDeps, c: FeeCoin) => bondr(d, c.wallet, `Deployer ${short(c.wallet)}`);
 const sweepWatch = (v: ActionView, d: FeeDeps) => [ops(d), wBondr(d, v), treasury(d), buyback(d)];
 
+const curveOnly = on((c) => c.venue === "curve", "not_curve");
 const sweepNow: ActionDef = {
-  applies: on((c) => c.venue === "curve", "not_curve"),
+  // The DB allows one sweep per window: a swept window would collect and split, then skip the sweep.
+  applies: (v) => curveOnly(v) ?? (v.windowSwept ? "window_swept" : null),
   allow: sweepDest,
   watch: sweepWatch,
   // A9, Pitfall 7: it is the current window's sweep, early; the window's own timer then finds it done.
@@ -214,18 +217,20 @@ export async function actionView(
 ): Promise<ActionView> {
   const coin = (mint ? (engine ? engine.coin(mint) : await load(mint)) : undefined) ?? null;
   const keys = [ataOf(d.Q, d.buyback.publicKey), ...(coin ? [ataOf(coin.mint, coin.w.publicKey)] : [])];
-  const [infos, cost, failed, pendingSweeps] = await Promise.all([
+  const m = coin?.mint.toBase58();
+  const [infos, cost, failed, pendingSweeps, windowSwept] = await Promise.all([
     d.conn.getMultipleAccountsInfo(keys),
     coin?.venue === "curve" ? costToComplete(d.online, coin.mint) : null,
-    coin ? d.ledger.failedSweep(coin.mint.toBase58()) : null,
-    coin ? d.ledger.pendingFor(coin.mint.toBase58(), [...SWEEPS]) : [],
+    m ? d.ledger.failedSweep(m) : null,
+    m ? d.ledger.pendingFor(m, [...SWEEPS]) : [],
+    coin && m ? d.ledger.has(m, [...SWEEPS], windowOf(coin.launchedAt, Date.now(), d.windowMs)) : false,
   ]);
   const windowIndex = failed?.windowIndex;
   return {
     ...{ coin, mint, buybackBondr: units(infos[0]), wChild: units(infos[1]) },
     costNow: cost === null ? null : BigInt(cost.toString()),
     failedSweep: windowIndex === undefined ? null : { windowIndex },
-    pendingSweeps,
+    ...{ pendingSweeps, windowSwept },
   };
 }
 

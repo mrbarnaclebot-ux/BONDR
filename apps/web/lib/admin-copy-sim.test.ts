@@ -25,6 +25,9 @@ test("every contract code maps to the UI-SPEC copy verbatim", () => {
   expect(c("not_applicable")).toBe(
     "Finalize split no longer applies to SWMP. Refresh to see its current state.",
   );
+  expect(adminErrorCopy("not_applicable", "sweep_now", "SWMP", "window_swept")).toBe(
+    "Already swept this window; the next sweep runs when the window closes. Nothing was sent.",
+  );
   expect(adminErrorCopy("not_applicable", "burn_buyback", "BONDR")).toBe(
     "Burn buyback now no longer applies to BONDR. Refresh to see its current state.",
   );

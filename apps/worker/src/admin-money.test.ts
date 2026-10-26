@@ -24,7 +24,7 @@ vi.mock("./admin-actions.ts", async (orig) => ({
   ACTIONS: new Proxy({}, { get: () => m.def }),
   actionView: async (_d: unknown, mint: string | null) => ({
     ...{ coin: mint ? { mint } : null, mint, wChild: 0n, buybackBondr: 0n, costNow: null },
-    ...{ failedSweep: null, pendingSweeps: [] },
+    ...{ failedSweep: null, pendingSweeps: [], windowSwept: false },
   }),
 }));
 

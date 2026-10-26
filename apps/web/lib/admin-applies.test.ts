@@ -24,15 +24,20 @@ const sweep = (state: TimelineRow["state"], windowIndex = 0): TimelineRow => ({
 const tl = (rows: TimelineRow[] = []): CoinTimeline => ({ launch: null, rows });
 const bal = (buybackBondr: string) => ({ buybackBondr }) as AdminBalances;
 
-function applying(r: WRow, opts: { live?: AdminCoinLive; rows?: TimelineRow[]; buyback?: string } = {}) {
-  const states = actionStates({
+const H4 = 4 * 3_600_000;
+type Opts = { live?: AdminCoinLive; rows?: TimelineRow[]; buyback?: string };
+const statesOf = (r: WRow, opts: Opts = {}) =>
+  actionStates({
     row: r,
-    state: wState(r, undefined, NOW, 4 * 3_600_000),
+    state: wState(r, undefined, NOW, H4),
     live: opts.live ?? null,
     timeline: tl(opts.rows),
     balances: opts.buyback === undefined ? null : bal(opts.buyback),
+    ...{ now: NOW, windowMs: H4 },
   });
-  return Object.entries(states)
+
+function applying(r: WRow, opts: Opts = {}) {
+  return Object.entries(statesOf(r, opts))
     .filter(([, s]) => s.applies)
     .map(([k]) => k)
     .sort();
@@ -87,9 +92,22 @@ test("a reason is the filled copy when the action does not apply, empty when it 
     live: null,
     timeline: tl(),
     balances: null,
+    ...{ now: NOW, windowMs: 1 },
   });
   expect(s.burn_w_tokens.reason).toBe(
     "Burn W token balance applies only when this coin's W holds SWMP tokens.",
   );
   expect(s.sweep_now.reason).toBe("");
+});
+
+test("sweep now greys with the next window's time once the current window has a live sweep", () => {
+  expect(applying(row(), { rows: [sweep("landed")] })).not.toContain("sweep_now");
+  expect(applying(row(), { rows: [sweep("pending")] })).not.toContain("sweep_now");
+  expect(applying(row(), { rows: [sweep("landed", 1), sweep("failed")] })).toContain("sweep_now");
+  expect(statesOf(row(), { rows: [sweep("landed")] }).sweep_now.reason).toBe(
+    "Already swept this window. The next window opens in 3h 0m.",
+  );
+  expect(statesOf(row({ venue: "pool" }), { rows: [sweep("landed")] }).sweep_now.reason).toBe(
+    "Sweep now applies only to a coin still on its curve.",
+  );
 });

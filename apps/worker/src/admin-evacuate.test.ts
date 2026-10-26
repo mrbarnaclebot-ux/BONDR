@@ -221,6 +221,22 @@ test("rows: one evacuate row per W with its own amount and sol, a leftover_burn 
   ]);
 });
 
+test("an unsplit collect closes as its split in the same tx, out of the evacuate amount (WR-W-10)", async () => {
+  const c = coin(1n, 3_000_000n, 0n);
+  const mint = c.mint.toBase58();
+  await deps.ledger.insertPending([{ kind: "collect", mint }], "col", 1n);
+  await deps.ledger.settle("col", "landed", { facts: { collect: { amount: 2_000_000n } }, slot: 1n });
+  const [open] = await deps.ledger.openCollects(mint);
+  const { rows } = buildBatch(deps, await evacuateBalances(deps, [c]));
+  expect(rows).toEqual([
+    { kind: "split_treasury", mint, ref: open?.id, amount: 200_000n, sol: 100_000n },
+    { kind: "evacuate", mint, amount: 2_800_000n, sol: 1_400_000n },
+  ]);
+  await deps.ledger.insertPending(rows, "evac", 1n);
+  await deps.ledger.settle("evac", "landed", { slot: 2n });
+  expect(await deps.ledger.openCollects(mint)).toEqual([]);
+});
+
 test("simulate totals the wallets; simulate mode gives no intent, on mode does; nothing gives nothing", async () => {
   list = [coin(), coin(7n, 2_000_000n, 0n)];
   const sim = await simulateEvacuate(ctx);

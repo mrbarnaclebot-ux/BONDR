@@ -16,6 +16,7 @@ import { evacuateAllow, executeEvacuate } from "./admin-evacuate.ts";
 import { type Intent, putIntent, viewIntent } from "./admin-intent.ts";
 import type { MoneyCtx } from "./admin-money.ts";
 import type { Engine } from "./fee-engine.ts";
+import { memoryLedger } from "./fee-ledger-memory.ts";
 import type { FeeDeps, Job, Landed } from "./fee-send.ts";
 import { Fail } from "./http.ts";
 
@@ -71,6 +72,7 @@ beforeEach(() => {
   };
   deps = {
     ...{ net: "devnet", mode: "on", Q, ops: OPS, treasury: TREASURY, conn, bondrSol: () => 1 },
+    ledger: memoryLedger(),
     land: vi.fn(async (job: Job) => {
       order.push("land");
       jobs.push(job);

@@ -4,6 +4,7 @@
 // batch's simulation is authoritative on its own, unlike the dependent steps of a coin action (OQ1).
 import type { AdminSimResult, EvacuateTotals } from "@bondr/core/api-admin";
 import { COIN_DECIMALS } from "@bondr/core/launch";
+import { split90_10 } from "@bondr/core/math";
 import { toSol } from "@bondr/core/price";
 import { budget, PACKET_LIMIT, pace, wireSize } from "@bondr/core/send";
 import { ataIx } from "@bondr/core/trade";
@@ -28,7 +29,7 @@ import { codeOf, gatedDeps, logged, outcome, progress } from "./admin-send.ts";
 import { type Step, simulateJob } from "./admin-sim.ts";
 import { loadFeeCoins } from "./fee-boot.ts";
 import { feeConfig } from "./fee-config.ts";
-import type { NewEntry } from "./fee-ledger.ts";
+import type { Entry, NewEntry } from "./fee-ledger.ts";
 import { DEFAULT_CU, type FeeCoin, type FeeDeps, type Job, type Landed } from "./fee-send.ts";
 import { fail } from "./http.ts";
 import { pauseAll } from "./switches.ts";
@@ -41,6 +42,7 @@ export type WBalance = {
   bondr: bigint;
   child: bigint;
   childProgram: PublicKey;
+  collect?: Entry; // WR-W-10: the W's oldest landed collect with no split yet
 };
 type PerW = { b: WBalance; ixs: TransactionInstruction[] };
 type Planned = { batch: WBalance[]; job: Job };
@@ -56,11 +58,13 @@ const units = (a: AccountInfo<Buffer> | null | undefined) => (a ? AccountLayout.
 const sum = (xs: bigint[]) => xs.reduce((n, x) => n + x, 0n);
 export const coinsOf = (ctx: MoneyCtx): Promise<EvacCoin[]> => (ctx.coins ?? loadFeeCoins)();
 
-// W and its BONDR and child accounts, 100 accounts per read; a W with nothing anywhere is left out.
+// W and its BONDR and child accounts, 100 accounts per read, plus one ledger read for the unsplit collects; a W
+// with nothing anywhere is left out.
 export async function evacuateBalances(
-  d: Pick<FeeDeps, "conn" | "Q">,
+  d: Pick<FeeDeps, "conn" | "Q" | "ledger">,
   coins: EvacCoin[],
 ): Promise<WBalance[]> {
+  const open = Map.groupBy(await d.ledger.openCollects(), (c) => c.mint);
   const keys = coins.flatMap((c) => [c.w.publicKey, ataOf(d.Q, c.w.publicKey), ataOf(c.mint, c.w.publicKey)]);
   const infos: (AccountInfo<Buffer> | null)[] = [];
   for (let i = 0; i < keys.length; i += READ_CHUNK)
@@ -68,7 +72,8 @@ export async function evacuateBalances(
   return coins.flatMap((c, i) => {
     const [w, q, child] = infos.slice(i * 3, i * 3 + 3);
     const b = { ...c, lamports: BigInt(w?.lamports ?? 0), bondr: units(q), child: units(child) };
-    return b.lamports || b.bondr || b.child ? [{ ...b, childProgram: T22 }] : [];
+    const collect = open.get(c.mint.toBase58())?.[0];
+    return b.lamports || b.bondr || b.child ? [{ ...b, childProgram: T22, ...(collect && { collect }) }] : [];
   });
 }
 
@@ -117,12 +122,24 @@ export function packBatches(
 
 // Pitfall 4: each row carries its own amount and sol and the job passes no facts, so no row takes a sibling's
 // value. An unknown price writes sol 0, never unset, or withSol would fill every row from the first one.
-// IN-W-01: a W holding no BONDR writes the SOL-only Emergency row (no amount, sol = the lamports moved), never
+const solOf = (x: bigint, price: number | null) => (price === null ? 0n : toSol(x, price));
+
+// WR-W-10: the same transfer pays an unsplit collect's treasury tenth, so it is recorded as that split and the
+// guard never re-sends it out of W's new budget after resume. One per W: fee_ledger_sig_kind is unique per
+// signature, kind and mint. ponytail: a W with several unsplit collects closes one per EVACUATE.
+function splitRow(b: WBalance, price: number | null): NewEntry[] {
+  const tenth = split90_10(b.collect?.amount ?? 0n).treasury;
+  if (!b.collect || !tenth || tenth > b.bondr) return [];
+  const row = { kind: "split_treasury" as const, mint: b.mint.toBase58(), ref: b.collect.id, amount: tenth };
+  return [{ ...row, sol: solOf(tenth, price) }];
+}
+
+// IN-W-01: a W left with no BONDR writes the SOL-only Emergency row (no amount, sol = the lamports moved), never
 // "Moved 0 BONDR"; an empty one writes none.
-function moveRow(b: WBalance, price: number | null): NewEntry[] {
+function moveRow(b: WBalance, price: number | null, bondr: bigint): NewEntry[] {
   const mint = b.mint.toBase58();
-  if (!b.bondr) return b.lamports ? [{ kind: "evacuate", mint, sol: b.lamports }] : [];
-  return [{ kind: "evacuate", mint, amount: b.bondr, sol: price === null ? 0n : toSol(b.bondr, price) }];
+  if (!bondr) return b.lamports ? [{ kind: "evacuate", mint, sol: b.lamports }] : [];
+  return [{ kind: "evacuate", mint, amount: bondr, sol: solOf(bondr, price) }];
 }
 
 export function buildBatch(d: Pick<FeeDeps, "Q" | "ops" | "treasury" | "bondrSol">, batch: WBalance[]): Job {
@@ -131,7 +148,8 @@ export function buildBatch(d: Pick<FeeDeps, "Q" | "ops" | "treasury" | "bondrSol
     const burn = b.child
       ? [{ kind: "leftover_burn" as const, mint: b.mint.toBase58(), burned: b.child }]
       : [];
-    return [...moveRow(b, price), ...burn];
+    const split = splitRow(b, price);
+    return [...split, ...moveRow(b, price, b.bondr - (split[0]?.amount ?? 0n)), ...burn];
   });
   const ixs = [...head(d), ...batch.flatMap((b) => wIxs(d, b))];
   // CR-W-01: break-glass, so the ops floor never skips it; a leaked seed drains ops first.

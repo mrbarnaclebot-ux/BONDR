@@ -4,10 +4,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { close, coins, db, feeLedger, launches, trades, vanityMints, wallets } from "@bondr/core/db";
 import { type KnownCoin, parseTx, type TradeTx } from "@bondr/core/trades";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { and, eq, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, test } from "vitest";
 import { bondrPrice } from "./bondr-price.ts";
-import { knownCoins, writeParsed } from "./ingest.ts";
+import { backfillRows, knownCoins, writeParsed } from "./ingest.ts";
 import type { Exec } from "./launches.ts";
 
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
@@ -220,6 +221,28 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
       if (!(e instanceof TransactionRollbackError)) throw e;
     } finally {
       knownCoins.delete(DEV);
+    }
+  });
+
+  test("the boot backfill never picks the BONDR mint itself, only other landed launches (D-31)", async () => {
+    try {
+      await db().transaction(async (tx) => {
+        const wallet = `test-${randomBytes(8).toString("hex")}`;
+        await tx.insert(wallets).values({ address: wallet, consentedAt: new Date(), termsVersion: "test" });
+        const [q, other] = [0, 1].map(() => Keypair.generate().publicKey.toBase58()) as [string, string];
+        const rest = { name: "T", symbol: "T", uri: "ipfs://t", solIn: 1n, exit: "burn", state: "landed" };
+        for (const mint of [q, other]) {
+          await tx.insert(vanityMints).values({ idx: -BigInt(randomInt(1, 2 ** 47)), pubkey: mint });
+          const id = randomBytes(16).toString("hex");
+          await tx.insert(launches).values({ id, wallet, mint, w: wallet, ...rest });
+        }
+        const mints = (await backfillRows(tx, new PublicKey(q))).map((r) => r.mint);
+        expect(mints).toContain(other);
+        expect(mints).not.toContain(q);
+        tx.rollback();
+      });
+    } catch (e) {
+      if (!(e instanceof TransactionRollbackError)) throw e;
     }
   });
 });

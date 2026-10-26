@@ -9,7 +9,7 @@ import {
 } from "@solana/spl-token";
 import type { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
 import { bondrPrice } from "./bondr-price.ts";
-import { buyback, ops, type WorkerEnv } from "./env.ts";
+import { buyback, ops, quoteOf, type WorkerEnv } from "./env.ts";
 import { nextBatchAt } from "./fee-batch.ts";
 import { loadCoin } from "./fee-boot.ts";
 import { feeConfig } from "./fee-config.ts";
@@ -33,7 +33,8 @@ const units = (a: Info | undefined) => (a ? String(AccountLayout.decode(a.data).
 export async function overview(o: LiveOpts, now = Date.now()): Promise<AdminOverviewWorker> {
   const { seed, net, lane, quoteMint: Q, treasury: t } = o.env;
   const b = buyback(seed, net, lane).publicKey;
-  const keys = [t, b, ops(seed, net).publicKey, ataOf(Q, t), ataOf(Q, b)];
+  // Genesis mode has no BONDR yet (D-29): the BONDR balances read as 0.
+  const keys = [t, b, ops(seed, net).publicKey, ...(Q ? [ataOf(Q, t), ataOf(Q, b)] : [])];
   const [ta, ba, oa, tq, bq] = await o.conn.getMultipleAccountsInfo(keys);
   return {
     balances: {
@@ -65,7 +66,7 @@ export async function coinLive(
   const W = coin.w.publicKey;
   const [wa, wq, wt] = await o.conn.getMultipleAccountsInfo([
     W,
-    ataOf(o.env.quoteMint, W),
+    ataOf(quoteOf(o.env), W),
     ataOf(coin.mint, W),
   ]);
   const windowIndex = windowOf(coin.launchedAt, now, o.env.feeWindowMs);

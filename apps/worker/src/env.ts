@@ -2,6 +2,7 @@
 // Never log the seed, the tokens, the admin wallet or the RPC URL.
 import { derive, type Net, readSeed } from "@bondr/core/keys";
 import { PublicKey } from "@solana/web3.js";
+import { fail } from "./http.ts";
 import type { Lane } from "./vanity.ts";
 
 type Env = Record<string, string | undefined>;
@@ -106,6 +107,17 @@ function batchHour(raw: string | undefined): number {
   return n;
 }
 
+// D-29: on mainnet an unset BONDR_QUOTE_MINT is genesis mode (BONDR does not exist yet); devnet always needs it.
+function quoteMintFrom(raw: string | undefined, net: "devnet" | "mainnet"): PublicKey | null {
+  const v = raw?.trim() ?? "";
+  if (!v && net === "mainnet") return null;
+  try {
+    return new PublicKey(v);
+  } catch {
+    throw new Error("BONDR_QUOTE_MINT is not a valid address");
+  }
+}
+
 export function loadEnv(env: Env = process.env) {
   const net = launchNet(env);
   const token = env.WORKER_TOKEN?.trim() ?? "";
@@ -113,12 +125,7 @@ export function loadEnv(env: Env = process.env) {
   const lane = env.VANITY_LANE?.trim();
   if (lane !== "local" && lane !== "staging" && lane !== "production")
     throw new Error("VANITY_LANE must be local, staging or production");
-  let quoteMint: PublicKey;
-  try {
-    quoteMint = new PublicKey(env.BONDR_QUOTE_MINT?.trim() ?? "");
-  } catch {
-    throw new Error("BONDR_QUOTE_MINT is not a valid address");
-  }
+  const quoteMint = quoteMintFrom(env.BONDR_QUOTE_MINT, net);
   const seed = seedFrom(env);
   const t = treasuryFrom(env, net, seed, lane);
   return {
@@ -142,6 +149,12 @@ export function loadEnv(env: Env = process.env) {
 }
 
 export type WorkerEnv = ReturnType<typeof loadEnv>;
+
+// The BONDR mint for every reader that needs it; in genesis mode (D-29) that route answers not_ready instead.
+export function quoteOf(env: { quoteMint: PublicKey | null }): PublicKey {
+  if (!env.quoteMint) throw fail({ error: "not_ready" });
+  return env.quoteMint;
+}
 
 // Phase 1 ids, so the worker signs with the same funded wallets the spike used. The net is in the HMAC domain,
 // so mainnet ids never equal devnet ones. Jobs read env.treasury; this derived key is devnet's treasury.

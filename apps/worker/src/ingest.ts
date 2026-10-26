@@ -10,7 +10,7 @@ import { bondingCurvePda, canonicalPumpPoolPdaWithQuote } from "@bondr/core/pump
 import { fetchTx, pace } from "@bondr/core/send";
 import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } from "@bondr/core/trades";
 import { type Connection, PublicKey, SolanaJSONRPCError } from "@solana/web3.js";
-import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { arm, type Inserted } from "./announce.ts";
 import { bondr, bondrPrice } from "./bondr-price.ts";
 import { withCost } from "./fee-boot.ts";
@@ -248,16 +248,21 @@ export async function gapFillAll(conn: Connection, marks: Marks): Promise<number
   return n;
 }
 
-// Boot: every landed launch without a coin row (Phase 2 launches, or one whose ingest failed), one pass.
-export async function backfillLaunches(conn: Connection): Promise<number> {
-  const rows = await db()
+// Every landed launch without a coin row, except BONDR's own genesis launch: BONDR is a SOL coin, not a child
+// (D-31), and its launch row is landed once genesis is over.
+export const backfillRows = (exec: Exec, Q: PublicKey) =>
+  exec
     .select({
       ...{ id: launches.id, mint: launches.mint, exit: launches.exit },
       ...{ signature: launches.signature, wallet: launches.wallet },
     })
     .from(launches)
     .leftJoin(coins, eq(coins.launchId, launches.id))
-    .where(and(eq(launches.state, "landed"), isNull(coins.mint)));
+    .where(and(eq(launches.state, "landed"), isNull(coins.mint), ne(launches.mint, Q.toBase58())));
+
+// Boot: every landed launch without a coin row (Phase 2 launches, or one whose ingest failed), one pass.
+export async function backfillLaunches(conn: Connection, Q: PublicKey): Promise<number> {
+  const rows = await backfillRows(db(), Q);
   let done = 0;
   for (const row of rows) {
     await pace(BACKFILL_PACE_MS);

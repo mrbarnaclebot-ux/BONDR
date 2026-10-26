@@ -30,6 +30,14 @@ export function switchState(): SwitchState {
   return state ? { ...state } : { ...off, evacuatedAt: null };
 }
 
+// The boot log line (bootIndex and genesis print the same format).
+export const switchesLine = (s: AdminSwitches): string => {
+  const [l, f, w, z, b] = [s.launches, s.forcedBond, s.sweeps, s.finalize, s.buybackBurn].map((v) =>
+    v ? "on" : "off",
+  );
+  return `switches: launches=${l} forcedBond=${f} sweeps=${w} finalize=${z} buybackBurn=${b}`;
+};
+
 export async function loadSwitches(): Promise<SwitchState> {
   const seen = writes;
   const [r] = await db().select().from(settings).where(eq(settings.id, 1));

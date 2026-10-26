@@ -1,14 +1,16 @@
 // settleLaunch end to end with the DB stubbed and every wait instant.
 import { beforeEach, expect, test, vi } from "vitest";
-import { settleLaunch } from "./settle.ts";
+import { landed, setGenesis, settleLaunch } from "./settle.ts";
 
-const m = vi.hoisted(() => ({ advance: vi.fn() }));
+const m = vi.hoisted(() => ({ advance: vi.fn(), fetchTx: vi.fn(), ingest: vi.fn() }));
 vi.mock("node:timers/promises", () => ({ setTimeout: async () => undefined }));
 vi.mock("@bondr/core/db", async (orig) => ({
   ...(await orig()),
   db: () => ({ transaction: (fn: (tx: object) => unknown) => fn({}) }),
 }));
-vi.mock("@bondr/core/send", async (orig) => ({ ...(await orig()), fetchTx: async () => null }));
+vi.mock("@bondr/core/send", async (orig) => ({ ...(await orig()), fetchTx: m.fetchTx }));
+vi.mock("@bondr/core/events", async (orig) => ({ ...(await orig()), innerEvents: () => [] }));
+vi.mock("./ingest.ts", async (orig) => ({ ...(await orig()), ingestLaunch: m.ingest }));
 vi.mock("./launches.ts", async (orig) => ({ ...(await orig()), advance: m.advance }));
 vi.mock("./vanity.ts", async (orig) => ({ ...(await orig()), markUsed: async () => undefined }));
 
@@ -20,6 +22,8 @@ const row = {
 beforeEach(() => {
   vi.clearAllMocks();
   m.advance.mockResolvedValue(row);
+  m.fetchTx.mockResolvedValue(null);
+  m.ingest.mockResolvedValue(undefined);
 });
 
 test("an unknown launch is checked again and lands once the RPC answers (WR-05)", async () => {
@@ -35,4 +39,17 @@ test("an unknown launch is checked again and lands once the RPC answers (WR-05)"
   await settleLaunch(conn as never, row);
   const moves = m.advance.mock.calls.map((c) => `${c[2]}->${c[3]}`);
   expect(moves).toEqual(["sent->unknown", "unknown->landed"]);
+});
+
+test("in genesis mode a landed launch records its facts but gets no coin row (D-31)", async () => {
+  m.fetchTx.mockResolvedValue({ meta: { postTokenBalances: [] } });
+  setGenesis(true);
+  await landed({} as never, row);
+  setGenesis(false);
+  const moves = m.advance.mock.calls.map((c) => `${c[2]}->${c[3]}`);
+  expect(moves).toEqual(["sent->landed", "landed->landed"]);
+  expect(m.advance.mock.calls[1]?.[4]).toMatchObject({ facts: { devChildAfter: "0" } });
+  expect(m.ingest).not.toHaveBeenCalled();
+  await landed({} as never, row); // the control: outside genesis the coin is ingested
+  expect(m.ingest).toHaveBeenCalledTimes(1);
 });

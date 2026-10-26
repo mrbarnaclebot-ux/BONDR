@@ -19,6 +19,12 @@ export const RECHECKS = 3;
 export const HEIGHT_EVERY = 5;
 const SEND_PACE_MS = 1100;
 
+// Genesis mode (D-31): the one launch is BONDR itself, a SOL coin, not a BONDR child, so it gets no coin row.
+let genesis = false;
+export const setGenesis = (on: boolean): void => {
+  genesis = on;
+};
+
 export type Seen = { confirmed: boolean; err: unknown } | null;
 export type Next =
   | { to: "landed" }
@@ -94,6 +100,7 @@ export async function landed(conn: Connection, row: Row): Promise<void> {
   const tx = await fetchTx(conn, row.signature ?? "");
   if (!tx) return;
   await advance(db(), row.id, "landed", "landed", { facts: launchFacts(tx, row) });
+  if (genesis) return;
   // The coin and its Launch rows, from the same tx. A failure never undoes landed; the boot backfill retries it.
   await ingestLaunch(conn, row, tx).catch(logged(row.id));
 }

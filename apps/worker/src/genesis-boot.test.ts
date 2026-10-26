@@ -54,13 +54,15 @@ const Q = Keypair.generate().publicKey;
 type Online = Parameters<typeof verifyQuoteMint>[0];
 
 test("verifyQuoteMint accepts a SOL-pair coin created by the treasury and names the failed fact otherwise", async () => {
-  await expect(verifyQuoteMint(curve(NATIVE_MINT, TREASURY) as Online, Q, TREASURY)).resolves.toBeUndefined();
   await expect(
-    verifyQuoteMint(curve(PublicKey.default, TREASURY) as Online, Q, TREASURY),
+    verifyQuoteMint(curve(NATIVE_MINT, TREASURY) as unknown as Online, Q, TREASURY),
   ).resolves.toBeUndefined();
-  const bondrQuoted = curve(Keypair.generate().publicKey, TREASURY) as Online;
+  await expect(
+    verifyQuoteMint(curve(PublicKey.default, TREASURY) as unknown as Online, Q, TREASURY),
+  ).resolves.toBeUndefined();
+  const bondrQuoted = curve(Keypair.generate().publicKey, TREASURY) as unknown as Online;
   await expect(verifyQuoteMint(bondrQuoted, Q, TREASURY)).rejects.toThrow("not a SOL-pair coin");
-  const copycat = curve(NATIVE_MINT, Keypair.generate().publicKey) as Online;
+  const copycat = curve(NATIVE_MINT, Keypair.generate().publicKey) as unknown as Online;
   await expect(verifyQuoteMint(copycat, Q, TREASURY)).rejects.toThrow("creator is not the treasury");
   const missing = {
     fetchBondingCurve: async () => Promise.reject(new Error("Account not found")),

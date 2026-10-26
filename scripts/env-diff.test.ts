@@ -24,7 +24,11 @@ const PRODUCTION = {
 };
 
 const failures = (from: object, to: object, service: "web" | "worker", phase?: "g1" | "g3" | "g5") =>
-  diffEnv(hashAll(from as Record<string, string>), hashAll(to as Record<string, string>), policyFor(service, phase))
+  diffEnv(
+    hashAll(from as Record<string, string>),
+    hashAll(to as Record<string, string>),
+    policyFor(service, phase),
+  )
     .filter((r) => r.fail)
     .map((r) => `${r.name}: ${r.fail}`);
 

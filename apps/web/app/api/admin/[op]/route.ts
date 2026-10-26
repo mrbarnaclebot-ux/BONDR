@@ -35,9 +35,10 @@ const FORWARD: Record<string, string> = {
 };
 
 // execute signs and sends; EVACUATE simulates every batch (at most 8 at a time), so hundreds of W need far
-// longer than the 15 s default before the web gives up with worker_unavailable.
+// longer than the 15 s default before the web gives up with worker_unavailable. The contract check makes about
+// four RPC reads, which a slow RPC can push past 15 s.
 function timeoutOf(op: string, body: Body): number | undefined {
-  if (op === "execute") return 30_000;
+  if (op === "execute" || op === "contract-check") return 30_000;
   if (op === "simulate" && body.action === "evacuate") return 90_000;
   return undefined;
 }

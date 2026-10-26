@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Indexer, Lists and Token Page** - Trade ingestion, home lists, search, chart, trade feed, live updates, share cards (completed 2026-10-24)
 - [x] **Phase 4: Trading** - Buy and sell panel via multi_hop_swap with quote preview and slippage, pre and post bond (completed 2026-10-24)
 - [x] **Phase 5: Fee Engine and Public Ledger** - Worker runs split, forced bond, fallback burn, sweeps, finalize; ledger on the token page (completed 2026-10-25)
-- [ ] **Phase 6: Admin Dashboard** - Owner-only recovery actions, kill switches, health, moderation, inspector, audit log, EVACUATE
+- [x] **Phase 6: Admin Dashboard** - Owner-only recovery actions, kill switches, health, moderation, inspector, audit log, EVACUATE (completed 2026-10-26)
 - [ ] **Phase 7: Go-Live** - Contract check, CI, scripts, mainnet config, BONDR token launch gating child launches
 
 ## Phase Details
@@ -266,7 +266,7 @@ Plans:
   4. Owner flips per-job kill switches (launches, forced bond, sweeps, finalize, buyback burn), hides a coin from lists, blocks a deployer from launching, and inspects any pasted signature's decoded instructions, error and explorer link
   5. Owner runs EVACUATE by typing the phrase and signing; all jobs pause and every W balance moves to the treasury
 
-**Plans:** 25/26 plans executed
+**Plans:** 26/26 plans complete
 
 Plans:
 
@@ -351,7 +351,7 @@ Plans:
 
 **Wave 19** *(blocked on Wave 18 completion)*
 
-- [ ] 06-26-PLAN.md - Staging: web then worker, locked-state matrix, Phase 5 and 4 regressions, Neon idle, HV-06-01 and HV-06-02
+- [x] 06-26-PLAN.md - Staging: web then worker, locked-state matrix, Phase 5 and 4 regressions, Neon idle, HV-06-01 and HV-06-02
 
 **UI hint**: yes
 
@@ -381,5 +381,5 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 3. Indexer, Lists and Token Page | 15/15 | Complete   | 2026-10-24 |
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
-| 6. Admin Dashboard | 25/26 | In Progress|  |
+| 6. Admin Dashboard | 26/26 | Complete   | 2026-10-26 |
 | 7. Go-Live | 0/TBD | Not started | - |

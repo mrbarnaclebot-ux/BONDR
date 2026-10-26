@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 06-25-PLAN.md
-last_updated: "2026-10-26T05:23:08.965Z"
-last_activity: 2026-10-26 -- Completed 06-25 (responsive and axe matrix, Designer sign-off)
+status: verifying
+stopped_at: Completed 06-26-PLAN.md
+last_updated: "2026-10-26T05:49:46.587Z"
+last_activity: 2026-10-26 -- Completed 06-26 (Phase 6 on staging dark)
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 95
-  completed_plans: 94
-  percent: 71
+  completed_plans: 95
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 26 of 26 (06-25 complete)
-Status: Ready to execute
-Last activity: 2026-10-26 -- Completed 06-25 (responsive and axe matrix, Designer sign-off)
+Plan: 26 of 26 (06-26 complete)
+Status: Phase complete — ready for verification
+Last activity: 2026-10-26 -- Completed 06-26 (staging web 9a7f2884 with 0007, worker 1a9b6aa9, admin closed)
 
-Progress: [██████████] 99%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -125,6 +125,9 @@ Progress: [██████████] 99%
 | Phase 06 P18 | 23 min | 2 tasks | 16 files |
 | Phase 06 P22 | 14 min | 2 tasks | 13 files |
 | Phase 06 P23 | 25 min | 2 tasks | 10 files |
+| Phase 06 P24 | 23 min | 2 tasks | 6 files |
+| Phase 06 P25 | 45 min | 2 tasks | 15 files |
+| Phase 06 P26 | 30 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -337,11 +340,15 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-25: the simulation dialog eyebrow reads "Simulated, then sent" in the sending and done phases (the constant UI-SPEC line was false after a send)
 - [Phase 06]: 06-25: wallet counts singularize through `plural()` in lib/format.ts ("1 wallet")
 - [Phase 06]: 06-25: token page panels use `min-[68.75rem]:p-6`; Tailwind v4 sorts `min-[1100px]` before `md`
+- [Phase 06]: 06-26: staging admin ships closed; ADMIN_WALLET, ADMIN_EVACUATE and SENTRY_READ_TOKEN stay unset until the owner runs HV-06-01 (set ADMIN_WALLET on web and worker together)
+- [Phase 06]: 06-26: HV-05-01 passed on the no-fee path; both staging windows ran unattended and sent nothing because neither coin had creator fees
 
 ### Pending Todos
 
 - Replace the placeholder contact handle in the terms page
 - WR-08 minOut fixed in a8758e1 (verified in 06-02); leftover burns ship in 06-09 (D-17)
+- Owner, non-blocking: HV-06-01 (staging console sign-in after setting ADMIN_WALLET on web and worker) and HV-06-02 (SENTRY_READ_TOKEN on the staging worker)
+- Before Phase 7 go-live: ingest refuses version 1 transactions (`maxSupportedTransactionVersion: 0`); see 06 deferred-items.md
 
 ### Blockers/Concerns
 
@@ -369,6 +376,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T05:23:08.960Z
-Stopped at: Completed 06-25-PLAN.md
+Last session: 2026-10-26T05:49:46.582Z
+Stopped at: Completed 06-26-PLAN.md
 Resume file: None

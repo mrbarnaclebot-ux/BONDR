@@ -17,8 +17,9 @@ const SECTIONS: Section[] = [
     body: (
       <p>
         BONDR is a hobby project: a site that launches and trades Solana memecoins through pump.fun's public
-        programs. It is software, not a broker, exchange or adviser. It is run by one person. While BONDR is
-        being tested it runs on Solana devnet, where coins have no value.
+        programs. It is software, not a broker, exchange or adviser. It is run by one person. BONDR runs on
+        Solana mainnet at trybondr.fun, where SOL and coins are real money. A separate test copy runs on
+        devnet, where coins have no value.
       </p>
     ),
   },
@@ -68,8 +69,10 @@ const SECTIONS: Section[] = [
     body: (
       <p>
         When you launch, your dev buy is sold or burned in the same transaction, as you choose. This cannot be
-        undone. Names, symbols and images must not be illegal or impersonate someone. BONDR may hide a coin
-        from its lists or block a wallet from launching; it cannot remove a coin from Solana.
+        undone. Names, symbols and images must not be illegal or impersonate someone. After a coin launched
+        through BONDR lands, BONDR refuses new launches with the same ticker for 24 hours; this covers only
+        BONDR launches, not the same ticker used elsewhere. BONDR may hide a coin from its lists or block a
+        wallet from launching; it cannot remove a coin from Solana.
       </p>
     ),
   },
@@ -115,7 +118,8 @@ const SECTIONS: Section[] = [
     body: (
       <p>
         These terms may change; the date above shows when. Continuing to use BONDR after a change means you
-        accept it. Questions go to the owner through @BONDR on X (handle to be confirmed before go-live).
+        accept it. Questions and data deletion requests go to the owner at{" "}
+        <a href="mailto:hello@trybondr.fun">hello@trybondr.fun</a>.
       </p>
     ),
   },

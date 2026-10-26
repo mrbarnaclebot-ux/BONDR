@@ -8,5 +8,6 @@ ALTER TABLE "coins" ADD CONSTRAINT "coins_sniped_bps" CHECK (sniped_bps is null 
 CREATE TRIGGER admin_audit_no_truncate BEFORE TRUNCATE ON admin_audit
   FOR EACH STATEMENT EXECUTE FUNCTION admin_audit_guard();
 --> statement-breakpoint
--- Defence in depth only: the owner can re-grant and a superuser bypasses privileges, but the trigger still fires.
+-- Defence in depth only, against accidental statements: the app connects as the table owner, which can re-grant
+-- TRUNCATE or disable or drop the trigger, and a superuser bypasses both. A compromised app role is not stopped.
 REVOKE TRUNCATE ON admin_audit FROM CURRENT_USER;

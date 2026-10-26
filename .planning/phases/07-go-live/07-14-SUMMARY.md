@@ -60,7 +60,7 @@ completed: 2026-10-26
 - Regression runs:
   - launch-form.e2e.ts plus launch-live.e2e.ts: 33 passed, 1 skipped (the existing devnet-gated case).
   - home.e2e.ts: the first run after the change had 3 failures in the search block, a rerun had 1, and the next two runs were 15/15 clean. Treated as flakes (Neon cold start and parallel seeds). Not investigated further.
-- `pnpm typecheck` and `pnpm lint` are clean. Line counts: launch-coin.tsx 255, launch-flow.tsx 225, launch-sign.tsx 226, coins.ts 152, coin-card.tsx 217, coins.test.ts 296.
+- `pnpm typecheck` and `pnpm lint` are clean. Line counts: launch-coin.tsx 255, launch-flow.tsx 225, launch-sign.tsx 223, coins.ts 152, coin-card.tsx 217, coins.test.ts 298.
 
 ## Deviations from Plan
 

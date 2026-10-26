@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-14-PLAN.md
-last_updated: "2026-10-26T12:29:18.000Z"
-last_activity: 2026-10-26 -- Completed 07-14 (step 1 ticker field errors and the search First marker)
+stopped_at: Completed 07-15-PLAN.md
+last_updated: "2026-10-26T12:43:59.000Z"
+last_activity: 2026-10-26 -- Completed 07-15 (buildGenesis and genesis mode in /status)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 109
+  completed_plans: 110
   percent: 83
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 14 of 36 (07-14 complete)
+Plan: 15 of 36 (07-15 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-14 (step 1 ticker field errors and the search First marker)
+Last activity: 2026-10-26 -- Completed 07-15 (buildGenesis and genesis mode in /status)
 
 Progress: [██████████] 100%
 
@@ -142,6 +142,7 @@ Progress: [██████████] 100%
 | Phase 07 P12 | 25min | 2 tasks | 13 files |
 | Phase 07 P13 | 12min | 2 tasks | 8 files |
 | Phase 07 P14 | 15min | 2 tasks | 10 files |
+| Phase 07 P15 | 15min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -376,6 +377,8 @@ Recent decisions affecting current work:
 - 07-13: ticker_reserved and ticker_locked are refused in admit after blocked and before prepareGuard, balance, reservation and tables
 - 07-14: the ticker_locked field error in step 1 shows but does not block Continue; the reserved error blocks
 - 07-14: the search First flag comes from page 0's own rows (exact matches lead), no count query
+- 07-15: StatusCtx is a union (Q null requires treasury), so existing Ctx callers fit liveStatus unchanged
+- 07-15: pause order is genesis, contract_check, kill_switch, awaiting_migration (07-10 order kept; UI-SPEC's awaiting-before-kill order left for the owner)
 
 ### Pending Todos
 
@@ -409,6 +412,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T12:29:18.000Z
-Stopped at: Completed 07-14-PLAN.md
+Last session: 2026-10-26T12:43:59.000Z
+Stopped at: Completed 07-15-PLAN.md
 Resume file: None

@@ -5,10 +5,12 @@ Server and client helpers for the web app. Files that import `server-only` must 
 - `db.ts`: server-only re-export of `@bondr/core/db` (`db()` and the tables).
 - `guard.ts`: POST guards: `sameOrigin`, `json` (capped body), `BASE58_KEY`, and the fixed-window `take`, `clientIp`, `rateLimited`.
 - `guard.test.ts`: rate limit windows, client IP choice and the 429 response.
-- `worker.ts`: server-only `workerGet` and `workerPost`, the bearer-token proxy to the worker.
+- `worker.ts`: server-only `workerGet` and `workerPost`, the bearer-token proxy to the worker; error bodies are rebuilt from the contract fields only (error, paused, a finite retryAfter, a landed or pending lock).
 - `worker.test.ts`: contract errors (410, 422, 409) pass through, anything else becomes worker_unavailable.
 - `launches.ts`: server-only `launchView` and `launchByMint`, a launch row's public fields (never the message or the signed wire).
-- `launch-run.ts`: the step 4 network sequence (pin, prepare, sign, submit, poll) and `getView`.
+- `launch-run.ts`: the step 4 network sequence (pin, prepare, sign, submit, poll) and `getView`; `Stop` carries a refusal's retryAfter and lock.
+- `launch-faults.ts`: the step 4 failure table (`FAULTS`, `Fault`, `NOT_FOUND`, `BUILD_FAILED`), pure copy.
+- `ticker-copy.ts`: the ticker cooldown and reserved refusals (`tickerFault`, `tickerFieldError`, `reservedFieldError`, UI-SPEC A1 and A2).
 - `pinata.ts`: `metadataJson`, `ipfsUri` and `pinFile` (Pinata v3 uploads). The pin route supplies the JWT.
 - `pinata.test.ts`: metadata shape, URI length, upload request and JWT redaction; a live pin with `PINATA_LIVE=1`.
 - `format.ts`: display formats `sol`, `pct`, `compact`, `short`, `explorer`, `age`, and the Phase 3 `mcapSol`, `tradeSol`, `signedPct`, `curvePct`, `relTime`, `thousands`, and the Phase 5 `feeSol`, `utcStamp`.

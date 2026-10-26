@@ -12,7 +12,7 @@
 - `launch-drop.tsx`: the step 1 image drop zone.
 - `launch-buy.tsx`: step 2 Dev buy and exit, the live-minimum check, presets and the debounced quote hook.
 - `launch-review.tsx`: step 3 Review, the fee callout and the connect / paused / sign button.
-- `launch-sign.tsx`: step 4 Sign, the five rows, the failure table, and the stored launch id that restores a posted launch after a reload.
+- `launch-sign.tsx`: step 4 Sign, the five rows, the failure callout (table in lib/launch-faults.ts, ticker lines from lib/ticker-copy.ts), and the stored launch id that restores a posted launch after a reload.
 - `launch-live.tsx`: step 5 Live, the success art, the proof and the contract address.
 - `proof-stamp.tsx`: the "Dev holds 0 launch supply" stamp (step 5 and the token page).
 - `ca-row.tsx`: the contract address with Copy and the manual-copy fallback; exports `useCopy`, shared with the copy chip.

@@ -36,7 +36,9 @@ export type Progress = {
   cid?: string;
   bytes?: number;
   sig?: string;
+  refusal?: Refusal; // a ticker_locked body's wait and lock kind (D-43)
 };
+type Refusal = Pick<ApiError, "retryAfter" | "lock">;
 export type Run = {
   state: Launch;
   live: Live;
@@ -50,9 +52,11 @@ export type Run = {
 
 export class Stop extends Error {
   readonly code: Code;
-  constructor(code: Code) {
+  readonly refusal?: Refusal;
+  constructor(code: Code, refusal?: Refusal) {
     super(code);
     this.code = code;
+    this.refusal = refusal;
   }
 }
 
@@ -64,7 +68,10 @@ async function call<T>(url: string, body: FormData | object, signal: AbortSignal
   const res = await fetch(url, { method: "POST", ...init, signal }).catch(() => null);
   const out = (await res?.json().catch(() => null)) as (T & Partial<ApiError>) | null;
   if (res?.ok && out) return out;
-  throw new Stop(out?.error ?? "worker_unavailable");
+  throw new Stop(
+    out?.error ?? "worker_unavailable",
+    out ? { retryAfter: out.retryAfter, lock: out.lock } : undefined,
+  );
 }
 
 function metaOf(f: Fields) {

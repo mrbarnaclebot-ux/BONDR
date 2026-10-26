@@ -2,6 +2,7 @@
 import type { Exit, LaunchView, PauseReason, Status } from "@bondr/core/api";
 import { type ComponentType, type Dispatch, type ReactNode, useEffect, useReducer, useRef } from "react";
 import { sol } from "@/lib/format";
+import { NOT_FOUND } from "@/lib/launch-faults";
 import { getView } from "@/lib/launch-run";
 import { useStatus } from "@/lib/use-status";
 import { Callout } from "./callout";
@@ -10,7 +11,7 @@ import { LaunchCoin } from "./launch-coin";
 import { LaunchLive } from "./launch-live";
 import { LaunchReceipt } from "./launch-receipt";
 import { LaunchReview } from "./launch-review";
-import { LaunchSign, NOT_FOUND, stored } from "./launch-sign";
+import { LaunchSign, stored } from "./launch-sign";
 import { LaunchStepper, STEP_NAMES } from "./launch-stepper";
 
 export type Step = 1 | 2 | 3 | 4 | 5;

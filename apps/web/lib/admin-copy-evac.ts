@@ -24,11 +24,15 @@ export const EVAC_HINT = {
 /** "Simulated now: {n} W balances, {bondr} BONDR ({sol} SOL) and {sol} SOL to the treasury, ..." */
 export function evacSummary(t: EvacuateTotals): Part[] {
   return [
-    { pre: "Simulated now: ", value: thousands(t.wallets), post: " W balances, " },
+    {
+      pre: "Simulated now: ",
+      value: thousands(t.wallets),
+      post: t.wallets === 1 ? " W balance, " : " W balances, ",
+    },
     { pre: "", value: whole(t.bondr), post: " BONDR (" },
     { pre: "", value: feeSol(t.bondrSol), post: " SOL) and " },
     { pre: "", value: feeSol(t.sol), post: " SOL to the treasury, child tokens burned in " },
-    { pre: "", value: thousands(t.burnedIn), post: " wallets, " },
+    { pre: "", value: thousands(t.burnedIn), post: t.burnedIn === 1 ? " wallet, " : " wallets, " },
     { pre: "", value: thousands(t.failures), post: " failures." },
   ];
 }

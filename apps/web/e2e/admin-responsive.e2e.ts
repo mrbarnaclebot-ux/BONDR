@@ -255,6 +255,7 @@ for (const width of WIDTHS)
       await expect(
         d.getByRole("status").filter({ hasText: "Sent. 2 of 2 transactions landed." }),
       ).toBeVisible();
+      await expect(d.getByText("Simulated, then sent")).toBeVisible();
       await shot(page, "sim-landed", width);
     });
   });

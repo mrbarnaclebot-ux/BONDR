@@ -1,6 +1,6 @@
 // UI-SPEC Wallets and Health cell copy (D-22, D-25 to D-28). Pure, so the unit test pins every line.
 import type { AdminBalances, AdminHealth } from "@bondr/core/api-admin";
-import { age, feeSol, relTime, thousands, whole, windowLeft } from "./format";
+import { age, feeSol, plural, relTime, thousands, whole, windowLeft } from "./format";
 
 export type Tone = "plain" | "ok" | "warn" | "danger" | "muted";
 export type Cell = { value: string; sub: string; tone: Tone };
@@ -20,8 +20,6 @@ export function since(t: number, now: number): string {
   const s = Math.max(0, Math.floor((now - t) / 1000));
   return s < 60 ? `${s}s ago` : `${relTime(iso(t), now)} ago`;
 }
-
-const plural = (n: number, one: string, many: string) => `${thousands(n)} ${n === 1 ? one : many}`;
 
 type Poll = { health: AdminHealth | null; failedAt: number | null; lastOk: number | null };
 

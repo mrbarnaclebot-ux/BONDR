@@ -72,6 +72,7 @@ test("platform, switch, deployer and evacuate copy", () => {
   expect(auditActionCopy(row("evacuate", { mint: null, params: { wallets: 42 } }))).toBe(
     "EVACUATE: 42 wallets",
   );
+  expect(auditActionCopy(row("evacuate", { mint: null, params: { wallets: 1 } }))).toBe("EVACUATE: 1 wallet");
 });
 
 test("JOB_LABEL names the five switches", () => {

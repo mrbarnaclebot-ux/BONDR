@@ -2,7 +2,7 @@
 import type { AdminAuditAction, AdminAuditRow, AdminJob, AuditResult } from "@bondr/core/api-admin";
 import type { Tone } from "./admin-copy-health";
 import { clock } from "./admin-copy-health";
-import { short, thousands } from "./format";
+import { plural, short, thousands } from "./format";
 
 export const JOB_LABEL: Record<AdminJob, string> = {
   launches: "Launches",
@@ -45,7 +45,7 @@ export function auditActionCopy(r: AdminAuditRow): string {
     case "unblock":
       return `${r.action === "block" ? "Block" : "Unblock"} deployer: ${short(str(p.wallet))}`;
     case "evacuate":
-      return `EVACUATE: ${typeof p.wallets === "number" ? thousands(p.wallets) : "all"} wallets`;
+      return `EVACUATE: ${typeof p.wallets === "number" ? plural(p.wallets, "wallet", "wallets") : "all wallets"}`;
     default:
       return "Burn buyback now";
   }

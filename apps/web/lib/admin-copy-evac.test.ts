@@ -26,6 +26,9 @@ test("the simulated totals line, numbers as display values", () => {
   expect(text(evacSummary(totals))).toBe(
     "Simulated now: 214 W balances, 18,402,110 BONDR (9.2 SOL) and 0.41 SOL to the treasury, child tokens burned in 3 wallets, 0 failures.",
   );
+  expect(text(evacSummary({ ...totals, wallets: 1, burnedIn: 1 }))).toMatch(
+    /^Simulated now: 1 W balance, .* child tokens burned in 1 wallet, 0 failures\.$/,
+  );
 });
 
 test("the done line counts wallets moved and failed", () => {

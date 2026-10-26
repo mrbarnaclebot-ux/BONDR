@@ -6,6 +6,7 @@ import { CircleAlert, Info, TriangleAlert } from "lucide-react";
 import { EVAC_HINT, EVAC_PHRASE, evacDone, evacProgress, evacSummary } from "@/lib/admin-copy-evac";
 import type { AdminOverview } from "@/lib/admin-data";
 import { cn } from "@/lib/cn";
+import { plural } from "@/lib/format";
 import { type EvacPhase, type EvacState, useEvacuate } from "@/lib/use-evacuate";
 import { useAdmin } from "./admin-console";
 import { Button } from "./ui-button";
@@ -85,7 +86,7 @@ type Btn = { label: string; act?: "send" | "again" | "connect"; danger?: boolean
 
 // The state table's button column; danger only once the simulation passed with a sendable intent.
 function buttonOf(s: EvacState, simOnly: boolean, connected: boolean): Btn {
-  const sign = `Sign and evacuate ${s.sim?.totals?.wallets ?? 0} wallets`;
+  const sign = `Sign and evacuate ${plural(s.sim?.totals?.wallets ?? 0, "wallet", "wallets")}`;
   if (s.phase === "again") return { label: "Simulate again", act: "again" };
   if (s.phase === "simulating") return { label: "Simulating…" };
   if (s.phase === "evacuating") return { label: "Evacuating…", busy: true };
@@ -131,7 +132,8 @@ function Intro({ wallets }: { wallets: number }) {
       <ol className="mt-2 list-decimal pl-[1.2em] text-sm text-muted-foreground">
         <li>Every job pauses, launches included.</li>
         <li>
-          Every W balance moves to the treasury, {wallets} wallets. Child tokens in W are burned, not moved.
+          Every W balance moves to the treasury, {plural(wallets, "wallet", "wallets")}. Child tokens in W are
+          burned, not moved.
         </li>
         <li>
           Jobs stay paused until you turn each one back on. Rotating the master seed is a separate runbook.

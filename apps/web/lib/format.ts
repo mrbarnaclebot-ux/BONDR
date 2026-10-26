@@ -85,6 +85,10 @@ export function relTime(iso: string, now = Date.now()): string {
 /** Integer with a thousands separator: "2,940,180". */
 export const thousands = (n: number | bigint): string => fixed(Number(n), 0);
 
+/** "1 wallet", "12 wallets". */
+export const plural = (n: number, one: string, many: string): string =>
+  `${thousands(n)} ${n === 1 ? one : many}`;
+
 /** 6-decimal base units (BONDR, a coin) as whole tokens, floored: "2,940,180". */
 export const whole = (base: string): string => thousands(BigInt(base) / 1_000_000n);
 

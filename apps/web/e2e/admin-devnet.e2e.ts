@@ -265,7 +265,7 @@ test("EVACUATE empties every dev W to the treasury and burn and pauses every swi
   await expect(box.getByText(/^Simulated now:/)).toBeVisible({ timeout: 2 * 60_000 });
   console.log(await box.getByText(/^Simulated now:/).innerText());
   await box.getByRole("button", { name: "Connect Phantom" }).click();
-  await box.getByRole("button", { name: /^Sign and evacuate \d+ wallets$/ }).click();
+  await box.getByRole("button", { name: /^Sign and evacuate \d+ wallets?$/ }).click();
   const done = box.getByText(/^Evacuated\./);
   await expect(done).toHaveText(/^Evacuated\. (\d+) of \1 wallets moved to the treasury, 0 failed\./, {
     timeout: 5 * 60_000,

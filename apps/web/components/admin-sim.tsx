@@ -69,7 +69,10 @@ export function SimDialog({ action, mint, overview, onClose }: Props) {
       onClick={(e) => e.target === e.currentTarget && close()}
     >
       <div className="grid gap-4 px-4 py-6 md:p-6">
-        <Head title={mint ? `${label}, ${symbol}` : label} />
+        <Head
+          title={mint ? `${label}, ${symbol}` : label}
+          sent={run.s.phase === "sending" || run.s.phase === "done"}
+        />
         <SimBody s={run.s} action={action} symbol={symbol} />
         <SimOutcome s={run.s} net={overview.net} />
         <SimFoot s={run.s} cancel={cancel} onClose={close} onSend={run.send} onAgain={run.simulate} />
@@ -78,11 +81,12 @@ export function SimDialog({ action, mint, overview, onClose }: Props) {
   );
 }
 
-function Head({ title }: { title: string }) {
+// The eyebrow must stop saying "nothing sent yet" once the owner has signed and the worker is sending.
+function Head({ title, sent }: { title: string; sent: boolean }) {
   return (
     <div className="grid gap-2">
       <p className="text-xs font-semibold tracking-[0.09em] text-muted-foreground uppercase">
-        Simulated, nothing sent yet
+        {sent ? "Simulated, then sent" : "Simulated, nothing sent yet"}
       </p>
       <h2 id="sim-h" className="display text-[28px] leading-none">
         {title}

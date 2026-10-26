@@ -80,9 +80,12 @@ function moneyOf(o: AdminOpts): () => MoneyCtx {
   let base: FeeDeps | undefined;
   let audit: AuditStore | undefined;
   return () => {
+    const site = o.env.siteUrl;
+    if (!site) throw fail({ error: "forbidden" }); // WR-B-03: the intent text must name the site
     base ??= adminBase(o.env, o.conn);
     audit ??= pgAudit();
-    return { deps: base, engine: o.engine(), audit, admin: o.env.adminWallet, evacuate: o.env.adminEvacuate };
+    const { adminWallet: admin, adminEvacuate: evacuate } = o.env;
+    return { deps: base, engine: o.engine(), audit, admin, site, evacuate };
   };
 }
 

@@ -71,7 +71,13 @@ const routesFor = (adminWallet: string | null) =>
     env: envOf(adminWallet),
     engine: () => null,
     conn: {} as never,
-    money: () => ({ deps, engine: null, audit: memoryAudit(), admin: adminWallet }),
+    money: () => ({
+      deps,
+      engine: null,
+      audit: memoryAudit(),
+      admin: adminWallet,
+      site: "https://trybondr.fun",
+    }),
     mod: () => mod,
   });
 
@@ -94,6 +100,14 @@ test("another or a missing actor answers 403; the admin actor reaches the handle
   expect(await status(gated(A, ok)({ actor: B }))).toBe(403);
   expect(await status(gated(A, ok)({}))).toBe(403);
   expect(await gated(A, ok)({ actor: A, x: 1 })).toEqual({ got: { actor: A, x: 1 } });
+});
+
+test("without SITE_URL, simulate and execute answer 403 before any deps are built (WR-B-03)", async () => {
+  const r = adminRoutes({ env: envOf(A), engine: () => null, conn: {} as never, mod: () => mod });
+  const body = { actor: A, action: "sweep_now", mint: MINT };
+  expect(await status(r["POST /admin/simulate"](body))).toBe(403);
+  const exec = { actor: A, id: "a".repeat(32), signature: Buffer.alloc(64).toString("base64") };
+  expect(await status(r["POST /admin/execute"](exec))).toBe(403);
 });
 
 test("every admin route is a POST behind the gate", async () => {

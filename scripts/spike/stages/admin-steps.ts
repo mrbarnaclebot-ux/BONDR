@@ -63,7 +63,10 @@ export async function adminRun(run: Run): Promise<A> {
     },
   };
   const admin = run.ctx.key("sim", "admin");
-  const money = { deps: d, engine: engineOf(coin), audit: memoryAudit(), admin: admin.publicKey.toBase58() };
+  const money = {
+    ...{ deps: d, engine: engineOf(coin), audit: memoryAudit(), admin: admin.publicKey.toBase58() },
+    site: "https://fork.bondr.test", // any origin: the stage signs the intent text as given
+  };
   return { ...run, d, coin, money, admin, settled };
 }
 

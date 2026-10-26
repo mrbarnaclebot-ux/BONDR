@@ -24,6 +24,7 @@ export type MoneyCtx = {
   engine: Engine | null;
   audit: AuditStore;
   admin: string | null; // injectable, so the fork stage signs with its test key
+  site: string; // SITE_URL's origin, named in the intent text (WR-B-03)
   now?: () => number;
   evacuate?: "simulate" | "on"; // ADMIN_EVACUATE; absent means simulate only (A2)
   coins?: () => Promise<EvacCoin[]>; // EVACUATE's coin list; absent reads every coin of this seed
@@ -34,6 +35,8 @@ type IntentData = { allowed: Allowed; summary: AdminSimResult };
 type Run = { def: ActionDef; view: ActionView; allowed: Allowed; auditId: string };
 
 const clock = (c: MoneyCtx) => (c.now ?? Date.now)();
+// Who signs and where: the gate has already matched the actor to ADMIN_WALLET by the time an intent is stored.
+export const signer = (c: MoneyCtx) => ({ site: c.site, wallet: c.admin ?? "" });
 
 // A1 (Claude's discretion, owner may override): admin actions send in every engine mode with the Postgres
 // ledger; the engine flag governs automation only, so a recovery still works with automation off.
@@ -77,7 +80,8 @@ export async function simulateAction(ctx: MoneyCtx, req: SimReq): Promise<AdminS
   if (sum.error) sum.error = codeOf(sum.error);
   if (!sum.ok || sum.nothing || !dest.ok) return sum;
   const data: IntentData = { allowed, summary: sum };
-  const e = putIntent({ action: req.action, mint: req.mint, to: named(allowed), data }, clock(ctx));
+  const to = named(allowed);
+  const e = putIntent({ ...{ action: req.action, mint: req.mint, to, data }, ...signer(ctx) }, clock(ctx));
   return { ...sum, intent: { id: e.id, message: e.message, expiresAt: e.expiresAt } };
 }
 

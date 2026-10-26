@@ -96,7 +96,14 @@ beforeEach(() => {
       return outcomes.shift() ?? { state: "landed", sig: `sig${++n}` };
     }),
   } as unknown as FeeDeps;
-  ctx = { deps: base, engine: null, audit, admin: admin.wallet, now: () => clock };
+  ctx = {
+    deps: base,
+    engine: null,
+    audit,
+    admin: admin.wallet,
+    site: "https://trybondr.fun",
+    now: () => clock,
+  };
 });
 
 async function refusal(p: Promise<unknown>): Promise<string> {

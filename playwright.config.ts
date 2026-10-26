@@ -84,7 +84,10 @@ export default defineConfig({
           url: `http://127.0.0.1:${WORKER_PORT}/healthz`,
           reuseExistingServer: true,
           timeout: 60_000,
-          env: { VANITY_THREADS: "0", WORKER_PORT, ...(adminWallet && { ADMIN_WALLET: adminWallet }) },
+          env: {
+            ...{ VANITY_THREADS: "0", WORKER_PORT, SITE_URL: webEnv.SITE_URL }, // intents name the web's origin
+            ...(adminWallet && { ADMIN_WALLET: adminWallet }),
+          },
         },
         {
           command: "pnpm --filter @bondr/web dev",

@@ -31,3 +31,9 @@ test("SENTRY_READ_TOKEN unset gives null", () => {
   expect(load().sentryReadToken).toBeNull();
   expect(load({ SENTRY_READ_TOKEN: " tok " }).sentryReadToken).toBe("tok");
 });
+
+test("SITE_URL gives its origin; unset or not a URL gives null (WR-B-03)", () => {
+  expect(load({ SITE_URL: " https://trybondr.fun/admin " }).siteUrl).toBe("https://trybondr.fun");
+  expect(load().siteUrl).toBeNull();
+  expect(load({ SITE_URL: "trybondr.fun" }).siteUrl).toBeNull();
+});

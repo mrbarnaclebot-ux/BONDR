@@ -218,10 +218,8 @@ export async function simulateEvacuate(ctx: MoneyCtx): Promise<AdminSimResult> {
   const sum = summaryOf(d, plan, await pool(plan, (p) => simulated(d, p.job)), allowed);
   if (!sum.ok || !sum.destinations.ok || ctx.evacuate !== "on" || d.net !== "devnet") return sum;
   const to = [`Treasury ${d.treasury.toBase58()}`];
-  const e = putIntent(
-    { action: "evacuate", mint: null, to, data: { allowed, summary: sum } },
-    (ctx.now ?? Date.now)(),
-  );
+  const f = { action: "evacuate" as const, mint: null, to, data: { allowed, summary: sum } };
+  const e = putIntent({ ...f, site: ctx.site, wallet: ctx.admin ?? "" }, (ctx.now ?? Date.now)());
   return { ...sum, intent: { id: e.id, message: e.message, expiresAt: e.expiresAt } };
 }
 

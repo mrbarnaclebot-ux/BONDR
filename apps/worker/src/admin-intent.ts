@@ -24,7 +24,15 @@ export type Intent = {
   data: unknown; // the simulation summary and the allowlist, for execute
   at: number; // last update, ms; retention after execute counts from here
 };
-type NewIntent = { action: AdminTxAction; mint: string | null; to: string[]; data: unknown };
+// site: SITE_URL's origin; wallet: ADMIN_WALLET. Both are named in the text the owner signs.
+type NewIntent = {
+  action: AdminTxAction;
+  mint: string | null;
+  to: string[];
+  data: unknown;
+  site: string;
+  wallet: string;
+};
 type Patch = Partial<
   Pick<Intent, "state" | "sigs" | "landed" | "total" | "code" | "moved" | "failed" | "data">
 >;
@@ -37,24 +45,30 @@ const intents = new Map<string, Intent>();
 // Expiry binds only while unused; once taken, the entry lives on for the poll.
 const live = (e: Intent, now: number) => (e.used ? now - e.at < INTENT_KEEP_MS : now < e.expiresAt);
 
-// The first line differs from consent and admin sign-in, so neither signature can pass as an intent.
+// WR-B-03: the SIWS-style domain line and URI the web's admin sign-in uses, so the owner (and Phantom) can
+// compare the domain with the page asking. The statement line differs from admin sign-in and the whole text from
+// consent, so neither signature can pass as an intent.
 export const intentMessage = (i: {
   action: string;
   coin: string | null;
   id: string;
   to: string[];
   expiresAt: number;
+  site: string;
+  wallet: string;
 }): string =>
   [
-    "BONDR admin action",
+    `${new URL(i.site).host} wants you to sign in with your Solana account:`,
+    i.wallet,
     "",
+    "BONDR admin action. This is not a transaction. The BONDR worker checks it before sending.",
+    "",
+    `URI: ${i.site}`,
     `Action: ${i.action}`,
     `Coin: ${i.coin ?? "platform"}`,
     `Intent: ${i.id}`,
     `Destinations: ${i.to.join(", ") || "burn only"}`,
-    `Expires: ${new Date(i.expiresAt).toISOString()}`,
-    "",
-    "This is not a transaction. The BONDR worker checks it before sending.",
+    `Expiration Time: ${new Date(i.expiresAt).toISOString()}`,
   ].join("\n");
 
 // Sweep on insert, then drop the oldest while full (T-06-05-06).
@@ -63,7 +77,8 @@ export function putIntent(f: NewIntent, now = Date.now()): Intent {
   while (intents.size >= INTENT_MAX) intents.delete(intents.keys().next().value as string);
   const id = randomBytes(16).toString("hex");
   const expiresAt = now + INTENT_TTL_MS;
-  const message = intentMessage({ action: f.action, coin: f.mint, id, to: f.to, expiresAt });
+  const { site, wallet } = f;
+  const message = intentMessage({ action: f.action, coin: f.mint, id, to: f.to, expiresAt, site, wallet });
   const e: Intent = {
     id,
     action: f.action,

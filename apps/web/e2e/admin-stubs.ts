@@ -12,18 +12,26 @@ export const SIGS = ["5".repeat(88), "4".repeat(88)];
 export const HELD_MINT = "Held111111111111111111111111111111111bndr";
 const DEPLOYER = "Dep1oyer11111111111111111111111111111111111";
 
-/** The worker's intent text (admin-intent.ts intentMessage shape); the spec compares the signed bytes to it. */
-export const MESSAGE = [
-  "BONDR admin action",
-  "",
+/** The worker's intent text around `fields` (admin-intent.ts intentMessage shape, WR-B-03 domain line). */
+export const intentText = (fields: string[]): string =>
+  [
+    "127.0.0.1:3000 wants you to sign in with your Solana account:",
+    "Owner11111111111111111111111111111111111111",
+    "",
+    "BONDR admin action. This is not a transaction. The BONDR worker checks it before sending.",
+    "",
+    "URI: http://127.0.0.1:3000",
+    ...fields,
+  ].join("\n");
+
+/** A finalize_split intent; the spec compares the signed bytes to it. */
+export const MESSAGE = intentText([
   "Action: finalize_split",
   `Coin: ${HELD_MINT}`,
   `Intent: ${INTENT_ID}`,
   `Destinations: Deployer ${DEPLOYER}, Treasury Trea5ury1111111111111111111111111111111111`,
-  "Expires: 2026-10-25T18:30:00.000Z",
-  "",
-  "This is not a transaction. The BONDR worker checks it before sending.",
-].join("\n");
+  "Expiration Time: 2026-10-25T18:30:00.000Z",
+]);
 
 /** A two-step finalize_split with an intent unless `over` says otherwise. */
 export function simFixture(over: Partial<AdminSimResult> = {}): AdminSimResult {

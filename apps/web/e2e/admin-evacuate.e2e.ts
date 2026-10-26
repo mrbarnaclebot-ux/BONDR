@@ -7,21 +7,17 @@ import { createPublicKey, verify } from "node:crypto";
 import type { AdminSimResult, EvacuateTotals } from "@bondr/core/api-admin";
 import { expect, type Page, test } from "@playwright/test";
 import { openConsole } from "./admin.ts";
-import { INTENT_ID, SIGS, type SimStubs, simFixture, stubSim } from "./admin-stubs.ts";
+import { INTENT_ID, intentText, SIGS, type SimStubs, simFixture, stubSim } from "./admin-stubs.ts";
 import { adminAccount, injectPhantom, preConsent, type TestAccount } from "./phantom.ts";
 
 const PHRASE = "EVACUATE ALL W TO TREASURY";
-const MESSAGE = [
-  "BONDR admin action",
-  "",
+const MESSAGE = intentText([
   "Action: evacuate",
   "Coin: platform",
   `Intent: ${INTENT_ID}`,
   "Destinations: Treasury Trea5ury1111111111111111111111111111111111",
-  "Expires: 2026-10-26T18:30:00.000Z",
-  "",
-  "This is not a transaction. The BONDR worker checks it before sending.",
-].join("\n");
+  "Expiration Time: 2026-10-26T18:30:00.000Z",
+]);
 const TOTALS: EvacuateTotals = {
   ...{ wallets: 12, bondr: "18402110000000", bondrSol: "9200000000" },
   ...{ sol: "410000000", burnedIn: 3, failures: 0 },

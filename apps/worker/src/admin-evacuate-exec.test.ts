@@ -80,11 +80,13 @@ beforeEach(() => {
     }),
   } as unknown as FeeDeps;
   audit = memoryAudit();
-  ctx = { deps, engine: null, audit, admin: null, evacuate: "on", coins: async () => list };
+  ctx = { deps, engine: null, audit, admin: null, site: "https://trybondr.fun", evacuate: "on" };
+  ctx.coins = async () => list;
 });
 
 async function started(allowed = evacuateAllow(deps)): Promise<{ e: Intent; auditId: string }> {
-  const e = putIntent({ action: "evacuate", mint: null, to: [], data: { allowed, summary: {} } });
+  const f = { action: "evacuate" as const, mint: null, to: [], data: { allowed, summary: {} } };
+  const e = putIntent({ ...f, site: "https://trybondr.fun", wallet: "owner" });
   Object.assign(e, { used: true, state: "sending" });
   const auditId = await audit.insertPending({
     ...{ actor: "owner", action: "evacuate", mint: null, params: { wallets: list.length } },

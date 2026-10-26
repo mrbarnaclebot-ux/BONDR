@@ -57,6 +57,16 @@ function adminWallet(raw: string | undefined): string | null {
   }
 }
 
+// WR-B-03: the site origin the intent text names, as the web's admin sign-in does. Unset or invalid refuses
+// simulate and execute (admin-routes.ts) instead of failing boot, like ADMIN_WALLET.
+function siteOrigin(raw: string | undefined): string | null {
+  try {
+    return new URL(raw?.trim() ?? "").origin;
+  } catch {
+    return null;
+  }
+}
+
 // A2: EVACUATE only simulates unless set to on, and on is devnet only until the mainnet runbook flips it (D-37).
 function adminEvacuate(raw: string | undefined, net: string): "simulate" | "on" {
   const v = raw?.trim() || "simulate";
@@ -95,6 +105,7 @@ export function loadEnv(env: Env = process.env) {
     feeWindowMs: atLeast("FEE_WINDOW_MS", env.FEE_WINDOW_MS, 86_400_000, 60_000),
     feeBatchHourUtc: batchHour(env.FEE_BATCH_HOUR_UTC),
     adminWallet: adminWallet(env.ADMIN_WALLET),
+    siteUrl: siteOrigin(env.SITE_URL),
     adminEvacuate: adminEvacuate(env.ADMIN_EVACUATE, net),
     sentryReadToken: env.SENTRY_READ_TOKEN?.trim() || null,
   };

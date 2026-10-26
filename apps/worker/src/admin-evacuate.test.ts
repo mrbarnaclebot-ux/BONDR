@@ -109,7 +109,8 @@ beforeEach(() => {
   } as unknown as FeeDeps;
   list = [];
   const audit = memoryAudit();
-  ctx = { deps, engine: null, audit, admin: null, evacuate: "simulate", coins: async () => list };
+  ctx = { deps, engine: null, audit, admin: null, site: "https://trybondr.fun", evacuate: "simulate" };
+  ctx.coins = async () => list;
 });
 
 const balances = (n: number) => evacuateBalances(deps, coins(n));

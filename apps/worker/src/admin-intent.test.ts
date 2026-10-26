@@ -23,12 +23,16 @@ const admin = account();
 const signText = (text: string, key: KeyObject = admin.key) =>
   new Uint8Array(sign(null, Buffer.from(text), key));
 
+const SITE = "https://trybondr.fun";
 const fields = (mint: string | null = "Mint1111") => ({
   action: "finalize_split" as const,
   mint,
   to: ["Treasury", "Deployer 7xKX..."],
   data: null,
+  site: SITE,
+  wallet: admin.wallet,
 });
+const where = { site: SITE, wallet: admin.wallet };
 
 // The contract error a refused take answers with, or "ok".
 function outcome(fn: () => unknown): string {
@@ -41,34 +45,34 @@ function outcome(fn: () => unknown): string {
   }
 }
 
-test("the message names the action, the coin, the intent, the destinations and the expiry", () => {
+test("the message names the site, the owner, the action, the coin, the intent, the destinations and the expiry", () => {
   const a = intentMessage({
-    action: "finalize_split",
-    coin: "MintA",
-    id: "abc",
-    to: ["Treasury", "Buyback"],
-    expiresAt: 0,
+    ...{ action: "finalize_split", coin: "MintA", id: "abc", to: ["Treasury", "Buyback"], expiresAt: 0 },
+    ...where,
   });
-  expect(a.split("\n")[0]).toBe("BONDR admin action");
+  const lines = a.split("\n");
+  // WR-B-03: the SIWS-style domain line and URI, as the web's admin sign-in has them.
+  expect(lines.slice(0, 2)).toEqual([
+    "trybondr.fun wants you to sign in with your Solana account:",
+    admin.wallet,
+  ]);
+  expect(lines).toContain(`URI: ${SITE}`);
   for (const part of [
-    "finalize_split",
+    "Action: finalize_split",
     "Coin: MintA",
     "Intent: abc",
     "Treasury, Buyback",
-    "1970-01-01T00:00:00.000Z",
+    "Expiration Time: 1970-01-01T00:00:00.000Z",
   ])
     expect(a).toContain(part);
   const b = intentMessage({
-    action: "finalize_split",
-    coin: "MintB",
-    id: "abc",
-    to: ["Treasury", "Buyback"],
-    expiresAt: 0,
+    ...{ action: "finalize_split", coin: "MintB", id: "abc", to: ["Treasury", "Buyback"], expiresAt: 0 },
+    ...where,
   });
   expect(b).not.toBe(a);
-  expect(intentMessage({ action: "burn_buyback", coin: null, id: "x", to: [], expiresAt: 0 })).toContain(
-    "Coin: platform\nIntent: x\nDestinations: burn only",
-  );
+  expect(
+    intentMessage({ ...{ action: "burn_buyback", coin: null, id: "x", to: [], expiresAt: 0 }, ...where }),
+  ).toContain("Coin: platform\nIntent: x\nDestinations: burn only");
 });
 
 test("put stores the worker's own text with a 2 minute expiry", () => {
@@ -76,7 +80,14 @@ test("put stores the worker's own text with a 2 minute expiry", () => {
   expect(e.id).toMatch(/^[0-9a-f]{32}$/);
   expect(e.expiresAt).toBe(1_000 + INTENT_TTL_MS);
   expect(e.message).toBe(
-    intentMessage({ action: e.action, coin: "Mint1111", id: e.id, to: fields().to, expiresAt: e.expiresAt }),
+    intentMessage({
+      action: e.action,
+      coin: "Mint1111",
+      id: e.id,
+      to: fields().to,
+      expiresAt: e.expiresAt,
+      ...where,
+    }),
   );
   expect(e.state).toBe("simulated");
   expect(e.used).toBe(false);
@@ -117,7 +128,18 @@ test("an expired or unknown intent answers intent_expired", () => {
 test("a consent or admin sign-in signature is never an intent (domain separation)", () => {
   const e = putIntent(fields(), 0);
   const consent = consentMessage(admin.wallet, "n", "2026-01-01T00:00:00.000Z");
-  const signIn = ["BONDR admin sign-in", "", `Wallet: ${admin.wallet}`, "Nonce: n", "Expires: x"].join("\n");
+  // The web's adminMessage (apps/web/lib/session.ts, server-only so not importable here), same site, nonce and
+  // expiry: only the statement line tells them apart.
+  const signIn = [
+    "trybondr.fun wants you to sign in with your Solana account:",
+    admin.wallet,
+    "",
+    "BONDR admin sign-in. Signing this message is not a transaction and costs nothing.",
+    "",
+    `URI: ${SITE}`,
+    `Nonce: ${e.id}`,
+    `Expiration Time: ${new Date(e.expiresAt).toISOString()}`,
+  ].join("\n");
   for (const text of [consent, signIn])
     expect(outcome(() => take(e.id, signText(text), admin.wallet, 1))).toBe("bad_intent_signature 403");
 });

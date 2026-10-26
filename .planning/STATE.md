@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-24-PLAN.md
-last_updated: "2026-10-25T20:18:29.075Z"
-last_activity: 2026-10-25 -- Completed 06-24 (devnet console run, EVACUATE, Neon check)
+stopped_at: Completed 06-25-PLAN.md
+last_updated: "2026-10-26T05:23:08.965Z"
+last_activity: 2026-10-26 -- Completed 06-25 (responsive and axe matrix, Designer sign-off)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 95
-  completed_plans: 93
+  completed_plans: 94
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 6
-Plan: 25 of 26 (06-24 complete)
+Plan: 26 of 26 (06-25 complete)
 Status: Ready to execute
-Last activity: 2026-10-25 -- Completed 06-24 (devnet console run, EVACUATE, Neon check)
+Last activity: 2026-10-26 -- Completed 06-25 (responsive and axe matrix, Designer sign-off)
 
-Progress: [██████████] 98%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -334,6 +334,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-24: the devnet EVACUATE proof seeds one dev W (sim dev curve-buys 1 BONDR of the coin, then sends W 1 BONDR and those child tokens) because every dev W was empty; this also proves leftover_burn
 - [Phase 06]: 06-24: EVACUATE on devnet runs only after the spec reads every page of staging /api/coins and finds no dev mint there (Pitfall 12); afterAll restores switches through POST /api/admin/switch, then writes settings directly as a backstop
 - [Phase 06]: 06-24: neonctl 8.10.3 has no endpoints list; the Neon idle check reads branches and endpoints through `neonctl api`
+- [Phase 06]: 06-25: the simulation dialog eyebrow reads "Simulated, then sent" in the sending and done phases (the constant UI-SPEC line was false after a send)
+- [Phase 06]: 06-25: wallet counts singularize through `plural()` in lib/format.ts ("1 wallet")
+- [Phase 06]: 06-25: token page panels use `min-[68.75rem]:p-6`; Tailwind v4 sorts `min-[1100px]` before `md`
 
 ### Pending Todos
 
@@ -366,6 +369,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-25T20:20:00.000Z
-Stopped at: Completed 06-24-PLAN.md
+Last session: 2026-10-26T05:23:08.960Z
+Stopped at: Completed 06-25-PLAN.md
 Resume file: None

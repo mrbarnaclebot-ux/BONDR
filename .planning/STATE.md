@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-23-PLAN.md
-last_updated: "2026-10-26T13:55:08.000Z"
-last_activity: 2026-10-26 -- Completed 07-23 (Phase 7 responsive matrix and Designer review)
+stopped_at: Completed 07-20-PLAN.md
+last_updated: "2026-10-26T14:21:23.000Z"
+last_activity: 2026-10-26 -- Completed 07-20 (scripts and env-diff)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 116
-  percent: 88
+  completed_plans: 117
+  percent: 89
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 23 of 36 (07-23 complete)
+Plan: 20 of 36 (07-20 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-23 (Phase 7 responsive matrix and Designer review)
+Last activity: 2026-10-26 -- Completed 07-20 (scripts and env-diff)
 
 Progress: [██████████] 100%
 
@@ -149,6 +149,7 @@ Progress: [██████████] 100%
 | Phase 07 P21 | 30min | 2 tasks | 8 files |
 | Phase 07 P19 | 35min | 2 tasks | 9 files |
 | Phase 07 P23 | 50min | 2 tasks | 8 files |
+| Phase 07 P20 | 50 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -392,6 +393,8 @@ Recent decisions affecting current work:
 - 07-21: the fork rehearsal calls the worker's own finalMessage (exported) and injects only the DB steps and the mint reservation
 - 07-19: CI runs the DB suites as a non-superuser owner role, because a superuser bypasses the admin_audit TRUNCATE revoke
 - 07-23: the owner genesis /launch shows its own server-rendered lede (LaunchFlow genesisIntro) once live.genesis
+- 07-20: deploy.sh orders web first when migrations changed since the local deployed-<env> tag (working tree compared), polls for SUCCESS, moves the tag only on a full clean deploy; production needs main, a clean tree and the typed word
+- 07-20: env-diff hashes Railway variables on read; worker-only rules (ALLOW_MAINNET=1, FEE_ENGINE/ADMIN_EVACUATE, seed and quote-mint phases), D-12 must-differ on both services
 
 ### Pending Todos
 
@@ -426,6 +429,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T13:55:08.000Z
-Stopped at: Completed 07-23-PLAN.md
+Last session: 2026-10-26T14:21:23.000Z
+Stopped at: Completed 07-20-PLAN.md
 Resume file: None

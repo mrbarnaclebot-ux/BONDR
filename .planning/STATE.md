@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-18-PLAN.md
-last_updated: "2026-10-26T13:18:14.000Z"
-last_activity: 2026-10-26 -- Completed 07-18 (owner genesis page)
+stopped_at: Completed 07-21-PLAN.md
+last_updated: "2026-10-26T13:29:29.000Z"
+last_activity: 2026-10-26 -- Completed 07-21 (fork genesis rehearsal)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 113
-  percent: 86
+  completed_plans: 114
+  percent: 87
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 18 of 36 (07-18 complete)
+Plan: 21 of 36 (07-21 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-18 (owner genesis page)
+Last activity: 2026-10-26 -- Completed 07-21 (fork genesis rehearsal)
 
 Progress: [██████████] 100%
 
@@ -146,6 +146,7 @@ Progress: [██████████] 100%
 | Phase 07 P16 | 12min | 2 tasks | 12 files |
 | Phase 07 P17 | 25min | 3 tasks | 20 files |
 | Phase 07 P18 | 20min | 2 tasks | 9 files |
+| Phase 07 P21 | 30min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -386,6 +387,7 @@ Recent decisions affecting current work:
 - 07-16: submit's genesis allowance requires row.w = env.treasury and no failed contract check
 - 07-17: enterGenesis writes every switch off before the server starts; quoteOf(env) answers not_ready for mint readers in genesis (EVACUATE included)
 - 07-18: the owner genesis variant rides on Live.genesis; the page passes only a boolean ownerGenesis from the server-side admin cookie check
+- 07-21: the fork rehearsal calls the worker's own finalMessage (exported) and injects only the DB steps and the mint reservation
 
 ### Pending Todos
 
@@ -419,6 +421,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T13:18:14.000Z
-Stopped at: Completed 07-18-PLAN.md
+Last session: 2026-10-26T13:29:29.000Z
+Stopped at: Completed 07-21-PLAN.md
 Resume file: None

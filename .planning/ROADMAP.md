@@ -367,7 +367,7 @@ Plans:
   2. Every push runs lint, tests and a Playwright smoke test in CI, and `scripts/` sets up, runs, tests and deploys BONDR with one command each
   3. The BONDR token is launched on mainnet through BONDR (SOL pair, treasury as creator, insta burn), and child launches stay disabled until it exists
 
-**Plans:** 19/36 plans executed
+**Plans:** 20/36 plans executed
 
 Plans:
 
@@ -428,7 +428,7 @@ Plans:
 
 **Wave 13** *(blocked on Wave 12 completion)*
 
-- [ ] 07-19-PLAN.md - CI: @smoke tags, ci.yml with postgres:18.6, green run on the branch
+- [x] 07-19-PLAN.md - CI: @smoke tags, ci.yml with postgres:18.6, green run on the branch
 - [ ] 07-23-PLAN.md - Responsive and axe matrix at 390/768/1440 for every Phase 7 surface, Designer critique sign-off
 
 **Wave 14** *(blocked on Wave 13 completion)*
@@ -500,4 +500,4 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
 | 6. Admin Dashboard | 26/26 | Complete   | 2026-10-26 |
-| 7. Go-Live | 19/36 | In Progress|  |
+| 7. Go-Live | 20/36 | In Progress|  |

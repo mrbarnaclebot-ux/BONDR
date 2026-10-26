@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-21-PLAN.md
-last_updated: "2026-10-26T13:29:29.000Z"
-last_activity: 2026-10-26 -- Completed 07-21 (fork genesis rehearsal)
+stopped_at: Completed 07-19-PLAN.md
+last_updated: "2026-10-26T13:38:05.000Z"
+last_activity: 2026-10-26 -- Completed 07-19 (CI workflow, GitHub run blocked on billing)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 114
+  completed_plans: 115
   percent: 87
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 21 of 36 (07-21 complete)
+Plan: 19 of 36 (07-19 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-21 (fork genesis rehearsal)
+Last activity: 2026-10-26 -- Completed 07-19 (CI workflow, GitHub run blocked on billing)
 
 Progress: [██████████] 100%
 
@@ -147,6 +147,7 @@ Progress: [██████████] 100%
 | Phase 07 P17 | 25min | 3 tasks | 20 files |
 | Phase 07 P18 | 20min | 2 tasks | 9 files |
 | Phase 07 P21 | 30min | 2 tasks | 8 files |
+| Phase 07 P19 | 35min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -388,6 +389,7 @@ Recent decisions affecting current work:
 - 07-17: enterGenesis writes every switch off before the server starts; quoteOf(env) answers not_ready for mint readers in genesis (EVACUATE included)
 - 07-18: the owner genesis variant rides on Live.genesis; the page passes only a boolean ownerGenesis from the server-side admin cookie check
 - 07-21: the fork rehearsal calls the worker's own finalMessage (exported) and injects only the DB steps and the mint reservation
+- 07-19: CI runs the DB suites as a non-superuser owner role, because a superuser bypasses the admin_audit TRUNCATE revoke
 
 ### Pending Todos
 
@@ -397,6 +399,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- OWNER (07-19, 2026-10-26): GitHub Actions refuses to start jobs on the private repo ("recent account payments have failed or your spending limit needs to be increased"). Fix billing, then `gh run rerun` the newest ci run on phase-07-go-live; OPS-03 and the G-1 merge need it green.
 - Phase 5 (from Phase 1 second code review, 2026-10-19; the first three resolved by 05-08, the fourth by 05-07):
   - finalizeIxs/splitIxs take deployer and treasury from the caller. The worker must derive the deployer from the coin's on-chain CreateEvent `user` and the treasury from config, and assert deployer != treasury != W, because the 8000 bps lock is permanent.
   - Add a resumable 2-tx finalize in core: finalizeConfigIxs, finalizeUpdateIxs and finalizeState (none/configured/revoked) read from chain. Send tx 2 immediately after tx 1, because anyone can run distribute in between and pay W 100%.
@@ -421,6 +424,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T13:29:29.000Z
-Stopped at: Completed 07-21-PLAN.md
+Last session: 2026-10-26T13:38:05.000Z
+Stopped at: Completed 07-19-PLAN.md
 Resume file: None

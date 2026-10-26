@@ -9,12 +9,13 @@ import { redact } from "@bondr/core/net";
 import { bondingCurvePda, canonicalPumpPoolPdaWithQuote } from "@bondr/core/pump";
 import { fetchTx, pace } from "@bondr/core/send";
 import { type CoinPatch, type KnownCoin, type Parsed, parseTx, type TradeTx } from "@bondr/core/trades";
-import { type Connection, PublicKey } from "@solana/web3.js";
-import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { type Connection, PublicKey, SolanaJSONRPCError } from "@solana/web3.js";
+import { and, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { arm, type Inserted } from "./announce.ts";
 import { bondr, bondrPrice } from "./bondr-price.ts";
 import { withCost } from "./fee-boot.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
+import { closeWindows, recomputeSniped, windowMints } from "./sniped.ts";
 
 export const knownCoins = new Map<string, KnownCoin>();
 // The created coin's launch row and PumpSwap pool, which the tx itself does not name.
@@ -33,9 +34,11 @@ export async function loadCoins(exec: Exec): Promise<void> {
       bondingCurve: coins.bondingCurve,
       pool: coins.pool,
       initialRealTokenReserves: coins.initialRealTokenReserves,
+      createSlot: coins.createSlot,
+      snipedBps: coins.snipedBps,
     })
     .from(coins);
-  for (const r of rows) knownCoins.set(r.mint, r);
+  for (const { snipedBps, ...r } of rows) knownCoins.set(r.mint, { ...r, windowClosed: snipedBps !== null });
 }
 
 // created carries the launch's own patch, so a launch that already completed the curve brings venue and bondedAt.
@@ -101,6 +104,7 @@ export async function writeParsed(
     if (!fresh && parsed.trades.some((t) => t.mint === p.mint)) continue;
     if (await applyPatch(exec, p, fresh)) bonded.add(p.mint);
   }
+  for (const mint of windowMints(inserted, knownCoins)) await recomputeSniped(exec, mint);
   return inserted;
 }
 
@@ -127,6 +131,7 @@ export async function ingestTx(conn: Connection, sig: string, live = true): Prom
   await withCost(conn, parsed);
   const bonded = new Set<string>();
   const inserted = await db().transaction((t) => writeParsed(t, parsed, undefined, bonded));
+  closeWindows(inserted, knownCoins);
   return arm(conn, { inserted, bonded, patches: parsed.patches }, live);
 }
 
@@ -151,7 +156,14 @@ export async function ingestLaunch(
     return inserted;
   }
   const bondingCurve = bondingCurvePda(mint).toBase58();
-  knownCoins.set(row.mint, { mint: row.mint, bondingCurve, pool, initialRealTokenReserves: init });
+  const createSlot = parsed.created?.createSlot ?? null;
+  knownCoins.set(row.mint, {
+    mint: row.mint,
+    bondingCurve,
+    pool,
+    initialRealTokenReserves: init,
+    createSlot,
+  });
   const launchSig = tx.transaction.signatures[0];
   const launchedAt = new Date(parsed.created?.launchedAt ?? Date.now()).getTime();
   const launched = { mint: row.mint, launchedAt, launchSig, wallet: row.wallet };
@@ -170,12 +182,19 @@ const PAGE = 1000;
 const failed = new Map<string, number>(); // signature -> failed tries
 const TRIES = 20;
 export const failedSigs = (): string[] => [...failed.keys()];
+// A version this client cannot read never becomes readable by retrying (Solana -32015).
+const unsupported = (e: unknown) => e instanceof SolanaJSONRPCError && e.code === -32015;
 
 export async function ingestOrKeep(conn: Connection, sig: string, ingest: Ingest = ingestTx): Promise<void> {
   try {
     await ingest(conn, sig);
     failed.delete(sig);
   } catch (e) {
+    if (unsupported(e)) {
+      failed.delete(sig);
+      console.warn(`ingest ${sig} dropped: transaction version not supported`);
+      return;
+    }
     const n = (failed.get(sig) ?? 0) + 1;
     logged(`ingest ${sig} (try ${n}${n < TRIES ? "" : ", giving up"})`)(e);
     if (n < TRIES) failed.set(sig, n);
@@ -231,16 +250,21 @@ export async function gapFillAll(conn: Connection, marks: Marks): Promise<number
   return n;
 }
 
-// Boot: every landed launch without a coin row (Phase 2 launches, or one whose ingest failed), one pass.
-export async function backfillLaunches(conn: Connection): Promise<number> {
-  const rows = await db()
+// Every landed launch without a coin row, except BONDR's own genesis launch: BONDR is a SOL coin, not a child
+// (D-31), and its launch row is landed once genesis is over.
+export const backfillRows = (exec: Exec, Q: PublicKey) =>
+  exec
     .select({
       ...{ id: launches.id, mint: launches.mint, exit: launches.exit },
       ...{ signature: launches.signature, wallet: launches.wallet },
     })
     .from(launches)
     .leftJoin(coins, eq(coins.launchId, launches.id))
-    .where(and(eq(launches.state, "landed"), isNull(coins.mint)));
+    .where(and(eq(launches.state, "landed"), isNull(coins.mint), ne(launches.mint, Q.toBase58())));
+
+// Boot: every landed launch without a coin row (Phase 2 launches, or one whose ingest failed), one pass.
+export async function backfillLaunches(conn: Connection, Q: PublicKey): Promise<number> {
+  const rows = await backfillRows(db(), Q);
   let done = 0;
   for (const row of rows) {
     await pace(BACKFILL_PACE_MS);

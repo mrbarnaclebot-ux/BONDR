@@ -14,7 +14,7 @@ import { TradeFeed } from "@/components/token-trades";
 import { TradePanel } from "@/components/trade-panel";
 import { TradeSheet } from "@/components/trade-sheet";
 import { coinByMint, feeWindowMs } from "@/lib/coins";
-import { chartInterval, compact, short, sol } from "@/lib/format";
+import { chartInterval, compact, pct, short, sol } from "@/lib/format";
 import { landedCoin } from "@/lib/launches";
 import { ledgerPage } from "@/lib/ledger";
 import { hub } from "@/lib/live-hub";
@@ -137,6 +137,16 @@ const launchEntry = (v: LaunchView, launchedAt?: string): LaunchEntry | null =>
       }
     : null;
 
+// D-35, D-36: a disclosure, not a proof, so it sits outside the leaf stamp in muted text with no judgment colour.
+const Sniped = ({ bps }: { bps: number }) => (
+  <p className="pl-4 text-xs text-muted-foreground">
+    <span className="font-semibold text-foreground">
+      Sniped <span className="num">{pct(bps, true)}</span> of supply.
+    </span>{" "}
+    BONDR cannot stop third-party buys at launch. This shows how much was bought in the first 3 slots.
+  </p>
+);
+
 /** The bare token page: only a landed BONDR launch renders, everything else is a 404 (T-02-15-04). */
 export default async function CoinPage({ params }: Props) {
   const v = await landedCoin((await params).mint);
@@ -153,9 +163,12 @@ export default async function CoinPage({ params }: Props) {
           <div className="mx-auto grid w-full max-w-[1440px] gap-4 px-(--gutter) pb-12">
             <CoinIdentity v={v} venue={coin?.venue} stats={<TokenStats />}>
               {v.signature && (
-                <ProofStamp signature={v.signature} net={net}>
-                  {sentence(v)}
-                </ProofStamp>
+                <div className="grid max-w-[460px] gap-4">
+                  <ProofStamp signature={v.signature} net={net}>
+                    {sentence(v)}
+                  </ProofStamp>
+                  {coin?.snipedBps != null && <Sniped bps={coin.snipedBps} />}
+                </div>
               )}
             </CoinIdentity>
             <CaRow mint={v.mint} />

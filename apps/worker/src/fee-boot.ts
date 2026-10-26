@@ -9,7 +9,8 @@ import type { Connection, PublicKey } from "@solana/web3.js";
 import { eq, type SQL } from "drizzle-orm";
 import { publishFee } from "./announce.ts";
 import { bondrPrice } from "./bondr-price.ts";
-import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
+import { contractFailed } from "./contract-check.ts";
+import { buyback, ops, type WorkerEnv } from "./env.ts";
 import { scheduleBatch } from "./fee-batch.ts";
 import { feeConfig } from "./fee-config.ts";
 import { type CoinLoad, coinFrom, Engine, type Ingested, logged, type WOf } from "./fee-engine.ts";
@@ -59,7 +60,7 @@ export function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
     online: ctx.online as InstanceType<typeof OnlinePumpSdk>,
     amm: new OnlinePumpAmmSdk(ctx.conn),
     ops: ops(env.seed, env.net),
-    treasury: treasury(env.seed, env.net).publicKey,
+    ...{ treasury: env.treasury, treasuryExternal: env.treasuryExternal },
     buyback: buyback(env.seed, env.net, env.lane),
     bondrSol: () => bondrPrice.get(),
     publish: (mint, rows) => {
@@ -68,7 +69,8 @@ export function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
     },
     land: (job) => land(d, job),
     // D-16, D-19: automatic jobs obey the owner's switches and a coin's manual hold; admin deps override this.
-    allowed: (job, coin) => switchOn(job) && !coin?.hold,
+    // CR-W-03: and the contract check, in memory, so a mismatch whose switches-off write failed still stops them.
+    allowed: (job, coin) => switchOn(job) && !contractFailed() && !coin?.hold,
   };
   return d;
 }
@@ -84,7 +86,7 @@ export async function startEngine(ctx: Ctx, env: WorkerEnv): Promise<void> {
   const e = new Engine({ mode: env.feeEngine, deps, windowMs: env.feeWindowMs, wOf });
   engine = e;
   for (const r of await loadRows()) e.add(r);
-  noteOps(await ctx.conn.getBalance(deps.ops.publicKey));
+  noteOps(await ctx.conn.getBalance(deps.ops.publicKey), deps.net);
   await recover(deps, (m) => e.coins.get(m));
   console.log(`fee engine ${env.feeEngine}: ${e.start()} coins armed`);
   scheduleBatch(deps, e, env.feeBatchHourUtc);

@@ -3,11 +3,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Net, Role } from "@bondr/core/keys";
+import type { Net as CoreNet, Role } from "@bondr/core/keys";
 import { redact } from "@bondr/core/net";
 import type { Connection, Keypair } from "@solana/web3.js";
 
-export type { Net };
+// The spike never touches mainnet (D-03): its nets stay devnet and the fork.
+export type Net = Exclude<CoreNet, "mainnet">;
 export type Row = {
   id: string; // stable id the rules key on, e.g. "child.create"; helper rows use the "aux." prefix
   env: Net;

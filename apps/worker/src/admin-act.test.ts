@@ -26,6 +26,7 @@ function deps(over: Partial<ActDeps> = {}) {
     observe: vi.fn(async () => ({ seen: { confirmed: true, err: null }, height: 0 })),
     landed: vi.fn(async () => {}),
     setJob: vi.fn(async () => SWITCHES),
+    gate: vi.fn(async () => {}),
     ...over,
   };
   return { d, audit, setHold };
@@ -60,6 +61,15 @@ describe("switchRoute", () => {
     await expect(switchRoute(d, { actor, job: "sweeps", enabled: false })).rejects.toBe(down);
     expect(audit.rows).toHaveLength(1);
     expect(audit.rows[0]).toMatchObject({ action: "switch", result: "failed", error: "change_failed" });
+  });
+
+  test("a gate refusal (genesis, D-30) answers its error with no write and no audit row (WR-W-02)", async () => {
+    const refused = new Fail(409, { error: "not_ready", reason: "genesis" });
+    const { d, audit } = deps({ gate: vi.fn(async () => Promise.reject(refused)) });
+    await expect(switchRoute(d, { actor, job: "launches", enabled: true })).rejects.toBe(refused);
+    expect(d.gate).toHaveBeenCalledWith("launches", true);
+    expect(d.setJob).not.toHaveBeenCalled();
+    expect(audit.rows).toHaveLength(0);
   });
 
   test("an unknown job or a non-boolean answers invalid_input with no audit row", async () => {

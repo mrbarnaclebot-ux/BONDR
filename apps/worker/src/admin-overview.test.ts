@@ -12,7 +12,7 @@ import { coinLive, overview } from "./admin-overview.ts";
 import { bondrPrice } from "./bondr-price.ts";
 import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
 import { nextBatchAt } from "./fee-batch.ts";
-import { OPS_FLOOR_LAMPORTS } from "./fee-config.ts";
+import { feeConfig } from "./fee-config.ts";
 import type { FeeCoin } from "./fee-send.ts";
 import { Fail } from "./http.ts";
 
@@ -21,6 +21,7 @@ const DAY = 86_400_000;
 const seed = Buffer.alloc(32, 7);
 const env = {
   ...{ seed, net: "devnet", lane: "local", quoteMint: Q, feeBatchHourUtc: 4, feeWindowMs: DAY },
+  treasury: treasury(seed, "devnet").publicKey,
 } as unknown as WorkerEnv;
 const ataOf = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true, T22);
 
@@ -72,7 +73,7 @@ test("overview reads the five platform accounts in one call and adds engine memo
   expect(r).toEqual({
     balances: {
       ...{ treasurySol: "5000000000", treasuryBondr: "123456", buybackSol: "1000", buybackBondr: "0" },
-      ...{ opsSol: "70000000", opsFloor: String(OPS_FLOOR_LAMPORTS), bondrSol: 0.000_04 },
+      ...{ opsSol: "70000000", opsFloor: String(feeConfig("devnet").opsFloorLamports), bondrSol: 0.000_04 },
       nextBurnAt: nextBatchAt(now, 4),
     },
     coins: [memory],

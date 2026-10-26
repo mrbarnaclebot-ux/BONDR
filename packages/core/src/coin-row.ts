@@ -65,6 +65,8 @@ const COLUMNS = {
   launchMcapSol: coins.launchMcapSol,
   bondSig: coins.bondSig,
   bondedAt: coins.bondedAt,
+  createSlot: coins.createSlot,
+  snipedBps: coins.snipedBps,
   name: launches.name,
   symbol: launches.symbol,
   imageCid: launches.imageCid,

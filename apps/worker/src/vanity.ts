@@ -8,11 +8,11 @@ import type { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
 import { and, eq, isNull, lt, notExists, or, sql } from "drizzle-orm";
 
-export type Lane = "local" | "staging";
+export type Lane = "local" | "staging" | "production";
 // A transaction exposes the same builders as the db, so tests can run everything inside one and roll back.
 export type Exec = Pick<Db, "select" | "update" | "$count">;
 
-// The lane is part of the id, so the local and staging pools never share a mint while both use the devnet seed.
+// The lane is part of the id, so no two pools ever share a mint id (local and staging also share the devnet seed).
 const mintId = (lane: Lane, idx: bigint) => `${lane}.${idx}`;
 
 export const mintKey = (seed: Buffer, net: Net, lane: Lane, idx: bigint): Keypair =>

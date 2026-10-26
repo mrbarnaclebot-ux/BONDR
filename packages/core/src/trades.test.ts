@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
+import { innerEvents } from "./events.ts";
 import { bondrAtBond, curvePrice, mcapSol, poolPrice, progress, toSol } from "./price.ts";
 import { type Bondr, type KnownCoin, parseTx, type TradeTx } from "./trades.ts";
 
@@ -207,4 +208,39 @@ test("parsing is deterministic, so (signature, ix) keys are idempotent", () => {
     const run = () => parseTx(fixture(f), coin(load(f).mint, POOL), forkBondr, launch);
     expect(run()).toEqual(run());
   }
+});
+
+test("v1-bondr-sell: a real devnet version 1 tx decodes, prices BONDR and has no coin trades (D-15)", () => {
+  const tx = fixture("v1-bondr-sell");
+  expect(load("v1-bondr-sell").response.version).toBe(1);
+  expect(innerEvents(tx)).toHaveLength(4);
+  const r = parseTx(tx, new Map(), devBondr(null));
+  expect(r.bondr).toBeGreaterThan(0);
+  expect(r).toMatchObject({ trades: [], patches: [], created: null });
+});
+
+// v1 has no lookup tables. Index space is static, then loaded writable, then loaded readonly, so appending
+// the loaded keys to the static list keeps every instruction index valid.
+const asV1 = (name: string): TradeTx => {
+  const r = load(name).response;
+  const accountKeys = [...r.transaction.message.accountKeys, ...r.meta.loadedAddresses.writable];
+  accountKeys.push(...r.meta.loadedAddresses.readonly);
+  const transactionConfig = { computeUnitLimit: null, heapSize: null, loadedAccountsDataSizeLimit: null };
+  return {
+    ...r,
+    version: 1,
+    transaction: { ...r.transaction, message: { ...r.transaction.message, accountKeys, transactionConfig } },
+    meta: { ...r.meta, loadedAddresses: { writable: [], readonly: [] } },
+  };
+};
+
+test("a v1-shaped coin trade parses exactly like its v0 original", () => {
+  expect(parseTx(asV1("curve-buy"), coin(DEV), devBondr(3e-7))).toEqual(
+    parseTx(fixture("curve-buy"), coin(DEV), devBondr(3e-7)),
+  );
+  // launch-burn uses lookup tables, so this one proves the index space survives the flattening.
+  const launch = { mint: DEV, exit: "burn" as const };
+  expect(parseTx(asV1("launch-burn"), new Map(), devBondr(null), launch)).toEqual(
+    parseTx(fixture("launch-burn"), new Map(), devBondr(null), launch),
+  );
 });

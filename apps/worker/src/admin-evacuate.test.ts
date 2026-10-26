@@ -25,6 +25,7 @@ import {
   buildBatch,
   EVAC_SIM_CONCURRENCY,
   evacuateBalances,
+  evacuateRefusal,
   packBatches,
   simulateEvacuate,
   type WBalance,
@@ -32,6 +33,7 @@ import {
 import type { MoneyCtx } from "./admin-money.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
 import { type FeeDeps, land, noteOps } from "./fee-send.ts";
+import { Fail } from "./http.ts";
 
 vi.mock("./switches.ts", () => ({ pauseAll: vi.fn() }));
 
@@ -187,7 +189,7 @@ test("a batch pays only the treasury, burns child tokens and lets each W sign", 
 });
 
 test("an EVACUATE batch is urgent, so base land sends it below the ops floor (CR-W-01)", async () => {
-  noteOps(0);
+  noteOps(0, "devnet");
   try {
     const job = buildBatch(deps, await balances(1));
     expect(job.urgent).toBe(true);
@@ -199,7 +201,7 @@ test("an EVACUATE batch is urgent, so base land sends it below the ops floor (CR
     await expect(land(d, job)).rejects.toBe(past);
     await expect(land(d, { ...job, urgent: false })).resolves.toEqual({ state: "skipped" });
   } finally {
-    noteOps(1_000_000_000);
+    noteOps(1_000_000_000, "devnet");
   }
 });
 
@@ -257,6 +259,17 @@ test("simulate totals the wallets; simulate mode gives no intent, on mode does; 
   const none = await simulateEvacuate(ctx);
   expect(none).toMatchObject({ nothing: true, ok: false });
   expect(none.intent).toBeUndefined();
+});
+
+test("mainnet gives an intent and passes the loop check only with the external treasury (D-37)", async () => {
+  list = [coin()];
+  ctx.evacuate = "on";
+  ctx.deps = { ...deps, net: "mainnet", treasuryExternal: false };
+  expect((await simulateEvacuate(ctx)).intent).toBeUndefined();
+  expect(() => evacuateRefusal(ctx)).toThrow(Fail);
+  ctx.deps = { ...deps, net: "mainnet", treasuryExternal: true };
+  expect((await simulateEvacuate(ctx)).intent).toBeDefined();
+  expect(() => evacuateRefusal(ctx)).not.toThrow();
 });
 
 test("200 W simulate at most 8 at a time, each batch once; a failing batch counts only its wallets", async () => {

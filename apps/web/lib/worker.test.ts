@@ -19,6 +19,8 @@ test.each([
   [410, "expired"],
   [422, "cosign_refused"],
   [409, "paused"],
+  [503, "not_ready"], // genesis mode (D-29): the owner variant shows the session-ended line for it
+  [409, "genesis_landed"],
 ])("a %i %s passes through with only the contract fields", async (status, error) => {
   reply(status, { error, detail: "worker-only text" });
   expect(await workerPost("/submit", {})).toEqual({ status, body: { error, paused: undefined } });
@@ -27,4 +29,31 @@ test.each([
 test("a status outside the contract becomes worker_unavailable", async () => {
   reply(401, { error: "unauthorized" });
   expect(await workerPost("/submit", {})).toEqual({ status: 503, body: { error: "worker_unavailable" } });
+});
+
+test("a ticker refusal keeps retryAfter and lock and drops every other worker field (D-43, Pitfall 24)", async () => {
+  reply(409, { error: "ticker_locked", retryAfter: 75600, lock: "landed", reason: "x", raw: "y" });
+  const { status, body } = await workerPost("/prepare", {});
+  expect(status).toBe(409);
+  expect(body).toEqual({ error: "ticker_locked", retryAfter: 75600, lock: "landed" });
+  expect(body).not.toHaveProperty("reason");
+  expect(body).not.toHaveProperty("raw");
+});
+
+test("a switch refusal keeps a known not_ready reason only (WR-W-02)", async () => {
+  reply(409, { error: "not_ready", reason: "vanity_pool" });
+  expect((await workerPost("/admin/switch", {})).body).toEqual({ error: "not_ready", reason: "vanity_pool" });
+  reply(409, { error: "not_ready", reason: "<script>" });
+  expect((await workerPost("/admin/switch", {})).body).not.toHaveProperty("reason");
+});
+
+test.each([
+  [{ retryAfter: "75600", lock: "held" }],
+  [{ retryAfter: Number.POSITIVE_INFINITY, lock: 1 }],
+  [{ retryAfter: null, lock: "LANDED" }],
+])("a malformed retryAfter or lock is dropped: %o", async (extra) => {
+  reply(409, { error: "ticker_locked", ...extra });
+  const { body } = await workerPost("/prepare", {});
+  expect(body).not.toHaveProperty("retryAfter");
+  expect(body).not.toHaveProperty("lock");
 });

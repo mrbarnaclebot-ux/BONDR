@@ -11,6 +11,13 @@ export async function register(): Promise<void> {
       console.error(`web refuses to start: it must not hold ${held.join(", ")}`); // names only, never values
       process.exit(1);
     }
+    // Web compares SOLANA_NET exactly, so "mainnet " or "Mainnet" would serve the devnet wallet profile while the
+    // worker (which trims) runs mainnet. Unset or empty stays allowed: local, CI and tests run without it.
+    const net = process.env.SOLANA_NET;
+    if (net && net !== "devnet" && net !== "mainnet") {
+      console.error("web refuses to start: SOLANA_NET must be exactly devnet or mainnet");
+      process.exit(1);
+    }
     Sentry.init({
       dsn: process.env.NEXT_PUBLIC_SENTRY_DSN?.trim() || undefined, // unset: the SDK stays disabled
       environment: process.env.RAILWAY_ENVIRONMENT_NAME ?? "local",

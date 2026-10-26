@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { connect, redact, wsUrl } from "@bondr/core/net";
 import { PublicKey } from "@solana/web3.js";
-import { loadEnv } from "../apps/worker/src/env.ts";
+import { loadEnv, quoteOf } from "../apps/worker/src/env.ts";
 
 type Note = { signature: string; err: unknown; hasPumpInvoke: boolean };
 const INVOKES = [
@@ -20,7 +20,7 @@ const INVOKES = [
 ];
 
 function listen(seconds: number, out: string): Promise<void> {
-  const q = loadEnv().quoteMint.toBase58();
+  const q = quoteOf(loadEnv()).toBase58();
   const notes: Note[] = [];
   writeFileSync(out, "[]\n");
   const ws = new WebSocket(wsUrl("devnet"));

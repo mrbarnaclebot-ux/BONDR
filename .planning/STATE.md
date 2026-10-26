@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 06-26-PLAN.md
-last_updated: "2026-10-26T05:49:46.587Z"
-last_activity: 2026-10-26 -- Completed 06-26 (Phase 6 on staging dark)
+status: executing
+stopped_at: Completed 07-25-PLAN.md
+last_updated: "2026-10-26T16:16:51.000Z"
+last_activity: 2026-10-26 -- Completed 07-25 (final verification; PR #7 open, merge blocked on GitHub billing)
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 95
-  completed_plans: 95
-  percent: 86
+  total_plans: 131
+  completed_plans: 120
+  percent: 91
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** A holder can verify on the token page that the dev holds no launch supply, and see that pre-bond fees went to forcing the bond and burning supply, never to the dev.
-**Current focus:** Phase 6 — admin dashboard
+**Current focus:** Phase 7 — go-live
 
 ## Current Position
 
-Phase: 6
-Plan: 26 of 26 (06-26 complete)
-Status: Phase complete — ready for verification
-Last activity: 2026-10-26 -- Completed 06-26 (staging web 9a7f2884 with 0007, worker 1a9b6aa9, admin closed)
+Phase: 7
+Plan: 25 of 36 (07-25 complete)
+Status: Executing Phase 7
+Last activity: 2026-10-26 -- Completed 07-25 (final verification; PR #7 open, merge blocked on GitHub billing)
 
 Progress: [██████████] 100%
 
@@ -128,6 +128,31 @@ Progress: [██████████] 100%
 | Phase 06 P24 | 23 min | 2 tasks | 6 files |
 | Phase 06 P25 | 45 min | 2 tasks | 15 files |
 | Phase 06 P26 | 30 min | 2 tasks | 6 files |
+| Phase 07 P01 | 15 min | 2 tasks | 10 files |
+| Phase 07 P02 | 25 min | 2 tasks | 7 files |
+| Phase 07 P03 | 20 min | 2 tasks | 6 files |
+| Phase 07 P04 | 35 min | 3 tasks | 19 files |
+| Phase 07 P07 | 30 min | 2 tasks | 14 files |
+| Phase 07 P05 | 25 min | 2 tasks | 16 files |
+| Phase 07 P06 | 25 min | 2 tasks | 12 files |
+| Phase 07 P08 | 30 min | 2 tasks | 5 files |
+| Phase 07 P09 | 15min | 3 tasks | 13 files |
+| Phase 07 P10 | 30min | 3 tasks | 18 files |
+| Phase 07 P11 | 20min | 2 tasks | 8 files |
+| Phase 07 P12 | 25min | 2 tasks | 13 files |
+| Phase 07 P13 | 12min | 2 tasks | 8 files |
+| Phase 07 P14 | 15min | 2 tasks | 10 files |
+| Phase 07 P15 | 15min | 2 tasks | 9 files |
+| Phase 07 P16 | 12min | 2 tasks | 12 files |
+| Phase 07 P17 | 25min | 3 tasks | 20 files |
+| Phase 07 P18 | 20min | 2 tasks | 9 files |
+| Phase 07 P21 | 30min | 2 tasks | 8 files |
+| Phase 07 P19 | 35min | 2 tasks | 9 files |
+| Phase 07 P23 | 50min | 2 tasks | 8 files |
+| Phase 07 P20 | 50 min | 2 tasks | 9 files |
+| Phase 07 P22 | 25 min | 2 tasks | 4 files |
+| Phase 07 P24 | 45 min | 2 tasks | 7 files |
+| Phase 07 P25 | 45min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -342,16 +367,50 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-25: token page panels use `min-[68.75rem]:p-6`; Tailwind v4 sorts `min-[1100px]` before `md`
 - [Phase 06]: 06-26: staging admin ships closed; ADMIN_WALLET, ADMIN_EVACUATE and SENTRY_READ_TOKEN stay unset until the owner runs HV-06-01 (set ADMIN_WALLET on web and worker together)
 - [Phase 06]: 06-26: HV-05-01 passed on the no-fee path; both staging windows ran unattended and sent nothing because neither coin had creator fees
+- 07-01: v1 ingest by raising maxSupportedTransactionVersion to 1; -32015 dropped after one try
+- 07-02: migration 0008 (sniped columns, launches_symbol_live, audit TRUNCATE trigger plus revoke) applied to dev; TRUNCATE answers 42501, P0001 if re-granted
+- 07-02: a full intent store of live unused intents answers 429 rate_limited and evicts nothing (IN-W-04)
+- 07-03: TERMS_VERSION 2026-10-26 carries the contact, mainnet and cooldown sentences; existing consents are not re-asked
+- 07-03: www redirect only on an exact www. plus SITE_URL host match, Location from SITE_URL; rate limit scope kept by READ_PATHS
+- 07-04: TREASURY_PUBKEY is required on mainnet, on curve and not equal to any derived role; evacuateAllowed (devnet, or mainnet with the external treasury) is the one rule for boot and the EVACUATE loop
+- 07-07: sniped_bps is recomputed in the ingest transaction only when an inserted non-launch buy lands in createSlot..+2; dev and W buys excluded; rounded up to whole bps
+- 07-05: paceMs 1100, opsFloorLamports (mainnet 0.1, devnet 0.05 SOL) and launchTipLamports live in feeConfig(net); every Sender POST carries ?api-key= and swqos_only=true only on request
+- 07-06: VANITY_LANE production refills to 150 below 100 (D-30 needs 100 free mints); /status reports ctx.net; a mainnet web build shows no devnet chrome
+- 07-08: the contract check judges exact config account sizes, owners, discriminators, SDK decode and the Global flags against per-net profiles (devnet: creator fee off, AMM LP 25); the spike reuses the core drift strings
+- 07-09: launch tip per net is fee-config launchTip(net); prepare gate, preview and /status senderTipEstimate read it
+- 07-09: submit resends identical bytes once over RPC on a Sender error (unknown + err 'sender ...')
+- 07-10: contract mismatch pauses via switchesOff (no evacuated_at) with one contract_check audit row; contractFailed keeps launches paused until a passing run
+- 07-10: pause priority contract_check, then kill_switch, then awaiting_migration
+- 07-11: Run check now answer shows until a health poll that left after it lands
+- 07-12: ticker refusals carry retryAfter (s) and lock landed|pending; the web forwarder passes only validated values; step 4 renders tickerFault from Progress.refusal
+- 07-13: tickerRefusal refuses whenever a holding row exists; retryAfter clamped at 0 so a stale in-flight row still holds
+- 07-13: ticker_reserved and ticker_locked are refused in admit after blocked and before prepareGuard, balance, reservation and tables
+- 07-14: the ticker_locked field error in step 1 shows but does not block Continue; the reserved error blocks
+- 07-14: the search First flag comes from page 0's own rows (exact matches lead), no count query
+- 07-15: StatusCtx is a union (Q null requires treasury), so existing Ctx callers fit liveStatus unchanged
+- 07-15: pause order is genesis, contract_check, kill_switch, awaiting_migration (07-10 order kept; UI-SPEC's awaiting-before-kill order left for the owner)
+- 07-16: genesis_landed counts in-flight genesis rows as well as landed ones
+- 07-16: submit's genesis allowance requires row.w = env.treasury and no failed contract check
+- 07-17: enterGenesis writes every switch off before the server starts; quoteOf(env) answers not_ready for mint readers in genesis (EVACUATE included)
+- 07-18: the owner genesis variant rides on Live.genesis; the page passes only a boolean ownerGenesis from the server-side admin cookie check
+- 07-21: the fork rehearsal calls the worker's own finalMessage (exported) and injects only the DB steps and the mint reservation
+- 07-19: CI runs the DB suites as a non-superuser owner role, because a superuser bypasses the admin_audit TRUNCATE revoke
+- 07-23: the owner genesis /launch shows its own server-rendered lede (LaunchFlow genesisIntro) once live.genesis
+- 07-20: deploy.sh orders web first when migrations changed since the local deployed-<env> tag (working tree compared), polls for SUCCESS, moves the tag only on a full clean deploy; production needs main, a clean tree and the typed word
+- 07-20: env-diff hashes Railway variables on read; worker-only rules (ALLOW_MAINNET=1, FEE_ENGINE/ADMIN_EVACUATE, seed and quote-mint phases), D-12 must-differ on both services
+- 07-22: apps/worker/PRODUCTION.md is the production runbook (G-1..G-11, D-38 seed leak); rollback = Railway dashboard redeploy of the previous deployment, then a revert on main
+- 07-24: staging runs Phase 7 (deployed-staging 5b26c35) via deploy.sh; matrices green; cooldown refusal proven on staging; phase devnet spend about 0.054 SOL
+- 07-25: every autonomous gate green on f3ee764 (Vitest 848/2 skipped, smoke 32, Playwright 402/26 skipped, devnet contract check, fork 109); PR #7 open, not merged: CI never ran (billing); the orchestrator merges once a rerun is green
 
 ### Pending Todos
 
-- Replace the placeholder contact handle in the terms page
+- Owner, non-money, before go-live: set up hello@trybondr.fun forwarding (D-17); the terms page names it since 07-03
 - WR-08 minOut fixed in a8758e1 (verified in 06-02); leftover burns ship in 06-09 (D-17)
 - Owner, non-blocking: HV-06-01 (staging console sign-in after setting ADMIN_WALLET on web and worker) and HV-06-02 (SENTRY_READ_TOKEN on the staging worker)
-- Before Phase 7 go-live: ingest refuses version 1 transactions (`maxSupportedTransactionVersion: 0`); see 06 deferred-items.md
 
 ### Blockers/Concerns
 
+- OWNER (07-19, 2026-10-26): GitHub Actions refuses to start jobs on the private repo ("recent account payments have failed or your spending limit needs to be increased"). Fix billing, then `gh run rerun` the newest ci run on phase-07-go-live (40357497362 on f3ee764); OPS-03, the PR #7 squash merge and G-1 need it green.
 - Phase 5 (from Phase 1 second code review, 2026-10-19; the first three resolved by 05-08, the fourth by 05-07):
   - finalizeIxs/splitIxs take deployer and treasury from the caller. The worker must derive the deployer from the coin's on-chain CreateEvent `user` and the treasury from config, and assert deployer != treasury != W, because the 8000 bps lock is permanent.
   - Add a resumable 2-tx finalize in core: finalizeConfigIxs, finalizeUpdateIxs and finalizeState (none/configured/revoked) read from chain. Send tx 2 immediately after tx 1, because anyone can run distribute in between and pay W 100%.
@@ -376,6 +435,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T05:49:46.582Z
-Stopped at: Completed 06-26-PLAN.md
+Last session: 2026-10-26T16:16:51.000Z
+Stopped at: Completed 07-25-PLAN.md
 Resume file: None

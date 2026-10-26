@@ -9,6 +9,7 @@ import { inspect, knownKeys } from "./admin-inspect.ts";
 import { type ModStore, moderate, modReq, pgMod } from "./admin-moderate.ts";
 import { adminBase, executeAction, intentView, type MoneyCtx, simulateAction } from "./admin-money.ts";
 import { coinLive, overview } from "./admin-overview.ts";
+import { runCheck } from "./contract-check.ts";
 import type { WorkerEnv } from "./env.ts";
 import type { Engine } from "./fee-engine.ts";
 import { key } from "./fee-routes.ts";
@@ -16,6 +17,7 @@ import type { FeeDeps } from "./fee-send.ts";
 import { healthSnapshot } from "./health.ts";
 import { fail, type Handler, Reply, type Routes } from "./http.ts";
 import { landed, observe } from "./settle.ts";
+import { gateFor } from "./switch-gate.ts";
 import { setJob } from "./switches.ts";
 
 // Fail closed: no ADMIN_WALLET, or any other actor, is forbidden. The handler gets the whole body, actor included,
@@ -100,11 +102,13 @@ export function adminRoutes(o: AdminOpts): Routes {
     observe,
     landed,
     setJob,
+    gate: gateFor(o.env),
   });
   const money = o.money ?? moneyOf(o);
   const mod = o.mod ?? (() => ({ store: pgMod(), audit: pgAudit() }));
   const routes: Routes = {
     "POST /admin/health": () => healthSnapshot(o),
+    "POST /admin/contract-check": () => runCheck(),
     "POST /admin/switch": (b) => switchRoute(deps(), b),
     "POST /admin/act": (b) => act(deps(), b),
     "POST /admin/overview": () => overview(o),
@@ -114,7 +118,7 @@ export function adminRoutes(o: AdminOpts): Routes {
     "POST /admin/intent": async (b) => intentView(idOf(bodyOf(b))),
     "POST /admin/inspect": async (b) => {
       const sig = sigOf(bodyOf(b)); // before any RPC call
-      return inspect(o.conn, sig, knownKeys(o.env, o.engine())).catch(() => {
+      return inspect(o.conn, sig, knownKeys(o.env, o.engine()), o.env.net).catch(() => {
         throw fail({ error: "rpc_failed" });
       });
     },

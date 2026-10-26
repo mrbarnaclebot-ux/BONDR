@@ -4,10 +4,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { close, coins, db, feeLedger, launches, trades, vanityMints, wallets } from "@bondr/core/db";
 import { type KnownCoin, parseTx, type TradeTx } from "@bondr/core/trades";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { and, eq, TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, test } from "vitest";
 import { bondrPrice } from "./bondr-price.ts";
-import { writeParsed } from "./ingest.ts";
+import { backfillRows, knownCoins, writeParsed } from "./ingest.ts";
 import type { Exec } from "./launches.ts";
 
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
@@ -127,6 +128,120 @@ describe.skipIf(!process.env.DATABASE_URL)("ingest", { timeout: 60_000 }, () => 
         expect(bonded).toEqual(new Set([DEV]));
         const after = await coinOf(tx);
         expect([after?.venue, after?.bondedAt]).toEqual(["pool", new Date("2026-10-01T00:00:00.000Z")]);
+        tx.rollback();
+      });
+    } catch (e) {
+      if (!(e instanceof TransactionRollbackError)) throw e;
+    }
+  });
+
+  // D-35: third-party buys in slots createSlot..createSlot+2, over supply, rounded up to whole bps, written only
+  // once a trade past the window is stored (null before, so the page shows no figure).
+  test("a launch records its create slot, and only third-party window buys move sniped_bps", async () => {
+    try {
+      await db().transaction(async (tx) => {
+        await tx.delete(trades).where(eq(trades.mint, DEV));
+        await tx.delete(feeLedger).where(eq(feeLedger.mint, DEV)); // a devnet run may have given DEV fee rows
+        await tx.delete(coins).where(eq(coins.mint, DEV));
+        const id = await launchOf(tx);
+        const lp = parseTx(
+          fixture("launch-burn"),
+          new Map(),
+          { ...BONDR, sol: 3e-7 },
+          { mint: DEV, exit: "burn" },
+        );
+        await writeParsed(tx, lp, { id, pool: "pool" });
+        const slot = String(fixture("launch-burn").slot);
+        expect(await coinOf(tx)).toMatchObject({ createSlot: slot, snipedBps: null });
+
+        const [l] = await tx.select().from(launches).where(eq(launches.id, id));
+        const init = lp.created?.initialRealTokenReserves ?? "";
+        knownCoins.set(DEV, {
+          mint: DEV,
+          bondingCurve: "c",
+          pool: "pool",
+          initialRealTokenReserves: init,
+          createSlot: slot,
+        });
+        let n = 0;
+        const write = (
+          trader: string,
+          tokens: string,
+          at = 1,
+          side: "buy" | "sell" = "buy",
+          launch = false,
+        ) =>
+          writeParsed(tx, {
+            ...{ patches: [], bondr: null, created: null, unknown: [] },
+            trades: [
+              {
+                ...{
+                  signature: `snipe-${randomBytes(8).toString("hex")}`,
+                  ix: n++,
+                  mint: DEV,
+                  at: new Date().toISOString(),
+                },
+                ...{
+                  slot: String(BigInt(slot) + BigInt(at)),
+                  side,
+                  launch,
+                  venue: "curve",
+                  trader,
+                  tokenAmount: tokens,
+                },
+                ...{ quoteAmount: "1", sol: "1", bondrSol: 1, mcapSol: 1 },
+              },
+            ],
+          });
+        const sniped = async () => (await coinOf(tx))?.snipedBps;
+
+        await write("sniper-1", "1");
+        await write(l?.wallet ?? "", "500000000000000");
+        await write(l?.w ?? "", "500000000000000", 2);
+        await write("sniper-2", "500000000000000", 1, "sell");
+        await write("sniper-3", "500000000000000", 0, "buy", true);
+        expect(await sniped()).toBeNull(); // the window may still be filling
+        await write("sniper-4", "500000000000000", 3, "sell"); // any trade past the window closes it
+        expect(await sniped()).toBe(1); // 1 base unit rounds up to 1 bps
+        await write("sniper-7", "500000000000000", 4);
+        expect(await sniped()).toBe(1); // buys past the window never count
+        await write("sniper-5", "31999999999999", 2);
+        expect(await sniped()).toBe(320); // (1 + 31_999_999_999_999) * 10_000 / 1e15
+
+        await tx.update(coins).set({ createSlot: null, snipedBps: null }).where(eq(coins.mint, DEV));
+        knownCoins.set(DEV, {
+          mint: DEV,
+          bondingCurve: "c",
+          pool: "pool",
+          initialRealTokenReserves: init,
+          createSlot: null,
+        });
+        await write("sniper-6", "500000000000000");
+        expect(await sniped()).toBeNull(); // a coin from before 07-07 is never recomputed
+        tx.rollback();
+      });
+    } catch (e) {
+      if (!(e instanceof TransactionRollbackError)) throw e;
+    } finally {
+      knownCoins.delete(DEV);
+    }
+  });
+
+  test("the boot backfill never picks the BONDR mint itself, only other landed launches (D-31)", async () => {
+    try {
+      await db().transaction(async (tx) => {
+        const wallet = `test-${randomBytes(8).toString("hex")}`;
+        await tx.insert(wallets).values({ address: wallet, consentedAt: new Date(), termsVersion: "test" });
+        const [q, other] = [0, 1].map(() => Keypair.generate().publicKey.toBase58()) as [string, string];
+        const rest = { name: "T", symbol: "T", uri: "ipfs://t", solIn: 1n, exit: "burn", state: "landed" };
+        for (const mint of [q, other]) {
+          await tx.insert(vanityMints).values({ idx: -BigInt(randomInt(1, 2 ** 47)), pubkey: mint });
+          const id = randomBytes(16).toString("hex");
+          await tx.insert(launches).values({ id, wallet, mint, w: wallet, ...rest });
+        }
+        const mints = (await backfillRows(tx, new PublicKey(q))).map((r) => r.mint);
+        expect(mints).toContain(other);
+        expect(mints).not.toContain(q);
         tx.rollback();
       });
     } catch (e) {

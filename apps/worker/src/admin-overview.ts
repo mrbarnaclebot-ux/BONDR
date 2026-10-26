@@ -9,10 +9,10 @@ import {
 } from "@solana/spl-token";
 import type { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
 import { bondrPrice } from "./bondr-price.ts";
-import { buyback, ops, treasury, type WorkerEnv } from "./env.ts";
+import { buyback, ops, quoteOf, type WorkerEnv } from "./env.ts";
 import { nextBatchAt } from "./fee-batch.ts";
 import { loadCoin } from "./fee-boot.ts";
-import { OPS_FLOOR_LAMPORTS } from "./fee-config.ts";
+import { feeConfig } from "./fee-config.ts";
 import type { Engine } from "./fee-engine.ts";
 import { key } from "./fee-routes.ts";
 import type { FeeCoin } from "./fee-send.ts";
@@ -31,14 +31,15 @@ const sol = (a: Info | undefined) => String(a?.lamports ?? 0);
 const units = (a: Info | undefined) => (a ? String(AccountLayout.decode(a.data).amount) : "0");
 
 export async function overview(o: LiveOpts, now = Date.now()): Promise<AdminOverviewWorker> {
-  const { seed, net, lane, quoteMint: Q } = o.env;
-  const [t, b] = [treasury(seed, net).publicKey, buyback(seed, net, lane).publicKey];
-  const keys = [t, b, ops(seed, net).publicKey, ataOf(Q, t), ataOf(Q, b)];
+  const { seed, net, lane, quoteMint: Q, treasury: t } = o.env;
+  const b = buyback(seed, net, lane).publicKey;
+  // Genesis mode has no BONDR yet (D-29): the BONDR balances read as 0.
+  const keys = [t, b, ops(seed, net).publicKey, ...(Q ? [ataOf(Q, t), ataOf(Q, b)] : [])];
   const [ta, ba, oa, tq, bq] = await o.conn.getMultipleAccountsInfo(keys);
   return {
     balances: {
       ...{ treasurySol: sol(ta), treasuryBondr: units(tq), buybackSol: sol(ba), buybackBondr: units(bq) },
-      ...{ opsSol: sol(oa), opsFloor: String(OPS_FLOOR_LAMPORTS), bondrSol: bondrPrice.get() },
+      ...{ opsSol: sol(oa), opsFloor: String(feeConfig(net).opsFloorLamports), bondrSol: bondrPrice.get() },
       nextBurnAt: nextBatchAt(now, o.env.feeBatchHourUtc),
     },
     coins: o.engine()?.memory() ?? [],
@@ -65,7 +66,7 @@ export async function coinLive(
   const W = coin.w.publicKey;
   const [wa, wq, wt] = await o.conn.getMultipleAccountsInfo([
     W,
-    ataOf(o.env.quoteMint, W),
+    ataOf(quoteOf(o.env), W),
     ataOf(coin.mint, W),
   ]);
   const windowIndex = windowOf(coin.launchedAt, now, o.env.feeWindowMs);

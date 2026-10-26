@@ -1,7 +1,7 @@
 // The UI gate for one surface at one width: no horizontal scroll, 0 axe violations, a full-page shot.
 import { fileURLToPath } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 const shots = (phase: string) =>
   fileURLToPath(new URL(`../../../.planning/phases/${phase}/screenshots/`, import.meta.url));
@@ -9,9 +9,17 @@ const SHOTS = shots("03-indexer-lists-and-token-page");
 export const PHASE4_SHOTS = shots("04-trading");
 export const PHASE5_SHOTS = shots("05-fee-engine-and-public-ledger");
 export const PHASE6_SHOTS = shots("06-admin-dashboard");
+export const PHASE7_SHOTS = shots("07-go-live");
 const SUFFIX = process.env.E2E_BASE_URL ? "-staging" : "";
 
-export async function gate(page: Page, name: string, width: number, dir = SHOTS): Promise<void> {
+// el: shoot one element (a summary panel) instead of the full page; the scroll and axe checks still cover the page.
+export async function gate(
+  page: Page,
+  name: string,
+  width: number,
+  dir = SHOTS,
+  el?: Locator,
+): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   // The dev-only Next indicator is not the app; a shot taken mid-scroll draws the sticky header over content.
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
@@ -28,7 +36,11 @@ export async function gate(page: Page, name: string, width: number, dir = SHOTS)
   expect(scroll, `horizontal scroll from ${wide.join(" | ")}`).toBe(client);
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  // pnpm verify (scripts/test.sh) sets E2E_NO_SHOTS: it runs the gates locally but writes no shot into .planning.
+  if (process.env.E2E_NO_SHOTS) return;
   // An open sheet is fixed to the viewport, so a full-page shot would draw it mid-page over unblurred content.
+  const path = `${dir}${name}-${width}${SUFFIX}.png`;
+  if (el) return void (await el.screenshot({ path }));
   const fullPage = (await page.locator("dialog[open]").count()) === 0;
-  await page.screenshot({ path: `${dir}${name}-${width}${SUFFIX}.png`, fullPage });
+  await page.screenshot({ path, fullPage });
 }

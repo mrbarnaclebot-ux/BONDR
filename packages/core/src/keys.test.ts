@@ -20,6 +20,12 @@ describe("derive", () => {
     expect(pk(master, "w", "devnet", "Y")).not.toBe(base);
   });
 
+  test("mainnet ids never equal devnet or fork ids under one seed (D-01 row 3)", () => {
+    const main = pk(master, "ops", "mainnet", "main");
+    expect(main).not.toBe(pk(master, "ops", "devnet", "main"));
+    expect(main).not.toBe(pk(master, "ops", "fork", "main"));
+  });
+
   test("mint keys are disjoint per lane and from wallet keys (D-20)", () => {
     const local = pk(master, "mint", "devnet", "local.7");
     expect(local).not.toBe(pk(master, "mint", "devnet", "staging.7"));

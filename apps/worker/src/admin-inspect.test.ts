@@ -26,12 +26,14 @@ const none = new Map<string, { label: string; mint?: string }>();
 
 test("curve-buy decodes ComputeBudget, the ATA creates and the pump buy with arguments", async () => {
   const f = fixture("curve-buy");
-  const r = await inspect(connOf(f.response), f.source, none);
+  const r = await inspect(connOf(f.response), f.source, none, "devnet");
   expect(r.found).toBe(true);
   expect(r.status).toBe("success");
   expect(r.slot).toBe(514267874);
   expect(r.error).toBeNull();
   expect(r.explorer).toBe(`https://solscan.io/tx/${f.source}?cluster=devnet`);
+  const main = await inspect(connOf(f.response), f.source, none, "mainnet");
+  expect(main.explorer).toBe(`https://solscan.io/tx/${f.source}`); // D-01 row 5
   const names = r.instructions?.map((i) => `${i.program}: ${i.name}`);
   expect(names?.slice(0, 2)).toEqual([
     "Compute Budget: SetComputeUnitPrice",
@@ -47,7 +49,7 @@ test("curve-buy decodes ComputeBudget, the ATA creates and the pump buy with arg
 
 test("forced-bond decodes the pump buy and the Token-2022 BurnChecked with its amount", async () => {
   const f = fixture("forced-bond");
-  const r = await inspect(connOf(f.response), f.source, none);
+  const r = await inspect(connOf(f.response), f.source, none, "devnet");
   const names = r.instructions?.map((i) => `${i.program}: ${i.name}`) ?? [];
   expect(names).toContain("System: Transfer");
   expect(names.some((n) => n.startsWith("pump: buy"))).toBe(true);
@@ -65,7 +67,7 @@ test("a failed transaction shows the mapped contract error, never the raw logs",
     "Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA failed: custom program error: 0x1774",
   ];
   const meta = { ...f.response.meta, err: { InstructionError: [3, { Custom: 6004 }] }, logMessages: logs };
-  const r = await inspect(connOf({ ...f.response, meta }), f.source, none);
+  const r = await inspect(connOf({ ...f.response, meta }), f.source, none, "devnet");
   expect(r.status).toBe("failed");
   expect(r.error).toBe("slippage (#4, code 6004 ExceededSlippage)");
 });
@@ -73,7 +75,7 @@ test("a failed transaction shows the mapped contract error, never the raw logs",
 test("a non-custom instruction error names its kind", async () => {
   const f = fixture("curve-sell");
   const meta = { ...f.response.meta, err: { InstructionError: [0, "InvalidAccountData"] }, logMessages: [] };
-  const r = await inspect(connOf({ ...f.response, meta }), f.source, none);
+  const r = await inspect(connOf({ ...f.response, meta }), f.source, none, "devnet");
   expect(r.error).toBe("build_failed (#1, InvalidAccountData)");
 });
 
@@ -90,13 +92,18 @@ test("garbage data for a known program stays an undecoded line, never a throw", 
 });
 
 test("a null getTransaction is found false; a dead RPC rejects", async () => {
-  expect(await inspect(connOf(null), fixture("curve-buy").source, none)).toEqual({ found: false });
-  await expect(inspect(connOf(null, true), fixture("curve-buy").source, none)).rejects.toThrow();
+  expect(await inspect(connOf(null), fixture("curve-buy").source, none, "devnet")).toEqual({ found: false });
+  await expect(inspect(connOf(null, true), fixture("curve-buy").source, none, "devnet")).rejects.toThrow();
 });
 
 test("the fee payer is labelled ops, treasury, buyback or W with its mint, else blank", async () => {
   const seed = Buffer.alloc(32, 7);
-  const env = { seed, net: "devnet", lane: "local" } as unknown as WorkerEnv;
+  const env = {
+    seed,
+    net: "devnet",
+    lane: "local",
+    treasury: treasury(seed, "devnet").publicKey,
+  } as unknown as WorkerEnv;
   const w = Keypair.generate();
   const mint = PublicKey.unique().toBase58();
   const engine = { coins: new Map([[mint, { w }]]) } as never;
@@ -109,7 +116,15 @@ test("the fee payer is labelled ops, treasury, buyback or W with its mint, else 
 
   const f = fixture("curve-buy");
   const payer = (f.response.transaction as { message: { accountKeys: string[] } }).message.accountKeys[0];
-  const labelled = await inspect(connOf(f.response), f.source, new Map([[payer, { label: "W", mint }]]));
+  const labelled = await inspect(
+    connOf(f.response),
+    f.source,
+    new Map([[payer, { label: "W", mint }]]),
+    "devnet",
+  );
   expect(labelled.feePayer).toEqual({ label: "W", address: payer, mint });
-  expect((await inspect(connOf(f.response), f.source, none)).feePayer).toEqual({ label: "", address: payer });
+  expect((await inspect(connOf(f.response), f.source, none, "devnet")).feePayer).toEqual({
+    label: "",
+    address: payer,
+  });
 });

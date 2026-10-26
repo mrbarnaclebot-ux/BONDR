@@ -3,19 +3,26 @@
 The worker: the only process that holds the seed, signs, and reads the chain. Web calls it over a private bearer-token HTTP API.
 
 - `main.ts`: entry; config, one RPC connection, the route table, index boot and the stream.
-- `env.ts`: `loadEnv` (fails at boot on bad config, devnet only; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`, `ADMIN_WALLET` (invalid is null), `ADMIN_EVACUATE`, `SENTRY_READ_TOKEN`), `ops`, `treasury` and the per-lane `buyback` keys.
+- `env.ts`: `loadEnv` (fails at boot on bad config; mainnet needs `ALLOW_MAINNET=1` and `TREASURY_PUBKEY`, and an unset `BONDR_QUOTE_MINT` there is genesis mode; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`, `ADMIN_WALLET` (invalid is null), `ADMIN_EVACUATE`, `SENTRY_READ_TOKEN`), `ops`, `treasury` and the per-lane `buyback` keys.
 - `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Reply` for a non-200 success, `Routes` keyed "METHOD /path".
 - `sentry.ts`: OPS-01 Sentry init with the shared scrub; imported first by main.ts.
-- `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache), POST /kill-switch (through switches.ts, audited as `runbook`, refuses re-enable after EVACUATE), `Ctx`, `MAX_SOL_IN`.
-- `switches.ts`: the owner's five switches (D-18) in memory: `loadSwitches` (one settings read at boot; a missing row is all off), `switchOn`, `switchState`, `setJob` (DB first, then memory), `pauseAll` (EVACUATE: every switch off and `evacuated_at` in one write, then memory). No timer reads.
-- `prepare.ts`: POST /prepare, the unsigned launch tx behind every cheap guard; `walletOf`.
-- `build.ts`: prepare's chain steps (table keys, per-coin table, compiled message, simulation).
-- `submit.ts`: POST /submit, co-sign after the byte compare, then send.
+- `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache; `StatusCtx` allows a null Q for genesis mode, paused "genesis"), POST /kill-switch (through switches.ts, audited as `runbook`, refuses re-enable after EVACUATE and anything switch-gate.ts refuses), `Ctx`, `MAX_SOL_IN`.
+- `switches.ts`: the owner's five switches (D-18) in memory: `loadSwitches` (one settings read at boot; a missing row is all off), `switchOn`, `switchState`, `setJob` (DB first, then memory), `pauseAll` (EVACUATE: every switch off and `evacuated_at` in one write, then memory), `switchesOff` (the contract check pause: the five columns only, no `evacuated_at`). No timer reads.
+- `switch-gate.ts`: `switchGate`/`gateFor` (WR-W-02), what may turn a switch on, shared by POST /admin/switch and POST /kill-switch: in genesis nothing (409 not_ready `genesis`); on mainnet launches needs a passing contract check (`contract_check`) and 100 free vanity mints (`vanity_pool`). Turning off is never refused.
+- `contract-check.ts`: the pump contract check (OPS-02) in memory: `runCheck` (single-flight; a mismatch turns every switch off with one `contract_check` audit row), `scheduleCheck` (own Monday timer at FEE_BATCH_HOUR_UTC), `contractState`, `contractFailed` (gates launches, genesis and every fee-engine job until a run passes; on mainnet true from boot until the first pass; a failed pause write is retried and keeps it true), `nextCheckAt`.
+- `prepare.ts`: POST /prepare, the unsigned launch tx behind every cheap guard; the mainnet Sender tip priced as a fee. `prepare(ctx, body, one = prepareOne)` is the single-flight queue the genesis builder shares.
+- `genesis.ts`: genesis mode's POST /prepare and /quote (D-28, D-29): `genesisOne` (owner actor and wallet = ADMIN_WALLET, consent, burn only, once; w = the treasury) and `genesisQuote` (fresh SOL curve, solBack 0).
+- `genesis-boot.ts`: genesis mode boot (D-29, D-31): `enterGenesis` (every switch written off, audited as `genesis`; settle skips indexing the genesis row by its w = the treasury, via `setTreasury` at boot in every mode), `genesisRoutes` (status, quote, prepare, submit, kill-switch, admin; trade and fee routes answer not_ready) and `verifyQuoteMint` (after genesis, BONDR must be a SOL-pair coin created by the treasury).
+- `prepare-rules.ts`: prepare's pure request rules (`walletOf`, `parseRequest`, `prepareGuard`, `signBy`, `sellFloor`, the table caps), re-exported from prepare.ts.
+- `ticker.ts`: the 24h ticker cooldown (D-40..D-42): `tickerLock` (prepare's one indexed read) and `tickerRefusal` (pure, `ticker_locked` with `retryAfter` and `lock`).
+- `build.ts`: prepare's chain steps (table keys, per-coin table, compiled message with the Sender tip and its size guard, `tipped`, simulation).
+- `submit.ts`: POST /submit, co-sign after the byte compare, then send (Sender for a tipped message, one RPC resend on a Sender error); in genesis mode only the treasury's row passes the pause, never after a failed contract check).
 - `settle.ts`: settles a sent launch and resumes in-flight launches on boot.
 - `launches.ts`: launch row reads and guarded state updates.
 - `vanity.ts`: the bndr mint pool (seed-derived mint keys, reserve and release).
 - `grind.ts`: the bndr grinder threads, refill on demand, and its CLI.
 - `ingest.ts`: the one write path for launches and trades, `knownCoins`, the boot backfill.
+- `sniped.ts`: the token page's sniped figure (D-35): `windowMints`, `closeWindows`, `snipedBps` (pure) and `recomputeSniped` (one query over the coin's first 3 slots, written only once a trade past the window is stored and only when it changes; null until then).
 - `announce.ts`: after each commit, `arm` (holder recount, launch, trade and bond events, the engine hook) and `publishFee` (landed public fee rows as `fee` events).
 - `stream.ts`: the live log subscription on the BONDR mint and the gap fill.
 - `events-route.ts`: GET /events, every indexed change as NDJSON to web.
@@ -34,7 +41,7 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `admin-evacuate.ts`: EVACUATE (ADMIN-11, D-35, D-36): `evacuateBalances` (W, its BONDR and child accounts, 100 per read), `packBatches` (greedy, under `PACKET_LIMIT`), `buildBatch` (BONDR and SOL to the treasury, child burned, own amount and sol per row), `simulateEvacuate` (8 batch simulations in flight, totals, intent only when ADMIN_EVACUATE is on and devnet), `executeEvacuate` (`pauseAll` first, then per batch idle, fresh balances, gated land, pacing).
 - `trade-prepare.ts`: `prepareTrade`, the unsigned simulated and budgeted trade tx (`cuLimitFor`, `priorityMicroLamports`, devnet buy cap).
 - `trade-submit.ts`: POST /trade/submit (`submitTrade`: byte compare against the stored message, one paced send, background settle with the landed amount) and POST /trade/view (`viewTrade`).
-- `fee-config.ts`: per-network fee engine settings (`feeConfig`: collect minimum, pacing, creator bps), `OPS_FLOOR_LAMPORTS`, the Helius Sender URL and tip accounts.
+- `fee-config.ts`: per-network fee engine settings (`feeConfig`: collect minimum, pacing, creator bps, ops floor, launch tip), the Helius Sender URL and tip accounts.
 - `fee-ledger.ts`: `LedgerStore` (with `implied` for the reconcile), `pgLedger` (fee_ledger rows; landing moves the coin fee columns in the same transaction) and `factsOf`.
 - `fee-ledger-memory.ts`: `memoryLedger`, the in-memory `LedgerStore` with the same unique rules (signature keys include the mint, 0007), for units and the fork stage.
 - `fee-send.ts`: `land`, the one fee send path (sign, record pending, broadcast, settle), the ops floor (`opsLow`, `noteOps`, `refreshOps`), the mainnet-only Sender path (`tipIxs`, `urgentBroadcast`), `factsFor` (each kind's landed amount from its meta, shared with recovery) and `metaOf`; `FeeDeps`, `Job`, `FeeCoin`.

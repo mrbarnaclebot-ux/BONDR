@@ -8,7 +8,7 @@ import { redact } from "@bondr/core/net";
 import { vanityMints } from "@bondr/core/schema";
 import { max } from "drizzle-orm";
 import { loadEnv, type WorkerEnv } from "./env.ts";
-import { isBndr, mintKeyFor, poolSize } from "./vanity.ts";
+import { isBndr, type Lane, mintKeyFor, poolSize } from "./vanity.ts";
 
 type Grinder = Pick<WorkerEnv, "seed" | "net" | "lane">;
 type Job = Grinder & { role: "vanity-grind"; start: bigint; step: bigint };
@@ -72,6 +72,18 @@ export async function grind(env: Grinder, count: number, threads: number): Promi
   return saved;
 }
 
+// [low, target]: below low, grind up to target. Production must hold the 100 free mints child launches need (D-30).
+// ponytail: fixed targets; make them env-tunable if pool demand varies between deploys.
+const REFILL = { local: [10, 20], staging: [10, 20], production: [100, 150] } satisfies Record<
+  Lane,
+  [number, number]
+>;
+
+export function refillNeed(lane: Lane, ready: number): number {
+  const [low, target] = REFILL[lane];
+  return ready < low ? target - ready : 0;
+}
+
 let refilling = false;
 
 // Call on boot and after each reservation. No timer, so an idle worker lets Neon scale to zero (Pitfall 6).
@@ -82,7 +94,8 @@ export async function startRefill(env: Grinder & { vanityThreads: number }): Pro
     const ready = await poolSize(db());
     // 02-14 routes this warning to Sentry.
     if (ready < 3) console.warn(`vanity pool low: ${ready} ready`);
-    if (ready < 10) await grind(env, 20 - ready, env.vanityThreads);
+    const need = refillNeed(env.lane, ready);
+    if (need > 0) await grind(env, need, env.vanityThreads);
   } catch (e) {
     console.error(`vanity refill failed: ${redact(e instanceof Error ? e.message : String(e))}`);
   } finally {

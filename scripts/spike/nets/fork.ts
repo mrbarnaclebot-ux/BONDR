@@ -8,6 +8,7 @@ import { createStage } from "../stages/create.ts";
 import { engineBondStage } from "../stages/engine-bond.ts";
 import { engineFinalStage } from "../stages/engine-final.ts";
 import { finalizeStage } from "../stages/finalize.ts";
+import { genesisStage } from "../stages/genesis.ts";
 import { launchStage } from "../stages/launch.ts";
 import { migratedStage } from "../stages/migrated.ts";
 import { multihopStage } from "../stages/multihop.ts";
@@ -39,5 +40,7 @@ const stages: Stage[] = [
   multihopStage("C3", "migrated."),
   // Q migrated: SOL -> Q pool -> C2 pool, both hops on PumpSwap.
   multihopStage("C2", "pooled."),
+  // Needs only a fresh fork: its own dev, mint and external treasury. Last, so a crash here hides no other row.
+  genesisStage,
 ];
 export default stages;

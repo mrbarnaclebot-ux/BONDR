@@ -40,7 +40,7 @@ import {
   PublicKey,
   type TransactionInstruction,
 } from "@solana/web3.js";
-import { loadEnv, ops } from "../apps/worker/src/env.ts";
+import { loadEnv, ops, quoteOf } from "../apps/worker/src/env.ts";
 import { fundSimDev, OPS_FLOOR_SOL } from "./devnet-launch.ts";
 
 export const TRADE_BUDGET_SOL = 0.05;
@@ -237,7 +237,7 @@ async function main(): Promise<void> {
   const t: T = {
     conn,
     online: new OnlinePumpSdk(conn),
-    Q: env.quoteMint,
+    Q: quoteOf(env),
     sim: derive(env.seed, "sim", "devnet", "dev"),
     json: a.json,
     landed: [],

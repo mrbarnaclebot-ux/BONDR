@@ -92,13 +92,15 @@ export const launches = pgTable(
     createdAt: tstz().notNull().defaultNow(),
     updatedAt: tstz().notNull().defaultNow(),
   },
-  () => [
+  (t) => [
     check("launches_state", sql`state in ('prepared','signed','sent','landed','failed','unknown')`),
     check("launches_exit", sql`exit in ('burn','sell')`),
     // A mint can be retried after a failure, but only one launch of it may ever land.
     uniqueIndex("launches_landed_mint").on(sql`mint`).where(sql`state = 'landed'`),
     // And only one may be in flight: a second co-signed launch of it could only fail on chain at the dev's cost.
     uniqueIndex("launches_inflight_mint").on(sql`mint`).where(sql`state in ('signed','sent','unknown')`),
+    // The 24h ticker cooldown read (D-42). now() cannot sit in an index predicate, so the 24h cut is in the query.
+    index("launches_symbol_live").on(t.symbol, t.landedAt).where(sql`state <> 'failed'`),
   ],
 );
 
@@ -135,6 +137,9 @@ export const coins = pgTable(
     lastTradeAt: tstz(),
     lastSig: text(),
     lastSlot: big(), // the slot of the trade that set the state above; older trades never move it back
+    // Sniped % (D-35): the create slot and the third-party share of the first 3 slots. Null before Phase 7.
+    createSlot: big(),
+    snipedBps: integer(),
     holders: integer(),
     holdersAt: tstz(),
     bondSig: text(),
@@ -167,6 +172,7 @@ export const coins = pgTable(
     check("coins_bonded", sql`(venue = 'curve') = (bonded_at is null)`),
     check("coins_progress", sql`progress between 0 and 1`),
     check("coins_holders", sql`holders >= 0`),
+    check("coins_sniped_bps", sql`sniped_bps is null or sniped_bps between 0 and 10000`),
     check("coins_finalize", sql`finalize in ('none','held','done')`),
     check("coins_hidden", sql`(hidden_at is null) = (hidden_reason is null)`),
     check("coins_held", sql`(held_at is null) = (held_reason is null)`),

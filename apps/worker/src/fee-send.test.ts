@@ -9,8 +9,8 @@ import {
   SystemProgram,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { OPS_FLOOR_LAMPORTS, SENDER_TIPS } from "./fee-config.ts";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { feeConfig, SENDER_TIPS, SENDER_URL } from "./fee-config.ts";
 import type { LedgerStore } from "./fee-ledger.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
 import {
@@ -94,10 +94,19 @@ const job = (over: Partial<Job> = {}): Job => ({
   ...over,
 });
 
+const savedKey = process.env.helius_api_key;
+beforeAll(() => {
+  process.env.helius_api_key = "k3y-value"; // Sender URLs carry it; never a real key in tests
+});
+afterAll(() => {
+  if (savedKey === undefined) delete process.env.helius_api_key;
+  else process.env.helius_api_key = savedKey;
+});
+
 beforeEach(() => {
   calls.length = 0;
   metaMisses.n = 0;
-  noteOps(LAMPORTS_PER_SOL);
+  noteOps(LAMPORTS_PER_SOL, "devnet");
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -130,6 +139,35 @@ describe("tipIxs and urgentBroadcast (D-16)", () => {
     expect(body.method).toBe("sendTransaction");
     expect(body.params[1]).toEqual({ encoding: "base64", skipPreflight: true, maxRetries: 0 });
   });
+
+  const urlOf = (post: ReturnType<typeof vi.fn>) => String(post.mock.calls[0]?.[0]);
+
+  test("every Sender POST carries the api key; swqos_only only when asked (Pitfalls 10, 11)", async () => {
+    const post = vi.fn(async () => new Response(JSON.stringify({ result: "s" })));
+    await urgentBroadcast("mainnet", fakeConn() as never, new Uint8Array([1]), o, post);
+    expect(urlOf(post).startsWith(SENDER_URL)).toBe(true);
+    expect(urlOf(post)).toContain("api-key=k3y-value");
+    expect(urlOf(post)).not.toContain("swqos_only");
+    post.mockClear();
+    await urgentBroadcast(
+      "mainnet",
+      fakeConn() as never,
+      new Uint8Array([1]),
+      { ...o, swqosOnly: true },
+      post,
+    );
+    expect(urlOf(post)).toContain("api-key=k3y-value");
+    expect(urlOf(post)).toContain("swqos_only=true");
+  });
+
+  test("a Sender error is unknown and its text never carries the key", async () => {
+    const error = { message: "bad request at https://sender.helius-rpc.com/fast?api-key=k3y-value" };
+    const post = vi.fn(async () => new Response(JSON.stringify({ error }), { status: 400 }));
+    const r = await urgentBroadcast("mainnet", fakeConn() as never, new Uint8Array([1]), o, post);
+    expect(r?.status).toBe("unknown");
+    expect(r?.err).toContain("sender 400");
+    expect(r?.err).not.toContain("k3y-value");
+  });
 });
 
 describe("land (D-08)", () => {
@@ -160,7 +198,9 @@ describe("land (D-08)", () => {
 
   test("ops below the floor pauses non-urgent sends; urgent still go; a later meta clears it", async () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
-    const low = deps({ conn: fakeConn({ meta: meta({ postBalances: [OPS_FLOOR_LAMPORTS - 1] }) }) });
+    const low = deps({
+      conn: fakeConn({ meta: meta({ postBalances: [feeConfig("devnet").opsFloorLamports - 1] }) }),
+    });
     expect((await land(low, job())).state).toBe("landed");
     expect(err.mock.calls.flat().join(" ")).toContain("ops below floor");
     expect(opsLow()).toBe(true);
@@ -171,14 +211,22 @@ describe("land (D-08)", () => {
     expect(opsLow()).toBe(false);
   });
 
+  test("the mainnet floor is 0.1 SOL: low below it, not at it (G-4)", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    noteOps(99_999_999, "mainnet");
+    expect(opsLow()).toBe(true);
+    noteOps(100_000_000, "mainnet");
+    expect(opsLow()).toBe(false);
+  });
+
   test("while paused, ops is re-read at most once a minute and a top-up clears the pause (WR-04)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    noteOps(0);
+    noteOps(0, "devnet");
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(Date.now() + 3_600_000);
     const conn = { getBalance: vi.fn(async () => LAMPORTS_PER_SOL) };
     expect(await refreshOps({ conn, ops } as never)).toBe(false);
-    noteOps(0);
+    noteOps(0, "devnet");
     expect(await refreshOps({ conn, ops } as never)).toBe(true); // read a moment ago
     expect(conn.getBalance).toHaveBeenCalledOnce();
     vi.useRealTimers();

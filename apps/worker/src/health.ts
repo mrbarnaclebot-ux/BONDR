@@ -4,6 +4,7 @@
 // if the owner needs history across deploys.
 import { randomBytes } from "node:crypto";
 import type { AdminHealth } from "@bondr/core/api-admin";
+import { contractState } from "./contract-check.ts";
 import type { WorkerEnv } from "./env.ts";
 import type { Engine } from "./fee-engine.ts";
 import { opsLow } from "./fee-send.ts";
@@ -29,7 +30,7 @@ export function mark(name: Mark, now = Date.now()): void {
 export const marks = (): Record<Mark, number | null> => ({ ...at });
 
 type HealthOpts = {
-  env: Pick<WorkerEnv, "feeEngine" | "adminEvacuate" | "sentryReadToken">;
+  env: Pick<WorkerEnv, "feeEngine" | "adminEvacuate" | "sentryReadToken" | "quoteMint">;
   engine: () => Pick<Engine, "stuckCount"> | null;
 };
 
@@ -52,6 +53,8 @@ export async function healthSnapshot(o: HealthOpts): Promise<AdminHealth> {
     feeEngine: o.env.feeEngine,
     opsLow: opsLow(),
     evacuate: o.env.adminEvacuate,
+    contract: contractState(),
+    genesis: o.env.quoteMint === null,
     sentry: await sentryCount(o.env.sentryReadToken),
   };
 }

@@ -4,14 +4,21 @@
 import type { ApiError, Exit, LaunchState, SubmitResult } from "@bondr/core/api";
 import { cosign, signatureOf } from "@bondr/core/cosign";
 import { db } from "@bondr/core/db";
-import { broadcast } from "@bondr/core/send";
-import { PublicKey } from "@solana/web3.js";
+import { broadcast, type RawOpts } from "@bondr/core/send";
+import { PublicKey, VersionedMessage } from "@solana/web3.js";
+import { tipped } from "./build.ts";
+import { contractFailed } from "./contract-check.ts";
+import type { WorkerEnv } from "./env.ts";
+import { feeConfig } from "./fee-config.ts";
+import { urgentBroadcast } from "./fee-send.ts";
 import { fail } from "./http.ts";
 import { advance, getLaunch, type LaunchRow } from "./launches.ts";
-import type { PrepareCtx } from "./prepare.ts";
 import { releaseMint, settleInBackground } from "./settle.ts";
-import { liveStatus } from "./status.ts";
+import { liveStatus, type StatusCtx } from "./status.ts";
 import { mintKeyFor, vanityRow } from "./vanity.ts";
+
+// A child ctx, or the genesis ctx (Q null, D-29): submit reads only the chain, the env and /status.
+export type SubmitCtx = StatusCtx & { env: WorkerEnv };
 
 const SEND_PACE_MS = 1100;
 const ID = /^[0-9a-f]{32}$/;
@@ -41,7 +48,7 @@ async function refuse(row: LaunchRow, body: ApiError, keepMint = false): Promise
 }
 
 // The message, the exit and the mint all come from the stored row; the request supplies only the wire.
-async function cosignRow(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array): Promise<Uint8Array | null> {
+async function cosignRow(ctx: SubmitCtx, row: LaunchRow, wire: Uint8Array): Promise<Uint8Array | null> {
   if (!row.message || !row.lookupTable) throw fail({ error: "build_failed" });
   const [table, vanity] = await Promise.all([
     ctx.conn.getAddressLookupTable(new PublicKey(row.lookupTable)),
@@ -56,8 +63,24 @@ async function cosignRow(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array): Pro
   return null;
 }
 
+// Only mainnet prepares tipped messages (D-34). Sender answers "unknown" on any error, even when nothing went out,
+// so the same bytes go once through RPC: they carry the same signature, so the chain executes them at most once.
+// Sender may already have delivered them (a timeout after forwarding), so a preflight rejection of the RPC copy
+// (AlreadyProcessed, or the mint account already exists) proves nothing: the launch stays unknown and settle decides
+// from the signature status, with history, before it ever marks the row failed or frees the mint (CR-W-01).
+async function broadcastLaunch(ctx: SubmitCtx, row: LaunchRow, wire: Uint8Array, o: RawOpts) {
+  if (!row.message || !tipped(VersionedMessage.deserialize(row.message))) return broadcast(ctx.conn, wire, o);
+  const net = ctx.env.net;
+  const swqosOnly = feeConfig(net).launchTipLamports < 1_000_000; // Pitfall 10
+  const r = await urgentBroadcast(net, ctx.conn, wire, { ...o, swqosOnly });
+  if (r?.status !== "unknown" || !r.err?.startsWith("sender")) return r;
+  console.warn(`submit ${row.id}: ${r.err}, sending the same bytes over RPC`);
+  const f = await broadcast(ctx.conn, wire, o);
+  return f?.status === "failed" ? r : f;
+}
+
 // signed is persisted before the send, so a restart can resend the same wire (Pattern 8).
-async function send(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array): Promise<SubmitResult> {
+async function send(ctx: SubmitCtx, row: LaunchRow, wire: Uint8Array): Promise<SubmitResult> {
   const signature = signatureOf(wire);
   const signed = await advance(db(), row.id, "prepared", "signed", {
     signedTx: Buffer.from(wire),
@@ -66,7 +89,7 @@ async function send(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array): Promise<
   if (!signed) return current((await getLaunch(db(), row.id)) ?? row);
   const lastValidBlockHeight = Number(row.lastValidBlockHeight);
   const base = { sig: signature, bytes: wire.length, blockhash: row.blockhash ?? "", lastValidBlockHeight };
-  const r = await broadcast(ctx.conn, wire, { ...base, paceMs: SEND_PACE_MS });
+  const r = await broadcastLaunch(ctx, row, wire, { ...base, paceMs: SEND_PACE_MS });
   if (r?.status === "failed") {
     if (await advance(db(), row.id, "signed", "failed", { error: r.err ?? "preflight rejected" }))
       await releaseMint(row.mint);
@@ -78,13 +101,16 @@ async function send(ctx: PrepareCtx, row: LaunchRow, wire: Uint8Array): Promise<
   return { state: "sent", signature };
 }
 
-export async function submit(ctx: PrepareCtx, body: unknown): Promise<SubmitResult> {
+export async function submit(ctx: SubmitCtx, body: unknown): Promise<SubmitResult> {
   const { launchId, wire } = parse(body);
   const row = await getLaunch(db(), launchId);
   if (!row) throw fail({ error: "not_found" });
   if (row.state !== "prepared") return current(row);
   const { paused, minLamports } = await liveStatus(ctx, true);
-  if (paused) return refuse(row, { error: "paused", paused });
+  // D-29, D-20: in genesis mode only the genesis row (w = the treasury) passes, and a failed contract check
+  // blocks even that one. A child prepare never gets a row in genesis mode (not_ready).
+  const genesis = paused === "genesis" && row.w === ctx.env.treasury.toBase58() && !contractFailed();
+  if (paused && !genesis) return refuse(row, { error: "paused", paused });
   // No chain read means the awaiting-migration pause could not be checked: refuse, never co-sign blind (IN-02).
   // The mint is kept, so Try again reuses it once the RPC answers.
   if (minLamports === null) return refuse(row, { error: "build_failed" }, true);

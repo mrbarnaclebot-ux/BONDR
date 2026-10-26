@@ -1,7 +1,8 @@
 "use client";
-import type { Exit, LaunchView, PauseReason, Status } from "@bondr/core/api";
+import type { ApiError, Exit, LaunchView, PauseReason, Status } from "@bondr/core/api";
 import { type ComponentType, type Dispatch, type ReactNode, useEffect, useReducer, useRef } from "react";
 import { sol } from "@/lib/format";
+import { NOT_FOUND } from "@/lib/launch-faults";
 import { getView } from "@/lib/launch-run";
 import { useStatus } from "@/lib/use-status";
 import { Callout } from "./callout";
@@ -10,7 +11,7 @@ import { LaunchCoin } from "./launch-coin";
 import { LaunchLive } from "./launch-live";
 import { LaunchReceipt } from "./launch-receipt";
 import { LaunchReview } from "./launch-review";
-import { LaunchSign, NOT_FOUND, stored } from "./launch-sign";
+import { LaunchSign, stored } from "./launch-sign";
 import { LaunchStepper, STEP_NAMES } from "./launch-stepper";
 
 export type Step = 1 | 2 | 3 | 4 | 5;
@@ -34,7 +35,10 @@ export type Launch = {
   notice: string | null;
   /** Element id that takes focus on the next step change instead of the step heading. */
   focus: string | null;
+  /** The last ticker_locked refusal, so step 1 can name it on the symbol field (UI-SPEC A1). Never stored. */
+  refused: Refused | null;
 };
+export type Refused = { symbol: string; err: Pick<ApiError, "retryAfter" | "lock"> };
 export type Action =
   | { type: "go"; step: Step; focus?: string }
   | { type: "field"; key: keyof Fields; value: string }
@@ -45,6 +49,7 @@ export type Action =
   | { type: "prepared"; launchId: string; mint: string }
   | { type: "restore"; view: LaunchView }
   | { type: "live"; view: LaunchView }
+  | { type: "refused"; refused: Refused }
   | { type: "reset"; notice?: string };
 /** Live worker values every step and the receipt read: status (polled), the dev buy check and its quote. */
 export type Live = {
@@ -53,6 +58,8 @@ export type Live = {
   refresh(): void;
   buy: Buy;
   quote: QuoteState;
+  /** The owner genesis variant (UI-SPEC surface 2): status reads unpaused and steps show genesis copy. */
+  genesis: boolean;
 };
 export type StepProps = { state: Launch; dispatch: Dispatch<Action>; live: Live };
 
@@ -69,6 +76,7 @@ const INITIAL: Launch = {
   view: null,
   notice: null,
   focus: null,
+  refused: null,
 };
 
 // After a reload the form is gone, so the launch row refills what the receipt shows.
@@ -104,6 +112,8 @@ function reduce(state: Launch, action: Action): Launch {
       return { ...withView(state, action.view), step: 4 };
     case "live":
       return { ...withView(state, action.view), step: 5, focus: "live-heading" };
+    case "refused":
+      return { ...state, refused: action.refused };
     case "reset":
       return { ...INITIAL, notice: action.notice ?? null };
   }
@@ -117,18 +127,35 @@ const BODIES: Record<Step, ComponentType<StepProps>> = {
   5: LaunchLive,
 };
 
-const PAUSED: Record<PauseReason, string> = {
-  kill_switch:
-    "The BONDR owner has paused new launches. You can fill this in now; the Launch button unlocks automatically when launches resume.",
-  awaiting_migration:
-    "BONDR's own curve is complete and migrating to PumpSwap. You can fill this in now; the Launch button unlocks automatically when the pool is live.",
+const PAUSED_TITLE = "Launches are paused.";
+const PAUSED: Record<PauseReason, { title: string; body: string }> = {
+  genesis: {
+    title: "Launches are not open yet.",
+    body: "Launches open after the BONDR token is live. You can fill this in now; the Launch button unlocks automatically when launches open.",
+  },
+  kill_switch: {
+    title: PAUSED_TITLE,
+    body: "The BONDR owner has paused new launches. You can fill this in now; the Launch button unlocks automatically when launches resume.",
+  },
+  awaiting_migration: {
+    title: PAUSED_TITLE,
+    body: "BONDR's own curve is complete and migrating to PumpSwap. You can fill this in now; the Launch button unlocks automatically when the pool is live.",
+  },
+  contract_check: {
+    title: PAUSED_TITLE,
+    body: "A weekly safety check found that pump.fun changed something BONDR depends on, so new launches are paused while the owner reviews it. Trading is not affected. You can fill this in now; the Launch button unlocks automatically when launches resume.",
+  },
 };
 
-function useLaunchStatus(devBuy: string): Live {
+// The owner with an admin session sees genesis mode as open; everyone else keeps the banner. The worker refuses
+// any genesis prepare that is not the owner's (D-29), so this only changes what the page shows.
+function useLaunchStatus(devBuy: string, owner: boolean): Live {
   const { status, error, refresh } = useStatus();
   const buy = checkBuy(devBuy, minOf(status));
   const quote = useQuote(buy.ok ? buy.lamports : null);
-  return { status, statusError: error, refresh, buy, quote };
+  const genesis = owner && status?.paused === "genesis";
+  const shown = genesis && status ? { ...status, paused: null } : status;
+  return { status: shown, statusError: error, refresh, buy, quote, genesis };
 }
 
 // A prepared row older than this can never be sent: its blockhash died long ago.
@@ -165,10 +192,21 @@ function useStepFocus(step: Step, focus: string | null) {
   return heading;
 }
 
-/** `children` is the server-rendered title and lede, so they stay out of the client bundle. */
-export function LaunchFlow({ children }: { children: ReactNode }) {
+/**
+ * `children` is the server-rendered title and lede, so they stay out of the client bundle; `genesisIntro`
+ * replaces them once the owner genesis variant is live.
+ */
+export function LaunchFlow({
+  children,
+  ownerGenesis = false,
+  genesisIntro,
+}: {
+  children: ReactNode;
+  ownerGenesis?: boolean;
+  genesisIntro?: ReactNode;
+}) {
   const [state, dispatch] = useReducer(reduce, INITIAL);
-  const live = useLaunchStatus(state.devBuy);
+  const live = useLaunchStatus(state.devBuy, ownerGenesis);
   const paused = live.status?.paused;
   const heading = useStepFocus(state.step, state.focus);
   useRestore(dispatch);
@@ -176,13 +214,20 @@ export function LaunchFlow({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto grid w-full max-w-[1440px] items-start gap-12 px-(--gutter) pt-12 min-[1080px]:grid-cols-[minmax(0,1fr)_400px]">
       <div className="min-w-0">
-        {children}
+        {(live.genesis && genesisIntro) || children}
         <LaunchStepper step={state.step} />
         {/* Always mounted, so the pause is announced when it starts, not only when the page loads. */}
         <div aria-live="polite">
+          {live.genesis && (
+            <Callout title="Genesis launch." className="mb-6">
+              This launch creates the BONDR token itself: SOL pair, the treasury as creator, insta burn. Only
+              the owner wallet can send it, and only once. Child launches stay closed until you set
+              BONDR_QUOTE_MINT to the new mint and redeploy.
+            </Callout>
+          )}
           {paused && (
-            <Callout variant="warn" title="Launches are paused." className="mb-6">
-              {PAUSED[paused]}
+            <Callout variant="warn" title={PAUSED[paused].title} className="mb-6">
+              {PAUSED[paused].body}
             </Callout>
           )}
         </div>

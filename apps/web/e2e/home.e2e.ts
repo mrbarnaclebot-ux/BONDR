@@ -37,9 +37,9 @@ test.describe("hero", () => {
     await expect(page.getByRole("heading", { level: 2, name: "All coins" })).toBeVisible();
   });
 
-  test("Pause animation holds the hero video and motes; reduced motion has neither (WCAG 2.2.2)", async ({
-    page,
-  }) => {
+  test("Pause animation holds the hero video and motes; reduced motion has neither (WCAG 2.2.2)", {
+    tag: "@smoke",
+  }, async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Pause animation" }).click();
     await expect(page.getByRole("button", { name: "Play animation" })).toBeVisible();
@@ -51,7 +51,7 @@ test.describe("hero", () => {
   });
 
   for (const path of ["/", "/terms"]) {
-    test(`the header links to /launch on ${path}`, async ({ page }) => {
+    test(`the header links to /launch on ${path}`, { tag: "@smoke" }, async ({ page }) => {
       await page.goto(path);
       const link = page.getByRole("banner").getByRole("link", { name: "Launch a coin" });
       await expect(link).toHaveAttribute("href", "/launch");
@@ -59,7 +59,7 @@ test.describe("hero", () => {
     });
   }
 
-  test("the header link is current on /launch", async ({ page }) => {
+  test("the header link is current on /launch", { tag: "@smoke" }, async ({ page }) => {
     await page.goto("/launch");
     await expect(page.getByRole("banner").getByRole("link", { name: "Launch a coin" })).toHaveAttribute(
       "aria-current",

@@ -360,14 +360,132 @@ Plans:
 **Goal:** As the owner, I want BONDR live on mainnet with guardrails, so that strangers can launch without asking me.
 **Mode:** mvp
 **Depends on:** Phase 6
-**Requirements:** OPS-02, OPS-03, OPS-04, OPS-05
+**Requirements:** OPS-02, OPS-03, OPS-04, OPS-05, LAUNCH-08, LAUNCH-09, TOKEN-07
 **Success Criteria** (what must be TRUE):
 
   1. The weekly contract check verifies pump program IDs, IDL account layouts and Global flags, and pauses jobs on a forced mismatch
   2. Every push runs lint, tests and a Playwright smoke test in CI, and `scripts/` sets up, runs, tests and deploys BONDR with one command each
   3. The BONDR token is launched on mainnet through BONDR (SOL pair, treasury as creator, insta burn), and child launches stay disabled until it exists
 
-**Plans**: TBD
+**Plans:** 25/36 plans executed
+
+Plans:
+
+**Wave 1**
+
+- [x] 07-01-PLAN.md - v1 transaction fetch at every getTransaction site, v1 fixture, -32015 dropped without retry
+- [x] 07-02-PLAN.md - Migration 0008 (TRUNCATE trigger, sniped columns, ticker partial index), IN-W-04 intent eviction, nonce-replay test
+- [x] 07-03-PLAN.md - Terms update (version bump, hello@trybondr.fun, cooldown sentence), www to apex 308 in proxy.ts
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 07-04-PLAN.md - Mainnet net in keys/net/env behind ALLOW_MAINNET, external TREASURY_PUBKEY, EVACUATE on mainnet with the external treasury
+- [x] 07-07-PLAN.md - Sniped %: createSlot, recompute in writeParsed, token page Sniped line
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 07-05-PLAN.md - fee-config per-net paceMs 1100 and ops floor, launch tip constant, Sender URL with the api key and swqos_only
+- [x] 07-06-PLAN.md - Production vanity lane (target 100), real net in /status, public wallets log line, mainnet web chrome check
+- [x] 07-08-PLAN.md - Contract check core with devnet/mainnet/fork profiles (TDD) and the CLI runner
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 07-09-PLAN.md - prepare.ts split, Sender tip in launches with the size fallback, Sender at submit, tip row in the summary
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 07-10-PLAN.md - Contract check in the worker: boot and Monday timer, switches-only pause, admin route, contract_check pause reason
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 07-11-PLAN.md - Admin Pump contract check cell, Run check now, mismatch callout
+- [x] 07-12-PLAN.md - Ticker refusal contract: ticker_locked/ticker_reserved, retryAfter and lock pass-through, copy, launch-faults split
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [x] 07-13-PLAN.md - Ticker cooldown and reserved list enforced in admit with one indexed read and no spend
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [x] 07-14-PLAN.md - Reserved and locked field errors, step 4 refusal e2e, oldest-first search with the First marker
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [x] 07-15-PLAN.md - buildGenesis (SOL pair, treasury creator, burn) and genesis mode in /status with the public banner
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [x] 07-16-PLAN.md - Genesis prepare (owner only, once, burn only), genesis codes and copy, submit genesis allowance
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [x] 07-17-PLAN.md - Genesis boot (optional quote mint on mainnet, not_ready routes, verifyQuoteMint), settle and backfill guards, admin genesis callout
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [x] 07-18-PLAN.md - Owner genesis variant on /launch (server-side admin check, actor forward, buy/review/summary rows)
+- [x] 07-21-PLAN.md - Fork rehearsal: worker genesis pipeline (genesisOne, simulate, cosign) with an external treasury, Sender tip and size, child in the new mint, verifyQuoteMint both ways, mainnet contract check
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [x] 07-19-PLAN.md - CI: @smoke tags, ci.yml with postgres:18.6, green run on the branch
+- [x] 07-23-PLAN.md - Responsive and axe matrix at 390/768/1440 for every Phase 7 surface, Designer critique sign-off
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [x] 07-20-PLAN.md - Scripts: setup, dev, verify, deploy with production guards, env-diff hash check
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [x] 07-22-PLAN.md - apps/worker/PRODUCTION.md: environment, gates G-1..G-11, D-38 incident runbook; README links
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [x] 07-24-PLAN.md - Staging redeploy with deploy.sh, contract check and v1 logs, regression matrices, cooldown check, Neon idle, spend
+
+**Wave 17** *(blocked on Wave 16 completion)*
+
+- [x] 07-25-PLAN.md - Final verification: full gates, size and emoji rules, evidence map, PR squash-merged after CI green
+
+**Wave 18** *(blocked on Wave 17 completion)*
+
+- [ ] 07-26-PLAN.md - OWNER GATE G-1: empty Railway production with explicit variables (new Pinata JWT, priority fee), Neon production branch, web dark at trybondr.fun, DNS
+
+**Wave 19** *(blocked on Wave 18 completion)*
+
+- [ ] 07-27-PLAN.md - OWNER GATE G-2: external treasury address
+
+**Wave 20** *(blocked on Wave 19 completion)*
+
+- [ ] 07-28-PLAN.md - OWNER GATE G-3: owner sets the production seed; worker boots dark in genesis mode; D-14 starts
+
+**Wave 21** *(blocked on Wave 20 completion)*
+
+- [ ] 07-29-PLAN.md - OWNER GATE G-7: EVACUATE on for mainnet
+- [ ] 07-30-PLAN.md - OWNER GATE G-4: fund ops with 0.5 SOL
+
+**Wave 22** *(blocked on Wave 21 completion)*
+
+- [ ] 07-31-PLAN.md - OWNER GATE G-5: BONDR genesis launch by the owner; set BONDR_QUOTE_MINT; leave genesis
+
+**Wave 23** *(blocked on Wave 22 completion)*
+
+- [ ] 07-32-PLAN.md - OWNER GATE G-8: FEE_ENGINE=on and the four engine switches on
+
+**Wave 24** *(blocked on Wave 23 completion)*
+
+- [ ] 07-33-PLAN.md - OWNER GATE G-6: launch Sender tip confirmed
+- [ ] 07-34-PLAN.md - OWNER GATE G-10: Helius plan from the D-14 numbers
+
+**Wave 25** *(blocked on Wave 24 completion)*
+
+- [ ] 07-35-PLAN.md - OWNER GATE G-9: launches on with an owner test launch first; HV-05-02 handed over
+
+**Wave 26** *(blocked on Wave 25 completion)*
+
+- [ ] 07-36-PLAN.md - OWNER GATE G-11: Neon plan review; phase docs closed
+
+**UI hint**: yes
 
 ## Progress
 
@@ -382,4 +500,4 @@ Phases execute in numeric order: 1, 2, 3, 4, 5, 6, 7
 | 4. Trading | 13/13 | Complete    | 2026-10-24 |
 | 5. Fee Engine and Public Ledger | 13/13 | Complete    | 2026-10-25 |
 | 6. Admin Dashboard | 26/26 | Complete   | 2026-10-26 |
-| 7. Go-Live | 0/TBD | Not started | - |
+| 7. Go-Live | 25/36 | In Progress|  |

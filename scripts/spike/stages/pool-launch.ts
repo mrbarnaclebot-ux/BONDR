@@ -33,7 +33,7 @@ async function writeFixture(ctx: Ctx, dev: PublicKey): Promise<void> {
   const sig = ctx.file.rows.find((r) => r.id === `${P}launch.sell`)?.sig;
   if (!sig) throw new Error("no landed migrated.launch.sell to capture");
   const tx = await ctx.conn.getTransaction(sig, {
-    maxSupportedTransactionVersion: 0,
+    maxSupportedTransactionVersion: 1,
     commitment: "confirmed",
   });
   const table = factOf(ctx, `${P}launch.table.sell`, "table");

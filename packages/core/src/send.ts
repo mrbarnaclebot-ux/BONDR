@@ -148,7 +148,7 @@ export async function fetchTx(
   sig: string,
 ): Promise<(VersionedTransactionResponse & { meta: ConfirmedTransactionMeta }) | undefined> {
   for (let i = 0; i < 20; i++) {
-    const tx = await conn.getTransaction(sig, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
+    const tx = await conn.getTransaction(sig, { maxSupportedTransactionVersion: 1, commitment: "confirmed" });
     if (tx?.meta) return { ...tx, meta: tx.meta };
     await delay(500);
   }

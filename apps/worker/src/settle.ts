@@ -19,6 +19,14 @@ export const RECHECKS = 3;
 export const HEIGHT_EVERY = 5;
 const SEND_PACE_MS = 1100;
 
+// D-31: the genesis launch is BONDR itself, a SOL coin, not a BONDR child, so it gets no coin row. Decided from the
+// row (its w is the treasury, the coin's creator), not the boot mode, so a genesis row still settling when the worker
+// restarts with BONDR_QUOTE_MINT set is not ingested as a child (WR-W-03). Set once at boot.
+let treasury: string | null = null;
+export const setTreasury = (t: string): void => {
+  treasury = t;
+};
+
 export type Seen = { confirmed: boolean; err: unknown } | null;
 export type Next =
   | { to: "landed" }
@@ -44,7 +52,7 @@ export const resumeAction = (state: LaunchState, blockhashValid: boolean): "rese
   state === "signed" && blockhashValid ? "resend" : "check";
 
 type Row = Pick<LaunchRow, "id" | "state" | "signature" | "lastValidBlockHeight" | "mint" | "wallet"> &
-  Pick<LaunchRow, "exit" | "solIn">;
+  Pick<LaunchRow, "exit" | "solIn" | "w">;
 
 export async function releaseMint(mint: string): Promise<void> {
   const v = await vanityRow(db(), mint);
@@ -94,6 +102,7 @@ export async function landed(conn: Connection, row: Row): Promise<void> {
   const tx = await fetchTx(conn, row.signature ?? "");
   if (!tx) return;
   await advance(db(), row.id, "landed", "landed", { facts: launchFacts(tx, row) });
+  if (row.w === treasury) return;
   // The coin and its Launch rows, from the same tx. A failure never undoes landed; the boot backfill retries it.
   await ingestLaunch(conn, row, tx).catch(logged(row.id));
 }

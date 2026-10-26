@@ -13,7 +13,7 @@ import { type EvacCoin, evacuateRefusal, executeEvacuate, simulateEvacuate } fro
 import { type Intent, putIntent, take, updateIntent, viewIntent } from "./admin-intent.ts";
 import { codeOf, gatedDeps, logged, outcome, progress } from "./admin-send.ts";
 import { captureDeps, type Step, simSummary } from "./admin-sim.ts";
-import type { WorkerEnv } from "./env.ts";
+import { quoteOf, type WorkerEnv } from "./env.ts";
 import { feeDeps } from "./fee-boot.ts";
 import type { Engine } from "./fee-engine.ts";
 import type { FeeDeps, Landed } from "./fee-send.ts";
@@ -42,7 +42,7 @@ export const signer = (c: MoneyCtx) => ({ site: c.site, wallet: c.admin ?? "" })
 // ledger; the engine flag governs automation only, so a recovery still works with automation off.
 export function adminBase(env: WorkerEnv, conn: Connection): FeeDeps {
   const online = new OnlinePumpSdk(conn);
-  return feeDeps({ conn, online, Q: env.quoteMint, priorityFee: env.priorityFee }, env, "on");
+  return feeDeps({ conn, online, Q: quoteOf(env), priorityFee: env.priorityFee, net: env.net }, env, "on");
 }
 
 // Evacuate dispatches to admin-evacuate.ts before this; any other action without an entry refuses.

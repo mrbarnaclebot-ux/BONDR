@@ -16,13 +16,25 @@ import { poolState } from "@bondr/core/trade";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { type Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { type AuditStore, audited } from "./admin-audit.ts";
+import { contractFailed } from "./contract-check.ts";
+import { launchTip } from "./fee-config.ts";
 import { Fail, fail } from "./http.ts";
+import type { Gate } from "./switch-gate.ts";
 import { loadSwitches, setJob, switchesLoaded, switchOn } from "./switches.ts";
 
 type Online = Parameters<typeof quoteVenue>[0];
 type FeeConfig = Awaited<ReturnType<Online["fetchFeeConfig"]>>;
-export type Ctx = { conn: Connection; online: Online; Q: PublicKey; priorityFee: number };
-type Where = Venue | "awaiting" | null; // null: the chain read failed
+export type Ctx = {
+  conn: Connection;
+  online: Online;
+  Q: PublicKey;
+  priorityFee: number;
+  net: "devnet" | "mainnet";
+};
+// /status alone also runs in genesis mode (no BONDR quote mint yet, D-29); every other Ctx reader keeps a Q.
+export type StatusCtx = Omit<Ctx, "Q"> &
+  ({ Q: PublicKey; treasury?: PublicKey } | { Q: null; treasury: PublicKey });
+type Where = Venue | "awaiting" | null; // null: the chain read failed, or genesis (no BONDR venue)
 
 const CACHE_MS = 5_000;
 export const LAUNCH_CU_LIMIT = 600_000;
@@ -41,8 +53,13 @@ const CREATE_ACCOUNT_SIZES = {
   vaultBondrAta: 170, // the child curve's BONDR fee vault
 };
 
-// D-18: a migrated BONDR is not a pause; only the seconds-long complete-but-unmigrated window is.
-export function pauseReason(s: { enabled: boolean; venue: Where }): PauseReason | null {
+// D-18: a migrated BONDR is not a pause; only the seconds-long complete-but-unmigrated window is. Genesis comes
+// first (no child can launch before BONDR exists), then a failed contract check: it turns every switch off
+// (D-20), and the banner must name the check (D-22).
+type PauseIn = { genesis: boolean; enabled: boolean; venue: Where; contract: boolean };
+export function pauseReason(s: PauseIn): PauseReason | null {
+  if (s.genesis) return "genesis";
+  if (s.contract) return "contract_check";
   if (!s.enabled) return "kill_switch";
   return s.venue === "awaiting" ? "awaiting_migration" : null;
 }
@@ -120,7 +137,31 @@ async function createCost(conn: Connection): Promise<bigint> {
   return rents.reduce((a, r) => a + BigInt(r), 0n);
 }
 
-async function readChain(ctx: Ctx) {
+// Genesis: a fresh SOL curve's fees and the live minimum, no venue and no insta-sell legs. createCost stays the
+// child-launch estimate, an overestimate for the smaller genesis launch.
+async function readGenesis(ctx: StatusCtx) {
+  const g = await ctx.online.fetchGlobal();
+  const [fc, cost] = await Promise.all([ctx.online.fetchFeeConfig(), createCost(ctx.conn)]);
+  const sol = newBondingCurve(g);
+  const f = computeFeesBps({
+    global: g,
+    feeConfig: fc,
+    mintSupply: g.tokenTotalSupply,
+    virtualQuoteReserves: sol.virtualQuoteReserves,
+    virtualTokenReserves: sol.virtualTokenReserves,
+    quoteMint: sol.quoteMint,
+  });
+  return {
+    venue: null,
+    fees: { protocolBps: f.protocolFeeBps.toNumber(), creatorBps: f.creatorFeeBps.toNumber() },
+    min: minLamports(BigInt(g.initialVirtualSolReserves.toString())),
+    cost,
+    legs: null,
+  };
+}
+
+async function readChain(ctx: StatusCtx) {
+  if (ctx.Q === null) return readGenesis(ctx);
   const venue = await venueOf(ctx);
   const g = await ctx.online.fetchGlobal();
   const [fc, pq, cost] = await Promise.all([
@@ -144,18 +185,21 @@ async function readChain(ctx: Ctx) {
 
 type Live = { status: Omit<Status, "paused">; venue: Where; legs: number[] | null };
 
-async function readLive(ctx: Ctx): Promise<Live> {
+async function readLive(ctx: StatusCtx): Promise<Live> {
   const chain = await readChain(ctx).catch((e: unknown) => {
     console.error(`status chain read failed: ${redact(e instanceof Error ? e.message : String(e))}`);
     return null;
   });
+  const tip = launchTip(ctx.net);
   const status = {
-    net: "devnet" as const,
-    quoteMint: ctx.Q.toBase58(),
+    net: ctx.net, // explorer links and devnet-only hints follow it (row 14)
+    quoteMint: ctx.Q?.toBase58() ?? null,
+    ...(ctx.Q === null && { genesisTreasury: ctx.treasury.toBase58() }),
     fees: chain?.fees ?? null,
     minLamports: chain ? String(chain.min) : null,
     createCostEstimate: chain ? String(chain.cost) : null,
     networkFeeEstimate: String(networkFee(ctx.priorityFee)),
+    senderTipEstimate: tip > 0n ? String(tip) : null,
   };
   return { status, venue: chain?.venue ?? null, legs: chain?.legs ?? null };
 }
@@ -163,7 +207,7 @@ async function readLive(ctx: Ctx): Promise<Live> {
 let cached: { at: number; live: Promise<Live> } | undefined;
 
 // One shared promise per 5 s window, so concurrent polls cost one read; a failed read is not cached.
-function live(ctx: Ctx): Promise<Live> {
+function live(ctx: StatusCtx): Promise<Live> {
   if (cached && Date.now() - cached.at < CACHE_MS) return cached.live;
   const entry = { at: Date.now(), live: readLive(ctx) };
   cached = entry;
@@ -181,8 +225,10 @@ export function parseSwitch(body: unknown): boolean {
 
 // The runbook's bearer route (paused.e2e.ts uses it). WR-W-08: audited as actor "runbook" through the same
 // writer as the console (D-34), and it never turns launches back on after EVACUATE; only the console does (D-36).
-export async function setSwitch(body: unknown, audit: AuditStore): Promise<{ enabled: boolean }> {
+// gate: the genesis and D-30 refusals the console's switch route also applies (WR-W-02).
+export async function setSwitch(body: unknown, audit: AuditStore, gate: Gate): Promise<{ enabled: boolean }> {
   const on = parseSwitch(body);
+  await gate("launches", on);
   if (on && (await loadSwitches()).evacuatedAt) throw fail({ error: "not_applicable", reason: "evacuated" });
   const params = { job: "launches", enabled: on };
   await audited(audit, { actor: "runbook", action: "switch", mint: null, params }, () =>
@@ -194,14 +240,18 @@ export async function setSwitch(body: unknown, audit: AuditStore): Promise<{ ena
 // The launches switch lives in switches.ts memory, so the 10 s status poll of every open page never wakes Neon.
 // fresh: prepare and submit re-read the settings row before they act on it, so a pause written in SQL still stops
 // them; open pages show it after the next launch attempt or a restart.
-export async function liveStatus(ctx: Ctx, fresh = false): Promise<Status> {
+export async function liveStatus(ctx: StatusCtx, fresh = false): Promise<Status> {
   const [l, enabled] = await Promise.all([
     live(ctx),
     fresh || !switchesLoaded() ? loadSwitches().then((s) => s.launches) : switchOn("launches"),
   ]);
-  return { ...l.status, paused: pauseReason({ enabled, venue: l.venue }) };
+  const genesis = ctx.Q === null;
+  return {
+    ...l.status,
+    paused: pauseReason({ genesis, enabled, venue: l.venue, contract: contractFailed() }),
+  };
 }
-function parseQuote(body: unknown): { solIn: bigint; wallet?: PublicKey } {
+export function parseQuote(body: unknown): { solIn: bigint; wallet?: PublicKey } {
   const b = (body ?? {}) as { solIn?: unknown; wallet?: unknown };
   const bad = new Fail(400, { error: "invalid_input" });
   if (typeof b.solIn !== "string" || !/^\d{1,20}$/.test(b.solIn)) throw bad;

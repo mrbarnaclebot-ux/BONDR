@@ -6,7 +6,16 @@ import type { CoinRow } from "@bondr/core/api";
 import postgres from "postgres";
 import { afterAll, describe, expect, test, vi } from "vitest";
 import { dropCoin, fakeMint, fakeSig, seedCoin, seedLedger } from "../e2e/fixtures.ts";
-import { coinByMint, escapeLike, heroCounts, listCoins, nextToBond, trending, trendMode } from "./coins";
+import {
+  coinByMint,
+  escapeLike,
+  heroCounts,
+  listCoins,
+  markFirst,
+  nextToBond,
+  trending,
+  trendMode,
+} from "./coins";
 import { close } from "./db";
 
 vi.mock("server-only", () => ({}));
@@ -24,6 +33,15 @@ test("trendMode reads the first ranked row: 1h volume, else 24h volume, else the
   expect(trendMode([row(0, 3), row(0, 1)])).toBe("24h");
   expect(trendMode([row(0, 0)])).toBe("latest");
   expect(trendMode([])).toBe("latest");
+});
+
+test("markFirst marks only page 0, only an exact head, only with two or more exact rows", () => {
+  const row = (symbol: string) => ({ symbol }) as CoinRow;
+  const rows = [row("PEPE"), row("PEPE"), row("PEPEX")];
+  expect(markFirst(rows, "PEPE", 0).map((r) => !!r.first)).toEqual([true, false, false]);
+  expect(markFirst(rows, "PEPE", 1).some((r) => r.first)).toBe(false);
+  expect(markFirst([row("PEPE"), row("PEPEX")], "PEPE", 0).some((r) => r.first)).toBe(false);
+  expect(markFirst([row("PEPEX"), row("PEPEX")], "PEPE", 0).some((r) => r.first)).toBe(false);
 });
 
 type Trade = [minutesAgo: number, mcap: number, side: "buy" | "sell" | "burn", lamports: number | null];
@@ -158,6 +176,55 @@ describe.skipIf(!process.env.DATABASE_URL)("coinByMint", { timeout: 60_000 }, ()
     expect(await find(tag)).toEqual([plain, under, fifty, pct, grub, grubby]);
     expect(await find(tag, "oldest")).toEqual([grubby, grub, pct, fifty, under, plain]);
     expect(await find("G")).toEqual(await find(""));
+  });
+
+  // D-44: a random ticker no real coin has; the partial match is the newest, so only the exact rule puts it last.
+  test("search lists exact ticker matches oldest first and marks the oldest First when two or more are visible", async () => {
+    const key = `Z${fakeSig()
+      .slice(0, 7)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "Q")}`;
+    const seed = async (symbol: string, launched: string, hidden = false) => {
+      const coin = {
+        launched_at: new Date(launched),
+        ...(hidden && { hidden_at: new Date(), hidden_reason: "test" }),
+      };
+      const { mint } = await seedCoin(sql, { trades: 0, coin });
+      await sql`update launches set symbol = ${symbol} where mint = ${mint}`;
+      mints.push(mint);
+      return mint;
+    };
+    const hidden = await seed(key, "2099-03-01T00:00:00Z", true);
+    const a = await seed(key, "2099-03-02T00:00:00Z");
+    const b = await seed(key, "2099-03-04T00:00:00Z");
+    const c = await seed(key, "2099-03-03T00:00:00Z");
+    const partial = await seed(`${key}X`, "2099-03-05T00:00:00Z");
+    for (const sort of ["latest", "top"] as const) {
+      const p0 = (await listCoins({ sort, page: 0, q: ` ${key.toLowerCase()} ` })).coins;
+      expect(p0.map((r) => r.mint)).toEqual([a, c, b, partial]);
+      expect(p0.map((r) => !!r.first)).toEqual([true, false, false, false]);
+      expect(p0.some((r) => r.mint === hidden)).toBe(false);
+    }
+    expect((await listCoins({ sort: "latest", page: 1, q: key })).coins).toEqual([]);
+    expect((await listCoins({ sort: "latest", page: 0, q: `${key}X` })).coins.some((r) => r.first)).toBe(
+      false,
+    );
+    expect((await listCoins({ sort: "latest", page: 0 })).coins.some((r) => r.first)).toBe(false);
+  });
+
+  test("one exact match is never marked", async () => {
+    const key = `Y${fakeSig()
+      .slice(0, 7)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "Q")}`;
+    const { mint } = await seedCoin(sql, {
+      trades: 0,
+      coin: { launched_at: new Date("2099-04-01T00:00:00Z") },
+    });
+    await sql`update launches set symbol = ${key} where mint = ${mint}`;
+    mints.push(mint);
+    const rows = (await listCoins({ sort: "latest", page: 0, q: key })).coins;
+    expect(rows.map((r) => [r.mint, !!r.first])).toEqual([[mint, false]]);
   });
 
   // Volumes no real coin reaches, so the seeded coins lead the 1h ranking; a 24h-only coin ranks below them.

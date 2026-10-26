@@ -88,7 +88,13 @@ async function prepare(run: Run, exit: Exit, mint: Keypair, dev: Keypair) {
   return { base, built, sized: await sizes(base, built.ixs) };
 }
 
-export async function launchOne(run: Run, exit: Exit, prefix = ""): Promise<boolean> {
+// id: the launch row id; the genesis stage names its child launch "genesis.child".
+export async function launchOne(
+  run: Run,
+  exit: Exit,
+  prefix = "",
+  id = rowId(exit, false, prefix),
+): Promise<boolean> {
   const { ctx } = run;
   const [mint, dev] = [Keypair.generate(), ctx.key("sim", "dev")];
   const { base, built, sized } = await prepare(run, exit, mint, dev);
@@ -125,7 +131,7 @@ export async function launchOne(run: Run, exit: Exit, prefix = ""): Promise<bool
   };
   if (r.ok) ctx.file.state[`${prefix}C.${exit}`] = mint.publicKey.toBase58();
   ctx.record({
-    id: rowId(exit, false, prefix),
+    id,
     step: `Launch via Q's ${built.venue}: create + exact-out dev buy + insta ${exit} (one v0 tx, per-coin table)`,
     ...r,
     cuLimit: CU_LIMIT,

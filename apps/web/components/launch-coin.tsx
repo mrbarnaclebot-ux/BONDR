@@ -7,10 +7,12 @@ import {
   DESCRIPTION_MAX,
   NAME_MAX_BYTES,
   normalizeLink,
+  reservedTicker,
   SYMBOL_MAX,
 } from "@bondr/core/rules";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { reservedFieldError, tickerFieldError } from "@/lib/ticker-copy";
 import { DropZone } from "./launch-drop";
 import type { Fields, Launch, LinkKey, Picked, StepProps } from "./launch-flow";
 import { Button } from "./ui-button";
@@ -39,7 +41,7 @@ const REQUIRED = new Set(["Name is required.", "Symbol is required."]);
 export const IMAGE_MISSING = "Add an image. Square PNG, JPG, GIF or WEBP up to 4 MB.";
 const IMAGE_TYPE = "That file is not PNG, JPG, GIF or WEBP. Choose another image.";
 
-function textError(k: "name" | "symbol" | "description", raw: string): string | null {
+function textError(k: "name" | "symbol" | "description", raw: string, genesis: boolean): string | null {
   if (k === "name") {
     const r = checkName(raw);
     if (r.ok) return null;
@@ -49,7 +51,9 @@ function textError(k: "name" | "symbol" | "description", raw: string): string | 
   }
   if (k === "symbol") {
     const r = checkSymbol(raw);
-    if (r.ok) return null;
+    // Live like the charset error, so Continue is blocked (UI-SPEC A2). The worker's ticker_reserved stays the gate.
+    // The owner genesis variant skips only this check: BONDR is the genesis ticker (D-44).
+    if (r.ok) return !genesis && reservedTicker(r.value) ? reservedFieldError(r.value) : null;
     if (r.code === "required") return "Symbol is required.";
     return r.code === "too_long"
       ? `Symbol is ${r.n} characters. Keep it to ${SYMBOL_MAX} or fewer.`
@@ -60,10 +64,10 @@ function textError(k: "name" | "symbol" | "description", raw: string): string | 
 }
 
 // Over-limit and charset errors show live; "required" waits for blur or Continue; links wait for blur.
-function errorsFor(state: Launch, imageError: string | null, touched: Set<Key>) {
+function errorsFor(state: Launch, imageError: string | null, touched: Set<Key>, genesis: boolean) {
   const errors: Partial<Record<Key, string>> = {};
   for (const k of ["name", "symbol", "description"] as const) {
-    const msg = textError(k, state.fields[k]);
+    const msg = textError(k, state.fields[k], genesis);
     if (msg && (touched.has(k) || !REQUIRED.has(msg))) errors[k] = msg;
   }
   for (const { k, error } of LINKS) {
@@ -92,7 +96,7 @@ async function readImage(file: File): Promise<Picked | string> {
   return { file, url, width: img.naturalWidth, height: img.naturalHeight };
 }
 
-function useCoin({ state, dispatch }: StepProps) {
+function useCoin({ state, dispatch, live }: StepProps) {
   const [touched, setTouched] = useState(new Set<Key>());
   const [imageError, setImageError] = useState<string | null>(null);
   const touch = (k: Key, on: boolean) =>
@@ -124,11 +128,20 @@ function useCoin({ state, dispatch }: StepProps) {
     for (const { k } of LINKS) normalize(k);
     const all = new Set(ORDER);
     setTouched(all);
-    const first = ORDER.find((k) => errorsFor(state, imageError, all)[k]);
+    const first = ORDER.find((k) => errorsFor(state, imageError, all, live.genesis)[k]);
     if (first) document.getElementById(`coin-${first}`)?.focus();
     else dispatch({ type: "go", step: 2 });
   };
-  return { errors: errorsFor(state, imageError, touched), bind, pick, next };
+  const errors = errorsFor(state, imageError, touched, live.genesis);
+  const lock = lockedError(state);
+  // Shown, not blocking: the creator may wait out the lock and continue with the same ticker.
+  return { errors: !errors.symbol && lock ? { ...errors, symbol: lock } : errors, bind, pick, next };
+}
+
+// The last ticker_locked refusal, while the normalized symbol still equals the refused one (UI-SPEC A1).
+function lockedError({ refused, fields }: Launch): string | null {
+  const r = checkSymbol(fields.symbol);
+  return refused && r.ok && r.value === refused.symbol ? tickerFieldError(refused.symbol, refused.err) : null;
 }
 
 export function LaunchCoin(props: StepProps) {

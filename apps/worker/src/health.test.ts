@@ -24,6 +24,7 @@ const env = {
   feeEngine: "dry",
   adminEvacuate: "on",
   sentryReadToken: null,
+  quoteMint: Keypair.generate().publicKey,
 } as unknown as WorkerEnv;
 const first = { mint: "M1", step: "finalize", attempts: 3 };
 const engine = { stuckCount: () => ({ count: 2, first }) } as unknown as Engine;
@@ -47,8 +48,15 @@ test("every field comes from memory, with no database", async () => {
     feeEngine: "dry",
     opsLow: false,
     evacuate: "on",
+    contract: { kind: "not_run", at: null, facts: [], programs: [], lastPass: null }, // contractState()
+    genesis: false,
     sentry: { configured: false },
   });
+});
+
+test("genesis mode is read from the env, with no read (D-29)", async () => {
+  const h = await healthSnapshot({ env: { ...env, quoteMint: null }, engine: () => null });
+  expect(h.genesis).toBe(true);
 });
 
 test("no engine reports nothing stuck", async () => {

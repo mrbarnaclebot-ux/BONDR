@@ -2,7 +2,7 @@
 import { normalizeLink } from "@bondr/core/rules";
 import { Flame, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
-import { compact, pct, sol } from "@/lib/format";
+import { compact, pct, short, sol } from "@/lib/format";
 import { Callout } from "./callout";
 import { EXIT_NAME } from "./launch-buy";
 import type { Fields, Live, StepProps } from "./launch-flow";
@@ -22,25 +22,45 @@ function links(f: Fields): string {
   return list.join(", ") || "None";
 }
 
-function rows({ state, live }: StepProps): [string, ReactNode][] {
+type Row = [string, ReactNode];
+
+function rows({ state, live }: StepProps): Row[] {
   const f = state.fields;
   const symbol = f.symbol.trim().toUpperCase();
   const q = live.quote.quote;
+  const coin: Row = ["Coin", `${f.name.trim()} (${symbol})`];
+  const buy: Row = [
+    "Dev buy",
+    <>
+      <span className="num">{live.buy.ok ? sol(live.buy.lamports) : "…"} SOL</span>, about{" "}
+      {q ? compact(q.tokensOut) : "…"} {symbol}
+    </>,
+  ];
+  if (live.genesis) return genesisRows(coin, buy, f, live.status?.genesisTreasury);
   return [
-    ["Coin", `${f.name.trim()} (${symbol})`],
+    coin,
     ["Mint", "Assigned when you sign, ends in bndr"],
     ["Image and metadata", "Pinned to IPFS when you sign"],
     ["Links", links(f)],
-    [
-      "Dev buy",
-      <>
-        <span className="num">{live.buy.ok ? sol(live.buy.lamports) : "…"} SOL</span>, about{" "}
-        {q ? compact(q.tokensOut) : "…"} {symbol}
-      </>,
-    ],
+    buy,
     ["Exit", state.exit ? `${EXIT_NAME[state.exit]}, in the same transaction` : "Not chosen"],
     ["Creator of record", CREATOR],
     ["You after bond", "80% of the creator fee, permanently"],
+  ];
+}
+
+// UI-SPEC surface 2: BONDR itself is a SOL coin whose creator is the treasury (D-28, D-31).
+function genesisRows(coin: Row, buy: Row, f: Fields, treasury?: string): Row[] {
+  const who = treasury ? `The BONDR treasury ${short(treasury)}.` : "The BONDR treasury.";
+  return [
+    coin,
+    ["Pair", "SOL"],
+    ["Mint", "Assigned when you sign, ends in bndr"],
+    ["Image and metadata", "Pinned to IPFS when you sign"],
+    ["Links", links(f)],
+    buy,
+    ["Exit", "Insta burn, in the same transaction"],
+    ["Creator of record", `${who} Its creator fees are claimed on pump.fun by the owner.`],
   ];
 }
 
@@ -61,7 +81,8 @@ export function LaunchReview(props: StepProps) {
           </div>
         ))}
       </dl>
-      <FeeCallout creatorBps={fees?.creatorBps} />
+      {/* D-31: BONDR's own creator fee has no split; the summary's one "Creator fee" group says where it goes. */}
+      {!live.genesis && <FeeCallout creatorBps={fees?.creatorBps} />}
       {feeFailed && (
         <Callout variant="error">
           Could not read pump's fee settings, so launching is off for now. Reload the page in a minute.

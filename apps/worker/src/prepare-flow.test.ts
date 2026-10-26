@@ -29,6 +29,10 @@ vi.mock("./launches.ts", async (orig) => ({
   insertFailed: m.insertFailed,
 }));
 vi.mock("./admin-moderate.ts", async (orig) => ({ ...(await orig()), blocked: async () => false }));
+vi.mock("./ticker.ts", async (orig) => ({
+  ...(await orig()),
+  tickerLock: async () => ({ held: 0, until: null, lastLanded: null }),
+}));
 vi.mock("./vanity.ts", async (orig) => ({ ...(await orig()), reserve: m.reserve, markUsed: m.markUsed }));
 
 const body = {

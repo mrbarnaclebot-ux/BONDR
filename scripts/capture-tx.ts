@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     jsonrpc: "2.0",
     id: 1,
     method: "getTransaction",
-    params: [a.sig, { encoding: "json", maxSupportedTransactionVersion: 0, commitment: "confirmed" }],
+    params: [a.sig, { encoding: "json", maxSupportedTransactionVersion: 1, commitment: "confirmed" }],
   });
   const res = await fetch(conn.rpcEndpoint, {
     method: "POST",

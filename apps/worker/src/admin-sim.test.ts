@@ -128,7 +128,7 @@ test("land simulates once with the watched accounts, records a step and never se
 });
 
 test("below the ops floor a non-urgent step previews as ops_low and stops, like base land (CR-W-01)", async () => {
-  noteOps(0);
+  noteOps(0, "devnet");
   try {
     const sink: Step[] = [];
     const d = captureDeps(setup(), sink, WATCH);
@@ -137,7 +137,7 @@ test("below the ops floor a non-urgent step previews as ops_low and stops, like 
     await expect(d.land({ ...transferJob(), urgent: true })).resolves.toEqual({ state: "dry" });
     expect(sink[1]?.ok).toBe(true);
   } finally {
-    noteOps(1_000_000_000);
+    noteOps(1_000_000_000, "devnet");
   }
 });
 

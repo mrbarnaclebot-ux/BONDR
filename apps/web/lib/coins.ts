@@ -60,6 +60,22 @@ function kept<T>(key: string, read: () => Promise<T>): Promise<T> {
 
 export type CoinPage = { coins: CoinRow[]; more: boolean };
 
+// D-44: exact ticker matches first, oldest first, then the sort's own order. Symbols are stored uppercase.
+const exactFirst = (key: string) => {
+  const exact = sql`(${launches.symbol} = ${key})`;
+  return [sql`${exact} desc`, sql`case when ${exact} then ${coins.launchedAt} end asc`];
+};
+
+/**
+ * Marks the oldest exact match "First" on page 0 when two or more visible coins share the ticker. Exact matches
+ * lead the order, so page 0 holds them all (or a full page of them): no extra read.
+ */
+export function markFirst(rows: CoinRow[], key: string, page: number): CoinRow[] {
+  const [head] = rows;
+  if (page !== 0 || head?.symbol !== key || rows.filter((r) => r.symbol === key).length < 2) return rows;
+  return [{ ...head, first: true }, ...rows.slice(1)];
+}
+
 /**
  * One page of BONDR coins (only coins rows, so only launches through BONDR) with the windowed columns, filtered
  * by the search text `q` when it has 2 or more characters (LIST-05). A full mint matches only that coin.
@@ -70,8 +86,11 @@ export const listCoins = ({ sort, page, q }: { sort: Sort; page: number; q?: str
   const term = parseQ(q) ?? "";
   return kept(`${sort}:${page}:${term}`, async () => {
     const where = term ? matches(term) : undefined;
-    const rows = await coinRows(db(), ORDER[sort], LIST_PAGE + 1, page * LIST_PAGE, where);
-    return { coins: rows.slice(0, LIST_PAGE), more: rows.length > LIST_PAGE };
+    const key = term.toUpperCase();
+    const order = term ? [...exactFirst(key), ...ORDER[sort]] : ORDER[sort];
+    const rows = await coinRows(db(), order, LIST_PAGE + 1, page * LIST_PAGE, where);
+    const list = rows.slice(0, LIST_PAGE);
+    return { coins: term ? markFirst(list, key, page) : list, more: rows.length > LIST_PAGE };
   });
 };
 

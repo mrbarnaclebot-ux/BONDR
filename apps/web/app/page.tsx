@@ -20,6 +20,9 @@ const PAUSED: Record<PauseReason, string> = {
   awaiting_migration:
     "BONDR's own curve is complete and moving to PumpSwap. Launches resume automatically once the pool is live.",
   kill_switch: "The BONDR owner has paused new launches. Browsing is unaffected.",
+  contract_check:
+    "A weekly safety check found that pump.fun changed something BONDR depends on, so new launches are paused while the owner reviews it. Trading is not affected.",
+  genesis: "Launches open after the BONDR token is live. Browsing is unaffected.",
 };
 
 /** Launch status read once per render, never polled (UI-SPEC Paused banner); a failed read shows no banner. */
@@ -54,7 +57,11 @@ export default async function Home({ searchParams }: Props) {
       <div className="overflow-x-clip">
         {paused && (
           <div className="mx-auto w-full max-w-[1440px] px-(--gutter) pt-4">
-            <Callout variant="warn" icon={Pause} title="Launches paused.">
+            <Callout
+              variant="warn"
+              icon={Pause}
+              title={paused === "genesis" ? "Launches are not open yet." : "Launches paused."}
+            >
               {PAUSED[paused]}
             </Callout>
           </div>

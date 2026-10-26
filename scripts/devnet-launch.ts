@@ -27,7 +27,7 @@ import {
 } from "@solana/web3.js";
 import { TERMS_VERSION } from "../apps/web/lib/terms.ts";
 import { compileLaunch, unionTableKeys } from "../apps/worker/src/build.ts";
-import { loadEnv, ops } from "../apps/worker/src/env.ts";
+import { loadEnv, ops, quoteOf } from "../apps/worker/src/env.ts";
 import { Fail } from "../apps/worker/src/http.ts";
 import { getLaunch, type LaunchRow } from "../apps/worker/src/launches.ts";
 import { type PrepareCtx, prepare } from "../apps/worker/src/prepare.ts";
@@ -213,8 +213,9 @@ async function main(): Promise<void> {
   const ctx: PrepareCtx = {
     conn,
     online: new OnlinePumpSdk(conn),
-    Q: env.quoteMint,
+    Q: quoteOf(env),
     priorityFee: env.priorityFee,
+    net: env.net,
     env,
   };
   const before = await balances(conn, env.seed);

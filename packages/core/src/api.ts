@@ -2,18 +2,21 @@
 // Every amount is a decimal string of lamports or token base units: bigint survives JSON that way.
 
 export type Net = "devnet" | "mainnet";
-export type PauseReason = "kill_switch" | "awaiting_migration";
+// contract_check: D-20, D-22. genesis: the worker runs with no BONDR quote mint yet (D-29).
+export type PauseReason = "kill_switch" | "awaiting_migration" | "contract_check" | "genesis";
 export type Exit = "burn" | "sell";
 
 export type Status = {
   net: Net;
   paused: PauseReason | null;
-  quoteMint: string;
+  quoteMint: string | null; // null in genesis mode, before the BONDR token exists
+  genesisTreasury?: string; // genesis mode only: the creator the genesis launch names, for the review row
   // null when the live config could not be read; the UI then shows "Unavailable" and disables signing.
   fees: { protocolBps: number; creatorBps: number } | null;
   minLamports: string | null;
   createCostEstimate: string | null;
   networkFeeEstimate: string | null;
+  senderTipEstimate: string | null; // the Sender tip a mainnet launch carries (D-34); null off mainnet
 };
 
 export type QuoteRequest = { solIn: string; wallet?: string };
@@ -44,10 +47,23 @@ export type LaunchErrorCode =
   | "not_applicable"
   | "simulation_failed"
   | "destination_refused"
-  | "rpc_failed";
+  | "rpc_failed"
+  // Phase 7 anti-vamp (D-43, D-44): a ticker inside its 24h cooldown, and a reserved ticker.
+  | "ticker_locked"
+  | "ticker_reserved"
+  // Genesis mode (D-29): a child prepare before BONDR exists, and a second genesis launch.
+  | "not_ready"
+  | "genesis_landed";
 
-// reason: the admin not_applicable code the console maps to copy (D-12).
-export type ApiError = { error: LaunchErrorCode; paused?: PauseReason; reason?: string };
+// reason: the admin not_applicable code the console maps to copy (D-12). retryAfter (seconds) and lock come with
+// ticker_locked (D-43): "landed" is a landed launch's 24h window, "pending" a launch still being signed or sent.
+export type ApiError = {
+  error: LaunchErrorCode;
+  paused?: PauseReason;
+  reason?: string;
+  retryAfter?: number;
+  lock?: "landed" | "pending";
+};
 
 export type Links = { x?: string; telegram?: string; website?: string };
 
@@ -187,6 +203,9 @@ export type CoinRow = CoinLive & {
   launchMcapSol: number;
   bondSig: string | null;
   bondedAt: string | null;
+  createSlot: string | null; // null before 07-07: no sniped figure is shown
+  snipedBps: number | null;
+  first?: boolean; // search only: the oldest of two or more visible exact ticker matches (D-44)
 };
 
 export type TradeRow = {

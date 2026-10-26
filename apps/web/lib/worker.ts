@@ -11,7 +11,18 @@ const PASS = new Set([400, 402, 403, 404, 409, 410, 413, 422, 429, 500, 503]);
 
 export type WorkerReply<T> = { status: number; body: T | ApiError };
 
+// The switch refusal reasons the console names (WR-W-02); any other reason is dropped.
+const SWITCH_REASONS = new Set(["genesis", "contract_check", "vanity_pool"]);
 const unavailable: WorkerReply<never> = { status: 503, body: { error: "worker_unavailable" } };
+
+// The ticker cooldown's wait and lock kind (D-43): a finite number of seconds and one of two words, else dropped.
+function ticker(b: Partial<ApiError>): Pick<ApiError, "retryAfter" | "lock"> {
+  const lock = b.lock === "landed" || b.lock === "pending" ? b.lock : undefined;
+  return {
+    ...(Number.isFinite(b.retryAfter) && { retryAfter: b.retryAfter }),
+    ...(lock && { lock }),
+  };
+}
 
 async function call<T>(path: string, init: RequestInit, timeoutMs = TIMEOUT_MS): Promise<WorkerReply<T>> {
   const base = process.env.WORKER_URL;
@@ -26,9 +37,13 @@ async function call<T>(path: string, init: RequestInit, timeoutMs = TIMEOUT_MS):
     });
     const body = (await res.json().catch(() => null)) as (T & Partial<ApiError>) | null;
     if (res.ok && body) return { status: res.status, body };
-    // Rebuilt from the two contract fields, so no raw worker text reaches the browser.
-    if (PASS.has(res.status) && typeof body?.error === "string")
-      return { status: res.status, body: { error: body.error, paused: body.paused } };
+    // Rebuilt from the contract fields only, so no raw worker text reaches the browser (Pitfall 24).
+    if (PASS.has(res.status) && typeof body?.error === "string") {
+      const known = body.error === "not_ready" && SWITCH_REASONS.has(String(body.reason));
+      const reason = known ? body.reason : undefined;
+      const fields = { error: body.error, paused: body.paused, ...ticker(body), ...(reason && { reason }) };
+      return { status: res.status, body: fields };
+    }
     return unavailable;
   } catch {
     return unavailable;

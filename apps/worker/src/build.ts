@@ -3,6 +3,7 @@
 
 import { createTable, tableKeys } from "@bondr/core/alt";
 import { exitPresent } from "@bondr/core/cosign";
+import type { Net } from "@bondr/core/keys";
 import { AwaitingMigration, buildLaunch, type LaunchOpts } from "@bondr/core/launch";
 import { redact } from "@bondr/core/net";
 import { checkMessage, messageSize, PACKET_LIMIT } from "@bondr/core/send";
@@ -13,16 +14,18 @@ import {
   type Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
+  SystemProgram,
   type TransactionInstruction,
   TransactionMessage,
   type VersionedMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { OPS_FLOOR_LAMPORTS } from "./fee-config.ts";
+import { feeConfig, SENDER_TIPS } from "./fee-config.ts";
 import { fail } from "./http.ts";
 
 type Built = Awaited<ReturnType<typeof buildLaunch>>;
-export type Builds = { burn: Built; sell: Built };
+// What the final message reads of a build; the genesis build (no qMin, no venue) fits it too.
+export type Builds = Record<"burn" | "sell", Pick<Built, "ixs" | "amount">>;
 
 // Helius free allows about one send per second (Pitfall 8).
 const TABLE_PACE_MS = 1100;
@@ -60,11 +63,18 @@ async function reusable(conn: Connection, address: string, keys: PublicKey[]) {
 // Ops pays the table rent (PROJECT.md item 9). A prior table missing a key (BONDR changed venue) is replaced.
 // A new table that is not usable is still returned with its address: ops paid for it, so the caller records
 // it before refusing (WR-02).
-export async function ensureTable(conn: Connection, ops: Keypair, keys: PublicKey[], prior: string | null) {
+export async function ensureTable(
+  conn: Connection,
+  ops: Keypair,
+  keys: PublicKey[],
+  prior: string | null,
+  net: Net,
+) {
   const old = prior ? await reusable(conn, prior, keys) : null;
   if (old) return { table: old, address: old.key.toBase58(), created: false };
   const balance = await conn.getBalance(ops.publicKey);
-  if (balance < OPS_FLOOR_LAMPORTS) throw buildFailed(`ops below floor: ${balance / LAMPORTS_PER_SOL} SOL`);
+  if (balance < feeConfig(net).opsFloorLamports)
+    throw buildFailed(`ops below floor: ${balance / LAMPORTS_PER_SOL} SOL`);
   const r = await createTable(conn, ops, keys, TABLE_PACE_MS);
   const address = r.address.toBase58();
   if (!r.table)
@@ -74,14 +84,29 @@ export async function ensureTable(conn: Connection, ops: Keypair, keys: PublicKe
 
 // Payer is the dev (signature 0) and the mint is signature 1: submit relies on that order (Pattern 3). The
 // exit check repeats submit's, so a builder change that drops the exit fails at prepare, not at sign time.
+// The Sender tip (fee-send.ts tipIxs) goes in after the table keys were computed, so its account stays static
+// and a random tip account never breaks table reuse (D-34). A tip that would break the packet limit is dropped,
+// never the launch.
 export function compileLaunch(
   o: Pick<LaunchOpts, "dev" | "mint" | "exit">,
   ixs: TransactionInstruction[],
   table: AddressLookupTableAccount,
   blockhash: string,
+  tip: TransactionInstruction[] = [],
 ): VersionedMessage {
-  const msg = new TransactionMessage({ payerKey: o.dev, recentBlockhash: blockhash, instructions: ixs });
-  const v0 = msg.compileToV0Message([table]);
+  const compile = (list: TransactionInstruction[]) =>
+    new TransactionMessage({
+      payerKey: o.dev,
+      recentBlockhash: blockhash,
+      instructions: list,
+    }).compileToV0Message([table]);
+  let v0 = compile([...ixs, ...tip]);
+  if (tip.length && messageSize(v0) > PACKET_LIMIT) {
+    console.warn(
+      `launch ${o.mint.toBase58()}: ${messageSize(v0)} bytes with the Sender tip, sent untipped over RPC`,
+    );
+    v0 = compile(ixs);
+  }
   const refused = checkMessage(v0);
   if (refused) throw buildFailed(refused);
   const bytes = messageSize(v0);
@@ -93,9 +118,29 @@ export function compileLaunch(
   return v0;
 }
 
-export async function buildMessage(o: LaunchOpts, table: AddressLookupTableAccount, blockhash: string) {
+const TIPS = new Set(SENDER_TIPS);
+const SYSTEM = SystemProgram.programId.toBase58();
+
+// A System transfer (instruction 2) to a Sender tip account. Submit reads the stored message with this to pick
+// Sender or RPC, so the choice needs no column and survives a restart.
+export function tipped(msg: VersionedMessage): boolean {
+  const keys = msg.staticAccountKeys.map(String);
+  return msg.compiledInstructions.some(
+    (ix) =>
+      keys[ix.programIdIndex] === SYSTEM &&
+      ix.data[0] === 2 &&
+      ix.accountKeyIndexes.some((i) => TIPS.has(keys[i] ?? "")),
+  );
+}
+
+export async function buildMessage(
+  o: LaunchOpts,
+  table: AddressLookupTableAccount,
+  blockhash: string,
+  tip: TransactionInstruction[] = [],
+) {
   const built = await build(o);
-  return { ...built, msg: compileLaunch(o, built.ixs, table, blockhash) };
+  return { ...built, msg: compileLaunch(o, built.ixs, table, blockhash, tip) };
 }
 
 // The launch map keeps the launch's own codes (S-WR-01); the name keeps launch callers and tests unchanged.

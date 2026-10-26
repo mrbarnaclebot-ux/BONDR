@@ -2,10 +2,13 @@
 // Step 4: the five rows, the failure table and the restore after a reload. The network sequence is
 // lib/launch-run.ts.
 import { Check, X } from "lucide-react";
+import Link from "next/link";
 import { type Dispatch, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { short } from "@/lib/format";
-import { type Code, launch, type Progress, poll, type Row, type Run, Stop } from "@/lib/launch-run";
+import { FAULTS, type Fault, GENESIS_FAULTS, NOT_FOUND } from "@/lib/launch-faults";
+import { type Code, launch, type Progress, poll, type Run, Stop } from "@/lib/launch-run";
+import { tickerFault } from "@/lib/ticker-copy";
 import { Callout } from "./callout";
 import type { Live, StepProps } from "./launch-flow";
 import { TxLink } from "./tx-link";
@@ -13,7 +16,6 @@ import { Button } from "./ui-button";
 import { useWallet } from "./wallet";
 
 const KEY = "bondr:launch";
-export const NOT_FOUND = "We could not find that launch. Start again.";
 
 /** The posted launch's id, so a reload restores it. Blocked storage only loses the restore. */
 export const stored = {
@@ -28,73 +30,6 @@ export const stored = {
     try {
       id ? sessionStorage.setItem(KEY, id) : sessionStorage.removeItem(KEY);
     } catch {}
-  },
-};
-
-type Fault = { row?: Row; text: string; action: "Try again" | "Build again" | null };
-
-const BUILD_FAILED: Fault = {
-  text: "Could not build your launch transaction. Nothing was sent. Try again.",
-  action: "Try again",
-};
-// UI-SPEC step 4 failure table. A fault marks the row that was running unless it names one. The first three
-// leave step 4 instead (see leave()); a code missing here falls back to Build failed, so none is silent.
-const FAULTS: Record<Code, Fault> = {
-  insufficient_balance: { text: "", action: null },
-  consent_required: { text: "", action: null },
-  not_found: { text: NOT_FOUND, action: null },
-  pin_failed: {
-    text: "Could not pin your image and metadata to IPFS. Nothing was sent. Try again.",
-    action: "Try again",
-  },
-  pool_empty: {
-    text: "No bndr addresses are ready right now. Nothing was sent. Try again in a few minutes.",
-    action: "Try again",
-  },
-  rate_limited: {
-    text: "Too many launch attempts from this wallet. Nothing was sent. Wait a minute, then try again.",
-    action: null,
-  },
-  build_failed: BUILD_FAILED,
-  worker_unavailable: BUILD_FAILED,
-  invalid_input: BUILD_FAILED,
-  slippage: BUILD_FAILED, // trade codes; a launch never gets them
-  message_changed: BUILD_FAILED,
-  // D-30: a fixed line with no action; the owner's reason never reaches the deployer.
-  blocked: { text: "This wallet cannot launch coins on BONDR.", action: null },
-  // Admin codes; a launch never gets them.
-  forbidden: BUILD_FAILED,
-  intent_expired: BUILD_FAILED,
-  intent_used: BUILD_FAILED,
-  bad_intent_signature: BUILD_FAILED,
-  not_applicable: BUILD_FAILED,
-  simulation_failed: BUILD_FAILED,
-  destination_refused: BUILD_FAILED,
-  rpc_failed: BUILD_FAILED,
-  rejected: {
-    text: "Phantom rejected the request. Nothing was sent and no SOL left your wallet. Your mint address stays reserved for 10 minutes.",
-    action: "Try again",
-  },
-  expired: {
-    row: 3,
-    text: "This transaction expired before it was signed. Nothing was sent. Build a fresh one.",
-    action: "Build again",
-  },
-  switched: {
-    text: "Phantom switched accounts. Nothing was sent. Start signing again with the account you want to launch from.",
-    action: "Try again",
-  },
-  cosign_refused: {
-    text: "BONDR did not co-sign. The signed transaction did not match the one BONDR built, so nothing was sent. Try again; if it repeats, disconnect and reconnect Phantom.",
-    action: "Try again",
-  },
-  paused: {
-    text: "Launches were paused before your launch was sent. Nothing was sent. Your details are kept; launch when the pause lifts.",
-    action: null,
-  },
-  onchain: {
-    text: "Your launch failed on-chain. Only the network fee left your wallet. Try again.",
-    action: "Try again",
   },
 };
 
@@ -116,7 +51,11 @@ function fail(run: Run, e: unknown) {
   if (leave(run, code)) return;
   if (code === "paused") run.live.refresh();
   const row = FAULTS[code].row;
-  run.set({ failed: code, ...(row && { row }) });
+  const refusal = e instanceof Stop ? e.refusal : undefined;
+  // Step 1 names the lock on the symbol field until the creator changes the ticker (UI-SPEC A1).
+  const symbol = run.state.fields.symbol.trim().toUpperCase();
+  if (code === "ticker_locked") run.dispatch({ type: "refused", refused: { symbol, err: refusal ?? {} } });
+  run.set({ failed: code, ...(row && { row }), ...(refusal && { refusal }) });
 }
 
 const FRESH: Progress = { row: 1, failed: null, sent: false };
@@ -196,9 +135,25 @@ function SignRow({ n, p, exit }: { n: number; p: Progress; exit: string }) {
   );
 }
 
-function Outcome({ p, net, onRetry }: { p: Progress; net: Live["status"]; onRetry(): void }) {
+type OutcomeProps = { p: Progress; net: Live["status"]; symbol: string; genesis: boolean; onRetry(): void };
+
+// fault.link names a path inside the text that renders as a link (the genesis session line names /admin).
+function FaultText({ fault, text }: { fault: Fault; text: string }) {
+  if (!fault.link) return text;
+  const [before, after] = text.split(fault.link);
+  return (
+    <>
+      {before}
+      <Link href={fault.link}>{fault.link}</Link>
+      {after}
+    </>
+  );
+}
+
+function Outcome({ p, net, symbol, genesis, onRetry }: OutcomeProps) {
+  const fallback = useWallet().net; // the server's SOLANA_NET when the status read failed
   const link = p.sig && (
-    <TxLink signature={p.sig} net={net?.net ?? "devnet"}>{`Launch tx ${short(p.sig)}`}</TxLink>
+    <TxLink signature={p.sig} net={net?.net ?? fallback}>{`Launch tx ${short(p.sig)}`}</TxLink>
   );
   if (!p.failed)
     return p.unknown ? (
@@ -206,10 +161,15 @@ function Outcome({ p, net, onRetry }: { p: Progress; net: Live["status"]; onRetr
         Do not launch again until this finishes; it can take up to a minute. {link}
       </Callout>
     ) : null;
-  const fault = FAULTS[p.failed];
+  const code = p.failed;
+  const fault = (genesis && GENESIS_FAULTS[code]) || FAULTS[code];
+  const text =
+    code === "ticker_locked" || code === "ticker_reserved"
+      ? tickerFault(code, symbol, p.refusal ?? {})
+      : fault.text;
   return (
     <Callout variant="error">
-      {fault.text} {p.failed === "onchain" && link}
+      <FaultText fault={fault} text={text} /> {code === "onchain" && link}
       {fault.action && (
         <Button type="button" variant="solid" className="mt-3 flex" onClick={onRetry}>
           {fault.action}
@@ -260,7 +220,13 @@ export function LaunchSign(props: StepProps) {
       <p className="sr-only" aria-live="polite">
         {done}
       </p>
-      <Outcome p={p} net={live.status} onRetry={retry} />
+      <Outcome
+        p={p}
+        net={live.status}
+        symbol={state.fields.symbol.trim().toUpperCase()}
+        genesis={live.genesis}
+        onRetry={retry}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <p className="text-xs text-muted-foreground">
           Keep this tab open until your coin is live.

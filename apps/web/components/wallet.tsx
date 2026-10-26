@@ -26,6 +26,8 @@ type PhantomInjected = { on?(e: string, cb: () => void): void; off?(e: string, c
 export type WalletStatus = "loading" | "idle" | "connecting" | "connected" | "missing";
 
 export type WalletApi = {
+  /** SOLANA_NET from the server layout: known before any status read answers. */
+  net: "devnet" | "mainnet";
   status: WalletStatus;
   address: string | null;
   /** This browser holds a consent session for the address; null while the session is being read. */
@@ -170,6 +172,7 @@ function useWalletApi(chain: Chain): WalletApi {
   let consented: boolean | null = address !== null && session === address;
   if (address && session === undefined) consented = null; // still reading: no prompt flash for a returning wallet
   return {
+    net: chain === "solana:mainnet" ? "mainnet" : "devnet",
     status,
     address,
     consented,
@@ -227,7 +230,7 @@ async function signMessage(wallet: W | undefined, account: Account | null, messa
 const WalletContext = createContext<WalletApi | null>(null);
 
 export function WalletProvider({ net, children }: { net?: string; children: ReactNode }) {
-  // Phase 2 runs on devnet only; mainnet arrives with its own gate in Phase 7.
+  // The chain follows SOLANA_NET (D-05): the worker is the only sender and refuses mainnet without ALLOW_MAINNET.
   const chain: Chain = net === "mainnet" ? "solana:mainnet" : "solana:devnet";
   return <WalletContext value={useWalletApi(chain)}>{children}</WalletContext>;
 }

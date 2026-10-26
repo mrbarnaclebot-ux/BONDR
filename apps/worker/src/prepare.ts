@@ -1,21 +1,13 @@
 // POST /prepare (LAUNCH-03, FEE-10): the unsigned launch tx, built only where the seed lives. Every cheap
 // guard runs before ops spends table rent (Pitfall 5); the exact message bytes are stored for the byte
 // compare at submit (Pattern 3, sign order A).
-import type { ApiError, Exit, Links, PauseReason, PrepareRequest, PrepareResult } from "@bondr/core/api";
+import type { Exit, PrepareResult } from "@bondr/core/api";
 import { db } from "@bondr/core/db";
 import { derive } from "@bondr/core/keys";
 import type { LaunchOpts } from "@bondr/core/launch";
-import { applyBps } from "@bondr/core/math";
 import { redact } from "@bondr/core/net";
 import { BN } from "@bondr/core/pump";
-import {
-  checkDescription,
-  checkDevBuy,
-  checkName,
-  checkSymbol,
-  checkUri,
-  normalizeLink,
-} from "@bondr/core/rules";
+import { checkSymbol, reservedTicker } from "@bondr/core/rules";
 import { type AddressLookupTableAccount, PublicKey, VersionedTransaction } from "@solana/web3.js";
 import { blocked } from "./admin-moderate.ts";
 import {
@@ -25,9 +17,12 @@ import {
   ensureTable,
   previewCosts,
   simulateLaunch,
+  tipped,
   unionTableKeys,
 } from "./build.ts";
 import { ops, type WorkerEnv } from "./env.ts";
+import { feeConfig, launchTip } from "./fee-config.ts";
+import { tipIxs } from "./fee-send.ts";
 import { startRefill } from "./grind.ts";
 import { Fail, fail } from "./http.ts";
 import {
@@ -40,97 +35,32 @@ import {
   newTablesToday,
   tableFor,
 } from "./launches.ts";
-import { type Ctx, LAUNCH_CU_LIMIT, liveStatus, MAX_SOL_IN, networkFee } from "./status.ts";
+import { parseRequest, prepareGuard, type Req, sellFloor, signBy, walletOf } from "./prepare-rules.ts";
+import { type Ctx, LAUNCH_CU_LIMIT, liveStatus, networkFee } from "./status.ts";
+import { tickerLock, tickerRefusal } from "./ticker.ts";
 import { markUsed, reserve } from "./vanity.ts";
 
+export {
+  type GuardInput,
+  parseRequest,
+  prepareGuard,
+  sellFloor,
+  signBy,
+  TABLE_CAP,
+  WALLET_TABLE_CAP,
+  walletOf,
+} from "./prepare-rules.ts";
+
 export type PrepareCtx = Ctx & { env: WorkerEnv };
-type Req = Omit<PrepareRequest, "solIn"> & { solIn: bigint };
-
-// New per-coin tables per hour, worker-wide: at about 0.006 SOL each, a cap on how fast prepare spam drains ops.
-export const TABLE_CAP = 30;
-// New tables per wallet per day: each coin needs its own table, so this is also a launch cap per wallet. It
-// stops one proven wallet from spending the whole hourly cap (CR-01).
-export const WALLET_TABLE_CAP = 10;
-const SELL_SLIPPAGE_BPS = 300;
-const CID = /^[A-Za-z0-9]{1,100}$/;
-const LINK_KINDS = ["x", "telegram", "website"] as const;
-
-export function walletOf(raw: unknown): string | null {
-  if (typeof raw !== "string" || raw.length > 44) return null;
-  try {
-    return new PublicKey(raw).toBase58() === raw ? raw : null;
-  } catch {
-    return null;
-  }
-}
-
-function linksOf(raw: unknown): Links | null {
-  if (raw === undefined) return {};
-  if (!raw || typeof raw !== "object") return null;
-  const out: Links = {};
-  for (const kind of LINK_KINDS) {
-    const v = (raw as Record<string, unknown>)[kind];
-    if (v === undefined) continue;
-    const r = typeof v === "string" ? normalizeLink(kind, v) : null;
-    if (!r?.ok) return null;
-    if (r.value) out[kind] = r.value;
-  }
-  return out;
-}
-
-function lamportsOf(raw: unknown, min: bigint): bigint | null {
-  if (typeof raw !== "string" || !/^\d{1,20}$/.test(raw)) return null;
-  const n = BigInt(raw);
-  return n <= MAX_SOL_IN && checkDevBuy(n, min).ok ? n : null;
-}
-
-// The same rules as the browser and web (rules.ts), run again here: the worker trusts nothing it is sent.
-export function parseRequest(body: unknown, min: bigint): Req | null {
-  const b = (body ?? {}) as Record<string, unknown>;
-  const s = (k: string) => (typeof b[k] === "string" ? (b[k] as string) : "");
-  const [name, symbol, uri] = [checkName(s("name")), checkSymbol(s("symbol")), checkUri(s("uri"))];
-  const description = checkDescription(s("description"));
-  const [wallet, links, solIn] = [walletOf(b.wallet), linksOf(b.links), lamportsOf(b.solIn, min)];
-  const exit: Exit | null = b.exit === "burn" || b.exit === "sell" ? b.exit : null;
-  if (!name.ok || !symbol.ok || !uri.ok || !description.ok || !CID.test(s("imageCid"))) return null;
-  if (!wallet || !links || solIn === null || !exit) return null;
-  const desc = description.value || undefined;
-  const base = { wallet, name: name.value, symbol: symbol.value, uri: uri.value, links, solIn, exit };
-  return { ...base, imageCid: s("imageCid"), ...(desc && { description: desc }) };
-}
-
-export type GuardInput = {
-  paused: PauseReason | null;
-  min: bigint | null; // null: the live config could not be read
-  consented: boolean;
-  body: unknown;
-  tablesLastHour: number;
-  walletTablesToday: number;
-  reusable: boolean; // the wallet's live reservation already has a table
-};
-
-export function prepareGuard(i: GuardInput): ApiError | null {
-  if (i.paused) return { error: "paused", paused: i.paused };
-  if (i.min === null) return { error: "build_failed" };
-  if (!parseRequest(i.body, i.min)) return { error: "invalid_input" };
-  if (!i.consented) return { error: "consent_required" };
-  const capped = i.tablesLastHour >= TABLE_CAP || i.walletTablesToday >= WALLET_TABLE_CAP;
-  if (capped && !i.reusable) return { error: "rate_limited" };
-  return null;
-}
-
-// Seconds left to sign at about 0.4 s per block, capped at 60 (Pitfall 3).
-export const signBy = (lastValidBlockHeight: number, height: number): number =>
-  Math.min(60, Math.max(0, Math.floor((lastValidBlockHeight - height) * 0.4)));
-
-// The insta-sell floor: the simulated SOL back less 3%, never the 1-lamport default (T-02-11-05).
-export function sellFloor(solBack: bigint): bigint {
-  const floor = applyBps(solBack, 10_000 - SELL_SLIPPAGE_BPS);
-  return floor > 0n ? floor : 1n;
-}
+// What reserve, the final message and finish read: no Q, so the genesis path (Q null, D-29) shares them.
+type Chain = Pick<PrepareCtx, "conn" | "env" | "priorityFee">;
 
 async function admit(ctx: PrepareCtx, body: unknown) {
-  const wallet = walletOf((body as { wallet?: unknown } | null)?.wallet);
+  const raw = body as { wallet?: unknown; symbol?: unknown } | null;
+  const wallet = walletOf(raw?.wallet);
+  // An invalid symbol skips the lock read; prepareGuard refuses it as invalid_input.
+  const sym = checkSymbol(String(raw?.symbol ?? ""));
+  const free = { held: 0, until: null, lastLanded: null };
   const rows = wallet
     ? Promise.all([
         consented(db(), wallet),
@@ -138,13 +68,18 @@ async function admit(ctx: PrepareCtx, body: unknown) {
         newTablesToday(db(), wallet),
         tableFor(db(), wallet),
         blocked(db(), wallet),
+        sym.ok ? tickerLock(db(), sym.value, wallet) : free,
       ])
-    : Promise.resolve([false, 0, 0, null, false] as const);
-  const [status, [ok, tablesLastHour, walletTablesToday, prior, isBlocked]] = await Promise.all([
+    : Promise.resolve([false, 0, 0, null, false, free] as const);
+  const [status, [ok, tablesLastHour, walletTablesToday, prior, isBlocked, lock]] = await Promise.all([
     liveStatus(ctx, true),
     rows,
   ]);
   if (isBlocked) throw fail({ error: "blocked" }); // D-30: before every other guard and any build
+  // D-40, D-44: before the caps, so a refused ticker spends no table quota, and before balance, mint and table.
+  if (sym.ok && reservedTicker(sym.value)) throw fail({ error: "ticker_reserved" });
+  const locked = tickerRefusal(lock, new Date());
+  if (locked) throw fail(locked);
   const min = status.minLamports === null ? null : BigInt(status.minLamports);
   const refused = prepareGuard({
     paused: status.paused,
@@ -160,7 +95,7 @@ async function admit(ctx: PrepareCtx, body: unknown) {
   return { req, prior, createCost: BigInt(status.createCostEstimate ?? 0) };
 }
 
-async function reserveMint(ctx: PrepareCtx, wallet: string) {
+export async function reserveMint(ctx: Chain, wallet: string) {
   const mint = await reserve(db(), wallet);
   void startRefill(ctx.env);
   if (!mint) throw fail({ error: "pool_empty" });
@@ -187,28 +122,34 @@ function optsFor(ctx: PrepareCtx, req: Req, mint: string): LaunchOpts {
   };
 }
 
-type Sized = { o: LaunchOpts; builds: Builds; table: AddressLookupTableAccount };
+export type Sized = { o: LaunchOpts; builds: Builds; table: AddressLookupTableAccount };
 
 // Sell: the burn and sell probes give solBack, then the sell is rebuilt with its floor and simulated again.
-async function finalMessage(ctx: PrepareCtx, s: Sized, blockhash: string) {
+// Exported for the fork rehearsal (spike genesis stage), which runs it without the database insert.
+export async function finalMessage(ctx: Chain, s: Sized, blockhash: string) {
+  const net = ctx.env.net;
   const fee = networkFee(ctx.priorityFee);
   const solIn = BigInt(s.o.solIn.toString());
-  const msgOf = (e: Exit) => compileLaunch({ ...s.o, exit: e }, s.builds[e].ixs, s.table, blockhash);
+  const tip = () => tipIxs(net, s.o.dev, feeConfig(net).launchTipLamports);
+  const msgOf = (e: Exit) => compileLaunch({ ...s.o, exit: e }, s.builds[e].ixs, s.table, blockhash, tip());
   const sim = (msg: ReturnType<typeof msgOf>) => simulateLaunch(ctx.conn, msg, s.o.dev);
+  // The simulated drop includes the tip when the message kept it (Pitfall 2): a fee, not create cost.
+  const feeOf = (msg: ReturnType<typeof msgOf>) => fee + (tipped(msg) ? launchTip(net) : 0n);
   if (s.o.exit === "burn") {
     const msg = msgOf("burn");
-    const costs = previewCosts(solIn, fee, await sim(msg));
+    const costs = previewCosts(solIn, feeOf(msg), await sim(msg));
     return { msg, amount: s.builds.burn.amount, ...costs };
   }
-  const [burnSpent, sellSpent] = await Promise.all([sim(msgOf("burn")), sim(msgOf("sell"))]);
-  const costs = previewCosts(solIn, fee, burnSpent, sellSpent);
+  const probe = msgOf("burn");
+  const [burnSpent, sellSpent] = await Promise.all([sim(probe), sim(msgOf("sell"))]);
+  const costs = previewCosts(solIn, feeOf(probe), burnSpent, sellSpent);
   const minSolOut = new BN(sellFloor(costs.solBack ?? 0n).toString());
-  const sell = await buildMessage({ ...s.o, minSolOut }, s.table, blockhash);
+  const sell = await buildMessage({ ...s.o, minSolOut }, s.table, blockhash, tip());
   await sim(sell.msg);
   return { msg: sell.msg, amount: sell.amount, ...costs };
 }
 
-function rowOf(req: Req, o: LaunchOpts, table: string, newTable: boolean): NewLaunch {
+export function rowOf(req: Req, o: LaunchOpts, table: string, newTable: boolean): NewLaunch {
   const { wallet, name, symbol, description, links, imageCid, uri, solIn, exit } = req;
   const text = { name, symbol, description: description ?? null, links, imageCid, uri };
   return {
@@ -223,7 +164,7 @@ function rowOf(req: Req, o: LaunchOpts, table: string, newTable: boolean): NewLa
   };
 }
 
-async function finish(ctx: PrepareCtx, req: Req, s: Sized, created: boolean): Promise<PrepareResult> {
+export async function finish(ctx: Chain, req: Req, s: Sized, created: boolean): Promise<PrepareResult> {
   const bh = await ctx.conn.getLatestBlockhash();
   const f = await finalMessage(ctx, s, bh.blockhash);
   const id = newId();
@@ -252,7 +193,7 @@ async function finish(ctx: PrepareCtx, req: Req, s: Sized, created: boolean): Pr
 async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult> {
   const { req, prior, createCost } = await admit(ctx, body);
   // Before the reservation, so a wallet that cannot pay never holds a mint out of the pool (WR-01).
-  const need = req.solIn + createCost + networkFee(ctx.priorityFee);
+  const need = req.solIn + createCost + networkFee(ctx.priorityFee) + launchTip(ctx.env.net);
   const balance = await ctx.conn.getBalance(new PublicKey(req.wallet));
   if (BigInt(balance) < need) throw fail({ error: "insufficient_balance" });
   const mint = await reserveMint(ctx, req.wallet);
@@ -261,7 +202,7 @@ async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult
   // Same mint after an expired hold: its table still fits this wallet, so look it up by mint.
   const held = prior?.mint === mint.pubkey ? prior : await tableFor(db(), req.wallet, mint.pubkey);
   const reuse = held?.table ?? null;
-  const t = await ensureTable(ctx.conn, ops(ctx.env.seed, ctx.env.net), union.keys, reuse);
+  const t = await ensureTable(ctx.conn, ops(ctx.env.seed, ctx.env.net), union.keys, reuse, ctx.env.net);
   try {
     if (!t.table) throw fail({ error: "build_failed" }); // ensureTable logged why
     // A new table took about 5 s; price again so the probes do not run on stale amounts.
@@ -274,7 +215,7 @@ async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult
 }
 
 // Every table ops paid for gets a row, so the caps count it and its rent can be reclaimed (WR-02).
-async function recordPaid(row: NewLaunch, e: unknown): Promise<void> {
+export async function recordPaid(row: NewLaunch, e: unknown): Promise<void> {
   const code = e instanceof Fail ? e.body.error : "build_failed";
   await insertFailed(db(), row, code).catch((err: unknown) =>
     console.error(
@@ -284,10 +225,15 @@ async function recordPaid(row: NewLaunch, e: unknown): Promise<void> {
 }
 
 // ponytail: single-flight, because Helius free allows about 10 RPS and pace() is process-wide; per-wallet
-// queues if launches get busy.
+// queues if launches get busy. The genesis builder (genesis.ts) runs in the same queue.
+type One<C> = (ctx: C, body: unknown) => Promise<PrepareResult>;
 let queue: Promise<unknown> = Promise.resolve();
-export function prepare(ctx: PrepareCtx, body: unknown): Promise<PrepareResult> {
-  const run = queue.then(() => prepareOne(ctx, body));
+export function prepare<C = PrepareCtx>(
+  ctx: C,
+  body: unknown,
+  one = prepareOne as One<C>,
+): Promise<PrepareResult> {
+  const run = queue.then(() => one(ctx, body));
   queue = run.catch(() => undefined);
   return run;
 }

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-09-PLAN.md
-last_updated: "2026-10-26T11:43:36.000Z"
-last_activity: 2026-10-26 -- Completed 07-09 (Sender launch tip inside the dev-signed tx, RPC fallback, tip row)
+stopped_at: Completed 07-10-PLAN.md
+last_updated: "2026-10-26T11:49:22.000Z"
+last_activity: 2026-10-26 -- Completed 07-10 (contract check in the worker: boot, Monday timer, admin route, pause reason)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 104
-  percent: 79
+  completed_plans: 105
+  percent: 80
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 9 of 36 (07-09 complete)
+Plan: 10 of 36 (07-10 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-09 (Sender launch tip inside the dev-signed tx, RPC fallback, tip row)
+Last activity: 2026-10-26 -- Completed 07-10 (contract check in the worker: boot, Monday timer, admin route, pause reason)
 
 Progress: [██████████] 100%
 
@@ -137,6 +137,7 @@ Progress: [██████████] 100%
 | Phase 07 P06 | 25 min | 2 tasks | 12 files |
 | Phase 07 P08 | 30 min | 2 tasks | 5 files |
 | Phase 07 P09 | 15min | 3 tasks | 13 files |
+| Phase 07 P10 | 30min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -363,6 +364,8 @@ Recent decisions affecting current work:
 - 07-08: the contract check judges exact config account sizes, owners, discriminators, SDK decode and the Global flags against per-net profiles (devnet: creator fee off, AMM LP 25); the spike reuses the core drift strings
 - 07-09: launch tip per net is fee-config launchTip(net); prepare gate, preview and /status senderTipEstimate read it
 - 07-09: submit resends identical bytes once over RPC on a Sender error (unknown + err 'sender ...')
+- 07-10: contract mismatch pauses via switchesOff (no evacuated_at) with one contract_check audit row; contractFailed keeps launches paused until a passing run
+- 07-10: pause priority contract_check, then kill_switch, then awaiting_migration
 
 ### Pending Todos
 
@@ -396,6 +399,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T11:43:36.000Z
-Stopped at: Completed 07-09-PLAN.md
+Last session: 2026-10-26T11:49:22.000Z
+Stopped at: Completed 07-10-PLAN.md
 Resume file: None

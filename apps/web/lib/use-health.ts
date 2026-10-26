@@ -20,6 +20,9 @@ export function useHealth(onUnauthorized: () => void): HealthPoll {
     const tick = async () => {
       if (stop || busy || document.visibilityState !== "visible") return;
       busy = true;
+      // lastOk is when the poll left, not when it answered: a kill switch flip answered after this moment is
+      // newer than the switches this poll carries, so the poll never reverts it (WR-B-07).
+      const started = Date.now();
       const r = await fetch("/api/admin/health", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -32,7 +35,7 @@ export function useHealth(onUnauthorized: () => void): HealthPoll {
       if (r?.status === 401) return ended.current();
       // A failure keeps the last good payload so the panel can say when the worker last answered.
       setPoll((p) =>
-        body ? { health: body, failedAt: null, lastOk: Date.now() } : { ...p, failedAt: Date.now() },
+        body ? { health: body, failedAt: null, lastOk: started } : { ...p, failedAt: Date.now() },
       );
       clearTimeout(timer);
       timer = setTimeout(tick, EVERY_MS);

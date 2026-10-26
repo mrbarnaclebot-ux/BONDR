@@ -150,3 +150,76 @@ None. T-06-26-01: ADMIN_WALLET unset, locked spec green. T-06-26-02: only variab
 
 - FOUND: apps/web/e2e/admin-locked.e2e.ts, 3 admin-locked -staging screenshots (Phase 6 `rg -c "staging\.png$"` = 3)
 - FOUND: commits 9d637c7, fb1f420
+
+## Post-review checks (2026-10-26)
+
+The review fixes (06-REVIEW, 06-REVIEW-e2e) re-run on devnet and redeployed to staging, still dark. Commits: 28e1706, 29aed08, 67b5b4b, plus the docs commit for this section.
+
+### Devnet re-runs (local servers)
+
+Ops 5d9A...uDuk and the sim dev, SOL only, read by each spec.
+
+| Run | Worker | Result | Ops + sim before | After | Net spend |
+|---|---|---|---|---|---|
+| admin-devnet 1 (ESQ6KT) | ADMIN_WALLET, ADMIN_EVACUATE=on, FEE_ENGINE=off, SITE_URL | 1 failed, 3 not run | 2.741621 + 0.084996 | 2.741605 + 0.084740 | 0.000272 |
+| fee-devnet 1 (BBURN 4xEf...) | FEE_ENGINE=on, FEE_WINDOW_MS=600000, SITE_URL | rows landed, then failed on a missing trace file | 2.741605 + 0.084740 | 2.738541 + 0.084483 | 0.003321 |
+| fee-devnet 2 (BBURN F9DV...) | same | **2 passed (5.7 m)** | 2.738541 + 0.084483 | 2.735477 + 0.084227 | 0.003321 |
+| admin-devnet 2 (EY8TNO) | as run 1 | **3 passed, EVACUATE landed, its last check hit an RPC 429** | 2.735477 + 0.084227 | 2.732402 + 0.082446 | 0.004856 |
+
+- **admin-devnet 1: a test bug.** `pickCoin` took ESQ6KT again. 06-24 swept it in window 3 (24 h windows, 2026-10-25T17:10Z to 2026-10-26T17:10Z), and `fee_ledger_sweep` allows one sweep per window. So Sweep now landed the collect `3YRvtw9JpNmdj31tmpJY49P2g4rp7qoMjsZeYEr9DZyKKjGwAKwmaL2tiLKckPYFrDDFts9fBYbXJozU6J4wvRLP` and the split `3GzAjvr74Bm75QYSCn9phJgzN6A2nyHJMVjqr45T8t5uVBmpakZdmF2PDduWXNAeNFLqHxkurA6o8vxm7XHnW9Tp`, then its sweep's `insertPending` returned nothing and the step came back `done`. The dialog read "Sent. 2 of 3 transactions landed." Fixed in 28e1706: the pick skips a coin already swept in its current window.
+- **fee-devnet 1: my error.** I ran wallet.e2e.ts at the same time, and it cleared `test-results/` under the running spec. The window still collected, split and swept: collect `3sENqVRwd6N74TxaemownHe26iw3ozowvc32w4qdexazaWaeLUtze1KmmasfDzNv4mQJ3tRQrMmHKhHvuKLdFj6s`, split `5k3a4ikdkpAP2uWxueRwB6AVSYBtd2PXtBK2HjzvK3xg9WuBSZnxZ9BHtYfdLZ8R9Tz52AyJJz6Hdz2YomPE8xRw`, sweep `XR1kwWrBLcUZoebSHyoCY79ynw4Ri2rRxxKUfmbZPpXedaSVeandobWc8wd8YbvaeaFfsbottVdsrgPTCNCgtrM`. The same worker's 10-minute window also swept the BONDR that admin-devnet 1 had left in ESQ6KT's W (`fee window GybxLB... 517: landed`).
+- **fee-devnet 2 signatures:**
+  - trades `32uA9vm35Pn6gFRGvaGYHwh1i82zzUwZviaTkpiKdtUDxosqrxvg4qD76PzoQ6AxZSoC4vLy9wdiRHoy2CEyMub7` and `51pVhYyGvSqRa7bbfa4nMXHwZwsMKGGM6Co2ZzkN1CAjbuEjyEpfKb68K8KSma4HxYSethibMA6t3MaHuxi2Ttdt`
+  - collect `62snymfkjSHSde1nVMBPXBeijNweforwzpWPBnG9LF58VbQAwmpshgXwwyLZMab4RhBd9BoSUuBz3V4jNCisXXTu`
+  - split `4cUB6n2NBDDCRtcaRMhfWn4Wk2vS1hV5wzVVNE8UCApfdmCEMXBJr2cJMySAwvxEbwUnmWFZHWMb2vC2wWHVk2Px`
+  - sweep `4u3Tj8pUQhXX4adxfQkyb4uCRhDfKpdMgVYMi2Eb4vYWbpaU22ZeM6wWk4uisxWsLW6hVoMZbHh5vHeo4CZNRqzG`
+  - bearer batch burn of 1,159,316,919,083 `25CwYLXH4YgmRvoPpNtceKTVzfgfqYnohNziit8h8y8G5AAZccwcy2tmAGs8vz3TpzX3Uf9w5S6qNCunTcsMus3o`
+  - The batch summary reported `diffs: 1`. The spec checks only its own coin and platform rows, so it passed. The diff is ESQ6KT: chain 0, ledger -1,000,000. 06-24's EVACUATE seed was a plain transfer into W that no ledger row records, and EVACUATE then recorded the 1,000,000 going out. It is a dev-only test artifact, and EY8TNO will now show the same.
+- **admin-devnet 2 signatures:**
+  - trades `63u2Kg12Q4Qx2ozWsu1bRbaiifc3r47HFxjFEu97qLurpMjiFk9aDLcrCp5eH2CzesBfn5UfxQaSQpQ6TnxbTsdC` and `4RMFVcAkKaaGATySmZAfwDcihAz2F1C1ndma5dXgfzcU4G8WxyE7R8fKuZjzaAHXcmfQx5XUWHsu7DikXQneJcrc`
+  - Sweep now, 3 of 3 landed: collect `2Nqco3uLymc9B4zUUfgxsvXJrkFrYM16kZsnQryf1jWRoFnPoTAN3SMiPkVn4hUDApJZTn1swaRa3MbBaCKMEMo1`, split `4iiXotuMhVggDQ8zfzpeoXp1uz6e4rKmUXXmg36NFx7W9JnQfpT9g87qfj1v7psCqmcWctjSp4gp7Y7de7XKDRyx`, sweep `55bLLbmsHqezKb9j2ToGJBnQBf33GWn8FFqb6vqYANiUceoXaxrroz633dMfw23teRsAGEwyp739wgGZRV8peAMg`
+  - Burn buyback now, 159,738,447,009 burned: `3gzmgY33BhDFnVTGuuUvddaL1wH7obqgCPhMeAb7ruoMdcf8hWgBg13FbDGcKEDV9ovFX5jHF6qGvhDVYm4cnQvp`
+  - negative Re-check passed
+  - EVACUATE seed `jKjFKJWYvKJZFLMAAcErFNPrbB7QGdSg41fqvLzdzp1pXS3nPTt1onTmxWD1HhLw8G2Fb4SVvoapBEoQaeUkno3`; EVACUATE `5MHYK2pgGxdcQRGi5VUHKj6QuWddizowQyJ4WMXCYu3RgJyoCPR44EyZFqkdnUzGYPwQJAibFc11MhBkwFTvZp6t` read "Evacuated. 1 of 1 wallets moved to the treasury, 0 failed. Every job is paused." Every switch read paused and `evacuated_at` was set.
+  - The spec's next check (`fullW`) then failed on the public RPC's "Too many requests" after its five 2-second retries. The checks it never reached were run by hand afterwards, read-only: all 6 derived dev W hold 0 SOL, 0 BONDR and 0 child tokens; the `evacuate` row landed 1,000,000 and the `leftover_burn` row burned 3,648,563, both equal to the seed. Fixed in 67b5b4b: `rpc()` now also treats a 200 with "Too many requests" as a rate limit and backs off from 2 s, doubling, for about 2 minutes in all.
+  - A third run was not possible today. Every unique-symbol dev coin has now been swept in its current 24 h window, so the fixed pick finds no coin until ESQ6KT's window 4 starts at 2026-10-26T17:10Z.
+- **Dev DB afterwards** (one read-only query): all five switches true, `evacuated_at` null. Both local servers were stopped.
+- **Spend.** These re-runs cost **0.011769 SOL** (ops + sim from 2.826617 to 2.814848). The Phase 6 devnet total is now **0.016624 SOL**, under the 0.1 SOL phase cap. Each run stayed under its 0.05 SOL cap.
+
+### Staging redeploy
+
+- `railway whoami` OK, project bondr, environment staging. Only the staging `web` and `worker` services were touched.
+- Variable names only:
+  - web has SITE_URL.
+  - SITE_URL was copied from web to worker by pipe (`--stdin --skip-deploys`). The value was never printed, and a hash comparison shows the two are equal.
+  - ADMIN_WALLET, ADMIN_EVACUATE and SENTRY_READ_TOKEN are unset on both services.
+
+| Step | Deployment id | Result |
+|---|---|---|
+| web | 269176d4-75c6-4773-8ea8-f9862db4f41d | SUCCESS, 07:38:02 to about 07:39:37 UTC. Pre-deploy `migrations applied` (no new migration), Next 16.3.8 ready |
+| worker | 88a669b7-21fa-4fd3-bc00-695d8200ca99 | SUCCESS, 07:49:47 to 07:51:41 UTC |
+
+- **Worker boot log:** `worker listening on devnet`, `switches: launches=on forcedBond=on sweeps=on finalize=on buybackBurn=on`, `fee engine on: 2 coins armed`, `backfilled 0 launches`, `stream subscribed`.
+- **Worker log at 07:58Z,** about 6.5 minutes after boot: those 5 lines only. It has 0 `fee .* failed`, 0 `ops below floor` and 0 v1 ingest lines.
+- **Smoke:** `/api/health` `{"ok":true}`; `/api/status` net devnet with `paused: null`; `/api/coins?sort=top` lists EX8EUJ and TESTCOIN; `/admin` 200.
+- **Staging gate:** admin-locked, responsive-fee, responsive-trade and trade-sheet, `--workers=3`. Result: **40 passed, 24 skipped (49.7 s)**. The 24 skips are the same seeded-only ones as above.
+  - The run rewrote the Phase 4 and Phase 5 `-staging.png` shots. Both sets were restored, because nothing visual changed since this plan's refresh.
+  - admin-responsive was not run on staging: without the staging ADMIN_WALLET every test skips.
+- **Ops after staging,** at 07:58:19Z: 2.732402 SOL, the same as the end of the devnet runs. Staging spent 0.
+
+### Neon idle check
+
+Read at 08:09:14 UTC with `neonctl api /projects/royal-waterfall-05278863/endpoints`, about 16 minutes after the last staging request. Both endpoints run at 0.25 CU.
+
+| Endpoint | Branch | State | Last active | Suspended at |
+|---|---|---|---|---|
+| ep-gentle-pine | main (staging) | idle | 07:52:15Z | **07:58:16Z** |
+| ep-aged-recipe | dev | idle | 07:46:15Z | **07:54:31Z** |
+
+### Flake fix
+
+29aed08: wallet.e2e.ts's 390px check now allows 43.99. The 0.01 margin covers a subpixel height such as 43.99999952; it is not rounding, so 43.5 still fails. wallet.e2e.ts: 7 passed.
+
+### Found, not fixed (product, money path UX)
+
+Sweep now on a coin already swept in its current window still collects and splits, then skips the sweep (`done`). The dialog shows a green "Sent. 2 of 3 transactions landed." although the simulation previewed the sweep. The swept-to-W BONDR stays in W, where nothing is lost; the next window's sweep moves it with the engine on, but with the engine off nothing does. Either `applies()` for sweep_now should refuse with a reason when the current window already has a sweep, or the done step should be named in the outcome. Left for the owner or orchestrator to decide; it was not patched blind.

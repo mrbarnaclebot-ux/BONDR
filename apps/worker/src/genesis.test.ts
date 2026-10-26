@@ -76,6 +76,14 @@ test("the owner wallet without consent records is refused before any build", asy
   expect(d.reserve).not.toHaveBeenCalled();
 });
 
+test("the genesis ticker is pinned to BONDR: any other symbol is invalid_input before a mint is reserved", async () => {
+  const d = deps();
+  await expect(genesisOne(ctx(), body({ symbol: "BONDE" }), d)).rejects.toMatchObject(
+    refused("invalid_input"),
+  );
+  expect(d.reserve).not.toHaveBeenCalled();
+});
+
 test("genesis is burn only: a sell exit is invalid_input", async () => {
   await expect(genesisOne(ctx(), body({ exit: "sell" }), deps())).rejects.toMatchObject(
     refused("invalid_input"),

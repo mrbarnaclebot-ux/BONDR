@@ -78,7 +78,8 @@ export async function genesisOne(ctx: GenesisCtx, body: unknown, deps = live): P
   const status = await liveStatus(ctx, true);
   if (status.minLamports === null) throw fail({ error: "build_failed" });
   const req = parseRequest(body, BigInt(status.minLamports));
-  if (!req) throw fail({ error: "invalid_input" });
+  // IN-W-03: the genesis ticker is BONDR (D-32); a typo would be a permanent mint.
+  if (req?.symbol !== "BONDR") throw fail({ error: "invalid_input" });
   const cost = BigInt(status.createCostEstimate ?? 0);
   const need = req.solIn + cost + networkFee(ctx.priorityFee) + launchTip(ctx.env.net);
   if (BigInt(await ctx.conn.getBalance(new PublicKey(wallet))) < need)

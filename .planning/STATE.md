@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 7 context gathered
-last_updated: "2026-10-26T08:50:04.949Z"
-last_activity: 2026-10-26 -- Completed 06-26 (staging web 9a7f2884 with 0007, worker 1a9b6aa9, admin closed)
+status: executing
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-10-26T10:38:59.000Z"
+last_activity: 2026-10-26 -- Completed 07-01 (v1 reads at every getTransaction, -32015 dropped)
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 95
-  completed_plans: 95
-  percent: 86
+  total_plans: 131
+  completed_plans: 96
+  percent: 73
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** A holder can verify on the token page that the dev holds no launch supply, and see that pre-bond fees went to forcing the bond and burning supply, never to the dev.
-**Current focus:** Phase 6 — admin dashboard
+**Current focus:** Phase 7 — go-live
 
 ## Current Position
 
-Phase: 6
-Plan: 26 of 26 (06-26 complete)
-Status: Phase complete — ready for verification
-Last activity: 2026-10-26 -- Completed 06-26 (staging web 9a7f2884 with 0007, worker 1a9b6aa9, admin closed)
+Phase: 7
+Plan: 1 of 36 (07-01 complete)
+Status: Executing Phase 7
+Last activity: 2026-10-26 -- Completed 07-01 (v1 reads at every getTransaction, -32015 dropped)
 
 Progress: [██████████] 100%
 
@@ -128,6 +128,7 @@ Progress: [██████████] 100%
 | Phase 06 P24 | 23 min | 2 tasks | 6 files |
 | Phase 06 P25 | 45 min | 2 tasks | 15 files |
 | Phase 06 P26 | 30 min | 2 tasks | 6 files |
+| Phase 07 P01 | 15 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -342,13 +343,13 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-25: token page panels use `min-[68.75rem]:p-6`; Tailwind v4 sorts `min-[1100px]` before `md`
 - [Phase 06]: 06-26: staging admin ships closed; ADMIN_WALLET, ADMIN_EVACUATE and SENTRY_READ_TOKEN stay unset until the owner runs HV-06-01 (set ADMIN_WALLET on web and worker together)
 - [Phase 06]: 06-26: HV-05-01 passed on the no-fee path; both staging windows ran unattended and sent nothing because neither coin had creator fees
+- 07-01: v1 ingest by raising maxSupportedTransactionVersion to 1; -32015 dropped after one try
 
 ### Pending Todos
 
 - Replace the placeholder contact handle in the terms page
 - WR-08 minOut fixed in a8758e1 (verified in 06-02); leftover burns ship in 06-09 (D-17)
 - Owner, non-blocking: HV-06-01 (staging console sign-in after setting ADMIN_WALLET on web and worker) and HV-06-02 (SENTRY_READ_TOKEN on the staging worker)
-- Before Phase 7 go-live: ingest refuses version 1 transactions (`maxSupportedTransactionVersion: 0`); see 06 deferred-items.md
 
 ### Blockers/Concerns
 
@@ -376,6 +377,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T08:50:04.942Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-go-live/07-CONTEXT.md
+Last session: 2026-10-26T10:38:59.000Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None

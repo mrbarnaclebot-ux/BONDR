@@ -20,6 +20,10 @@ test("www answers 308 to the apex with the same path and query, for any method",
   }
   const byHost = proxy(req("https://www.trybondr.fun/", { host: "www.trybondr.fun" }));
   expect(byHost?.headers.get("location")).toBe("https://trybondr.fun/");
+  for (const fwd of ["www.trybondr.fun:443", "WWW.TryBondr.fun", "www.trybondr.fun, edge.internal"])
+    expect(proxy(req("http://internal/terms", { fwd }))?.headers.get("location")).toBe(
+      "https://trybondr.fun/terms",
+    );
 });
 
 test("a protocol-relative path never leaves SITE_URL's origin", () => {

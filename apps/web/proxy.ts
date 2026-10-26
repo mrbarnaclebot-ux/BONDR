@@ -20,8 +20,10 @@ function toApex(req: Request): Response | undefined {
   } catch {
     return undefined;
   }
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  if (host !== `www.${site.host}`) return undefined;
+  // The first forwarded entry, without case or port, so "www.trybondr.fun:443" or "WWW...,edge" still redirects.
+  const raw = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  const host = raw?.split(",")[0]?.trim().toLowerCase().replace(/:\d+$/, "");
+  if (host !== `www.${site.hostname}`) return undefined;
   const { pathname, search } = new URL(req.url);
   const to = new URL(site.origin);
   to.pathname = pathname;

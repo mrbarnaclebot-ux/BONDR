@@ -4,8 +4,9 @@
 // on; the audit op refuses a malformed cursor. The switches are shared worker and Neon state, so this file runs
 // in the serial admin-serial project, and afterAll turns every switch it touched back on.
 import { expect, type Locator, type Page, request, test } from "@playwright/test";
+import postgres from "postgres";
 import { openConsole } from "./admin.ts";
-import { adminAccount, adminSignIn } from "./phantom.ts";
+import { adminAccount, adminSignIn, rootEnv } from "./phantom.ts";
 
 const TOUCHED = ["sweeps", "finalize"] as const;
 
@@ -21,8 +22,12 @@ test.afterAll(async () => {
     return; // no MASTER_SEED_FILE: every test skipped
   }
   const api = await request.newContext({ baseURL: test.info().project.use.baseURL });
+  const res = await adminSignIn(api, admin);
+  const error = res.ok() ? null : (await res.json().catch(() => null))?.error;
+  if (error === "not_configured" || error === "not_admin") return api.dispose(); // openConsole skipped every test
   try {
-    if (!(await adminSignIn(api, admin)).ok()) return;
+    // Anything else would leave Sweeps or Finalize paused on the shared worker and DB (WR-E-04).
+    expect(res.status(), "afterAll sign-in to undo shared state").toBe(200);
     for (const job of TOUCHED) {
       const r = await api.post("/api/admin/switch", { headers: origin(), data: { job, enabled: true } });
       expect(r.status()).toBe(200);
@@ -31,8 +36,21 @@ test.afterAll(async () => {
     expect(Object.values(health.switches).every((on) => on === true)).toBe(true);
   } finally {
     await api.dispose();
+    await dbBackstop();
   }
 });
+
+// The touched switches on in Postgres even when the route failed, as admin-devnet's restore does.
+async function dbBackstop() {
+  const url = rootEnv().DATABASE_URL;
+  if (!url) return;
+  const sql = postgres(url, { max: 1, onnotice: () => {} });
+  try {
+    await sql`update settings set sweeps_enabled = true, finalize_enabled = true`;
+  } finally {
+    await sql.end();
+  }
+}
 
 const panel = (page: Page) => page.getByRole("region", { name: "Kill switches", exact: true });
 const toggle = (page: Page, name: string) => panel(page).getByRole("switch", { name, exact: true });

@@ -19,7 +19,10 @@ test.afterAll(async () => {
   if (!left.mint && !left.wallet) return;
   const api = await request.newContext({ baseURL: test.info().project.use.baseURL });
   try {
-    if (!(await adminSignIn(api, adminAccount())).ok()) return;
+    // A step changed shared state, so a failed sign-in must fail the run, not leave it changed (WR-E-04).
+    expect((await adminSignIn(api, adminAccount())).status(), "afterAll sign-in to undo shared state").toBe(
+      200,
+    );
     const undo = (data: object) => api.post("/api/admin/moderate", { headers: origin(), data });
     if (left.mint) expect((await undo({ op: "unhide", mint: left.mint })).status()).toBe(200);
     if (left.wallet) expect((await undo({ op: "unblock", wallet: left.wallet })).status()).toBe(200);

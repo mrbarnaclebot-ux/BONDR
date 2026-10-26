@@ -71,7 +71,7 @@ test("retry sweep needs a failed or expired sweep with no live twin", () => {
 
 test("hold and release toggle with the held flag; re-check only for an unconfirmed launch", () => {
   expect(applying(row({ heldAt: new Date(NOW).toISOString() }))).toEqual(["release_hold", "sweep_now"]);
-  expect(applying(row({ launch: "unconfirmed", cost: null }))).toEqual(["hold", "recheck_launch"]);
+  expect(applying(row({ launch: "unconfirmed", cost: null }))).toEqual(["recheck_launch"]);
 });
 
 test("burn buyback needs BONDR in the buyback wallet", () => {

@@ -14,12 +14,11 @@ const KEYS: ActionKey[] = [
   ...["hold", "release_hold", "recheck_launch"],
 ] as ActionKey[];
 
-test("every action has a label, and a reason unless it always applies", () => {
+test("every action has a label and a not-applicable reason", () => {
   expect(Object.keys(ACTION_COPY).sort()).toEqual([...KEYS].sort());
   for (const k of KEYS) {
     expect(ACTION_COPY[k].label).not.toBe("");
-    if (k === "hold" || k === "release_hold") expect(ACTION_COPY[k].reason).toBe("");
-    else expect(ACTION_COPY[k].reason).not.toBe("");
+    expect(ACTION_COPY[k].reason).not.toBe("");
     expect(ACTION_COPY[k].tx).toBe(!["hold", "release_hold", "recheck_launch"].includes(k));
   }
 });
@@ -69,6 +68,7 @@ test("non-transaction result lines", () => {
   expect(actResultCopy("landed", "SWMP")).toBe("Launch landed. SWMP is armed.");
   expect(actResultCopy("not_on_chain", "SWMP")).toBe("The launch is not on chain yet. Nothing changed.");
   expect(actResultCopy("worker_unavailable", "SWMP")).toMatch(/Nothing changed/);
+  expect(actResultCopy("not_found", "SWMP")).toBe("This coin has no indexed row yet. Nothing changed.");
 });
 
 test("stuck errors are contract words, never raw text", () => {

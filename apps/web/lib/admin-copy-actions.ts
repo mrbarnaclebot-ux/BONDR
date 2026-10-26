@@ -38,8 +38,18 @@ export const ACTION_COPY: Record<ActionKey, Copy> = {
   burn_buyback: tx("Burn buyback now", "The buyback wallet holds no BONDR to burn.", BURNED),
   // EVACUATE has its own panel (06-22); this entry only keeps the map total.
   evacuate: tx("EVACUATE", "EVACUATE runs from its own panel."),
-  hold: { label: "Hold for review", reason: "", tx: false, permanent: null },
-  release_hold: { label: "Release hold", reason: "", tx: false, permanent: null },
+  hold: {
+    label: "Hold for review",
+    reason: "Hold applies once the launch of {SYMBOL} has landed.",
+    tx: false,
+    permanent: null,
+  },
+  release_hold: {
+    label: "Release hold",
+    reason: "Release applies once the launch of {SYMBOL} has landed.",
+    tx: false,
+    permanent: null,
+  },
   recheck_launch: {
     label: "Re-check launch",
     reason: "Re-check launch applies only to a launch that is still signed, sent or unknown.",
@@ -66,6 +76,7 @@ export function actResultCopy(outcome: string, symbol: string): string {
   if (line) return fill(line, symbol);
   if (outcome === "not_applicable")
     return "Re-check launch no longer applies. Refresh to see its current state.";
+  if (outcome === "not_found") return "This coin has no indexed row yet. Nothing changed.";
   return "The worker did not answer. Nothing changed. Try again in a moment.";
 }
 

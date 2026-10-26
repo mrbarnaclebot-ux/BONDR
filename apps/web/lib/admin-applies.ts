@@ -52,8 +52,8 @@ function rules({ row, state, live, timeline, balances }: Input): Record<GridKey,
     distribute_now: finalized,
     sweep_leftovers: finalized,
     burn_buyback: balances !== null && BigInt(balances.buybackBondr) > 0n,
-    hold: !held,
-    release_hold: held,
+    hold: coin && !held, // the worker's hold needs the coin row (WR-B-06)
+    release_hold: coin && held,
     recheck_launch: row.launch === "unconfirmed",
   };
 }

@@ -79,11 +79,21 @@ export function useQuote(solIn: bigint | null): QuoteState {
   return state;
 }
 
+// UI-SPEC surface 2: genesis is insta burn only, so burn is preselected and sell can never stay chosen.
+function useBurnOnly({ state, dispatch, live }: StepProps) {
+  useEffect(() => {
+    if (live.genesis && state.exit !== "burn") dispatch({ type: "exit", exit: "burn" });
+  }, [live.genesis, state.exit, dispatch]);
+}
+
 export function LaunchBuy({ state, dispatch, live }: StepProps) {
   const [blurred, setBlurred] = useState(false);
   const error = buyError(live);
-  const shown = error && (state.devBuy !== "" || blurred || state.exit !== null) ? error : undefined;
+  // A chosen exit shows the error early, but genesis preselects burn, so there it waits for input or blur.
+  const chosen = state.exit !== null && !live.genesis;
+  const shown = error && (state.devBuy !== "" || blurred || chosen) ? error : undefined;
   const label = !state.exit ? "Choose an exit to continue" : error ? "Fix the dev buy" : "Review launch";
+  useBurnOnly({ state, dispatch, live });
   return (
     <form
       noValidate
@@ -151,8 +161,11 @@ function BuyField({ live, value, error, onValue, onBlur }: BuyFieldProps) {
       </div>
       {min !== null && <Presets min={min} onValue={onValue} />}
       <p id="buy-hint" className="text-xs text-muted-foreground">
-        Minimum {min === null ? "…" : sol(min)} SOL. In the same transaction your SOL buys BONDR, which buys
-        your coin.{live.quote.loading && " About … tokens."}
+        Minimum {min === null ? "…" : sol(min)} SOL.{" "}
+        {live.genesis
+          ? "In the same transaction your SOL buys the new BONDR token, and the tokens are burned."
+          : "In the same transaction your SOL buys BONDR, which buys your coin."}
+        {live.quote.loading && " About … tokens."}
         {live.quote.quote && (
           <>
             {" "}
@@ -192,18 +205,24 @@ function ExitChoice({ exit, live, onExit }: { exit: Exit | null; live: Live; onE
         What happens to your dev buy <span className="font-normal text-muted-foreground">required</span>
       </legend>
       <div className="grid gap-2 sm:grid-cols-2">
-        <ExitCard value="sell" checked={exit === "sell"} onPick={onExit}>
-          Sold back in the same transaction. You get your SOL back, minus fees and price impact.
-          <Extra>
-            You get back about <span className="text-leaf">{q ? sol(q.solBackEstimate, 3) : "…"} SOL</span>
-          </Extra>
-        </ExitCard>
+        {live.genesis ? (
+          <ExitCard value="sell" checked={false} lock="Not for genesis">
+            The genesis launch is insta burn only, so the dev buy never stays with anyone.
+          </ExitCard>
+        ) : (
+          <ExitCard value="sell" checked={exit === "sell"} onPick={onExit}>
+            Sold back in the same transaction. You get your SOL back, minus fees and price impact.
+            <Extra>
+              You get back about <span className="text-leaf">{q ? sol(q.solBackEstimate, 3) : "…"} SOL</span>
+            </Extra>
+          </ExitCard>
+        )}
         <ExitCard value="burn" checked={exit === "burn"} onPick={onExit}>
           Burned in the same transaction. Supply shrinks for every holder; you get nothing back.
           <Extra>You get back 0 SOL, burn about {tokens} tokens</Extra>
         </ExitCard>
       </div>
-      <ExitCard value="lock" checked={false}>
+      <ExitCard value="lock" checked={false} lock="Coming later">
         Lock the dev buy for 1 hour to 12 months. Waiting on a Token-2022 test.
       </ExitCard>
       <p className="text-xs text-muted-foreground">
@@ -228,13 +247,14 @@ const LIVE_CARD =
 type ExitCardProps = {
   value: Exit | "lock";
   checked: boolean;
+  /** The pill of a card shown but not choosable: Streamflow ("lock") for now, Insta sell in genesis. */
+  lock?: string;
   onPick?(exit: Exit): void;
   children: ReactNode;
 };
 
-/** Native radio in a label card; Streamflow ("lock") is shown but cannot be chosen yet. */
-function ExitCard({ value, checked, onPick, children }: ExitCardProps) {
-  const lock = value === "lock";
+/** Native radio in a label card; a card with `lock` is shown but cannot be chosen. */
+function ExitCard({ value, checked, lock, onPick, children }: ExitCardProps) {
   return (
     <label className={cn(CARD, lock ? "cursor-not-allowed border-dashed" : LIVE_CARD)}>
       <input
@@ -242,15 +262,15 @@ function ExitCard({ value, checked, onPick, children }: ExitCardProps) {
         name="exit"
         value={value}
         checked={checked}
-        disabled={lock}
-        onChange={() => !lock && onPick?.(value)}
+        disabled={!!lock}
+        onChange={() => !lock && value !== "lock" && onPick?.(value)}
         className="row-span-2 mt-0.5 size-[18px] accent-leaf"
       />
       <b className={cn("flex items-center gap-2 text-base font-semibold", lock && "text-muted-foreground")}>
-        {lock ? "Streamflow lock" : EXIT_NAME[value]}
+        {value === "lock" ? "Streamflow lock" : EXIT_NAME[value]}
         {lock && (
           <span className="rounded-full border border-line-strong px-2 py-1 text-xs font-semibold tracking-[0.05em] text-foreground uppercase">
-            Coming later
+            {lock}
           </span>
         )}
       </b>

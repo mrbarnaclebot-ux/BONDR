@@ -27,6 +27,8 @@ const AFTER_BOND: Row[] = [
   ["BONDR treasury", "20%"],
 ];
 
+const GENESIS_FEE: Row[] = [["BONDR treasury, claimed on pump.fun", "100%"]];
+
 /** Updates on every keystroke from the flow state; every fee and cost is live (D-01), never a constant. */
 export function LaunchReceipt({ state, live }: { state: Launch; live: Live }) {
   const s = live.status;
@@ -42,6 +44,7 @@ export function LaunchReceipt({ state, live }: { state: Launch; live: Live }) {
   const buy = parsed.ok ? `${sol(parsed.value)} SOL` : "–";
   const launch: Row[] = [
     ["Mint, reserved", state.mint ? short(state.mint) : "…bndr, at signing"],
+    ...(live.genesis ? [["Pair", "SOL"] as Row] : []),
     ["Dev buy", buy],
     ["Exit", state.exit ? EXIT_NAME[state.exit] : "Not chosen"],
     ["Launch supply you hold", <Up key="held">0</Up>],
@@ -66,8 +69,15 @@ export function LaunchReceipt({ state, live }: { state: Launch; live: Live }) {
       <Head state={state} />
       <Group rows={launch} />
       <Group title="Every curve trade" rows={trade} />
-      <Group title="Creator fee, before bond" rows={BEFORE_BOND} />
-      <Group title="Creator fee, after bond" rows={AFTER_BOND} />
+      {live.genesis ? (
+        // D-31: BONDR is not a BONDR-quoted child, so no W, split, sweep or finalize applies.
+        <Group title="Creator fee" rows={GENESIS_FEE} />
+      ) : (
+        <>
+          <Group title="Creator fee, before bond" rows={BEFORE_BOND} />
+          <Group title="Creator fee, after bond" rows={AFTER_BOND} />
+        </>
+      )}
       <Group title="You pay now" rows={now} />
     </aside>
   );

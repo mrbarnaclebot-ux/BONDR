@@ -9,6 +9,7 @@ import type { Connection, PublicKey } from "@solana/web3.js";
 import { eq, type SQL } from "drizzle-orm";
 import { publishFee } from "./announce.ts";
 import { bondrPrice } from "./bondr-price.ts";
+import { contractFailed } from "./contract-check.ts";
 import { buyback, ops, type WorkerEnv } from "./env.ts";
 import { scheduleBatch } from "./fee-batch.ts";
 import { feeConfig } from "./fee-config.ts";
@@ -68,7 +69,8 @@ export function feeDeps(ctx: Ctx, env: WorkerEnv, mode: "dry" | "on"): FeeDeps {
     },
     land: (job) => land(d, job),
     // D-16, D-19: automatic jobs obey the owner's switches and a coin's manual hold; admin deps override this.
-    allowed: (job, coin) => switchOn(job) && !coin?.hold,
+    // CR-W-03: and the contract check, in memory, so a mismatch whose switches-off write failed still stops them.
+    allowed: (job, coin) => switchOn(job) && !contractFailed() && !coin?.hold,
   };
   return d;
 }

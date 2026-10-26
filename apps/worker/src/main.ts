@@ -76,6 +76,10 @@ async function main() {
   const conn = await connect(env.net, { fetch: timedFetch });
   const base = { conn, online: new OnlinePumpSdk(conn), priorityFee: env.priorityFee, net: env.net };
   const ctx: Ctx | null = env.quoteMint && { ...base, Q: env.quoteMint };
+  // Wired before any route or job, so on mainnet launches, genesis and the engine refuse until this run passes
+  // (WR-W-01). Its own timer, apart from bootIndex and the fee batch, so it runs in every mode (Pitfall 8).
+  scheduleCheck(env.feeBatchHourUtc, contractDeps(conn, env.net, ctx?.Q));
+  runCheck().catch(failed("contract check"));
   // D-29, D-31: one branch at boot. Genesis writes every switch off before any route answers; after genesis a
   // wrong BONDR mint refuses to start (devnet skips the check: its BONDR is a test mint).
   if (!ctx) await enterGenesis();
@@ -96,9 +100,6 @@ async function main() {
     const [o, b] = [ops(env.seed, env.net).publicKey, buyback(env.seed, env.net, env.lane).publicKey];
     console.log(`wallets: ops=${o.toBase58()} buyback=${b.toBase58()} treasury=${env.treasury.toBase58()}`);
     void startRefill(env);
-    // Its own timer, apart from bootIndex and the fee batch, so it runs in every mode (Pitfall 8).
-    scheduleCheck(env.feeBatchHourUtc, contractDeps(conn, env.net, ctx?.Q));
-    runCheck().catch(failed("contract check"));
     if (ctx) void bootIndex(ctx, env); // genesis has no coins to index and no engine (D-29)
     resumeLaunches(conn).catch(failed("resume"));
     settleStale(new Date(bootAt))

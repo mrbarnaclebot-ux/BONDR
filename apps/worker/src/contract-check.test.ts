@@ -6,7 +6,7 @@ import { PUMP_AMM_PROGRAM_ID, PUMP_FEE_PROGRAM_ID, PUMP_PROGRAM_ID } from "@bond
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { memoryAudit } from "./admin-audit.ts";
 
-const { contractFailed, contractState, nextCheckAt, resetCheck, runCheck } = await import(
+const { contractFailed, contractState, nextCheckAt, resetCheck, runCheck, scheduleCheck } = await import(
   "./contract-check.ts"
 );
 
@@ -50,7 +50,10 @@ const ok =
   async (): Promise<CheckResult> => ({ facts: [], slots });
 
 beforeEach(() => resetCheck());
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 
 test("a forced mismatch turns every switch off once, with one contract_check audit row (D-21)", async () => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -125,6 +128,43 @@ test("a check that throws is 'could not run': nothing paused, the last pass kept
   expect(s).toMatchObject({ kind: "failed", lastPass: passed.lastPass });
   expect(t.off).not.toHaveBeenCalled();
   expect(contractFailed()).toBe(false);
+});
+
+// CR-W-03: a failed switches-off write keeps the pause in memory (the engine reads contractFailed) and retries.
+test("a failed pause write keeps contractFailed true, even past a pass, and retries until it lands", async () => {
+  vi.useFakeTimers();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  vi.spyOn(console, "log").mockImplementation(() => undefined);
+  const t = deps(async () => ({ facts: ["FeeConfig discriminator changed"], slots: SLOTS }));
+  t.off.mockRejectedValueOnce(new Error("CONNECT_TIMEOUT"));
+  await runCheck({ ...t.d, off: t.off });
+  expect(t.off).toHaveBeenCalledTimes(1);
+  await runCheck({ ...t.d, off: t.off, check: ok() }); // a pass before the write landed
+  expect(contractFailed()).toBe(true);
+  await vi.advanceTimersByTimeAsync(5_000);
+  expect(t.off).toHaveBeenCalledTimes(2);
+  expect(t.audit.rows.map((r) => r.result)).toEqual(["failed", "landed"]);
+  expect(contractFailed()).toBe(false);
+});
+
+// WR-W-01: on mainnet nothing counts as passed before a run passes, and could not run keeps it that way.
+test("on mainnet the check blocks from boot until a run passes; devnet does not", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  vi.spyOn(console, "log").mockImplementation(() => undefined);
+  const down = async (): Promise<CheckResult> => {
+    throw new Error("fetch failed");
+  };
+  const t = deps(down);
+  scheduleCheck(4, { ...t.d, off: t.off, strict: true });
+  expect(contractFailed()).toBe(true); // not run yet
+  await runCheck();
+  expect(contractFailed()).toBe(true); // could not run
+  await runCheck({ ...t.d, off: t.off, strict: true, check: ok() });
+  expect(contractFailed()).toBe(false);
+  resetCheck();
+  scheduleCheck(4, { ...t.d, off: t.off });
+  expect(contractFailed()).toBe(false);
+  resetCheck();
 });
 
 test("two concurrent runs share one check", async () => {

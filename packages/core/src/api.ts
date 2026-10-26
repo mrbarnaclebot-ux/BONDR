@@ -187,6 +187,8 @@ export type CoinRow = CoinLive & {
   launchMcapSol: number;
   bondSig: string | null;
   bondedAt: string | null;
+  createSlot: string | null; // null before 07-07: no sniped figure is shown
+  snipedBps: number | null;
 };
 
 export type TradeRow = {

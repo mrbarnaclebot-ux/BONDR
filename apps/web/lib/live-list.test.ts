@@ -41,6 +41,8 @@ function coin(mint: string, over: Partial<CoinRow> = {}): CoinRow {
     launchMcapSol: 28,
     bondSig: null,
     bondedAt: null,
+    createSlot: null,
+    snipedBps: null,
     ...over,
   };
 }

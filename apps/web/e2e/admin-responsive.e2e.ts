@@ -23,6 +23,7 @@ const STAGING = process.env.E2E_BASE_URL;
 const url = STAGING ? undefined : rootEnv().DATABASE_URL;
 const sql = url ? postgres(url, { max: 1, idle_timeout: 5, onnotice: () => {} }) : undefined;
 
+// Runs in its own project (playwright.config.ts RESPONSIVE): the admin health rate limit is per wallet.
 test.describe.configure({ timeout: 90_000 }); // a Neon cold start can take seconds
 test.use({ reducedMotion: "reduce" });
 // The admin session route allows 10 calls per IP in 10 minutes and every test signs in, so each test presents

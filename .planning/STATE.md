@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-10-26T10:49:17.000Z"
-last_activity: 2026-10-26 -- Completed 07-02 (migration 0008 on dev, intent 429, replay e2e)
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-10-26T10:53:19.000Z"
+last_activity: 2026-10-26 -- Completed 07-03 (terms copy and version 2026-10-26, www to apex 308)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 97
+  completed_plans: 98
   percent: 74
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 2 of 36 (07-02 complete)
+Plan: 3 of 36 (07-03 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-02 (migration 0008 on dev, intent 429, replay e2e)
+Last activity: 2026-10-26 -- Completed 07-03 (terms copy and version 2026-10-26, www to apex 308)
 
 Progress: [██████████] 100%
 
@@ -130,6 +130,7 @@ Progress: [██████████] 100%
 | Phase 06 P26 | 30 min | 2 tasks | 6 files |
 | Phase 07 P01 | 15 min | 2 tasks | 10 files |
 | Phase 07 P02 | 25 min | 2 tasks | 7 files |
+| Phase 07 P03 | 20 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -347,10 +348,12 @@ Recent decisions affecting current work:
 - 07-01: v1 ingest by raising maxSupportedTransactionVersion to 1; -32015 dropped after one try
 - 07-02: migration 0008 (sniped columns, launches_symbol_live, audit TRUNCATE trigger plus revoke) applied to dev; TRUNCATE answers 42501, P0001 if re-granted
 - 07-02: a full intent store of live unused intents answers 429 rate_limited and evicts nothing (IN-W-04)
+- 07-03: TERMS_VERSION 2026-10-26 carries the contact, mainnet and cooldown sentences; existing consents are not re-asked
+- 07-03: www redirect only on an exact www. plus SITE_URL host match, Location from SITE_URL; rate limit scope kept by READ_PATHS
 
 ### Pending Todos
 
-- Replace the placeholder contact handle in the terms page
+- Owner, non-money, before go-live: set up hello@trybondr.fun forwarding (D-17); the terms page names it since 07-03
 - WR-08 minOut fixed in a8758e1 (verified in 06-02); leftover burns ship in 06-09 (D-17)
 - Owner, non-blocking: HV-06-01 (staging console sign-in after setting ADMIN_WALLET on web and worker) and HV-06-02 (SENTRY_READ_TOKEN on the staging worker)
 
@@ -380,6 +383,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T10:49:17.000Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-10-26T10:53:19.000Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None

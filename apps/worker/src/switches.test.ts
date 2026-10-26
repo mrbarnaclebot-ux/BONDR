@@ -3,7 +3,10 @@
 import { PublicKey } from "@solana/web3.js";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const m = vi.hoisted(() => ({ rows: [] as object[], sets: [] as object[], selects: 0, fail: false }));
+const m = vi.hoisted(() => ({
+  ...{ rows: [] as object[], sets: [] as object[], selects: 0, fail: false },
+  gate: null as Promise<void> | null, // holds a select open after it took its snapshot
+}));
 vi.mock("@bondr/core/db", async (orig) => ({
   ...((await orig()) as object),
   db: () => ({
@@ -11,7 +14,9 @@ vi.mock("@bondr/core/db", async (orig) => ({
       from: () => ({
         where: async () => {
           m.selects++;
-          return m.rows;
+          const snap = m.rows.map((r) => ({ ...r }));
+          if (m.gate) await m.gate;
+          return snap;
         },
       }),
     }),
@@ -41,6 +46,7 @@ beforeEach(() => {
   m.sets = [];
   m.selects = 0;
   m.fail = false;
+  m.gate = null;
 });
 
 test("loadSwitches holds the row in memory with evacuatedAt", async () => {
@@ -112,4 +118,26 @@ test("pauseAll switches all five jobs off and stamps evacuatedAt in one UPDATE, 
   for (const j of ["launches", "forcedBond", "sweeps", "finalize", "buybackBurn"] as const)
     expect(s[j]).toBe(false);
   expect(s.evacuatedAt).toBe((set.evacuatedAt as Date).toISOString());
+});
+
+test("a read that started before a flip or pauseAll never puts the old values back (WR-W-01)", async () => {
+  await loadSwitches();
+  let open = () => {};
+  m.gate = new Promise((r) => {
+    open = r;
+  });
+  const stale = loadSwitches();
+  await setJob("sweeps", false);
+  open();
+  expect((await stale).sweeps).toBe(false);
+  expect(switchOn("sweeps")).toBe(false);
+  m.gate = new Promise((r) => {
+    open = r;
+  });
+  const staler = loadSwitches();
+  await pauseAll();
+  open();
+  await staler;
+  expect(switchOn("launches")).toBe(false);
+  expect(switchState().evacuatedAt).not.toBeNull();
 });

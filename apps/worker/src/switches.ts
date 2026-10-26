@@ -19,6 +19,8 @@ export type SwitchState = AdminSwitches & { evacuatedAt: string | null };
 
 // Every switch off until the first load (fail closed); the engine starts only after it.
 let state: SwitchState | undefined;
+// WR-W-01: bumped after each committed write, so a read whose snapshot may predate the write never lands over it.
+let writes = 0;
 
 export const switchesLoaded = (): boolean => state !== undefined;
 export const switchOn = (job: AdminJob): boolean => state?.[job] === true;
@@ -29,7 +31,9 @@ export function switchState(): SwitchState {
 }
 
 export async function loadSwitches(): Promise<SwitchState> {
+  const seen = writes;
   const [r] = await db().select().from(settings).where(eq(settings.id, 1));
+  if (seen !== writes) return switchState();
   // fail closed: a missing settings row counts as every switch off
   const on = (job: AdminJob) => r?.[COLUMN[job]] === true;
   state = {
@@ -46,18 +50,23 @@ export async function setJob(job: AdminJob, on: boolean): Promise<AdminSwitches>
     .update(settings)
     .set({ [COLUMN[job]]: on })
     .where(eq(settings.id, 1));
+  writes++;
   state = { ...switchState(), [job]: on };
   const { evacuatedAt: _, ...switches } = state;
   return switches;
 }
 
-// EVACUATE (D-35): every switch off, launches included, and evacuated_at in one write, then memory re-read from
-// the row so it carries evacuatedAt. The switches stay off until the owner turns each back on (D-36).
+// EVACUATE (D-35): every switch off, launches included, and evacuated_at in one write, then memory set from what
+// was written, so no re-read can fail after the write. The switches stay off until the owner turns each back on
+// (D-36).
 export async function pauseAll(): Promise<void> {
   const off = Object.fromEntries(Object.values(COLUMN).map((c) => [c, false]));
+  const evacuatedAt = new Date();
   await db()
     .update(settings)
-    .set({ ...off, evacuatedAt: new Date() })
+    .set({ ...off, evacuatedAt })
     .where(eq(settings.id, 1));
-  await loadSwitches();
+  writes++;
+  const none = { launches: false, forcedBond: false, sweeps: false, finalize: false, buybackBurn: false };
+  state = { ...none, evacuatedAt: evacuatedAt.toISOString() };
 }

@@ -112,3 +112,36 @@ CI: GitHub Actions is still blocked on the owner's billing (07-19). This plan ne
 - All six phase 7 -staging screenshots exist.
 - The `deployed-staging` tag exists.
 - Commits 3e5279d and ed86067 are in `git log`.
+
+## Post-review redeploy (2026-10-26, efb5ca2)
+
+Staging was redeployed at the Phase 7 review fixes (HEAD efb5ca2, 30 commits after 5b26c35). Production, mainnet and real SOL were not touched, and no devnet SOL was spent.
+
+Pre-checks, booleans only: the staging worker has SOLANA_NET devnet, BONDR_QUOTE_MINT set, FEE_ENGINE on and VANITY_LANE staging, with ALLOW_MAINNET, ADMIN_WALLET and ADMIN_EVACUATE absent. The staging web has no BONDR_QUOTE_MINT.
+
+Deploy:
+- `pnpm run deploy -- staging --yes`, 16:18:57Z to 16:22:37Z. Web went first because `git diff deployed-staging -- packages/core/migrations` is not empty. The only change is deb572d, which edits a comment in 0008_go_live.sql. Drizzle picks migrations to apply by journal timestamp, so it did not re-run 0008.
+- web f903956a SUCCESS (pre-deploy log: `migrations applied`), then worker f904baf0 SUCCESS, then `deployed-staging -> efb5ca2`.
+
+Worker log over the first 6.5 minutes (to 16:28:55Z, 9 lines):
+- `worker listening on devnet`
+- `contract check passed: pump=510657843 pump AMM=508659436 pump fees=508659783`
+- `switches: launches=on forcedBond=on sweeps=on finalize=on buybackBurn=on`
+- `fee engine on: 2 coins armed`
+- `backfilled 2 launches` (BBURN and BSELL)
+- `stream subscribed`
+- 0 `Transaction version (1)` lines and 0 `fee .* failed` lines.
+
+Smoke against https://web-staging-72bad.up.railway.app:
+- /api/health 200 `{"ok":true}`.
+- /api/status 200 with net devnet, paused null and quoteMint set.
+- /api/coins lists BSELL, BBURN, TESTCOIN and EX8EUJ. `?q=BBURN` and `?q=BSELL` each find their coin. This closes deviation 1 above.
+
+Matrices (E2E_BASE_URL set, E2E_NO_SHOTS=1, so no screenshots were rewritten):
+- @smoke: 32 passed.
+- admin-locked, responsive-fee, responsive-trade and trade-sheet: 40 passed, 24 skipped. These are the same counts as the first run.
+
+Neon (`neonctl api /projects/royal-waterfall-05278863/endpoints`, read at 16:36:08Z):
+- main (staging): idle, last active 16:20:58Z, suspended 16:29:31Z.
+- dev: idle, suspended 16:20:47Z.
+- Both are at 0.25 CU.

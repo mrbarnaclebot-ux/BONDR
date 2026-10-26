@@ -1,9 +1,12 @@
 // UI-SPEC Wallets and Health cell copy (D-22, D-25 to D-28). Pure, so the unit test pins every line.
 import type { AdminBalances, AdminHealth } from "@bondr/core/api-admin";
+// A function-only cycle (admin-copy-audit takes clock from here): safe, nothing runs at import.
+import { auditTime } from "./admin-copy-audit";
 import { age, feeSol, plural, relTime, thousands, whole, windowLeft } from "./format";
 
 export type Tone = "plain" | "ok" | "warn" | "danger" | "muted";
-export type Cell = { value: string; sub: string; tone: Tone };
+// dot: the static 8px destructive dot beside the label (the contract mismatch).
+export type Cell = { value: string; sub: string; tone: Tone; dot?: boolean };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -139,4 +142,35 @@ export function reconcileCopy(r: Reconcile): Cell {
     sub: `${r.first.symbol} W off by ${off} BONDR. ${PAGE_LOAD}`,
     tone: "warn",
   };
+}
+
+const CHECKED = "Program IDs, IDL layouts, Global flags. Runs at boot and weekly.";
+
+/** "pump", "pump and pump AMM", "pump, pump AMM and pump fees". */
+const joined = (names: string[]) =>
+  names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+
+// UI-SPEC surface 5: every state from worker memory (D-18 to D-21).
+export function contractCopy(c: AdminHealth["contract"], now: number): Cell {
+  const at = c.at ? auditTime(c.at, now) : "";
+  switch (c.kind) {
+    case "not_run":
+      return { value: "Not run since boot", sub: CHECKED, tone: "muted" };
+    case "running":
+      return { value: "Checking…", sub: CHECKED, tone: "muted" };
+    case "passed":
+      return { value: at ? `Passed ${at}` : "Passed", sub: CHECKED, tone: "ok" };
+    case "redeployed": {
+      const sub = `${joined(c.programs)} redeployed since the last check. Every fact still passes; nothing was paused. Checked ${at}.`;
+      return { value: "Passed, pump redeployed", sub, tone: "warn" };
+    }
+    case "mismatch": {
+      const sub = `${c.facts.join("; ")}. Checked ${at}. Every job was paused. Turn them back on one at a time after review. Launches stay paused until Run check now passes.`;
+      return { value: "Mismatch, jobs paused", sub, tone: "danger", dot: true };
+    }
+    case "failed": {
+      const last = c.lastPass ? ` Last pass ${auditTime(c.lastPass, now)}.` : "";
+      return { value: "Could not run", sub: `The RPC did not answer.${last}`, tone: "warn" };
+    }
+  }
 }

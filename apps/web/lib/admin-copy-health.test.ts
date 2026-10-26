@@ -1,8 +1,10 @@
 import type { AdminBalances, AdminHealth } from "@bondr/core/api-admin";
 import { expect, test } from "vitest";
+import { auditTime } from "./admin-copy-audit";
 import {
   buybackCopy,
   clock,
+  contractCopy,
   heartbeatCopy,
   lastRunsCopy,
   opsCopy,
@@ -144,4 +146,64 @@ test("totals read counts and 30-day SOL", () => {
   expect(totalsCopy({ coins: 1204, bonded: 9, volume30d: "140700000000", treasury30d: "420000000" })).toEqual(
     ["1,204 coins", "9 bonded", "140.7 SOL volume, 30d", "0.42 SOL to treasury, 30d"],
   );
+});
+
+const STATIC = "Program IDs, IDL layouts, Global flags. Runs at boot and weekly.";
+const AT = new Date(NOW - 60_000).toISOString();
+const PASS = new Date(NOW - 7 * 86_400_000).toISOString();
+const contract = (over: Partial<AdminHealth["contract"]>): AdminHealth["contract"] => ({
+  ...{ kind: "passed", at: AT, facts: [], programs: [], lastPass: AT },
+  ...over,
+});
+
+test("contract: not run, checking and passed read the static sub-line", () => {
+  expect(contractCopy(contract({ kind: "not_run", at: null, lastPass: null }), NOW)).toEqual({
+    ...{ value: "Not run since boot", sub: STATIC, tone: "muted" },
+  });
+  expect(contractCopy(contract({ kind: "running" }), NOW)).toEqual({
+    ...{ value: "Checking…", sub: STATIC, tone: "muted" },
+  });
+  expect(contractCopy(contract({}), NOW)).toEqual({
+    ...{ value: `Passed ${auditTime(AT, NOW)}`, sub: STATIC, tone: "ok" },
+  });
+});
+
+test("contract: a redeploy is amber and names the programs", () => {
+  const two = contractCopy(contract({ kind: "redeployed", programs: ["pump", "pump AMM"] }), NOW);
+  expect(two.value).toBe("Passed, pump redeployed");
+  expect(two.tone).toBe("warn");
+  expect(two.sub).toBe(
+    `pump and pump AMM redeployed since the last check. Every fact still passes; nothing was paused. Checked ${auditTime(AT, NOW)}.`,
+  );
+  const one = contractCopy(contract({ kind: "redeployed", programs: ["pump fees"] }), NOW);
+  expect(one.sub.startsWith("pump fees redeployed since the last check.")).toBe(true);
+  const all = contractCopy(
+    contract({ kind: "redeployed", programs: ["pump", "pump AMM", "pump fees"] }),
+    NOW,
+  );
+  expect(all.sub.startsWith("pump, pump AMM and pump fees redeployed")).toBe(true);
+});
+
+test("contract: a mismatch is danger with the dot and every fact", () => {
+  const facts = [
+    "creator fee not configurable, assumed 150 bps per coin",
+    "Global account is 1096 bytes, expected 1088",
+  ];
+  expect(contractCopy(contract({ kind: "mismatch", facts }), NOW)).toEqual({
+    value: "Mismatch, jobs paused",
+    sub: `${facts[0]}; ${facts[1]}. Checked ${auditTime(AT, NOW)}. Every job was paused. Turn them back on one at a time after review. Launches stay paused until Run check now passes.`,
+    tone: "danger",
+    dot: true,
+  });
+});
+
+test("contract: could not run names the last pass when there is one", () => {
+  expect(contractCopy(contract({ kind: "failed", lastPass: PASS }), NOW)).toEqual({
+    ...{
+      value: "Could not run",
+      sub: `The RPC did not answer. Last pass ${auditTime(PASS, NOW)}.`,
+      tone: "warn",
+    },
+  });
+  expect(contractCopy(contract({ kind: "failed", lastPass: null }), NOW).sub).toBe("The RPC did not answer.");
 });

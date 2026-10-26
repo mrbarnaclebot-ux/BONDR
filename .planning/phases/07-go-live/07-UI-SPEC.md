@@ -207,7 +207,7 @@ Placement: last cell, as in the mockup (`admin.html:147`), with `md:col-span-2` 
 | Running | "Checking…" (muted) | none | "Program IDs, IDL layouts, Global flags. Runs at boot and weekly." |
 | Passed | "Passed {time}" (ok, leaf) | none | "Program IDs, IDL layouts, Global flags. Runs at boot and weekly." |
 | Passed, a programdata deploy slot changed | "Passed, pump redeployed" (warn) | none | "{programs} redeployed since the last check. Every fact still passes; nothing was paused. Checked {time}." |
-| Mismatch | "Mismatch, jobs paused" (danger) | static 8px `bg-destructive` | "{facts}. Checked {time}. Every job was paused. Turn them back on one at a time after review." |
+| Mismatch | "Mismatch, jobs paused" (danger) | static 8px `bg-destructive` | "{facts}. Checked {time}. Every job was paused. Turn them back on one at a time after review. Launches stay paused until Run check now passes." |
 | Could not run (RPC error, no facts read) | "Could not run" (warn) | none | "The RPC did not answer. Last pass {time}." or, with no pass since boot, "The RPC did not answer." |
 
 - `{time}` uses the existing `auditTime()` from `apps/web/lib/admin-copy-audit.ts` ("14:02:11" today, "Yesterday 06:00", else "Oct 19 06:00"). No new date helper.
@@ -240,7 +240,7 @@ File: `apps/web/components/admin-switches.tsx`, the `Notices` component (where t
 
 | Condition | Callout | Copy |
 |-----------|---------|------|
-| `contract` is a mismatch | error (`role="alert"`) | Title "The pump contract check failed." Body: "Every job was paused at {time}. The failed facts are in Health. Turn jobs back on one at a time once you have reviewed them." |
+| `contract` is a mismatch | error (`role="alert"`) | Title "The pump contract check failed." Body: "Every job was paused at {time}. The failed facts are in Health. Turn jobs back on one at a time once you have reviewed them. Launches stay paused until Run check now passes." |
 | `genesis` is true | warn | Title "Genesis mode." Body: "Child launches stay closed until the BONDR token is live and BONDR_QUOTE_MINT is set. Send the genesis launch from /launch while signed in here." ("/launch" is a link) |
 
 The five switch rows are unchanged (state words "Running", "Paused", "Saving…", "Unknown"). Owner-delegated (auto): the Launches switch stays flippable in genesis mode, because it is a stored setting and the worker answers `not_ready` to child prepares regardless. The genesis callout explains why it has no effect yet.
@@ -272,7 +272,7 @@ Plain, specific, no hype, no emoji. Sentence case. Env names (`BONDR_QUOTE_MINT`
 | Empty state heading | Contract cell before its first run: "Not run since boot" |
 | Empty state body | "Program IDs, IDL layouts, Global flags. Runs at boot and weekly." · Sniped line and Sender tip row are absent rather than empty (no create slot; not mainnet) |
 | Error state | "Could not run the check. Try again." · "The RPC did not answer. Last pass {time}." · "Only the owner wallet can send the genesis launch. Switch accounts in Phantom and try again." · "Your admin session ended. Sign in again at /admin, then come back to send the genesis launch." · "The genesis launch already landed. Set BONDR_QUOTE_MINT to the new mint and redeploy to open child launches." · Sender tip "Unavailable" |
-| Mismatch state | Cell: "Mismatch, jobs paused" / "{facts}. Checked {time}. Every job was paused. Turn them back on one at a time after review." Callout: "The pump contract check failed." / "Every job was paused at {time}. The failed facts are in Health. Turn jobs back on one at a time once you have reviewed them." Public: the `contract_check` banner |
+| Mismatch state | Cell: "Mismatch, jobs paused" / "{facts}. Checked {time}. Every job was paused. Turn them back on one at a time after review. Launches stay paused until Run check now passes." Callout: "The pump contract check failed." / "Every job was paused at {time}. The failed facts are in Health. Turn jobs back on one at a time once you have reviewed them. Launches stay paused until Run check now passes." Public: the `contract_check` banner |
 | Disabled state | Public genesis banner: "Launches are not open yet." / "Launches open after the BONDR token is live. You can fill this in now; the Launch button unlocks automatically when launches open." · Genesis Sell card: "Not for genesis" / "The genesis launch is insta burn only, so the dev buy never stays with anyone." · Admin: "Genesis mode." / "Child launches stay closed until the BONDR token is live and BONDR_QUOTE_MINT is set. Send the genesis launch from /launch while signed in here." |
 | Loading state | "Checking…" (cell value and button) · Sender tip "…" |
 | Disclosure | "Sniped {pct} of supply. BONDR cannot stop third-party buys at launch. This shows how much was bought in the first 3 slots." |

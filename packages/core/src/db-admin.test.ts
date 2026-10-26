@@ -205,7 +205,9 @@ describe.skipIf(!process.env.DATABASE_URL)("admin database constraints", { timeo
   });
 
   test("launches_symbol_live is a partial index on (symbol, landed_at) without failed launches", async () => {
-    const r = await db().execute(sql`select indexdef from pg_indexes where indexname = 'launches_symbol_live'`);
+    const r = await db().execute(
+      sql`select indexdef from pg_indexes where indexname = 'launches_symbol_live'`,
+    );
     const def = String((r as unknown as { indexdef: string }[])[0]?.indexdef);
     expect(def).toContain("(symbol, landed_at)");
     expect(def).toContain("state <> 'failed'");

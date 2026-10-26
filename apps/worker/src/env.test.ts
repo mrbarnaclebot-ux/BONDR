@@ -104,3 +104,11 @@ test("VANITY_LANE takes production and refuses anything else (D-11)", () => {
   expect(load({ VANITY_LANE: "production" }).lane).toBe("production");
   expect(() => load({ VANITY_LANE: "prod" })).toThrow("VANITY_LANE");
 });
+
+test("BONDR_QUOTE_MINT unset is genesis mode on mainnet (null) and refused on devnet (D-29)", () => {
+  expect(main({ BONDR_QUOTE_MINT: undefined }).quoteMint).toBeNull();
+  expect(main({ BONDR_QUOTE_MINT: " " }).quoteMint).toBeNull();
+  expect(() => load({ BONDR_QUOTE_MINT: undefined })).toThrow("BONDR_QUOTE_MINT");
+  expect(() => main({ BONDR_QUOTE_MINT: "bad" })).toThrow("BONDR_QUOTE_MINT");
+  expect(main().quoteMint?.toBase58()).toBe(base.BONDR_QUOTE_MINT);
+});

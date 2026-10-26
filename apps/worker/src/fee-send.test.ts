@@ -9,8 +9,8 @@ import {
   SystemProgram,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { feeConfig, SENDER_TIPS } from "./fee-config.ts";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { feeConfig, SENDER_TIPS, SENDER_URL } from "./fee-config.ts";
 import type { LedgerStore } from "./fee-ledger.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
 import {
@@ -94,6 +94,15 @@ const job = (over: Partial<Job> = {}): Job => ({
   ...over,
 });
 
+const savedKey = process.env.helius_api_key;
+beforeAll(() => {
+  process.env.helius_api_key = "k3y-value"; // Sender URLs carry it; never a real key in tests
+});
+afterAll(() => {
+  if (savedKey === undefined) delete process.env.helius_api_key;
+  else process.env.helius_api_key = savedKey;
+});
+
 beforeEach(() => {
   calls.length = 0;
   metaMisses.n = 0;
@@ -129,6 +138,35 @@ describe("tipIxs and urgentBroadcast (D-16)", () => {
     const body = JSON.parse(String((post.mock.calls[0] as unknown as [string, RequestInit])[1].body));
     expect(body.method).toBe("sendTransaction");
     expect(body.params[1]).toEqual({ encoding: "base64", skipPreflight: true, maxRetries: 0 });
+  });
+
+  const urlOf = (post: ReturnType<typeof vi.fn>) => String(post.mock.calls[0]?.[0]);
+
+  test("every Sender POST carries the api key; swqos_only only when asked (Pitfalls 10, 11)", async () => {
+    const post = vi.fn(async () => new Response(JSON.stringify({ result: "s" })));
+    await urgentBroadcast("mainnet", fakeConn() as never, new Uint8Array([1]), o, post);
+    expect(urlOf(post).startsWith(SENDER_URL)).toBe(true);
+    expect(urlOf(post)).toContain("api-key=k3y-value");
+    expect(urlOf(post)).not.toContain("swqos_only");
+    post.mockClear();
+    await urgentBroadcast(
+      "mainnet",
+      fakeConn() as never,
+      new Uint8Array([1]),
+      { ...o, swqosOnly: true },
+      post,
+    );
+    expect(urlOf(post)).toContain("api-key=k3y-value");
+    expect(urlOf(post)).toContain("swqos_only=true");
+  });
+
+  test("a Sender error is unknown and its text never carries the key", async () => {
+    const error = { message: "bad request at https://sender.helius-rpc.com/fast?api-key=k3y-value" };
+    const post = vi.fn(async () => new Response(JSON.stringify({ error }), { status: 400 }));
+    const r = await urgentBroadcast("mainnet", fakeConn() as never, new Uint8Array([1]), o, post);
+    expect(r?.status).toBe("unknown");
+    expect(r?.err).toContain("sender 400");
+    expect(r?.err).not.toContain("k3y-value");
   });
 });
 

@@ -13,7 +13,8 @@ export function redact(text: string): string {
   return out.replace(/api-key=[^&\s"']*/gi, "api-key=<redacted>");
 }
 
-function heliusKey(): string {
+// The one place the key is read (D-02); callers that put it in a URL never log that URL.
+export function heliusKey(): string {
   if (!process.env.helius_api_key) throw new Error("helius_api_key missing in .env");
   return process.env.helius_api_key;
 }

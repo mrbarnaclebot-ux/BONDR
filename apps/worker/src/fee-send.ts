@@ -3,7 +3,7 @@
 // Never resend an "unknown" tx: its row stays pending and boot recovery settles it from the signature.
 import type { LedgerKind, Venue } from "@bondr/core/api";
 import type { FeeJob } from "@bondr/core/api-admin";
-import { redact } from "@bondr/core/net";
+import { heliusKey, redact } from "@bondr/core/net";
 import { toSol } from "@bondr/core/price";
 import type { OnlinePumpAmmSdk, OnlinePumpSdk } from "@bondr/core/pump";
 import {
@@ -133,12 +133,17 @@ const unknown = (o: RawOpts, err: string): SendResult => ({
   ...{ bytes: o.bytes, err: redact(err) },
 });
 
+// Keyed Sender gets 50 req/s instead of a keyless 1/s per IP (Pitfall 11). swqos_only lets a tip under 0.001 SOL
+// route at all (Pitfall 10); forced bonds pay 0.001 and never set it. Built per call and never logged.
+const senderUrl = (swqosOnly?: boolean) =>
+  `${SENDER_URL}?api-key=${heliusKey()}${swqosOnly ? "&swqos_only=true" : ""}`;
+
 // Sender skips preflight, so a failure here may still land: always "unknown", settled from the signature.
 export async function urgentBroadcast(
   net: TradeNet,
   conn: Connection,
   raw: Uint8Array,
-  o: RawOpts,
+  o: RawOpts & { swqosOnly?: boolean },
   post: typeof fetch = fetch,
 ): Promise<SendResult | null> {
   if (net !== "mainnet") return broadcast(conn, raw, o);
@@ -148,7 +153,7 @@ export async function urgentBroadcast(
     { encoding: "base64", skipPreflight: true, maxRetries: 0 },
   ];
   try {
-    const res = await post(SENDER_URL, {
+    const res = await post(senderUrl(o.swqosOnly), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sendTransaction", params }),

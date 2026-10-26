@@ -9,7 +9,6 @@ import { feeRoutes } from "./fee-routes.ts";
 import { type GenesisCtx, genesisOne, genesisQuote } from "./genesis.ts";
 import { fail, type Routes } from "./http.ts";
 import { prepare } from "./prepare.ts";
-import { setGenesis } from "./settle.ts";
 import { liveStatus, setSwitch } from "./status.ts";
 import { submit } from "./submit.ts";
 import { gateFor } from "./switch-gate.ts";
@@ -32,7 +31,6 @@ export async function enterGenesis(): Promise<void> {
   const params = { job: "all", enabled: false };
   await audited(pgAudit(), { actor: "genesis", action: "switch", mint: null, params }, switchesOff);
   console.log(switchesLine(switchState()));
-  setGenesis(true);
 }
 
 export function genesisRoutes(gctx: GenesisCtx, admin: Routes): Routes {

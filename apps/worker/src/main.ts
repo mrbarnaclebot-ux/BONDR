@@ -22,7 +22,7 @@ import { backfillLaunches, loadCoins } from "./ingest.ts";
 import { type PrepareCtx, prepare } from "./prepare.ts";
 import { timedFetch } from "./rpc-stats.ts";
 import { flush } from "./sentry.ts";
-import { resumeLaunches } from "./settle.ts";
+import { resumeLaunches, setTreasury } from "./settle.ts";
 import { type Ctx, liveStatus, quote, setSwitch } from "./status.ts";
 import { backoff, startStream } from "./stream.ts";
 import { submit } from "./submit.ts";
@@ -77,6 +77,7 @@ async function main() {
   const conn = await connect(env.net, { fetch: timedFetch });
   const base = { conn, online: new OnlinePumpSdk(conn), priorityFee: env.priorityFee, net: env.net };
   const ctx: Ctx | null = env.quoteMint && { ...base, Q: env.quoteMint };
+  setTreasury(env.treasury.toBase58()); // settle skips indexing the genesis row (w = the treasury) in any mode
   // Wired before any route or job, so on mainnet launches, genesis and the engine refuse until this run passes
   // (WR-W-01). Its own timer, apart from bootIndex and the fee batch, so it runs in every mode (Pitfall 8).
   scheduleCheck(env.feeBatchHourUtc, contractDeps(conn, env.net, ctx?.Q));

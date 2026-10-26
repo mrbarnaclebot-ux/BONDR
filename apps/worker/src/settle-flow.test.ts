@@ -1,6 +1,6 @@
 // settleLaunch end to end with the DB stubbed and every wait instant.
 import { beforeEach, expect, test, vi } from "vitest";
-import { landed, setGenesis, settleLaunch } from "./settle.ts";
+import { landed, setTreasury, settleLaunch } from "./settle.ts";
 
 const m = vi.hoisted(() => ({ advance: vi.fn(), fetchTx: vi.fn(), ingest: vi.fn() }));
 vi.mock("node:timers/promises", () => ({ setTimeout: async () => undefined }));
@@ -16,7 +16,7 @@ vi.mock("./vanity.ts", async (orig) => ({ ...(await orig()), markUsed: async () 
 
 const row = {
   ...{ id: "l1", state: "sent", signature: "sig", lastValidBlockHeight: 150n, mint: "M", wallet: "W" },
-  ...{ exit: "burn", solIn: 1n },
+  ...{ exit: "burn", solIn: 1n, w: "CHILD_W" },
 };
 
 beforeEach(() => {
@@ -57,15 +57,15 @@ test("a launch unseen in the window lands when the history recheck finds its sig
   expect(m.advance.mock.calls.map((c) => `${c[2]}->${c[3]}`)).toEqual(["sent->landed"]);
 });
 
-test("in genesis mode a landed launch records its facts but gets no coin row (D-31)", async () => {
+// WR-W-03: keyed on the row, so a genesis row that lands after a restart in child mode is still not ingested.
+test("the genesis row (w = the treasury) records its facts but gets no coin row, in any boot mode (D-31)", async () => {
   m.fetchTx.mockResolvedValue({ meta: { postTokenBalances: [] } });
-  setGenesis(true);
-  await landed({} as never, row);
-  setGenesis(false);
+  setTreasury("TREASURY");
+  await landed({} as never, { ...row, w: "TREASURY" });
   const moves = m.advance.mock.calls.map((c) => `${c[2]}->${c[3]}`);
   expect(moves).toEqual(["sent->landed", "landed->landed"]);
   expect(m.advance.mock.calls[1]?.[4]).toMatchObject({ facts: { devChildAfter: "0" } });
   expect(m.ingest).not.toHaveBeenCalled();
-  await landed({} as never, row); // the control: outside genesis the coin is ingested
+  await landed({} as never, row); // the control: a child row (its own W) is ingested
   expect(m.ingest).toHaveBeenCalledTimes(1);
 });

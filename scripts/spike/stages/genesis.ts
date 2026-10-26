@@ -2,6 +2,8 @@
 // genesisOne builds it on a mainnet-configured ctx (Sender tip, mainnet fee config), simulateLaunch and cosign
 // run exactly as prepare and submit do, then a child launch in the new mint, the contract check and the boot
 // check (D-31). Only the database steps and the mint reservation are injected: the fork has no vanity pool.
+// consented and genesisLanded are stubbed, so the once-only guard (genesis_landed) is not exercised here:
+// apps/worker/src/genesis.test.ts covers it.
 import type { PrepareResult } from "@bondr/core/api";
 import { checkContract } from "@bondr/core/contract";
 import { cosign, signatureOf } from "@bondr/core/cosign";
@@ -32,7 +34,9 @@ import type { Ctx, Rule, Stage } from "../results.ts";
 import { launchOne, launchRule, tableRule, tokenAmount } from "./launch.ts";
 
 const SOL_IN = 250_000_000;
-const PRIORITY_FEE = 1000; // the worker's PRIORITY_FEE_MICROLAMPORTS default
+// The worker's PRIORITY_FEE_MICROLAMPORTS default. Production sets its own at G-1; the price changes only the
+// compute-budget value, not the size, CU or accounts this stage measures.
+const PRIORITY_FEE = 1000;
 const SOL = new Set([NATIVE_MINT.toBase58(), PublicKey.default.toBase58()]);
 const CID = "b".repeat(59);
 type Facts = Record<string, string | number | boolean>;

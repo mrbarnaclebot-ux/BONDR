@@ -125,19 +125,26 @@ async function closing(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
 // (D-17, WR-08); leftover BONDR stays an error for the owner's Sweep leftovers action. A miss never throws.
 async function checkEmpty(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   const mint = coin.mint.toBase58();
+  const why = (e: unknown) => redact(e instanceof Error ? e.message : String(e));
+  let child: bigint;
   try {
-    const [child, bondr] = [await wBondr(d, coin, coin.mint), await wBondr(d, coin)];
+    child = await wBondr(d, coin, coin.mint);
+    const bondr = await wBondr(d, coin);
     const line = `finalize ${mint}: W child ${child}, BONDR ${bondr}`;
     if (bondr === 0n) console.log(line);
     else console.error(line);
-    if (child === 0n) return [];
-    const burn = await leftoverBurnJob(d, coin);
-    console.log(`finalize ${mint}: leftover burn ${burn.state}`);
-    return [burn];
   } catch (e) {
-    console.error(`finalize ${mint}: W read failed: ${redact(e instanceof Error ? e.message : String(e))}`);
+    console.error(`finalize ${mint}: W read failed: ${why(e)}`);
     return [];
   }
+  if (child === 0n) return [];
+  // IN-W-02: a burn that throws (possibly after broadcast) is named as such, not as a failed read.
+  const burn = await leftoverBurnJob(d, coin).catch((e: unknown) => {
+    console.error(`finalize ${mint}: leftover burn failed: ${why(e)}`);
+    return null;
+  });
+  if (burn) console.log(`finalize ${mint}: leftover burn ${burn.state}`);
+  return burn ? [burn] : [];
 }
 
 // Resumable from any step: the chain says which txs are left. The update is sent once; a 6009 is final.

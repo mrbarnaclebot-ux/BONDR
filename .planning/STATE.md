@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-10-26T10:38:59.000Z"
-last_activity: 2026-10-26 -- Completed 07-01 (v1 reads at every getTransaction, -32015 dropped)
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-10-26T10:49:17.000Z"
+last_activity: 2026-10-26 -- Completed 07-02 (migration 0008 on dev, intent 429, replay e2e)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 96
-  percent: 73
+  completed_plans: 97
+  percent: 74
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 1 of 36 (07-01 complete)
+Plan: 2 of 36 (07-02 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-01 (v1 reads at every getTransaction, -32015 dropped)
+Last activity: 2026-10-26 -- Completed 07-02 (migration 0008 on dev, intent 429, replay e2e)
 
 Progress: [██████████] 100%
 
@@ -129,6 +129,7 @@ Progress: [██████████] 100%
 | Phase 06 P25 | 45 min | 2 tasks | 15 files |
 | Phase 06 P26 | 30 min | 2 tasks | 6 files |
 | Phase 07 P01 | 15 min | 2 tasks | 10 files |
+| Phase 07 P02 | 25 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -344,6 +345,8 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-26: staging admin ships closed; ADMIN_WALLET, ADMIN_EVACUATE and SENTRY_READ_TOKEN stay unset until the owner runs HV-06-01 (set ADMIN_WALLET on web and worker together)
 - [Phase 06]: 06-26: HV-05-01 passed on the no-fee path; both staging windows ran unattended and sent nothing because neither coin had creator fees
 - 07-01: v1 ingest by raising maxSupportedTransactionVersion to 1; -32015 dropped after one try
+- 07-02: migration 0008 (sniped columns, launches_symbol_live, audit TRUNCATE trigger plus revoke) applied to dev; TRUNCATE answers 42501, P0001 if re-granted
+- 07-02: a full intent store of live unused intents answers 429 rate_limited and evicts nothing (IN-W-04)
 
 ### Pending Todos
 
@@ -377,6 +380,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T10:38:59.000Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-10-26T10:49:17.000Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

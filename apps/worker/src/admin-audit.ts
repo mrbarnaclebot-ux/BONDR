@@ -6,7 +6,7 @@
 // never a secret, seed, key or token.
 import type { AdminAuditAction } from "@bondr/core/api-admin";
 import { adminAudit, type Db, db } from "@bondr/core/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 
 type Base = { actor: string; action: AdminAuditAction; mint: string | null; params: Record<string, unknown> };
 export type PendingAudit = Base & { simulation: Record<string, unknown>; intentSig: string };
@@ -50,6 +50,20 @@ export function pgAudit(exec: Pick<Db, "insert" | "update"> = db()): AuditStore 
       return rows.length > 0;
     },
   };
+}
+
+// WR-W-06: a restart loses the in-memory intent and its background send, so a pending row an earlier process
+// wrote can never settle. One UPDATE at boot marks it failed (no polling); rows this process wrote (at >= bootAt)
+// are left alone. The owner matches any signatures through the fee_ledger rows of that window.
+export async function settleStale(bootAt: Date, exec: Pick<Db, "update"> = db()): Promise<number> {
+  const rows = await logged(
+    exec
+      .update(adminAudit)
+      .set({ result: "failed", error: "worker restarted", settledAt: sql`now()` })
+      .where(and(eq(adminAudit.result, "pending"), lt(adminAudit.at, bootAt)))
+      .returning({ id: adminAudit.id }),
+  );
+  return rows.length;
 }
 
 type MemoryRow = Base & {

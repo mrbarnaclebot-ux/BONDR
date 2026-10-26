@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { adminAudit, close, db } from "@bondr/core/db";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, test, vi } from "vitest";
-import { type AuditStore, memoryAudit, pgAudit } from "./admin-audit.ts";
+import { type AuditStore, memoryAudit, pgAudit, settleStale } from "./admin-audit.ts";
 
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
 if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFile);
@@ -86,6 +86,18 @@ describe.skipIf(!process.env.DATABASE_URL)("pgAudit", { timeout: 30_000 }, () =>
       // No row matches result = 'pending', so the trigger never fires and nothing throws.
       expect(await a.settle(id, "landed", { sigs: ["s1"] })).toBe(false);
       expect((await row(tx, id))?.result).toBe("failed");
+    });
+  });
+
+  test("boot settles a pending row from before it as failed, worker restarted, and leaves newer ones (WR-W-06)", async () => {
+    await rolledBack(async (a, tx) => {
+      const id = await a.insertPending(intent);
+      expect(await settleStale(new Date(0), tx as never)).toBe(0);
+      expect((await row(tx, id))?.result).toBe("pending");
+      expect(await settleStale(new Date(Date.now() + 60_000), tx as never)).toBeGreaterThanOrEqual(1);
+      const r = await row(tx, id);
+      expect(r).toMatchObject({ result: "failed", error: "worker restarted" });
+      expect(r?.settledAt).toBeInstanceOf(Date);
     });
   });
 

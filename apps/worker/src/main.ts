@@ -6,6 +6,7 @@ import "./sentry.ts";
 import { close, db } from "@bondr/core/db";
 import { connect, redact } from "@bondr/core/net";
 import { OnlinePumpSdk } from "@bondr/core/pump";
+import { settleStale } from "./admin-audit.ts";
 import { adminRoutes } from "./admin-routes.ts";
 import { seedBondrPrice } from "./bondr-price.ts";
 import { loadEnv, type WorkerEnv } from "./env.ts";
@@ -13,6 +14,7 @@ import { endStreams, eventsHandler } from "./events-route.ts";
 import { feeEngine, startEngine } from "./fee-boot.ts";
 import { feeRoutes } from "./fee-routes.ts";
 import { startRefill } from "./grind.ts";
+import { bootAt } from "./health.ts";
 import { start } from "./http.ts";
 import { backfillLaunches, loadCoins } from "./ingest.ts";
 import { type PrepareCtx, prepare } from "./prepare.ts";
@@ -88,6 +90,9 @@ async function main() {
     void startRefill(env);
     void bootIndex(ctx, env);
     resumeLaunches(conn).catch(failed("resume"));
+    settleStale(new Date(bootAt))
+      .then((n) => n && console.log(`settled ${n} admin audit rows left pending by an earlier process`))
+      .catch(failed("admin audit boot settle"));
   });
   process.once("SIGTERM", () => {
     server.close(() => void close().finally(() => process.exit(0)));

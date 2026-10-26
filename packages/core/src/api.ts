@@ -50,7 +50,10 @@ export type LaunchErrorCode =
   | "rpc_failed"
   // Phase 7 anti-vamp (D-43, D-44): a ticker inside its 24h cooldown, and a reserved ticker.
   | "ticker_locked"
-  | "ticker_reserved";
+  | "ticker_reserved"
+  // Genesis mode (D-29): a child prepare before BONDR exists, and a second genesis launch.
+  | "not_ready"
+  | "genesis_landed";
 
 // reason: the admin not_applicable code the console maps to copy (D-12). retryAfter (seconds) and lock come with
 // ticker_locked (D-43): "landed" is a landed launch's 24h window, "pending" a launch still being signed or sent.

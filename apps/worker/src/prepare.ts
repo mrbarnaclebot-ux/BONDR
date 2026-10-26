@@ -52,6 +52,8 @@ export {
 } from "./prepare-rules.ts";
 
 export type PrepareCtx = Ctx & { env: WorkerEnv };
+// What reserve, the final message and finish read: no Q, so the genesis path (Q null, D-29) shares them.
+type Chain = Pick<PrepareCtx, "conn" | "env" | "priorityFee">;
 
 async function admit(ctx: PrepareCtx, body: unknown) {
   const raw = body as { wallet?: unknown; symbol?: unknown } | null;
@@ -93,7 +95,7 @@ async function admit(ctx: PrepareCtx, body: unknown) {
   return { req, prior, createCost: BigInt(status.createCostEstimate ?? 0) };
 }
 
-async function reserveMint(ctx: PrepareCtx, wallet: string) {
+export async function reserveMint(ctx: Chain, wallet: string) {
   const mint = await reserve(db(), wallet);
   void startRefill(ctx.env);
   if (!mint) throw fail({ error: "pool_empty" });
@@ -120,10 +122,10 @@ function optsFor(ctx: PrepareCtx, req: Req, mint: string): LaunchOpts {
   };
 }
 
-type Sized = { o: LaunchOpts; builds: Builds; table: AddressLookupTableAccount };
+export type Sized = { o: LaunchOpts; builds: Builds; table: AddressLookupTableAccount };
 
 // Sell: the burn and sell probes give solBack, then the sell is rebuilt with its floor and simulated again.
-async function finalMessage(ctx: PrepareCtx, s: Sized, blockhash: string) {
+async function finalMessage(ctx: Chain, s: Sized, blockhash: string) {
   const net = ctx.env.net;
   const fee = networkFee(ctx.priorityFee);
   const solIn = BigInt(s.o.solIn.toString());
@@ -146,7 +148,7 @@ async function finalMessage(ctx: PrepareCtx, s: Sized, blockhash: string) {
   return { msg: sell.msg, amount: sell.amount, ...costs };
 }
 
-function rowOf(req: Req, o: LaunchOpts, table: string, newTable: boolean): NewLaunch {
+export function rowOf(req: Req, o: LaunchOpts, table: string, newTable: boolean): NewLaunch {
   const { wallet, name, symbol, description, links, imageCid, uri, solIn, exit } = req;
   const text = { name, symbol, description: description ?? null, links, imageCid, uri };
   return {
@@ -161,7 +163,7 @@ function rowOf(req: Req, o: LaunchOpts, table: string, newTable: boolean): NewLa
   };
 }
 
-async function finish(ctx: PrepareCtx, req: Req, s: Sized, created: boolean): Promise<PrepareResult> {
+export async function finish(ctx: Chain, req: Req, s: Sized, created: boolean): Promise<PrepareResult> {
   const bh = await ctx.conn.getLatestBlockhash();
   const f = await finalMessage(ctx, s, bh.blockhash);
   const id = newId();
@@ -212,7 +214,7 @@ async function prepareOne(ctx: PrepareCtx, body: unknown): Promise<PrepareResult
 }
 
 // Every table ops paid for gets a row, so the caps count it and its rent can be reclaimed (WR-02).
-async function recordPaid(row: NewLaunch, e: unknown): Promise<void> {
+export async function recordPaid(row: NewLaunch, e: unknown): Promise<void> {
   const code = e instanceof Fail ? e.body.error : "build_failed";
   await insertFailed(db(), row, code).catch((err: unknown) =>
     console.error(
@@ -222,10 +224,15 @@ async function recordPaid(row: NewLaunch, e: unknown): Promise<void> {
 }
 
 // ponytail: single-flight, because Helius free allows about 10 RPS and pace() is process-wide; per-wallet
-// queues if launches get busy.
+// queues if launches get busy. The genesis builder (genesis.ts) runs in the same queue.
+type One<C> = (ctx: C, body: unknown) => Promise<PrepareResult>;
 let queue: Promise<unknown> = Promise.resolve();
-export function prepare(ctx: PrepareCtx, body: unknown): Promise<PrepareResult> {
-  const run = queue.then(() => prepareOne(ctx, body));
+export function prepare<C = PrepareCtx>(
+  ctx: C,
+  body: unknown,
+  one = prepareOne as One<C>,
+): Promise<PrepareResult> {
+  const run = queue.then(() => one(ctx, body));
   queue = run.catch(() => undefined);
   return run;
 }

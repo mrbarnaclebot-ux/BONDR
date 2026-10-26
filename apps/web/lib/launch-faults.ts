@@ -4,7 +4,8 @@ import type { Code, Row } from "./launch-run";
 
 export const NOT_FOUND = "We could not find that launch. Start again.";
 
-export type Fault = { row?: Row; text: string; action: "Try again" | "Build again" | null };
+// link: a path inside text that renders as a link to itself (the genesis session line names /admin).
+export type Fault = { row?: Row; text: string; action: "Try again" | "Build again" | null; link?: "/admin" };
 
 export const BUILD_FAILED: Fault = {
   text: "Could not build your launch transaction. Nothing was sent. Try again.",
@@ -73,4 +74,25 @@ export const FAULTS: Record<Code, Fault> = {
   // be refused again, so neither has an action.
   ticker_locked: { text: "", action: null },
   ticker_reserved: { text: "", action: null },
+  // Genesis mode (D-29): a child prepare answers not_ready; only the owner can ever get genesis_landed.
+  not_ready: BUILD_FAILED,
+  genesis_landed: {
+    text: "The genesis launch already landed. Set BONDR_QUOTE_MINT to the new mint and redeploy to open child launches.",
+    action: null,
+  },
+};
+
+// UI-SPEC surface 2 step 4, read first by the owner genesis variant (07-18). There is no admin_session code: an
+// owner whose cookie expired is forwarded without an actor, and the worker answers not_ready.
+export const GENESIS_FAULTS: Partial<Record<Code, Fault>> = {
+  forbidden: {
+    text: "Only the owner wallet can send the genesis launch. Switch accounts in Phantom and try again.",
+    action: "Try again",
+  },
+  not_ready: {
+    text: "Your admin session ended. Sign in again at /admin, then come back to send the genesis launch.",
+    action: null,
+    link: "/admin",
+  },
+  genesis_landed: FAULTS.genesis_landed,
 };

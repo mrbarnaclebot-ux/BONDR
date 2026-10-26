@@ -248,7 +248,7 @@ export async function liveStatus(ctx: StatusCtx, fresh = false): Promise<Status>
     paused: pauseReason({ genesis, enabled, venue: l.venue, contract: contractFailed() }),
   };
 }
-function parseQuote(body: unknown): { solIn: bigint; wallet?: PublicKey } {
+export function parseQuote(body: unknown): { solIn: bigint; wallet?: PublicKey } {
   const b = (body ?? {}) as { solIn?: unknown; wallet?: unknown };
   const bad = new Fail(400, { error: "invalid_input" });
   if (typeof b.solIn !== "string" || !/^\d{1,20}$/.test(b.solIn)) throw bad;

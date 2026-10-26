@@ -254,16 +254,7 @@ export type GenesisOpts = Coin & {
 // it in the same tx, so the co-sign rule (the exit must be present) holds unchanged. The combined create + buy +
 // burn is new: the fork rehearsal (07-21) runs it before mainnet.
 export async function buildGenesis(o: GenesisOpts) {
-  const [g, fc] = await Promise.all([o.online.fetchGlobal(), o.online.fetchFeeConfig()]);
-  const out = getBuyV3TokenAmountFromQuoteAmount({
-    global: g,
-    feeConfig: fc,
-    mintSupply: g.tokenTotalSupply,
-    bondingCurve: newBondingCurve(g),
-    amount: o.solIn,
-    curveBaseTokenBalance: g.tokenTotalSupply,
-  });
-  const amount = pct(out, 9800); // 2% under for rounding, as childAmount
+  const { g, amount } = await genesisAmount(o.online, o.solIn);
   const coin = { name: o.name, symbol: o.symbol, uri: o.uri };
   const create = await buildCreate({ ...coin, mint: o.mint, creator: o.treasury, user: o.dev });
   const buy = { global: g, mint: o.mint, user: o.dev, quoteMint: NATIVE_MINT, amount, maxQuote: o.solIn };
@@ -274,4 +265,19 @@ export async function buildGenesis(o: GenesisOpts) {
     burnIx(o.mint, o.dev, amount),
   ];
   return { ixs, amount };
+}
+
+// What solIn buys on a fresh SOL curve, 2% under for rounding as childAmount. The genesis quote shows this same
+// number, so the review step matches the tx.
+export async function genesisAmount(online: Online, solIn: BN) {
+  const [g, fc] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig()]);
+  const out = getBuyV3TokenAmountFromQuoteAmount({
+    global: g,
+    feeConfig: fc,
+    mintSupply: g.tokenTotalSupply,
+    bondingCurve: newBondingCurve(g),
+    amount: solIn,
+    curveBaseTokenBalance: g.tokenTotalSupply,
+  });
+  return { g, amount: pct(out, 9800) };
 }

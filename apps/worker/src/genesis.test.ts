@@ -29,7 +29,13 @@ const body = (over: Record<string, unknown> = {}) => ({
 
 function ctx(adminWallet: string | null = ADMIN, online: unknown = {}): GenesisCtx {
   const conn = { getBalance: async () => 1e10 };
-  const env = { seed: Buffer.alloc(32, 1), net: "mainnet", lane: "production", adminWallet, treasury: TREASURY };
+  const env = {
+    seed: Buffer.alloc(32, 1),
+    net: "mainnet",
+    lane: "production",
+    adminWallet,
+    treasury: TREASURY,
+  };
   const base = { conn, online, Q: null, treasury: TREASURY, priorityFee: 0, net: "mainnet", env };
   return base as unknown as GenesisCtx;
 }

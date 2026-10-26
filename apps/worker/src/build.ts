@@ -24,7 +24,8 @@ import { feeConfig, SENDER_TIPS } from "./fee-config.ts";
 import { fail } from "./http.ts";
 
 type Built = Awaited<ReturnType<typeof buildLaunch>>;
-export type Builds = { burn: Built; sell: Built };
+// What the final message reads of a build; the genesis build (no qMin, no venue) fits it too.
+export type Builds = Record<"burn" | "sell", Pick<Built, "ixs" | "amount">>;
 
 // Helius free allows about one send per second (Pitfall 8).
 const TABLE_PACE_MS = 1100;

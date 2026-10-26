@@ -2,6 +2,7 @@
 // Never log the seed, the tokens, the admin wallet or the RPC URL.
 import { derive, type Net, readSeed } from "@bondr/core/keys";
 import { PublicKey } from "@solana/web3.js";
+import type { Lane } from "./vanity.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -70,7 +71,7 @@ function siteOrigin(raw: string | undefined): string | null {
 
 // D-10: on mainnet the treasury is an owner-held wallet the seed cannot derive, so EVACUATE after a seed leak
 // lands out of the attacker's reach. Errors name the variable, never its value.
-function treasuryFrom(env: Env, net: "devnet" | "mainnet", seed: Buffer, lane: "local" | "staging") {
+function treasuryFrom(env: Env, net: "devnet" | "mainnet", seed: Buffer, lane: Lane) {
   if (net === "devnet") return { key: treasury(seed, "devnet").publicKey, external: false };
   const v = exactKey(env.TREASURY_PUBKEY);
   if (!env.TREASURY_PUBKEY?.trim()) throw new Error("TREASURY_PUBKEY is required on mainnet");
@@ -110,7 +111,8 @@ export function loadEnv(env: Env = process.env) {
   const token = env.WORKER_TOKEN?.trim() ?? "";
   if (token.length < 32) throw new Error("WORKER_TOKEN must be at least 32 characters");
   const lane = env.VANITY_LANE?.trim();
-  if (lane !== "local" && lane !== "staging") throw new Error("VANITY_LANE must be local or staging");
+  if (lane !== "local" && lane !== "staging" && lane !== "production")
+    throw new Error("VANITY_LANE must be local, staging or production");
   let quoteMint: PublicKey;
   try {
     quoteMint = new PublicKey(env.BONDR_QUOTE_MINT?.trim() ?? "");
@@ -128,7 +130,7 @@ export function loadEnv(env: Env = process.env) {
     token,
     priorityFee: count("PRIORITY_FEE_MICROLAMPORTS", env.PRIORITY_FEE_MICROLAMPORTS, 1000),
     vanityThreads: count("VANITY_THREADS", env.VANITY_THREADS, 1),
-    lane: lane as "local" | "staging",
+    lane: lane as Lane,
     feeEngine: feeEngine(env.FEE_ENGINE),
     feeWindowMs: atLeast("FEE_WINDOW_MS", env.FEE_WINDOW_MS, 86_400_000, 60_000),
     feeBatchHourUtc: batchHour(env.FEE_BATCH_HOUR_UTC),
@@ -147,5 +149,4 @@ export const ops = (seed: Buffer, net: Net) => derive(seed, "ops", net, "main");
 export const treasury = (seed: Buffer, net: Net) => derive(seed, "treasury", net, "main");
 // Local and staging share the devnet seed, so the lane gives each database its own buyback wallet and one
 // lane's reconcile (05-09) never sees the other's sweeps (T-05-05-06).
-export const buyback = (seed: Buffer, net: Net, lane: "local" | "staging") =>
-  derive(seed, "buyback", net, lane);
+export const buyback = (seed: Buffer, net: Net, lane: Lane) => derive(seed, "buyback", net, lane);

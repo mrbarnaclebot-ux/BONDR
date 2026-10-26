@@ -99,3 +99,8 @@ test("EVACUATE on: devnet, or mainnet with the external treasury; nothing else (
   expect(main({ ADMIN_EVACUATE: "on" }).adminEvacuate).toBe("on");
   expect(main().adminEvacuate).toBe("simulate");
 });
+
+test("VANITY_LANE takes production and refuses anything else (D-11)", () => {
+  expect(load({ VANITY_LANE: "production" }).lane).toBe("production");
+  expect(() => load({ VANITY_LANE: "prod" })).toThrow("VANITY_LANE");
+});

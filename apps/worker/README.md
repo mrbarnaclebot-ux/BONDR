@@ -69,7 +69,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## Env
 
-`SOLANA_NET` (devnet only), `ALLOW_MAINNET`, `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE`, `VANITY_THREADS`, `BONDR_QUOTE_MINT`, `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`, `FEE_ENGINE` (`off` default, `dry`, `on`; anything else refuses to boot), `FEE_WINDOW_MS` (default 86400000, at least 60000), `FEE_BATCH_HOUR_UTC` (0-23, default 4). See the repo-root `.env.example`.
+`SOLANA_NET` (devnet, or mainnet with `ALLOW_MAINNET=1` and `TREASURY_PUBKEY`), `ALLOW_MAINNET`, `TREASURY_PUBKEY`, `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE`, `VANITY_THREADS`, `BONDR_QUOTE_MINT`, `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`, `FEE_ENGINE` (`off` default, `dry`, `on`; anything else refuses to boot), `FEE_WINDOW_MS` (default 86400000, at least 60000), `FEE_BATCH_HOUR_UTC` (0-23, default 4). See the repo-root `.env.example`.
 
 ## Owner console
 
@@ -116,7 +116,7 @@ Behind `FEE_ENGINE`. Off, the worker behaves as in Phase 4 plus `cost_to_complet
 
 A mint key is `derive(seed, "mint", net, lane + "." + idx)`. The database stores only `(idx, pubkey)`, never a secret (D-21). Local and staging share the devnet seed (D-20), so the lane in the id keeps their pools disjoint. Each lane has its own database: `local` fills the Neon dev branch, `staging` fills main. Never point a lane at the other lane's database: `mintKeyFor` would refuse every row.
 
-The pool targets 20 ready mints. The worker refills it in the background when it drops below 10, checking on boot and after each reservation. It warns below 3. `VANITY_THREADS=0` turns off background grinding.
+The local and staging pools target 20 ready mints and refill when they drop below 10. The `production` lane (mainnet seed, its own Neon branch) targets 150 and refills below 100, the free-mint floor child launches need (D-30). It is ground on the production worker itself, so the production seed never sits on the Mac (D-11). The worker refills in the background, checking on boot and after each reservation, and warns below 3. `VANITY_THREADS=0` turns off background grinding.
 
 ## Commands
 

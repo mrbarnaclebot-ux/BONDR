@@ -62,10 +62,13 @@ async function matrix(
 }
 const tall = (target: () => Locator) => async (width: number) => {
   if (width >= 768) return;
-  for (const box of await target().all()) {
-    const h = (await box.boundingBox())?.height ?? 0;
-    expect(h, `${await box.textContent()} is ${h}px tall at ${width}px`).toBeGreaterThanOrEqual(44);
-  }
+  // Polled: right after a resize the md: rules can still apply for a frame (seen once at 24px).
+  for (const box of await target().all())
+    await expect
+      .poll(async () => (await box.boundingBox())?.height ?? 0, {
+        message: `${await box.textContent()} at ${width}px`,
+      })
+      .toBeGreaterThanOrEqual(44);
 };
 
 test("launch: public genesis banner", async ({ page }) => {

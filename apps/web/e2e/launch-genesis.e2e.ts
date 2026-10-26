@@ -60,6 +60,7 @@ test("without an admin session the public banner shows and Launch stays disabled
   await page.goto("/launch");
   await expect(page.getByRole("status").filter({ hasText: "Launches are not open yet." })).toBeVisible();
   await expect(info(page)).toHaveCount(0);
+  await expect(page.getByText("One Phantom signature creates your coin")).toBeVisible();
   await toStep2(page);
   await toStep3(page, MIN);
   await expect(page.getByRole("button", { name: "Launches paused" })).toBeDisabled();
@@ -71,6 +72,8 @@ test("the owner gets the genesis variant: BONDR ticker, burn only, SOL pair and 
   await asOwner(page);
   await expect(info(page)).toContainText("This launch creates the BONDR token itself: SOL pair");
   await expect(page.getByText("Launches are not open yet.")).toHaveCount(0);
+  await expect(page.getByText("One Phantom signature creates the BONDR token")).toBeVisible();
+  await expect(page.getByText("80% of them are yours")).toHaveCount(0);
   await toStep2(page, "BONDR", "BONDR");
   await expect(page.getByRole("radio", { name: /Insta burn/ })).toBeChecked();
   await expect(page.getByRole("radio", { name: /Insta sell/ })).toBeDisabled();

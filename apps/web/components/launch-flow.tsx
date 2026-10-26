@@ -192,13 +192,18 @@ function useStepFocus(step: Step, focus: string | null) {
   return heading;
 }
 
-/** `children` is the server-rendered title and lede, so they stay out of the client bundle. */
+/**
+ * `children` is the server-rendered title and lede, so they stay out of the client bundle; `genesisIntro`
+ * replaces them once the owner genesis variant is live.
+ */
 export function LaunchFlow({
   children,
   ownerGenesis = false,
+  genesisIntro,
 }: {
   children: ReactNode;
   ownerGenesis?: boolean;
+  genesisIntro?: ReactNode;
 }) {
   const [state, dispatch] = useReducer(reduce, INITIAL);
   const live = useLaunchStatus(state.devBuy, ownerGenesis);
@@ -209,7 +214,7 @@ export function LaunchFlow({
   return (
     <div className="mx-auto grid w-full max-w-[1440px] items-start gap-12 px-(--gutter) pt-12 min-[1080px]:grid-cols-[minmax(0,1fr)_400px]">
       <div className="min-w-0">
-        {children}
+        {(live.genesis && genesisIntro) || children}
         <LaunchStepper step={state.step} />
         {/* Always mounted, so the pause is announced when it starts, not only when the page loads. */}
         <div aria-live="polite">

@@ -15,6 +15,7 @@ import { arm, type Inserted } from "./announce.ts";
 import { bondr, bondrPrice } from "./bondr-price.ts";
 import { withCost } from "./fee-boot.ts";
 import type { Exec, LaunchRow } from "./launches.ts";
+import { recomputeSniped, windowMints } from "./sniped.ts";
 
 export const knownCoins = new Map<string, KnownCoin>();
 // The created coin's launch row and PumpSwap pool, which the tx itself does not name.
@@ -33,6 +34,7 @@ export async function loadCoins(exec: Exec): Promise<void> {
       bondingCurve: coins.bondingCurve,
       pool: coins.pool,
       initialRealTokenReserves: coins.initialRealTokenReserves,
+      createSlot: coins.createSlot,
     })
     .from(coins);
   for (const r of rows) knownCoins.set(r.mint, r);
@@ -101,6 +103,7 @@ export async function writeParsed(
     if (!fresh && parsed.trades.some((t) => t.mint === p.mint)) continue;
     if (await applyPatch(exec, p, fresh)) bonded.add(p.mint);
   }
+  for (const mint of windowMints(inserted, knownCoins)) await recomputeSniped(exec, mint);
   return inserted;
 }
 
@@ -151,7 +154,14 @@ export async function ingestLaunch(
     return inserted;
   }
   const bondingCurve = bondingCurvePda(mint).toBase58();
-  knownCoins.set(row.mint, { mint: row.mint, bondingCurve, pool, initialRealTokenReserves: init });
+  const createSlot = parsed.created?.createSlot ?? null;
+  knownCoins.set(row.mint, {
+    mint: row.mint,
+    bondingCurve,
+    pool,
+    initialRealTokenReserves: init,
+    createSlot,
+  });
   const launchSig = tx.transaction.signatures[0];
   const launchedAt = new Date(parsed.created?.launchedAt ?? Date.now()).getTime();
   const launched = { mint: row.mint, launchedAt, launchSig, wallet: row.wallet };

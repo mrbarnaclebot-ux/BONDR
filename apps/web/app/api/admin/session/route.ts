@@ -24,11 +24,12 @@ const refuse = (status: number, error: string) => Response.json({ error }, { sta
 
 export async function POST(req: Request): Promise<Response> {
   if (!sameOrigin(req)) return new Response(null, { status: 403 });
-  const limited = rateLimited(req, "admin-session", 10, 10 * 60_000);
-  if (limited) return limited;
   const body = ((await json(req, MAX_BODY)) ?? {}) as Body;
+  // Sign out only clears a cookie, so it stays outside the sign-in bucket and always works (IN-B-05).
   if (body.op === "signout")
     return new Response(null, { status: 200, headers: { "set-cookie": adminSignOutCookie(), ...NO_STORE } });
+  const limited = rateLimited(req, "admin-session", 10, 10 * 60_000);
+  if (limited) return limited;
   if (typeof body.wallet !== "string" || !BASE58_KEY.test(body.wallet)) return refuse(400, "invalid_input");
   // Fails closed without SITE_URL, and refuses any origin but the site's: the signed text names it.
   const origin = adminOrigin(req);

@@ -15,6 +15,7 @@ const FAULTS = {
   rejected: "Phantom rejected the request. You are not signed in.",
   failed: "Could not sign in. Check your connection and try again.",
   limited: "Too many sign-in attempts. Wait a minute and try again.",
+  expired: "That signature expired or was already used. Sign in again.",
 };
 type Fault = keyof typeof FAULTS;
 
@@ -33,8 +34,12 @@ const post = (body: object) =>
     cache: "no-store",
   }).catch(() => null);
 
+const BY_CODE = new Map<unknown, Fault>([
+  ["not_admin", "not_admin"],
+  ["bad_signature", "expired"], // a replayed or expired nonce after a slow Phantom prompt (IN-B-06)
+]);
 const faultOf = (res: Response | null, body: { error?: unknown } | null): Fault =>
-  res?.status === 429 ? "limited" : body?.error === "not_admin" ? "not_admin" : "failed";
+  res?.status === 429 ? "limited" : (BY_CODE.get(body?.error) ?? "failed");
 
 /** Nonce, one signature over the server's message text, verify. The cookie arrives with the verify answer. */
 async function signInAdmin(

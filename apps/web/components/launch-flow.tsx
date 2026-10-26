@@ -127,6 +127,10 @@ const BODIES: Record<Step, ComponentType<StepProps>> = {
 
 const PAUSED_TITLE = "Launches are paused.";
 const PAUSED: Record<PauseReason, { title: string; body: string }> = {
+  genesis: {
+    title: "Launches are not open yet.",
+    body: "Launches open after the BONDR token is live. You can fill this in now; the Launch button unlocks automatically when launches open.",
+  },
   kill_switch: {
     title: PAUSED_TITLE,
     body: "The BONDR owner has paused new launches. You can fill this in now; the Launch button unlocks automatically when launches resume.",

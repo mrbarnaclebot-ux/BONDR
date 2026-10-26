@@ -2,13 +2,15 @@
 // Every amount is a decimal string of lamports or token base units: bigint survives JSON that way.
 
 export type Net = "devnet" | "mainnet";
-export type PauseReason = "kill_switch" | "awaiting_migration" | "contract_check"; // contract_check: D-20, D-22
+// contract_check: D-20, D-22. genesis: the worker runs with no BONDR quote mint yet (D-29).
+export type PauseReason = "kill_switch" | "awaiting_migration" | "contract_check" | "genesis";
 export type Exit = "burn" | "sell";
 
 export type Status = {
   net: Net;
   paused: PauseReason | null;
-  quoteMint: string;
+  quoteMint: string | null; // null in genesis mode, before the BONDR token exists
+  genesisTreasury?: string; // genesis mode only: the creator the genesis launch names, for the review row
   // null when the live config could not be read; the UI then shows "Unavailable" and disables signing.
   fees: { protocolBps: number; creatorBps: number } | null;
   minLamports: string | null;

@@ -2,13 +2,21 @@ import { BN, type Global } from "@bondr/core/pump";
 import { PublicKey } from "@solana/web3.js";
 import { expect, test, vi } from "vitest";
 import { launchNet } from "./env.ts";
-import { type Ctx, childFees, liveStatus, networkFee, parseSwitch, pauseReason } from "./status.ts";
+import {
+  type Ctx,
+  childFees,
+  liveStatus,
+  networkFee,
+  parseSwitch,
+  pauseReason,
+  type StatusCtx,
+} from "./status.ts";
 
 // The switches live in memory; no database in this unit file.
 vi.mock("./switches.ts", () => ({ switchesLoaded: () => true, switchOn: () => true }));
 
 test("pauseReason: kill switch first, awaiting migration pauses, a migrated BONDR does not (D-18)", () => {
-  const no = { contract: false };
+  const no = { contract: false, genesis: false };
   expect(pauseReason({ enabled: false, venue: "curve", ...no })).toBe("kill_switch");
   expect(pauseReason({ enabled: false, venue: "pool", ...no })).toBe("kill_switch");
   expect(pauseReason({ enabled: false, venue: "awaiting", ...no })).toBe("kill_switch");
@@ -19,9 +27,16 @@ test("pauseReason: kill switch first, awaiting migration pauses, a migrated BOND
 });
 
 test("pauseReason: a failed contract check names itself ahead of every other reason (D-22)", () => {
-  expect(pauseReason({ enabled: false, venue: "curve", contract: true })).toBe("contract_check");
-  expect(pauseReason({ enabled: true, venue: "awaiting", contract: true })).toBe("contract_check");
-  expect(pauseReason({ enabled: true, venue: "pool", contract: true })).toBe("contract_check");
+  const c = { contract: true, genesis: false };
+  expect(pauseReason({ enabled: false, venue: "curve", ...c })).toBe("contract_check");
+  expect(pauseReason({ enabled: true, venue: "awaiting", ...c })).toBe("contract_check");
+  expect(pauseReason({ enabled: true, venue: "pool", ...c })).toBe("contract_check");
+});
+
+test("pauseReason: genesis mode comes before every other reason (UI-SPEC surface 1)", () => {
+  expect(pauseReason({ genesis: true, contract: true, enabled: false, venue: null })).toBe("genesis");
+  expect(pauseReason({ genesis: true, contract: false, enabled: true, venue: "awaiting" })).toBe("genesis");
+  expect(pauseReason({ genesis: true, contract: false, enabled: true, venue: null })).toBe("genesis");
 });
 
 test("launchNet allows devnet, and mainnet only with ALLOW_MAINNET=1 (D-01)", () => {
@@ -81,4 +96,40 @@ test("/status reports the worker's own net (row 14) and the Sender tip on mainne
   vi.setSystemTime(Date.now() + 10_000); // past the 5 s status cache
   expect(await liveStatus(ctx("devnet"))).toMatchObject({ net: "devnet", senderTipEstimate: null });
   vi.useRealTimers();
+});
+
+test("/status in genesis mode: SOL-pair fees and minimum from the live Global, no quote, no legs (D-29)", async () => {
+  const fetchPumpQuote = vi.fn(async () => {
+    throw new Error("genesis must not read a quote mint");
+  });
+  const g = {
+    creatorFeeConfigurable: false,
+    whitelistedQuoteMints: [],
+    initialVirtualSolReserves: new BN(30_000_000_000),
+    initialVirtualTokenReserves: new BN(1_073_000_000_000_000),
+    initialRealTokenReserves: new BN(793_100_000_000_000),
+    tokenTotalSupply: new BN(1_000_000_000_000_000),
+    mayhemModeEnabled: false,
+  } as unknown as Global;
+  const fees = { lpFeeBps: new BN(0), protocolFeeBps: new BN(93), creatorFeeBps: new BN(30) };
+  const feeConfig = { feeTiers: [{ marketCapLamportsThreshold: new BN(0), fees }] };
+  const treasury = PublicKey.unique();
+  const ctx: StatusCtx = {
+    ...{ net: "mainnet", Q: null, treasury, priorityFee: 0 },
+    conn: { getMinimumBalanceForRentExemption: async (n: number) => n * 10 } as unknown as Ctx["conn"],
+    online: {
+      fetchGlobal: async () => g,
+      fetchFeeConfig: async () => feeConfig,
+      fetchPumpQuote,
+    } as unknown as Ctx["online"],
+  };
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.now() + 60_000); // past the status earlier tests cached; last in the file, so its own entry leaks nowhere
+  const s = await liveStatus(ctx);
+  vi.useRealTimers();
+  expect(s).toMatchObject({ paused: "genesis", quoteMint: null, genesisTreasury: treasury.toBase58() });
+  expect(s.fees).toEqual({ protocolBps: 93, creatorBps: 30 });
+  expect(s.minLamports).not.toBe(null);
+  expect(s.createCostEstimate).not.toBe(null);
+  expect(fetchPumpQuote).not.toHaveBeenCalled();
 });

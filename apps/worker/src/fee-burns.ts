@@ -65,7 +65,7 @@ export function forceDue(coin: FeeCoin, cost: bigint): boolean {
 // paused one returns before any read.
 export async function forcedJob(d: FeeDeps, coin: FeeCoin): Promise<Landed[]> {
   if (d.allowed && !d.allowed("forcedBond", coin)) return [SKIPPED];
-  mark("bondCheck");
+  if (!d.sim) mark("bondCheck");
   if (await d.ledger.has(coin.mint.toBase58(), BOND_KINDS)) return [DONE];
   const out = worthCollecting(d, coin) ? [await collectJob(d, coin, true)] : [];
   return spend(d, coin, out, () => forcedSend(d, coin), true);

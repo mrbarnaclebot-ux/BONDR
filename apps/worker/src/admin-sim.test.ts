@@ -17,6 +17,7 @@ import { balanceRows, captureDeps, type Step, simSummary, simulateJob, type Watc
 import { windowJob } from "./fee-guard.ts";
 import { memoryLedger } from "./fee-ledger-memory.ts";
 import { type FeeCoin, type FeeDeps, type Job, noteOps } from "./fee-send.ts";
+import { marks } from "./health.ts";
 
 const Q = PublicKey.unique();
 const OPS = Keypair.generate();
@@ -151,6 +152,7 @@ test("windowJob through the capture deps leaves the engine's coin untouched", as
   expect(sink).toHaveLength(1);
   expect(live).toMatchObject({ open: true, finalize: "none" });
   expect(live.notReady).toBeUndefined();
+  expect(marks().split).toBeNull(); // WR-W-05: a preview is not a job run on the health panel
 });
 
 test("simulateJob reads SOL by lamports, tokens by amount and a closed account as 0", async () => {

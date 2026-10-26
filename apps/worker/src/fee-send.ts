@@ -67,6 +67,7 @@ export type FeeDeps = {
   land(job: Job): Promise<Landed>;
   // Absent means allowed. The engine's deps set it in 06-07 (switches, hold); admin deps always allow (D-16).
   allowed?(job: FeeJob, coin: FeeCoin | null): boolean;
+  sim?: true; // WR-W-05: an admin preview, which must not stamp the health panel's last-run marks
 };
 
 // launchSig and wallet feed the 05-08 deployer pre-flight.

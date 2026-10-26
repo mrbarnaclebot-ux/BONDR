@@ -56,7 +56,7 @@ export type BatchSummary = {
 // the buyback key with ops paying. The platform row has no mint.
 export async function buybackBurnJob(d: FeeDeps): Promise<Landed> {
   if (d.allowed && !d.allowed("buybackBurn", null)) return SKIPPED;
-  mark("buyback");
+  if (!d.sim) mark("buyback");
   const owner = d.buyback.publicKey;
   const amount = await tokenBalance(d, owner);
   if (amount === 0n) return DONE;
@@ -102,7 +102,7 @@ export async function distributeJob(
   o: { anyAmount?: boolean } = {},
 ): Promise<Landed> {
   if (d.allowed && !d.allowed("finalize", coin)) return SKIPPED;
-  mark("distribute");
+  if (!d.sim) mark("distribute");
   const p = await pendingOf(d, coin.mint);
   const [deployer, treasury] = p?.holders ?? [];
   if (!p || !deployer || !treasury || !worthPaying(d, p.pending, o.anyAmount)) return DONE;

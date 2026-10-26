@@ -46,10 +46,10 @@ export async function spend(
 // stay on the curve and the next window collects them.
 export async function windowJob(d: FeeDeps, coin: FeeCoin, index: number): Promise<Landed[]> {
   if (d.allowed && !d.allowed("sweeps", coin)) return [{ state: "skipped" }];
-  mark("split");
+  if (!d.sim) mark("split");
   const out = worthCollecting(d, coin) ? [await collectJob(d, coin)] : [];
   return spend(d, coin, out, () => {
-    mark("sweep");
+    if (!d.sim) mark("sweep");
     return sweepJob(d, coin, index);
   });
 }

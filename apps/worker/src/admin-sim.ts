@@ -94,6 +94,7 @@ export function captureDeps(base: FeeDeps, sink: Step[], watch: Watched): FeeDep
   return {
     ...base,
     mode: "dry",
+    sim: true,
     ledger: readOnly(base.ledger),
     publish: () => {},
     allowed: () => true,

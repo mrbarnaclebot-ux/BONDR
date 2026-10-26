@@ -32,7 +32,7 @@ vi.mock("@bondr/core/db", async (orig) => ({
   }),
 }));
 
-const { loadSwitches, pauseAll, setJob, switchOn, switchState } = await import("./switches.ts");
+const { loadSwitches, pauseAll, setJob, switchesOff, switchOn, switchState } = await import("./switches.ts");
 const { liveStatus, setSwitch } = await import("./status.ts");
 const { memoryAudit } = await import("./admin-audit.ts");
 
@@ -136,6 +136,26 @@ test("pauseAll switches all five jobs off and stamps evacuatedAt in one UPDATE, 
   for (const j of ["launches", "forcedBond", "sweeps", "finalize", "buybackBurn"] as const)
     expect(s[j]).toBe(false);
   expect(s.evacuatedAt).toBe((set.evacuatedAt as Date).toISOString());
+});
+
+test("switchesOff turns the five jobs off in one UPDATE and leaves evacuatedAt alone (Pitfall 7)", async () => {
+  m.rows = [row({ evacuatedAt: new Date("2026-10-25T00:00:00Z") })];
+  await loadSwitches();
+  await switchesOff();
+  expect(m.sets).toEqual([
+    {
+      ...{ launchesEnabled: false, forcedBondEnabled: false, sweepsEnabled: false },
+      ...{ finalizeEnabled: false, buybackBurnEnabled: false },
+    },
+  ]);
+  expect(switchState()).toEqual({
+    ...{ launches: false, forcedBond: false, sweeps: false, finalize: false, buybackBurn: false },
+    evacuatedAt: "2026-10-25T00:00:00.000Z",
+  });
+  m.rows = [row()];
+  await loadSwitches();
+  await switchesOff();
+  expect(switchState().evacuatedAt).toBeNull();
 });
 
 test("a read that started before a flip or pauseAll never puts the old values back (WR-W-01)", async () => {

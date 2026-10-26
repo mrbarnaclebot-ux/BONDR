@@ -56,6 +56,16 @@ export async function setJob(job: AdminJob, on: boolean): Promise<AdminSwitches>
   return switches;
 }
 
+// The contract check pause (D-20): the same five columns off in one write, but not pauseAll, because evacuated_at
+// would show the EVACUATE callout and make the runbook /kill-switch refuse (Pitfall 7).
+export async function switchesOff(): Promise<void> {
+  const off = Object.fromEntries(Object.values(COLUMN).map((c) => [c, false]));
+  await db().update(settings).set(off).where(eq(settings.id, 1));
+  writes++;
+  const none = { launches: false, forcedBond: false, sweeps: false, finalize: false, buybackBurn: false };
+  state = { ...none, evacuatedAt: switchState().evacuatedAt };
+}
+
 // EVACUATE (D-35): every switch off, launches included, and evacuated_at in one write, then memory set from what
 // was written, so no re-read can fail after the write. The switches stay off until the owner turns each back on
 // (D-36).

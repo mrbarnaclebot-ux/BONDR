@@ -35,6 +35,17 @@ export type AdminAuditAction =
 
 export type AuditResult = "pending" | "landed" | "failed" | "refused";
 
+// OPS-02: the pump contract check, held in worker memory (D-18). at and lastPass are ISO strings; facts are the
+// failed facts in plain words; programs names the pump programs redeployed since the boot baseline.
+export type ContractKind = "not_run" | "running" | "passed" | "redeployed" | "mismatch" | "failed";
+export type AdminContract = {
+  kind: ContractKind;
+  at: string | null;
+  facts: string[];
+  programs: string[];
+  lastPass: string | null;
+};
+
 // D-22: the health strip. Times are epoch ms; null means never seen since boot.
 export type AdminHealth = {
   bootAt: number;

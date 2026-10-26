@@ -51,6 +51,9 @@ function fail(run: Run, e: unknown) {
   if (code === "paused") run.live.refresh();
   const row = FAULTS[code].row;
   const refusal = e instanceof Stop ? e.refusal : undefined;
+  // Step 1 names the lock on the symbol field until the creator changes the ticker (UI-SPEC A1).
+  const symbol = run.state.fields.symbol.trim().toUpperCase();
+  if (code === "ticker_locked") run.dispatch({ type: "refused", refused: { symbol, err: refusal ?? {} } });
   run.set({ failed: code, ...(row && { row }), ...(refusal && { refusal }) });
 }
 

@@ -1,5 +1,5 @@
 "use client";
-import type { Exit, LaunchView, PauseReason, Status } from "@bondr/core/api";
+import type { ApiError, Exit, LaunchView, PauseReason, Status } from "@bondr/core/api";
 import { type ComponentType, type Dispatch, type ReactNode, useEffect, useReducer, useRef } from "react";
 import { sol } from "@/lib/format";
 import { NOT_FOUND } from "@/lib/launch-faults";
@@ -35,7 +35,10 @@ export type Launch = {
   notice: string | null;
   /** Element id that takes focus on the next step change instead of the step heading. */
   focus: string | null;
+  /** The last ticker_locked refusal, so step 1 can name it on the symbol field (UI-SPEC A1). Never stored. */
+  refused: Refused | null;
 };
+export type Refused = { symbol: string; err: Pick<ApiError, "retryAfter" | "lock"> };
 export type Action =
   | { type: "go"; step: Step; focus?: string }
   | { type: "field"; key: keyof Fields; value: string }
@@ -46,6 +49,7 @@ export type Action =
   | { type: "prepared"; launchId: string; mint: string }
   | { type: "restore"; view: LaunchView }
   | { type: "live"; view: LaunchView }
+  | { type: "refused"; refused: Refused }
   | { type: "reset"; notice?: string };
 /** Live worker values every step and the receipt read: status (polled), the dev buy check and its quote. */
 export type Live = {
@@ -70,6 +74,7 @@ const INITIAL: Launch = {
   view: null,
   notice: null,
   focus: null,
+  refused: null,
 };
 
 // After a reload the form is gone, so the launch row refills what the receipt shows.
@@ -105,6 +110,8 @@ function reduce(state: Launch, action: Action): Launch {
       return { ...withView(state, action.view), step: 4 };
     case "live":
       return { ...withView(state, action.view), step: 5, focus: "live-heading" };
+    case "refused":
+      return { ...state, refused: action.refused };
     case "reset":
       return { ...INITIAL, notice: action.notice ?? null };
   }

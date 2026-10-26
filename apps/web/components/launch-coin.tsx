@@ -7,10 +7,12 @@ import {
   DESCRIPTION_MAX,
   NAME_MAX_BYTES,
   normalizeLink,
+  reservedTicker,
   SYMBOL_MAX,
 } from "@bondr/core/rules";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { reservedFieldError, tickerFieldError } from "@/lib/ticker-copy";
 import { DropZone } from "./launch-drop";
 import type { Fields, Launch, LinkKey, Picked, StepProps } from "./launch-flow";
 import { Button } from "./ui-button";
@@ -49,7 +51,8 @@ function textError(k: "name" | "symbol" | "description", raw: string): string | 
   }
   if (k === "symbol") {
     const r = checkSymbol(raw);
-    if (r.ok) return null;
+    // Live like the charset error, so Continue is blocked (UI-SPEC A2). The worker's ticker_reserved stays the gate.
+    if (r.ok) return reservedTicker(r.value) ? reservedFieldError(r.value) : null;
     if (r.code === "required") return "Symbol is required.";
     return r.code === "too_long"
       ? `Symbol is ${r.n} characters. Keep it to ${SYMBOL_MAX} or fewer.`
@@ -128,7 +131,16 @@ function useCoin({ state, dispatch }: StepProps) {
     if (first) document.getElementById(`coin-${first}`)?.focus();
     else dispatch({ type: "go", step: 2 });
   };
-  return { errors: errorsFor(state, imageError, touched), bind, pick, next };
+  const errors = errorsFor(state, imageError, touched);
+  const lock = lockedError(state);
+  // Shown, not blocking: the creator may wait out the lock and continue with the same ticker.
+  return { errors: !errors.symbol && lock ? { ...errors, symbol: lock } : errors, bind, pick, next };
+}
+
+// The last ticker_locked refusal, while the normalized symbol still equals the refused one (UI-SPEC A1).
+function lockedError({ refused, fields }: Launch): string | null {
+  const r = checkSymbol(fields.symbol);
+  return refused && r.ok && r.value === refused.symbol ? tickerFieldError(refused.symbol, refused.err) : null;
 }
 
 export function LaunchCoin(props: StepProps) {

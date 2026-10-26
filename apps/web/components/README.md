@@ -8,7 +8,7 @@
 - `ui-field.tsx`: Input, Textarea, Label (optional marker) and FieldError, hand-ported shadcn 4.21.2.
 - `launch-flow.tsx`: the /launch state machine (steps 1-5) and the step panel with its focus target.
 - `launch-stepper.tsx`: the five-node bond-chain stepper.
-- `launch-coin.tsx`: step 1 Coin, every field checked with `@bondr/core/rules` and the UI-SPEC copy.
+- `launch-coin.tsx`: step 1 Coin, every field checked with `@bondr/core/rules` and the UI-SPEC copy; the reserved ticker error shows live and the last `ticker_locked` refusal (`Launch.refused`) shows on the symbol until it changes.
 - `launch-drop.tsx`: the step 1 image drop zone.
 - `launch-buy.tsx`: step 2 Dev buy and exit, the live-minimum check, presets and the debounced quote hook.
 - `launch-review.tsx`: step 3 Review, the fee callout and the connect / paused / sign button.
@@ -38,7 +38,7 @@
 - `launch-link.tsx`: LaunchLink, the header's quiet "Launch a coin" link ("Launch" below 768px, an icon below 360px), `aria-current` on /launch.
 - `home-hero.tsx`: HomeHero, the home hero (headline, lede, Launch a coin or Launches paused, Watch a coin bond or See all coins, the D-09 pulse line or from the first forced bond the D-24 line, the rail slot) and its art: the looping video with motes, or the still under reduced motion.
 - `home-next.tsx`: NextToBond, the Next to bond rail (D-24): up to 4 curve coins by budget / cost from the server render, the top coin with its sweep countdown and ReadyBar md, rows with ReadyBar sm; re-sorted and pruned on the provider's 60 s tick, hidden when empty.
-- `coin-card.tsx`: CoinCard, one coin as a single link (art bleed and avatar, name, symbol, market cap in SOL, 1h change pill, bond glyph); `grid` (age chip, horizontal below 560px) and `trending` (rank and volume chips) variants; `data-field` marks the numbers a trade flashes.
+- `coin-card.tsx`: CoinCard, one coin as a single link (art bleed and avatar, name, symbol, market cap in SOL, 1h change pill, bond glyph); `grid` (age chip, horizontal below 560px) and `trending` (rank and volume chips) variants; `data-field` marks the numbers a trade flashes; a search's oldest exact ticker match gets the plain First Tag (`row.first`).
 - `home-coins.tsx`: HomeCoins, All coins (list, sort and search held by HomeLiveProvider): the Top / Latest / Oldest Seg and search (?sort= and ?q= by replaceState, a full BONDR mint opens its coin), the card grid with the 60% hold while a tab loads, Show more, and the empty and error states.
 - `home-search.tsx`: the search box (300 ms debounce, Escape and X clear), the sr-only match count and the no-match and mint-not-on-BONDR empty states.
 - `home-trending.tsx`: HomeTrending, the Trending side-scroller (up to 10 cards by 1h volume, else 24h, else the latest launches, D-13), the mode caption, arrows from 760px and mouse drag.

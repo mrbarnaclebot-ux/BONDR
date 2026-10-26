@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-24-PLAN.md
-last_updated: "2026-10-26T14:49:12.000Z"
-last_activity: 2026-10-26 -- Completed 07-24 (staging redeploy and regression)
+stopped_at: Completed 07-25-PLAN.md
+last_updated: "2026-10-26T16:16:51.000Z"
+last_activity: 2026-10-26 -- Completed 07-25 (final verification; PR #7 open, merge blocked on GitHub billing)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 131
-  completed_plans: 119
-  percent: 90
+  completed_plans: 120
+  percent: 91
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 24 of 36 (07-24 complete)
+Plan: 25 of 36 (07-25 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-24 (staging redeploy and regression)
+Last activity: 2026-10-26 -- Completed 07-25 (final verification; PR #7 open, merge blocked on GitHub billing)
 
 Progress: [██████████] 100%
 
@@ -152,6 +152,7 @@ Progress: [██████████] 100%
 | Phase 07 P20 | 50 min | 2 tasks | 9 files |
 | Phase 07 P22 | 25 min | 2 tasks | 4 files |
 | Phase 07 P24 | 45 min | 2 tasks | 7 files |
+| Phase 07 P25 | 45min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -399,6 +400,7 @@ Recent decisions affecting current work:
 - 07-20: env-diff hashes Railway variables on read; worker-only rules (ALLOW_MAINNET=1, FEE_ENGINE/ADMIN_EVACUATE, seed and quote-mint phases), D-12 must-differ on both services
 - 07-22: apps/worker/PRODUCTION.md is the production runbook (G-1..G-11, D-38 seed leak); rollback = Railway dashboard redeploy of the previous deployment, then a revert on main
 - 07-24: staging runs Phase 7 (deployed-staging 5b26c35) via deploy.sh; matrices green; cooldown refusal proven on staging; phase devnet spend about 0.054 SOL
+- 07-25: every autonomous gate green on f3ee764 (Vitest 848/2 skipped, smoke 32, Playwright 402/26 skipped, devnet contract check, fork 109); PR #7 open, not merged: CI never ran (billing); the orchestrator merges once a rerun is green
 
 ### Pending Todos
 
@@ -408,7 +410,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- OWNER (07-19, 2026-10-26): GitHub Actions refuses to start jobs on the private repo ("recent account payments have failed or your spending limit needs to be increased"). Fix billing, then `gh run rerun` the newest ci run on phase-07-go-live; OPS-03 and the G-1 merge need it green.
+- OWNER (07-19, 2026-10-26): GitHub Actions refuses to start jobs on the private repo ("recent account payments have failed or your spending limit needs to be increased"). Fix billing, then `gh run rerun` the newest ci run on phase-07-go-live (40357497362 on f3ee764); OPS-03, the PR #7 squash merge and G-1 need it green.
 - Phase 5 (from Phase 1 second code review, 2026-10-19; the first three resolved by 05-08, the fourth by 05-07):
   - finalizeIxs/splitIxs take deployer and treasury from the caller. The worker must derive the deployer from the coin's on-chain CreateEvent `user` and the treasury from config, and assert deployer != treasury != W, because the 8000 bps lock is permanent.
   - Add a resumable 2-tx finalize in core: finalizeConfigIxs, finalizeUpdateIxs and finalizeState (none/configured/revoked) read from chain. Send tx 2 immediately after tx 1, because anyone can run distribute in between and pay W 100%.
@@ -433,6 +435,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T14:49:12.000Z
-Stopped at: Completed 07-24-PLAN.md
+Last session: 2026-10-26T16:16:51.000Z
+Stopped at: Completed 07-25-PLAN.md
 Resume file: None

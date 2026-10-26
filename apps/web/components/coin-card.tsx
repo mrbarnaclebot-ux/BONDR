@@ -187,6 +187,14 @@ export function CoinCard({ coin, variant = "grid", rank, chip }: Props) {
         <div className="flex min-w-0 items-baseline gap-2">
           <b className="display truncate text-[20px] leading-none">{coin.name}</b>
           <span className="text-xs font-semibold tracking-[0.06em] text-muted-foreground">{coin.symbol}</span>
+          {/* UI-SPEC A3: plain tone, a fact and not an endorsement; flex-none so the name truncates first. */}
+          {coin.first && (
+            <span className="flex-none">
+              <Tag tone="plain">
+                First<span className="sr-only"> launched with this ticker</span>
+              </Tag>
+            </span>
+          )}
         </div>
         <div className="flex items-baseline justify-between gap-2">
           <span>

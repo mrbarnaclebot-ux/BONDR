@@ -200,6 +200,7 @@ export type CoinRow = CoinLive & {
   bondedAt: string | null;
   createSlot: string | null; // null before 07-07: no sniped figure is shown
   snipedBps: number | null;
+  first?: boolean; // search only: the oldest of two or more visible exact ticker matches (D-44)
 };
 
 export type TradeRow = {

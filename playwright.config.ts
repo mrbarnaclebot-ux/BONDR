@@ -29,7 +29,8 @@ const ADMIN = ["**/admin-switch.e2e.ts", "**/admin-moderation.e2e.ts"];
 // Every admin test signs in as the one admin wallet, and /api/admin/health allows it 60 calls a minute. The
 // 36-shot matrix next to the other admin specs ran that out (its EVACUATE health override came back 429), so it
 // runs after chromium on two workers and before paused, which would flip the launches switch in its shots.
-const RESPONSIVE = "**/admin-responsive.e2e.ts";
+// The Phase 7 matrix (golive-responsive) signs in as the same admin, so it shares this project.
+const RESPONSIVE = ["**/admin-responsive.e2e.ts", "**/golive-responsive.e2e.ts"];
 // The console money path on devnet needs its own worker flags and drains every W, so it never shares a run with
 // other specs (CR-E-02): E2E_DEVNET_ADMIN=1 pnpm exec playwright test --project=devnet-admin --no-deps.
 const DEVNET_ADMIN = "**/admin-devnet.e2e.ts";
@@ -55,7 +56,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: ["**/paused.e2e.ts", ...ADMIN, DEVNET_ADMIN, RESPONSIVE],
+      testIgnore: ["**/paused.e2e.ts", ...ADMIN, DEVNET_ADMIN, ...RESPONSIVE],
     },
     {
       name: "admin-responsive",

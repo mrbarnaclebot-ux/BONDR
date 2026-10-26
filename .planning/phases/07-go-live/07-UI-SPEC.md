@@ -368,3 +368,62 @@ Money: nothing here commits real money. The tip amount (G-6), the genesis launch
 - [x] Dimension 6 Registry Safety: PASS
 
 **Approval:** approved 2026-10-26 (gsd-ui-checker, round 1; Dimension 2 FLAG on focal points resolved above)
+
+---
+
+## Addendum: anti-vamp ticker cooldown (D-40 to D-44, added 2026-10-26)
+
+Extends the contract above for the ticker cooldown, the reserved list and the search marker. Every choice here is owner-delegated (auto). No new tokens, components, icons or dependencies. Sources: `07-CONTEXT.md` D-40 to D-44, `07-RESEARCH.md` Pattern 12 and Pitfalls 22 to 24.
+
+### A1. Launch refusal: `ticker_locked` (D-40, D-42, D-43)
+
+Renders in the existing step 4 error `Callout` (`components/launch-sign.tsx`, `FAULTS` and the `fail()` path), `action: null` (a retry would be refused again). `FAULTS.text` is static, so the two ticker entries take their text from a new pure `tickerFault(code, symbol, err)` in `apps/web/lib/ticker-copy.ts`, with one runnable check `ticker-copy.test.ts` covering every row below. `{t}` is `"$" + symbol`, using the `checkSymbol` value from step 1 (uppercase, as stored). The worker must tell a landed lock from an in-flight one (for example `ApiError.lock: "landed" | "pending"` next to `retryAfter`; the field name is the planner's). If both exist, the landed lock wins.
+
+| Case | Copy |
+|------|------|
+| Landed lock | "{t} launched on BONDR {ago} ago. Try again in {wait}, or change the ticker in step 1. Nothing was sent." Example: "$PEPE launched on BONDR 3h ago. Try again in 21h, …" |
+| In-flight lock | "Another launch of {t} is being signed on BONDR right now. Try again in a few minutes, or change the ticker in step 1. Nothing was sent." |
+| `retryAfter` missing (Pitfall 24 guard) | "{t} launched on BONDR in the last 24 hours. Try again later, or change the ticker in step 1. Nothing was sent." |
+
+Formatting (`retryAfter` is seconds):
+- `{wait}`: at 3600 or more, whole hours rounded up, "21h". Under 3600, minutes rounded up with a minimum of 1: "25 minutes", "1 minute".
+- `{ago}`: from `86400 - retryAfter`. At 3600 or more, whole hours rounded down ("3h"). Under 3600, minutes rounded down ("40 minutes"), and "less than a minute" at 0. Rounding the wait up and the age down keeps the two adding up to 24h.
+- Numbers stay in the sentence's sans face. No `num` class inside a sentence (matches the existing fault lines).
+
+Inline field error: none before submit, and no pre-check call (prepare is the only read, D-40). After a `ticker_locked` refusal, when the creator goes back to step 1, the symbol field shows the first two sentences only ("$PEPE launched on BONDR 3h ago. Try again in 21h.") through the existing `FieldError` (`components/launch-coin.tsx`). It clears as soon as the normalized symbol differs from the refused one. It is client state only and is not stored.
+
+### A2. Reserved tickers (D-44, Pitfall 22)
+
+The list is static (`RESERVED_TICKERS` in `packages/core/src/rules.ts`: BONDR, SOL, USDC, USDT, WSOL), so step 1 checks it live in `textError` at no cost, and the worker's `ticker_reserved` refusal stays the gate.
+
+| Where | Copy |
+|-------|------|
+| Step 1 symbol `FieldError` (shows live, like the charset error) | "{t} is reserved on BONDR. Choose another ticker." |
+| Step 4 error `Callout`, `action: null` (stale client or a bypassed form) | "{t} is reserved on BONDR. Change the ticker in step 1. Nothing was sent." |
+
+Genesis exception: the owner genesis variant (surface 2) is the one allowed BONDR launch. Step 1 skips the reserved check when `LaunchFlow` has the owner-genesis prop, and `genesis.ts` never calls the worker guard. The 24h read still runs for genesis and finds nothing. A public visitor in genesis mode who types BONDR sees the reserved error.
+
+### A3. "First" marker in search results (D-44)
+
+Shown only when a search `q` is present and two or more visible coins share the exact ticker `upper(trim(q))`. The worker or route returns `first: true` on the oldest of them, which is listed first among the exact matches (Pattern 12). A single exact match, a partial match, the unsearched list and Trending never show it. Rows added live by `mergePage` never carry it.
+
+- Component: the existing `Tag tone="plain"` (neutral ledger tone). Not leaf, because it is a fact and not an endorsement (the accent list stays at 32 items). Not warn, because the later coins are not flagged as fakes.
+- Placement: `components/coin-card.tsx`, in the name row right after the symbol, wrapped in `flex-none`, so the name truncates first and the Tag never wraps or shrinks.
+- Accessible name: `<Tag tone="plain">First<span className="sr-only"> launched with this ticker</span></Tag>`. The card link reads "… PEPE First launched with this ticker …". No tooltip and no icon.
+- 390 (card turns horizontal below 560px): same row. The name truncates and the symbol and Tag stay whole. 768 and 1440: same row, no change. The Tag can add up to 4px to the row height, which is accepted.
+
+### A4. Terms sentence (D-43)
+
+`apps/web/app/terms/page.tsx`, section 04 "Launching", after "…impersonate someone.": "After a coin launched through BONDR lands, BONDR refuses new launches with the same ticker for 24 hours; this covers only BONDR launches, not the same ticker used elsewhere." It rides the D-17 `TERMS_VERSION` bump (one bump), and `terms.e2e.ts` asserts the sentence.
+
+### A5. Verification additions
+
+Add to the Playwright list (390, 768, 1440, existing stubs):
+
+8. `/launch` with prepare stubbed 409 `ticker_locked`, landed, `retryAfter: 75600`: step 4 callout reads "$PEPE launched on BONDR 3h ago. Try again in 21h, …" with no action button. Back to step 1: the symbol field shows "$PEPE launched on BONDR 3h ago. Try again in 21h.", and editing the symbol clears it.
+9. The same with `retryAfter: 1500` ("25 minutes"), with the in-flight lock, and with `retryAfter` absent (fallback line). The route test asserts the 409 body keeps `retryAfter` (Pitfall 24).
+10. Step 1 symbol "sol": the reserved `FieldError` shows and Continue is blocked. In the owner genesis variant, "BONDR" shows no error. Prepare stubbed 409 `ticker_reserved` gives the step 4 line.
+11. Home search `q=pepe` with three exact matches and one partial: the oldest exact match is listed first, and exactly one link matches `getByRole("link", { name: /first launched with this ticker/i })`. With one exact match, there is no marker.
+12. `/terms` section 04 contains the cooldown sentence.
+
+axe-core reports 0 violations at 390, 768 and 1440 for: the step 4 `ticker_locked` callout, step 1 with the reserved and the locked `FieldError`, and search results showing the "First" marker. The unit check `lib/ticker-copy.test.ts` covers the hour and minute boundaries (3600, 3599, 60, 59, 0).

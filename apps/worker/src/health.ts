@@ -30,7 +30,7 @@ export function mark(name: Mark, now = Date.now()): void {
 export const marks = (): Record<Mark, number | null> => ({ ...at });
 
 type HealthOpts = {
-  env: Pick<WorkerEnv, "feeEngine" | "adminEvacuate" | "sentryReadToken">;
+  env: Pick<WorkerEnv, "feeEngine" | "adminEvacuate" | "sentryReadToken" | "quoteMint">;
   engine: () => Pick<Engine, "stuckCount"> | null;
 };
 
@@ -54,6 +54,7 @@ export async function healthSnapshot(o: HealthOpts): Promise<AdminHealth> {
     opsLow: opsLow(),
     evacuate: o.env.adminEvacuate,
     contract: contractState(),
+    genesis: o.env.quoteMint === null,
     sentry: await sentryCount(o.env.sentryReadToken),
   };
 }

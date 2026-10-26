@@ -33,6 +33,7 @@ const health = (over: Partial<AdminHealth> = {}): AdminHealth => ({
   opsLow: false,
   evacuate: "simulate",
   contract: { kind: "not_run", at: null, facts: [], programs: [], lastPass: null },
+  genesis: false,
   sentry: { configured: false },
   ...over,
 });

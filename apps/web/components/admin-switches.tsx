@@ -3,6 +3,7 @@
 // signature; the worker writes the DB, then memory, then one landed audit row. Values come from the 10 s health
 // poll (worker memory), except while a flip is in flight or when the flip's answer is newer than the last poll.
 import type { AdminJob, AdminSwitches } from "@bondr/core/api-admin";
+import Link from "next/link";
 import { useState } from "react";
 import { auditTime, JOB_LABEL } from "@/lib/admin-copy-audit";
 import { cn } from "@/lib/cn";
@@ -96,6 +97,13 @@ function Notices({ poll }: { poll: HealthPoll }) {
         // Keyed by the run, so a new mismatch mounts a new alert and is announced once (D-20).
         <Callout key={c.at} variant="error" title="The pump contract check failed." className="mb-4">
           {`Every job was paused at ${c.at ? auditTime(c.at, Date.now()) : "the last check"}. The failed facts are in Health. Turn jobs back on one at a time once you have reviewed them. Launches stay paused until Run check now passes.`}
+        </Callout>
+      )}
+      {h.genesis && (
+        // UI-SPEC surface 6: Launches stays flippable, since child prepares answer not_ready in genesis regardless.
+        <Callout variant="warn" title="Genesis mode." className="mb-4">
+          Child launches stay closed until the BONDR token is live and BONDR_QUOTE_MINT is set. Send the
+          genesis launch from <Link href="/launch">/launch</Link> while signed in here.
         </Callout>
       )}
       {h.feeEngine !== "on" && (

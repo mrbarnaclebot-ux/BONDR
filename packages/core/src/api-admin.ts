@@ -61,6 +61,7 @@ export type AdminHealth = {
   opsLow: boolean;
   evacuate: "simulate" | "on";
   contract: AdminContract;
+  genesis: boolean; // the worker runs in genesis mode: BONDR_QUOTE_MINT unset on mainnet (D-29)
   sentry:
     | { configured: false }
     | { configured: true; web: number; worker: number; capped: boolean }

@@ -5,6 +5,7 @@ import type { AdminContract } from "@bondr/core/api-admin";
 import { expect, type Page, test } from "@playwright/test";
 import { openConsole } from "./admin.ts";
 import { stubConsole } from "./admin-stubs.ts";
+import { gate, PHASE7_SHOTS } from "./shoot.ts";
 
 const AT = new Date(Date.now() - 60_000).toISOString();
 const FACTS = [
@@ -16,8 +17,8 @@ const state = (over: Partial<AdminContract>): AdminContract => ({
   ...over,
 });
 
-async function open(page: Page, contract: AdminContract) {
-  await stubConsole(page, { health: { contract } });
+async function open(page: Page, contract: AdminContract, genesis = false) {
+  await stubConsole(page, { health: { contract, genesis } });
   await openConsole(page);
   const health = page.getByRole("region", { name: "Health", exact: true });
   const cell = health.locator("dl > div").filter({ has: page.locator('dt:text-is("Pump contract check")') });
@@ -77,4 +78,35 @@ test("a failed Run check now says so in an alert", async ({ page }) => {
   await cell.getByRole("button", { name: "Run check now" }).click();
   await expect(cell.getByRole("alert")).toHaveText("Could not run the check. Try again.");
   await expect(cell.getByRole("button", { name: "Run check now" })).toBeVisible();
+});
+
+const callouts = (page: Page) =>
+  page.getByRole("region", { name: /^Kill switches/ }).locator("[role=status], [role=alert]");
+
+test("genesis mode shows its callout with the /launch link, and no genesis callout otherwise", async ({
+  page,
+}) => {
+  await open(page, state({}), true);
+  const genesis = callouts(page).filter({ hasText: "Genesis mode." });
+  await expect(genesis).toContainText(
+    "Child launches stay closed until the BONDR token is live and BONDR_QUOTE_MINT is set. Send the genesis launch from /launch while signed in here.",
+  );
+  await expect(genesis.getByRole("link", { name: "/launch" })).toHaveAttribute("href", "/launch");
+  await expect(page.getByRole("switch", { name: /Launches/ }).first()).toBeEnabled();
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await gate(page, "admin-genesis-callout", width, PHASE7_SHOTS);
+  }
+});
+
+test("a contract mismatch comes before the genesis callout", async ({ page }) => {
+  await open(page, state({ kind: "mismatch", facts: FACTS }), true);
+  const list = callouts(page);
+  await expect(list.first()).toContainText("The pump contract check failed.");
+  await expect(list.nth(1)).toContainText("Genesis mode.");
+});
+
+test("outside genesis mode there is no genesis callout", async ({ page }) => {
+  await open(page, state({}));
+  await expect(page.getByRole("region", { name: /^Kill switches/ })).not.toContainText("Genesis mode.");
 });

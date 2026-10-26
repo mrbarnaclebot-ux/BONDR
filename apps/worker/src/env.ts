@@ -72,7 +72,7 @@ function siteOrigin(raw: string | undefined): string | null {
 
 // D-10: on mainnet the treasury is an owner-held wallet the seed cannot derive, so EVACUATE after a seed leak
 // lands out of the attacker's reach. Errors name the variable, never its value.
-function treasuryFrom(env: Env, net: "devnet" | "mainnet", seed: Buffer, lane: Lane) {
+function treasuryFrom(env: Env, net: "devnet" | "mainnet", seed: Buffer) {
   if (net === "devnet") return { key: treasury(seed, "devnet").publicKey, external: false };
   const v = exactKey(env.TREASURY_PUBKEY);
   if (!env.TREASURY_PUBKEY?.trim()) throw new Error("TREASURY_PUBKEY is required on mainnet");
@@ -80,7 +80,10 @@ function treasuryFrom(env: Env, net: "devnet" | "mainnet", seed: Buffer, lane: L
   const key = new PublicKey(v);
   if (!PublicKey.isOnCurve(key.toBytes()))
     throw new Error("TREASURY_PUBKEY must be a wallet, not a program address");
-  const derived = [ops(seed, net), buyback(seed, net, lane), treasury(seed, net)].map((k) => k.publicKey);
+  const lanes: Lane[] = ["local", "staging", "production"]; // IN-W-01: every lane's buyback, not only this one
+  const derived = [ops(seed, net), ...lanes.map((l) => buyback(seed, net, l)), treasury(seed, net)].map(
+    (k) => k.publicKey,
+  );
   if (derived.some((d) => d.equals(key))) throw new Error("TREASURY_PUBKEY must not derive from MASTER_SEED");
   if (v === exactKey(env.ADMIN_WALLET))
     console.warn("TREASURY_PUBKEY equals ADMIN_WALLET: G-2 advises separate wallets");
@@ -127,7 +130,7 @@ export function loadEnv(env: Env = process.env) {
     throw new Error("VANITY_LANE must be local, staging or production");
   const quoteMint = quoteMintFrom(env.BONDR_QUOTE_MINT, net);
   const seed = seedFrom(env);
-  const t = treasuryFrom(env, net, seed, lane);
+  const t = treasuryFrom(env, net, seed);
   return {
     net,
     seed,

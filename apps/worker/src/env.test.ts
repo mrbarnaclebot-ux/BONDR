@@ -68,6 +68,7 @@ test("mainnet refuses a missing, malformed, off-curve or derivable TREASURY_PUBK
     pda,
     ops(seed, "mainnet").publicKey.toBase58(),
     buyback(seed, "mainnet", "local").publicKey.toBase58(),
+    buyback(seed, "mainnet", "production").publicKey.toBase58(), // another lane's buyback (IN-W-01)
     treasury(seed, "mainnet").publicKey.toBase58(),
   ];
   for (const v of bad) {

@@ -51,7 +51,11 @@ function settled(sim: AdminSimResult, v: AdminIntentView): EvacState {
 type SetS = (f: EvacState | ((p: EvacState) => EvacState)) => void;
 
 /** `canSend` is false on a simulate-only deploy (D-37); `onChanged` reloads the console once anything may have moved. */
-export function useEvacuate(onUnauthorized: () => void, onChanged: () => void) {
+export function useEvacuate(
+  onUnauthorized: () => void,
+  onChanged: () => void,
+  onSending: (on: boolean) => void,
+) {
   const [typed, setTyped] = useState("");
   const [s, setS] = useState<EvacState>(E0);
   const ctrl = useRef<AbortController | null>(null);
@@ -77,7 +81,7 @@ export function useEvacuate(onUnauthorized: () => void, onChanged: () => void) {
     setS(E0);
   };
   useExpiry(s, setS);
-  const send = useSend(s, setS, { fresh, onUnauthorized, onChanged, clear: () => setTyped("") });
+  const send = useSend(s, setS, { fresh, onUnauthorized, onChanged, onSending, clear: () => setTyped("") });
   return { typed, type, s, simulate: () => void simulate(), send: () => void send() };
 }
 
@@ -97,6 +101,7 @@ type SendDeps = {
   fresh(): AbortSignal;
   onUnauthorized(): void;
   onChanged(): void;
+  onSending(on: boolean): void;
   clear(): void;
 };
 
@@ -118,8 +123,11 @@ function useSend(s: EvacState, setS: SetS, d: SendDeps) {
     if (signal.aborted) return;
     if (typeof sig === "string") return at("ready", error(copy(sig)));
     at("evacuating");
+    d.onSending(true);
     const r = await executeAdmin(intent.id, sig, signal);
     if (signal.aborted) return;
+    // Every early exit below sent nothing; a 401 here is the web refusing before it forwards.
+    if (!(r.ok || r.code === "worker_unavailable")) d.onSending(false);
     if (!r.ok && r.status === 401) return d.onUnauthorized();
     if (!r.ok && r.code === "bad_intent_signature") return at("ready", error(copy(r.code)));
     if (!r.ok && r.code === "not_applicable")
@@ -132,6 +140,7 @@ function useSend(s: EvacState, setS: SetS, d: SendDeps) {
     if (signal.aborted) return;
     d.onChanged();
     if (!v.ok) return d.onUnauthorized(); // pollIntent stops early only on a 401
+    d.onSending(false);
     if (v.body.state === "landed") d.clear();
     setS(settled(sim, v.body));
   };

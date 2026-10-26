@@ -2,7 +2,7 @@
 // intent poll are answered by admin-stubs.ts and the overview carries a fixture coin, so this spec never sends a
 // transaction or spends devnet SOL. It checks the preview before signing, Cancel focus and focus return, the
 // signed bytes against the worker's intent text, the refused, used and expired paths, and Burn buyback now.
-import { createPublicKey, verify } from "node:crypto";
+import { createPublicKey, randomInt, verify } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { openConsole } from "./admin.ts";
 import {
@@ -132,6 +132,31 @@ test.describe("admin-sim", () => {
     await expect(d.getByText("This simulation was already used. Simulate again.")).toBeVisible();
     await expect(d.getByRole("button", { name: "Simulate again" })).toBeVisible();
     expect(calls.intent).toEqual([]);
+  });
+
+  test("a session that ends mid-send drops the dialog, says a send was out and never re-simulates", async ({
+    page,
+  }) => {
+    await page.context().setExtraHTTPHeaders({ "x-real-ip": `10.9.${randomInt(256)}.${randomInt(256)}` });
+    const { admin, calls } = await setup(page, {
+      intent: () => ({ status: 401, json: { error: "unauthorized" } }),
+    });
+    await openFinalize(page);
+    const d = dialog(page);
+    await d.getByRole("button", { name: "Connect Phantom" }).click();
+    await d.getByRole("button", { name: SEND }).click();
+    await expect(
+      page.getByRole("status").filter({ hasText: "Your admin session ended during a send." }),
+    ).toBeVisible();
+    await expect(dialog(page)).toHaveCount(0);
+    const simulated = calls.simulate.length;
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: `Sign in as ${admin.address.slice(0, 4)}` })
+      .click();
+    await expect(page.getByText(/^Signed in .+, the allowlisted wallet$/)).toBeVisible();
+    await expect(dialog(page)).toHaveCount(0);
+    expect(calls.simulate.length).toBe(simulated);
   });
 
   test("the client clock passing Expires ends the simulation", async ({ page }) => {

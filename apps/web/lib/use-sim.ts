@@ -39,6 +39,7 @@ export function useSim(
   mint: string | null,
   symbol: string,
   onUnauthorized: () => void,
+  onSending: (on: boolean) => void,
 ) {
   const wallet = useWallet();
   const [s, setS] = useState<SimState>(S0);
@@ -64,7 +65,7 @@ export function useSim(
     return () => ctrl.current.abort();
   }, [simulate]);
   useExpiry(s, setS, copy);
-  const send = useSend(s, setS, { wallet, ctrl, sent, copy, onUnauthorized });
+  const send = useSend(s, setS, { wallet, ctrl, sent, copy, onUnauthorized, onSending });
   return { s, simulate: () => void simulate(), send: () => void send(), sent };
 }
 
@@ -88,6 +89,7 @@ type SendDeps = {
   sent: { current: boolean };
   copy: Copy;
   onUnauthorized(): void;
+  onSending(on: boolean): void;
 };
 
 // A refused execute sent nothing. A bad signature leaves the intent usable, so the send button stays. A lost
@@ -106,8 +108,11 @@ function useSend(s: SimState, setS: SetS, d: SendDeps) {
     if (signal.aborted) return;
     if (typeof sig === "string") return setS({ ...S0, phase: "ready", sim, note: error(d.copy(sig)) });
     setS({ ...S0, phase: "sending", sim });
+    d.onSending(true);
     const r = await executeAdmin(intent.id, sig, signal);
     if (signal.aborted) return;
+    // Every early exit below sent nothing; a 401 here is the web refusing before it forwards.
+    if (!(r.ok || r.code === "worker_unavailable")) d.onSending(false);
     if (!r.ok && r.status === 401) return d.onUnauthorized();
     if (!r.ok && r.code === "bad_intent_signature")
       return setS({ ...S0, phase: "ready", sim, note: error(d.copy(r.code)) });
@@ -119,6 +124,7 @@ function useSend(s: SimState, setS: SetS, d: SendDeps) {
     const v = await pollIntent(intent.id, signal);
     if (signal.aborted) return;
     if (!v.ok) return d.onUnauthorized(); // pollIntent stops early only on a 401
+    d.onSending(false);
     setS({ ...S0, phase: "done", sim, view: v.body });
   };
 }

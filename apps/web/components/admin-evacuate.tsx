@@ -143,12 +143,17 @@ function Intro({ wallets }: { wallets: number }) {
   );
 }
 
-type EvacProps = { overview: AdminOverview; evacuate: "simulate" | "on" | undefined; onChanged(): void };
+type EvacProps = {
+  overview: AdminOverview;
+  evacuate: "simulate" | "on" | undefined;
+  onChanged(): void;
+  onSending(on: boolean): void;
+};
 
 /** `evacuate` is the worker's ADMIN_EVACUATE from the health poll; unknown counts as simulate-only (D-37). */
-export function Evacuate({ overview, evacuate, onChanged }: EvacProps) {
+export function Evacuate({ overview, evacuate, onChanged, onSending }: EvacProps) {
   const { onUnauthorized } = useAdmin();
-  const run = useEvacuate(onUnauthorized, onChanged);
+  const run = useEvacuate(onUnauthorized, onChanged, onSending);
   const { s } = run;
   const simOnly = evacuate !== "on" || !s.sim?.intent;
   const armed = !["disarmed", "done", "nothing"].includes(s.phase);

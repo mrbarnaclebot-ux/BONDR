@@ -21,6 +21,7 @@ type Fault = keyof typeof FAULTS;
 const NOTICES = {
   ended: "Your admin session ended after 30 minutes. Sign in again.",
   signedout: "Signed out.",
+  lost: "Your admin session ended during a send. It may still finish on the worker, and nothing is resent. Check the audit log before you run it again.",
 };
 export type SignInNotice = keyof typeof NOTICES;
 

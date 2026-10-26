@@ -19,6 +19,10 @@ export type Console = {
   openSim(action: AdminTxAction, mint: string | null): void;
   /** `sent`: something may have been sent, so the DB panels reload once. */
   closeSim(sent: boolean): void;
+  /** A send is out with no outcome shown yet (the dialog or EVACUATE), so a session end must say so. */
+  sending(on: boolean): void;
+  /** On a session end: closes the dialog, so it never reopens as a fresh simulation, and says if a send was out. */
+  endSim(): boolean;
 };
 
 /** The dialog's action; mint is null only for burn_buyback (a platform action). */
@@ -60,7 +64,16 @@ export function useConsole(initial: AdminOverview, onUnauthorized: () => void, w
   );
   const refresh = useCallback(() => load(true), [load]);
   const reload = useCallback(() => load(false), [load]);
+  return { overview, loading, failed, refresh, reload, selected, select, ...useSimSlot(reload) };
+}
+
+// The open dialog, and whether a send (the dialog's or EVACUATE's) is out with no outcome shown yet.
+function useSimSlot(reload: () => Promise<void>) {
   const [sim, setSim] = useState<Sim | null>(null);
+  const out = useRef(false);
+  const sending = useCallback((on: boolean) => {
+    out.current = on;
+  }, []);
   const openSim = useCallback((action: AdminTxAction, mint: string | null) => setSim({ action, mint }), []);
   const closeSim = useCallback(
     (sent: boolean) => {
@@ -69,5 +82,11 @@ export function useConsole(initial: AdminOverview, onUnauthorized: () => void, w
     },
     [reload],
   );
-  return { overview, loading, failed, refresh, reload, selected, select, sim, openSim, closeSim };
+  const endSim = useCallback(() => {
+    const lost = out.current;
+    out.current = false;
+    setSim(null);
+    return lost;
+  }, []);
+  return { sim, openSim, closeSim, sending, endSim };
 }

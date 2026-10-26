@@ -28,6 +28,7 @@ type Props = {
   mint: string | null;
   overview: AdminOverview;
   onClose(sent: boolean): void;
+  onSending(on: boolean): void;
 };
 
 // showModal on mount with focus on Cancel; focus goes back to the opener when the dialog unmounts.
@@ -44,11 +45,11 @@ function useOpen() {
   return { dialog, cancel };
 }
 
-export function SimDialog({ action, mint, overview, onClose }: Props) {
+export function SimDialog({ action, mint, overview, onClose, onSending }: Props) {
   const { onUnauthorized } = useAdmin();
   const symbol = mint ? (overview.rows.find((r) => r.mint === mint)?.symbol ?? short(mint)) : "BONDR";
   const label = ACTION_COPY[action].label;
-  const run = useSim(action, mint, symbol, onUnauthorized);
+  const run = useSim(action, mint, symbol, onUnauthorized, onSending);
   const { dialog, cancel } = useOpen();
   // Escape, the backdrop and Cancel do nothing while Phantom is open or the send is in flight.
   const locked = run.s.phase === "signing" || run.s.phase === "sending";

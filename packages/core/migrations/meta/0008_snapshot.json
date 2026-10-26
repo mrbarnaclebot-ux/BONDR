@@ -324,12 +324,8 @@
           "name": "coins_mint_vanity_mints_pubkey_fk",
           "tableFrom": "coins",
           "tableTo": "vanity_mints",
-          "columnsFrom": [
-            "mint"
-          ],
-          "columnsTo": [
-            "pubkey"
-          ],
+          "columnsFrom": ["mint"],
+          "columnsTo": ["pubkey"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -337,12 +333,8 @@
           "name": "coins_launch_id_launches_id_fk",
           "tableFrom": "coins",
           "tableTo": "launches",
-          "columnsFrom": [
-            "launch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["launch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -352,9 +344,7 @@
         "coins_launchId_unique": {
           "name": "coins_launchId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "launch_id"
-          ]
+          "columns": ["launch_id"]
         }
       },
       "policies": {},
@@ -678,12 +668,8 @@
           "name": "fee_ledger_mint_coins_mint_fk",
           "tableFrom": "fee_ledger",
           "tableTo": "coins",
-          "columnsFrom": [
-            "mint"
-          ],
-          "columnsTo": [
-            "mint"
-          ],
+          "columnsFrom": ["mint"],
+          "columnsTo": ["mint"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -942,12 +928,8 @@
           "name": "launches_wallet_wallets_address_fk",
           "tableFrom": "launches",
           "tableTo": "wallets",
-          "columnsFrom": [
-            "wallet"
-          ],
-          "columnsTo": [
-            "address"
-          ],
+          "columnsFrom": ["wallet"],
+          "columnsTo": ["address"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -955,12 +937,8 @@
           "name": "launches_mint_vanity_mints_pubkey_fk",
           "tableFrom": "launches",
           "tableTo": "vanity_mints",
-          "columnsFrom": [
-            "mint"
-          ],
-          "columnsTo": [
-            "pubkey"
-          ],
+          "columnsFrom": ["mint"],
+          "columnsTo": ["pubkey"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -970,9 +948,7 @@
         "launches_signature_unique": {
           "name": "launches_signature_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "signature"
-          ]
+          "columns": ["signature"]
         }
       },
       "policies": {},
@@ -1209,12 +1185,8 @@
           "name": "trades_mint_coins_mint_fk",
           "tableFrom": "trades",
           "tableTo": "coins",
-          "columnsFrom": [
-            "mint"
-          ],
-          "columnsTo": [
-            "mint"
-          ],
+          "columnsFrom": ["mint"],
+          "columnsTo": ["mint"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1222,10 +1194,7 @@
       "compositePrimaryKeys": {
         "trades_signature_ix_pk": {
           "name": "trades_signature_ix_pk",
-          "columns": [
-            "signature",
-            "ix"
-          ]
+          "columns": ["signature", "ix"]
         }
       },
       "uniqueConstraints": {},
@@ -1292,9 +1261,7 @@
         "vanity_mints_pubkey_unique": {
           "name": "vanity_mints_pubkey_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "pubkey"
-          ]
+          "columns": ["pubkey"]
         }
       },
       "policies": {},

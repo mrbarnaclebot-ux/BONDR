@@ -3,7 +3,7 @@
 The worker: the only process that holds the seed, signs, and reads the chain. Web calls it over a private bearer-token HTTP API.
 
 - `main.ts`: entry; config, one RPC connection, the route table, index boot and the stream.
-- `env.ts`: `loadEnv` (fails at boot on bad config, devnet only; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`, `ADMIN_WALLET` (invalid is null), `ADMIN_EVACUATE`, `SENTRY_READ_TOKEN`), `ops`, `treasury` and the per-lane `buyback` keys.
+- `env.ts`: `loadEnv` (fails at boot on bad config; mainnet needs `ALLOW_MAINNET=1` and `TREASURY_PUBKEY`, and an unset `BONDR_QUOTE_MINT` there is genesis mode; `FEE_ENGINE`, `FEE_WINDOW_MS`, `FEE_BATCH_HOUR_UTC`, `ADMIN_WALLET` (invalid is null), `ADMIN_EVACUATE`, `SENTRY_READ_TOKEN`), `ops`, `treasury` and the per-lane `buyback` keys.
 - `http.ts`: `start` (node:http, bearer check, JSON), `Fail` / `fail` for contract errors, `Reply` for a non-200 success, `Routes` keyed "METHOD /path".
 - `sentry.ts`: OPS-01 Sentry init with the shared scrub; imported first by main.ts.
 - `status.ts`: GET /status and POST /quote for the launch form (5 s single-flight cache; `StatusCtx` allows a null Q for genesis mode, paused "genesis"), POST /kill-switch (through switches.ts, audited as `runbook`, refuses re-enable after EVACUATE), `Ctx`, `MAX_SOL_IN`.
@@ -21,6 +21,7 @@ The worker: the only process that holds the seed, signs, and reads the chain. We
 - `vanity.ts`: the bndr mint pool (seed-derived mint keys, reserve and release).
 - `grind.ts`: the bndr grinder threads, refill on demand, and its CLI.
 - `ingest.ts`: the one write path for launches and trades, `knownCoins`, the boot backfill.
+- `sniped.ts`: the token page's sniped figure (D-35): `windowMints`, `snipedBps` (pure) and `recomputeSniped` (one query over the coin's first 3 slots, written only when it changes).
 - `announce.ts`: after each commit, `arm` (holder recount, launch, trade and bond events, the engine hook) and `publishFee` (landed public fee rows as `fee` events).
 - `stream.ts`: the live log subscription on the BONDR mint and the gap fill.
 - `events-route.ts`: GET /events, every indexed change as NDJSON to web.

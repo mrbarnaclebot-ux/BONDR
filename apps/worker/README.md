@@ -1,11 +1,13 @@
 # apps/worker
 
-The private worker. It is the only Phase 2 service that touches the chain (D-15). The web server calls it over Railway private networking with a bearer token.
+The private worker. It is the only service that touches the chain (D-15). The web server calls it over Railway private networking with a bearer token.
+
+**Production (mainnet):** see [PRODUCTION.md](PRODUCTION.md) for the environment, variables, deploys, the owner gates G-1 to G-11 and the seed leak runbook. This file covers the worker itself and staging.
 
 ## src
 
 - `main.ts`: boot (env, one devnet connection, routes, vanity refill, `resumeLaunches`, then the index boot: `seedBondrPrice`, `loadCoins`, `startEngine`, `backfillLaunches`, `startStream`) and SIGTERM shutdown. No standing polling loop (Pitfall 6).
-- `env.ts`: `loadEnv` and `launchNet` (refuses mainnet in Phase 2, D-02); `ops` and `treasury` keys with the Phase 1 ids.
+- `env.ts`: `loadEnv` and `launchNet` (mainnet only with `ALLOW_MAINNET=1`, D-01); `ops`, `treasury` (external `TREASURY_PUBKEY` on mainnet) and `buyback` keys.
 - `http.ts`: node:http server, `authorized` (timingSafeEqual), `readJson` (16 KB cap), `Fail` for contract errors; `Streams` are long-lived handlers behind the same bearer check.
 - `prepare.ts`: `POST /prepare`. Guards (pause, consent, rules, hourly table cap, balance) run before any spend, then reserve, W, table, build, simulate, store `prepared`. `prepareGuard`, `parseRequest`, `signBy` and `sellFloor` are pure.
 - `submit.ts`: `POST /submit`. Pause and expiry re-checked, then `cosign` (core) against the stored message, exit and mint; only then `signed` is stored and the wire is sent.
@@ -69,7 +71,7 @@ The private worker. It is the only Phase 2 service that touches the chain (D-15)
 
 ## Env
 
-`SOLANA_NET` (devnet, or mainnet with `ALLOW_MAINNET=1` and `TREASURY_PUBKEY`), `ALLOW_MAINNET`, `TREASURY_PUBKEY`, `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE`, `VANITY_THREADS`, `BONDR_QUOTE_MINT`, `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`, `FEE_ENGINE` (`off` default, `dry`, `on`; anything else refuses to boot), `FEE_WINDOW_MS` (default 86400000, at least 60000), `FEE_BATCH_HOUR_UTC` (0-23, default 4). See the repo-root `.env.example`.
+`SOLANA_NET` (devnet, or mainnet with `ALLOW_MAINNET=1` and `TREASURY_PUBKEY`), `ALLOW_MAINNET` (`1` on production only), `TREASURY_PUBKEY` (the external treasury public key, required on mainnet), `helius_api_key`, `MASTER_SEED` or `MASTER_SEED_FILE`, `VANITY_LANE` (`local`, `staging` or `production`), `VANITY_THREADS`, `BONDR_QUOTE_MINT` (unset on mainnet = genesis mode), `WORKER_TOKEN`, `PRIORITY_FEE_MICROLAMPORTS`, `DATABASE_URL`, `WORKER_PORT` or `PORT`, `FEE_ENGINE` (`off` default, `dry`, `on`; anything else refuses to boot), `FEE_WINDOW_MS` (default 86400000, at least 60000), `FEE_BATCH_HOUR_UTC` (0-23, default 4). See the repo-root `.env.example`; the production values per service are in PRODUCTION.md section 2.
 
 ## Owner console
 
@@ -87,7 +89,7 @@ The break-glass path for a leaked master seed (ADMIN-11, D-35 to D-37). Use it o
 - **Execute needs `ADMIN_EVACUATE=on`.** The default `simulate` previews only and never creates an intent. `on` is accepted on devnet, and on mainnet only with an external `TREASURY_PUBKEY` (D-37); boot refuses it anywhere else and the execute loop refuses again (409 `not_applicable`, reason `simulate_only` or `devnet_only`, the latter name kept for the web copy).
 - **Same money path.** The owner signs the intent (D-12); the worker writes one pending `admin_audit` row (`action evacuate`, `params.wallets`) before anything is sent and settles it once with every signature.
 - **Everything pauses first.** Before the first transfer the worker switches every job off, launches included, and stamps `settings.evacuated_at` in one write. Then each batch waits for its coins' queued engine jobs, re-reads its balances and sends through the gated land (treasury and burn only), paced like the engine. Each W writes a public `evacuate` row with its own amount and SOL value, and a `leftover_burn` row when it held child tokens. A failed batch leaves later W to go; an unknown one is never resent.
-- **Afterwards.** Every switch stays off until the owner turns each back on, one at a time, from the console. W's emptied token accounts stay open with their rent. Rotating the master seed is a separate Phase 7 runbook; EVACUATE does not rotate anything.
+- **Afterwards.** Every switch stays off until the owner turns each back on, one at a time, from the console. W's emptied token accounts stay open with their rent. EVACUATE does not rotate anything: the mainnet response, seed rotation included, is PRODUCTION.md section 10.
 - **Local admin devnet run.** `apps/web/e2e/admin-devnet.e2e.ts` (Sweep now, Burn buyback now, Re-check launch and EVACUATE on dev coins) needs this worker, started by hand from the repo root. It prints only the public test admin address; `--env-file` never overrides variables already set:
 
   ```sh
@@ -133,7 +135,7 @@ From the repo root:
 
 Railway project `bondr`, environment `staging`, services `web` (public: https://web-staging-72bad.up.railway.app) and `worker` (no public domain; web reaches it at `http://${{worker.RAILWAY_PRIVATE_DOMAIN}}:${{worker.PORT}}`). Build, start, pre-deploy (web runs `node packages/core/src/migrate.ts`) and healthchecks live in the service settings, not in a file: Railway no longer reads railway.json for new services. Both run in US East, next to Neon.
 
-- Redeploy from the local checkout, worker first: `railway up --service worker --environment staging --detach`, then the same with `--service web`. When a migration is new, deploy web first: its pre-deploy migrates, and the worker's backfill and indexer need the new tables. `.railwayignore` keeps `.planning` out of the upload.
+- Redeploy from the local checkout with `sh scripts/deploy.sh staging` (`--dry-run` prints the plan first). It deploys web first when a migration changed since the local `deployed-staging` tag (its pre-deploy migrates, and the worker's backfill and indexer need the new tables), otherwise the worker first, and waits for each to succeed. `.railwayignore` keeps `.planning` out of the upload.
 - Set a secret: `printf %s "$V" | railway variable set NAME --stdin --service worker --environment staging --skip-deploys`. One name per call. The seed and the Helius key go on the worker only; web refuses to boot holding them.
 - Deleting a variable does not redeploy: run `railway service redeploy --service <name> --environment staging --yes`.
 - Trade routes (Phase 4) need no new variable (`PRIORITY_FEE_MICROLAMPORTS` keeps its default) and no migration. Prepared and in-flight trades live in the worker's memory (D-07, no Postgres in the trade path), so run exactly one worker replica: a second one would 404 a submit or poll its sibling prepared.

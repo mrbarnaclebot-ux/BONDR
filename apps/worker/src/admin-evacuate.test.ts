@@ -191,7 +191,10 @@ test("an EVACUATE batch is urgent, so base land sends it below the ops floor (CR
     const job = buildBatch(deps, await balances(1));
     expect(job.urgent).toBe(true);
     const past = new Error("past the ops floor");
-    const d = { ...deps, conn: { getLatestBlockhash: async () => Promise.reject(past) } } as unknown as FeeDeps;
+    const d = {
+      ...deps,
+      conn: { getLatestBlockhash: async () => Promise.reject(past) },
+    } as unknown as FeeDeps;
     await expect(land(d, job)).rejects.toBe(past);
     await expect(land(d, { ...job, urgent: false })).resolves.toEqual({ state: "skipped" });
   } finally {

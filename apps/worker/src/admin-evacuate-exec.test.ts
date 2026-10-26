@@ -142,7 +142,12 @@ test("a batch whose land throws counts its wallets failed and later batches stil
   await executeEvacuate(ctx, e, auditId);
   const sent = jobs.flatMap((j) => j.signers).length;
   expect(sent).toBeGreaterThan(0);
-  expect(viewIntent(e.id)).toMatchObject({ state: "failed", code: "build_failed", moved: sent, failed: 8 - sent });
+  expect(viewIntent(e.id)).toMatchObject({
+    state: "failed",
+    code: "build_failed",
+    moved: sent,
+    failed: 8 - sent,
+  });
   expect(audit.rows[0]).toMatchObject({ result: "failed", error: "build_failed" });
 });
 

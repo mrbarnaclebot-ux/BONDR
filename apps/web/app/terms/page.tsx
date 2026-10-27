@@ -118,8 +118,8 @@ const SECTIONS: Section[] = [
     body: (
       <p>
         These terms may change; the date above shows when. Continuing to use BONDR after a change means you
-        accept it. Questions and data deletion requests go to the owner at{" "}
-        <a href="mailto:hello@trybondr.fun">hello@trybondr.fun</a>.
+        accept it. Questions and data deletion requests go to the owner on X at{" "}
+        <a href="https://x.com/trybondrdotfun">@trybondrdotfun</a>.
       </p>
     ),
   },

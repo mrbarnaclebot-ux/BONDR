@@ -27,7 +27,7 @@ test("the footer links to /terms from any page", { tag: "@smoke" }, async ({ pag
 
 test("/terms shows the eight numbered sections in order", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/terms");
-  await expect(page.getByText("Short on purpose. Last updated 2026-10-26.")).toBeVisible();
+  await expect(page.getByText("Short on purpose. Last updated 2026-10-27.")).toBeVisible();
   const headings = page.getByRole("main").getByRole("heading", { level: 2 });
   await expect(headings).toHaveCount(8);
   for (const [i, title] of SECTIONS.entries()) {
@@ -40,8 +40,8 @@ test("/terms names the contact, the network and the 24h ticker cooldown (D-17, D
 }, async ({ page }) => {
   await page.goto("/terms");
   const main = page.getByRole("main");
-  const mail = main.getByRole("link", { name: "hello@trybondr.fun", exact: true });
-  await expect(mail).toHaveAttribute("href", "mailto:hello@trybondr.fun");
+  const x = main.getByRole("link", { name: "@trybondrdotfun", exact: true });
+  await expect(x).toHaveAttribute("href", "https://x.com/trybondrdotfun");
   await expect(main.locator("#t01")).toContainText(
     "BONDR runs on Solana mainnet at trybondr.fun, where SOL and coins are real money. A separate test copy runs on devnet, where coins have no value.",
   );
@@ -49,7 +49,7 @@ test("/terms names the contact, the network and the 24h ticker cooldown (D-17, D
     "After a coin launched through BONDR lands, BONDR refuses new launches with the same ticker for 24 hours; this covers only BONDR launches, not the same ticker used elsewhere.",
   );
   await expect(main.locator("#t08")).toContainText(
-    "Questions and data deletion requests go to the owner at hello@trybondr.fun.",
+    "Questions and data deletion requests go to the owner on X at @trybondrdotfun.",
   );
   await expect(main).not.toContainText(/@BONDR\s+on X/); // the pre-go-live placeholder
 });

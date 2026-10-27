@@ -243,9 +243,9 @@ for (const [state, c, genesis, value] of admin) {
 
 test("terms: contact section", async ({ page }) => {
   await page.goto("/terms");
-  await expect(page.locator("#t08").getByRole("link", { name: "hello@trybondr.fun" })).toHaveAttribute(
+  await expect(page.locator("#t08").getByRole("link", { name: "@trybondrdotfun" })).toHaveAttribute(
     "href",
-    "mailto:hello@trybondr.fun",
+    "https://x.com/trybondrdotfun",
   );
   await matrix(page, "terms-contact");
 });

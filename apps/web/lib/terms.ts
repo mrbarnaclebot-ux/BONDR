@@ -1,5 +1,5 @@
 // One date for the terms page and every consent row, so the two never drift. Change it with the wording.
-export const TERMS_VERSION = "2026-10-26";
+export const TERMS_VERSION = "2026-10-27";
 
 /**
  * The text Phantom signs at consent. The browser builds it to sign and the server rebuilds it to verify, so

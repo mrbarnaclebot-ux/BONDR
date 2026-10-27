@@ -108,7 +108,7 @@ Each gate: the default, what the owner does, what Claude runs, how it is verifie
 
 ### G-1 Create production, deploy web dark (07-26)
 - Default: create it once Phase 7 is merged with CI green; about +$5-15/month of Railway usage.
-- Owner: reply "G-1 approved" with the `ADMIN_WALLET` public key; confirm hello@trybondr.fun forwards; paste a new `pinata_jwt` in the dashboard; add the DNS records (section 1).
+- Owner: reply "G-1 approved" with the `ADMIN_WALLET` public key; paste a new `pinata_jwt` in the dashboard; add the DNS records (section 1).
 - Claude: sections 1b, 2 and 3; env-diff g1 for web and worker; `sh scripts/deploy.sh production --only web --yes` from main. The worker is not deployed yet (no seed).
 - Verify: the section 1b "no repo source" check, `/terms` answers 200 with the contact line, www answers 308 to the apex, `/api/status` answers 503 until the worker runs.
 - Record (2026-10-27): Railway's default `production` environment was already there and empty (no services, no variables), so it was used instead of `environment new`. Service settings were staged from staging's allow-listed config and committed with no source; region us-east4, one replica each. Neon branch `production` with an empty database `bondr` (0.25 CU). `PRIORITY_FEE_MICROLAMPORTS=10000` (RESEARCH Q1: no static mainnet default, so 10000). `PORT=8080` on web and worker; both domains target 8080. Web deployed from `1b9a845` (migrations applied); the worker has no deployment. env-diff g1 passed for both. Still open: `ADMIN_WALLET` (not sent yet, admin stays closed), `pinata_jwt` (launch uploads fail until set), DNS.

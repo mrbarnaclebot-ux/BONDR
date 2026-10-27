@@ -36,10 +36,10 @@ expected: https://trybondr.fun serves the dark production web; https://www.trybo
 why_human: Registrar account.
 result: [pending]
 
-### 5. hello@trybondr.fun forwarding (D-17)
-Set up free forwarding (Cloudflare Email Routing or the registrar's) from hello@trybondr.fun to the owner's inbox. The terms page has named this address since 07-03.
-expected: A test email to hello@trybondr.fun arrives in the owner's inbox.
-result: [pending]
+### 5. Contact line (D-17)
+The owner chose X over email (2026-10-27): the terms page links @trybondrdotfun since PR #8.
+expected: The owner controls the X account @trybondrdotfun.
+result: pass (owner named the handle; no email forwarding needed)
 
 ### 6. Production values the agents cannot know
 The production ADMIN_WALLET (owner's Phantom) and SENTRY_READ_TOKEN for the production worker. Optional: swap the BONDR genesis copy or image (D-32) before G-5.

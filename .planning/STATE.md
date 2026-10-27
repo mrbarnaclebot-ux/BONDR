@@ -404,7 +404,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Owner, non-money, before go-live: set up hello@trybondr.fun forwarding (D-17); the terms page names it since 07-03
+- Contact is X @trybondrdotfun (owner, 2026-10-27; PR #8); no email forwarding
 - WR-08 minOut fixed in a8758e1 (verified in 06-02); leftover burns ship in 06-09 (D-17)
 - Owner, non-blocking: HV-06-01 (staging console sign-in after setting ADMIN_WALLET on web and worker) and HV-06-02 (SENTRY_READ_TOKEN on the staging worker)
 

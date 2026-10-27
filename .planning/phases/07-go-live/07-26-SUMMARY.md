@@ -21,8 +21,8 @@ Owner reply: "set up what ever you can" (2026-10-27), given after G-1 was presen
 - ADMIN_WALLET public key (web and worker); admin stays closed until then.
 - New Pinata JWT pasted as `pinata_jwt` on production web in the dashboard.
 - Porkbun DNS records (PRODUCTION.md G-1 record), then Task 3's dig and curl checks.
-- hello@trybondr.fun forwarding confirmed.
 
 ## Deviations
+- Contact: the owner chose X over email (2026-10-27): `/terms` section 08 links @trybondrdotfun, PR #8 (6098e98), TERMS_VERSION 2026-10-27; deployed to production and staging web. No email forwarding is needed.
 - `railway environment new production` refused (already exists); the existing empty environment was used. `railway environment edit` reported "No changes" for services absent from the environment, so the settings were staged and committed through the Railway API instead.
 - The Neon production branch also carries a copy of main's `neondb` (staging rows). Nothing points at it; production uses `bondr`.

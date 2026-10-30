@@ -2,10 +2,10 @@
 phase: 07-go-live
 plan: 26
 gate: G-1
-status: partial
+status: complete
 ---
 
-# 07-26 Summary: G-1 production environment (partial, waiting on the owner)
+# 07-26 Summary: G-1 production environment
 
 Owner reply: "set up what ever you can" (2026-10-27), given after G-1 was presented with its default and cost; taken as G-1 approved with every default.
 
@@ -22,8 +22,7 @@ Owner reply: "set up what ever you can" (2026-10-27), given after G-1 was presen
 - ADMIN_WALLET (GWWb...ZVRe) set on web and worker. Web redeployed from `6098e98` (5eac3839); /admin shows the sign-in.
 - Checks: /terms 200, www 308 to the apex, /api/status 503 worker_unavailable, env-diff g1 for both, no repo source.
 
-## Waiting on the owner
-- New Pinata JWT pasted as `pinata_jwt` on production web in the dashboard.
+- `pinata_jwt` set by the owner in the dashboard and deployed (f56ce186); it differs from staging. Not exercised by a real upload yet; the first launch at G-5 does that.
 
 ## Deviations
 - Watch patterns removed from both production services (2026-10-30): Railway SKIPPED a same-commit deploy and `railway up --ci` hung. Staging keeps them.

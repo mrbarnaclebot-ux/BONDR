@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: 07-26 G-1 partial, waiting on pinata_jwt and G-2
+stopped_at: 07-27 G-2 complete, waiting on G-3
 last_updated: "2026-10-26T16:16:51.000Z"
-last_activity: 2026-10-30 -- G-1: DNS live, ADMIN_WALLET set, web redeployed
+last_activity: 2026-10-30 -- G-1 and G-2 complete; waiting on the owner for G-3
 progress:
   total_phases: 7
   completed_phases: 6
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 26 of 36 (07-26 partial)
+Plan: 27 of 36 (07-27 complete)
 Status: Executing Phase 7
-Last activity: 2026-10-30 -- G-1: DNS live, ADMIN_WALLET set, web redeployed
+Last activity: 2026-10-30 -- G-1 and G-2 complete; waiting on the owner for G-3
 
 Progress: [██████████] 100%
 
@@ -435,5 +435,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-10-30T09:40:00.000Z
-Stopped at: 07-26 G-1 partial, waiting on pinata_jwt and G-2
+Stopped at: 07-27 G-2 complete, waiting on G-3
 Resume file: None

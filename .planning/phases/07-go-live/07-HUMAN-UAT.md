@@ -8,7 +8,7 @@ updated: 2026-10-30T09:40:00Z
 
 ## Current Test
 
-8. G-2: treasury address (owner); pinata_jwt still open from G-1
+9. G-3: production seed (owner)
 
 ## Tests
 
@@ -43,15 +43,15 @@ result: pass (owner named the handle; no email forwarding needed)
 
 ### 6. Production values the agents cannot know
 The production ADMIN_WALLET (owner's Phantom) and SENTRY_READ_TOKEN for the production worker. Optional: swap the BONDR genesis copy or image (D-32) before G-5.
-result: partial (ADMIN_WALLET set 2026-10-30; SENTRY_READ_TOKEN and pinata_jwt open)
+result: partial (ADMIN_WALLET and pinata_jwt set 2026-10-30; SENTRY_READ_TOKEN open)
 
 ### 7. G-1: create Railway production, deploy web dark (plan 07-26)
 Adds Railway billing (about +$5-15/month). Needs item 1 first: deploy.sh production requires HEAD == origin/main and green CI for that SHA.
-result: partial (only pinata_jwt open, see 07-26-SUMMARY.md)
+result: pass (2026-10-30)
 
 ### 8. G-2: treasury address TREASURY_PUBKEY (plan 07-27)
 A new owner-only wallet, not derived from the seed and not the admin wallet. It is locked permanently into every coin's sharing config.
-result: [pending]
+result: pass (2026-10-30)
 
 ### 9. G-3: production seed, mainnet worker boots dark in genesis (plan 07-28)
 Owner generates the seed on their own device and keeps an offline copy. The worker boots with every switch off and runs the mainnet contract check (OPS-02 closes on its first mainnet pass).
@@ -101,9 +101,9 @@ result: [pending]
 ## Summary
 
 total: 18
-passed: 3
+passed: 5
 issues: 0
-pending: 15
+pending: 13
 skipped: 0
 blocked: 0
 

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-25-PLAN.md
+stopped_at: 07-26 G-1 partial, waiting on pinata_jwt and G-2
 last_updated: "2026-10-26T16:16:51.000Z"
-last_activity: 2026-10-26 -- Completed 07-25 (final verification; PR #7 open, merge blocked on GitHub billing)
+last_activity: 2026-10-30 -- G-1: DNS live, ADMIN_WALLET set, web redeployed
 progress:
   total_phases: 7
   completed_phases: 6
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 7
-Plan: 25 of 36 (07-25 complete)
+Plan: 26 of 36 (07-26 partial)
 Status: Executing Phase 7
-Last activity: 2026-10-26 -- Completed 07-25 (final verification; PR #7 open, merge blocked on GitHub billing)
+Last activity: 2026-10-30 -- G-1: DNS live, ADMIN_WALLET set, web redeployed
 
 Progress: [██████████] 100%
 
@@ -410,7 +410,6 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- OWNER (07-19, 2026-10-26): GitHub Actions refuses to start jobs on the private repo ("recent account payments have failed or your spending limit needs to be increased"). Fix billing, then `gh run rerun` the newest ci run on phase-07-go-live (40357497362 on f3ee764); OPS-03, the PR #7 squash merge and G-1 need it green.
 - Phase 5 (from Phase 1 second code review, 2026-10-19; the first three resolved by 05-08, the fourth by 05-07):
   - finalizeIxs/splitIxs take deployer and treasury from the caller. The worker must derive the deployer from the coin's on-chain CreateEvent `user` and the treasury from config, and assert deployer != treasury != W, because the 8000 bps lock is permanent.
   - Add a resumable 2-tx finalize in core: finalizeConfigIxs, finalizeUpdateIxs and finalizeState (none/configured/revoked) read from chain. Send tx 2 immediately after tx 1, because anyone can run distribute in between and pay W 100%.
@@ -435,6 +434,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-10-26T16:16:51.000Z
-Stopped at: Completed 07-25-PLAN.md
+Last session: 2026-10-30T09:40:00.000Z
+Stopped at: 07-26 G-1 partial, waiting on pinata_jwt and G-2
 Resume file: None

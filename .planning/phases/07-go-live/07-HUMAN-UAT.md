@@ -3,12 +3,12 @@ status: pending
 phase: 07-go-live
 source: [07-VERIFICATION.md]
 started: 2026-10-26T16:00:00Z
-updated: 2026-10-26T16:00:00Z
+updated: 2026-10-30T09:40:00Z
 ---
 
 ## Current Test
 
-1. GitHub billing (owner, blocks the Phase 7 merge, OPS-03 and G-1)
+8. G-2: treasury address (owner); pinata_jwt still open from G-1
 
 ## Tests
 
@@ -18,7 +18,7 @@ Order matters: items 1-6 need no real money and unblock the gates. Items 7-17 ar
 GitHub refuses to start every Actions job on the private repo ("recent account payments have failed or your spending limit needs to be increased"). Fix the payment method or spending limit at github.com/settings/billing for the account that owns mrbarnaclebot-ux/BONDR. Then tell the agents; they run `gh run rerun <newest ci run id>` (or push a commit) and merge the Phase 7 PR once it is green.
 expected: The ci workflow run on phase-07-go-live completes with success (install, migrate, lint, typecheck, test, web build, bundle check, 32 @smoke specs). The PR "Phase 7: Go-Live" is squash-merged to main.
 why_human: Billing settings on the owner's GitHub account. Agents never touch billing.
-result: [pending]
+result: pass (CI green on main at 6098e98; PR #7 merged)
 
 ### 2. HV-06-01: staging console with the owner's Phantom
 Carried from 06-HUMAN-UAT.md. On Railway (bondr, staging) set ADMIN_WALLET on web and worker to the owner's Phantom public key, and SITE_URL on both to https://web-staging-72bad.up.railway.app. Open /admin, sign in, run the inspector, simulate Burn buyback now and simulate EVACUATE. Sign nothing. Since Phase 7 the Health panel also has the Pump contract check cell: press Run check now and read the result.
@@ -34,7 +34,7 @@ result: [pending]
 Add the records Railway shows for the production web custom domain (G-1, plan 07-26): the apex trybondr.fun and www.trybondr.fun. www answers 308 to the apex in the app (proxy.ts), so it only needs to reach the web service.
 expected: https://trybondr.fun serves the dark production web; https://www.trybondr.fun/terms answers 308 to https://trybondr.fun/terms.
 why_human: Registrar account.
-result: [pending]
+result: pass (2026-10-30)
 
 ### 5. Contact line (D-17)
 The owner chose X over email (2026-10-27): the terms page links @trybondrdotfun since PR #8.
@@ -43,11 +43,11 @@ result: pass (owner named the handle; no email forwarding needed)
 
 ### 6. Production values the agents cannot know
 The production ADMIN_WALLET (owner's Phantom) and SENTRY_READ_TOKEN for the production worker. Optional: swap the BONDR genesis copy or image (D-32) before G-5.
-result: [pending]
+result: partial (ADMIN_WALLET set 2026-10-30; SENTRY_READ_TOKEN and pinata_jwt open)
 
 ### 7. G-1: create Railway production, deploy web dark (plan 07-26)
 Adds Railway billing (about +$5-15/month). Needs item 1 first: deploy.sh production requires HEAD == origin/main and green CI for that SHA.
-result: [pending]
+result: partial (only pinata_jwt open, see 07-26-SUMMARY.md)
 
 ### 8. G-2: treasury address TREASURY_PUBKEY (plan 07-27)
 A new owner-only wallet, not derived from the seed and not the admin wallet. It is locked permanently into every coin's sharing config.
@@ -101,9 +101,9 @@ result: [pending]
 ## Summary
 
 total: 18
-passed: 0
+passed: 3
 issues: 0
-pending: 18
+pending: 15
 skipped: 0
 blocked: 0
 

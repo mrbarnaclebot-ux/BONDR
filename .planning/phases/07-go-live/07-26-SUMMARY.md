@@ -17,12 +17,17 @@ Owner reply: "set up what ever you can" (2026-10-27), given after G-1 was presen
 - Domains attached: trybondr.fun and www.trybondr.fun (target port 8080).
 - Web deployed from `1b9a845` with `deploy.sh production --only web --yes`: SUCCESS, "migrations applied". Worker deployments: 0.
 
+## Done 2026-10-30
+- DNS added by the owner; apex and www certificates valid. www was missing from Railway and was re-attached (new CNAME target, in PRODUCTION.md).
+- ADMIN_WALLET (GWWb...ZVRe) set on web and worker. Web redeployed from `6098e98` (5eac3839); /admin shows the sign-in.
+- Checks: /terms 200, www 308 to the apex, /api/status 503 worker_unavailable, env-diff g1 for both, no repo source.
+
 ## Waiting on the owner
-- ADMIN_WALLET public key (web and worker); admin stays closed until then.
 - New Pinata JWT pasted as `pinata_jwt` on production web in the dashboard.
-- Porkbun DNS records (PRODUCTION.md G-1 record), then Task 3's dig and curl checks.
 
 ## Deviations
+- Watch patterns removed from both production services (2026-10-30): Railway SKIPPED a same-commit deploy and `railway up --ci` hung. Staging keeps them.
+- One web build failed with no error at the compile step; the identical retry passed. Cause unknown; a local build on the same Node 24.22 passed.
 - Contact: the owner chose X over email (2026-10-27): `/terms` section 08 links @trybondrdotfun, PR #8 (6098e98), TERMS_VERSION 2026-10-27; deployed to production and staging web. No email forwarding is needed.
 - `railway environment new production` refused (already exists); the existing empty environment was used. `railway environment edit` reported "No changes" for services absent from the environment, so the settings were staged and committed through the Railway API instead.
 - The Neon production branch also carries a copy of main's `neondb` (staging rows). Nothing points at it; production uses `bondr`.

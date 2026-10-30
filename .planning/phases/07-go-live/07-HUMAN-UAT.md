@@ -8,7 +8,7 @@ updated: 2026-10-30T09:40:00Z
 
 ## Current Test
 
-9. G-3: production seed (owner)
+10. G-7: EVACUATE on (owner)
 
 ## Tests
 
@@ -55,7 +55,7 @@ result: pass (2026-10-30)
 
 ### 9. G-3: production seed, mainnet worker boots dark in genesis (plan 07-28)
 Owner generates the seed on their own device and keeps an offline copy. The worker boots with every switch off and runs the mainnet contract check (OPS-02 closes on its first mainnet pass).
-result: [pending]
+result: pass (2026-10-30, seed generated on the Mac by owner decision)
 
 ### 10. G-7: EVACUATE on for production (plan 07-29)
 Read PRODUCTION.md section 10 first. Note: in genesis mode EVACUATE answers not_ready (it needs the BONDR mint); it works once genesis is left.
@@ -101,9 +101,9 @@ result: [pending]
 ## Summary
 
 total: 18
-passed: 5
+passed: 6
 issues: 0
-pending: 13
+pending: 12
 skipped: 0
 blocked: 0
 

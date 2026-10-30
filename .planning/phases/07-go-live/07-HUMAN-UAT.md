@@ -8,7 +8,7 @@ updated: 2026-10-30T09:40:00Z
 
 ## Current Test
 
-10. G-7: EVACUATE on (owner)
+11. G-4: fund production ops (owner)
 
 ## Tests
 
@@ -59,7 +59,7 @@ result: pass (2026-10-30, seed generated on the Mac by owner decision)
 
 ### 10. G-7: EVACUATE on for production (plan 07-29)
 Read PRODUCTION.md section 10 first. Note: in genesis mode EVACUATE answers not_ready (it needs the BONDR mint); it works once genesis is left.
-result: [pending]
+result: pass (2026-10-30)
 
 ### 11. G-4: fund production ops, 0.5 SOL (plan 07-30)
 Real SOL. Ops floor on mainnet is 0.1 SOL.
@@ -101,9 +101,9 @@ result: [pending]
 ## Summary
 
 total: 18
-passed: 6
+passed: 7
 issues: 0
-pending: 12
+pending: 11
 skipped: 0
 blocked: 0
 

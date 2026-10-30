@@ -145,6 +145,7 @@ Each gate: the default, what the owner does, what Claude runs, how it is verifie
 
 ### G-7 EVACUATE on (07-29)
 - Default: flip `ADMIN_EVACUATE` to `on` right after G-3 (the worker cannot boot before the seed), once section 10 is read. Mainnet accepts it only with `TREASURY_PUBKEY` set (D-37).
+- Record (2026-10-30): on, worker fc26025e, boot clean, nothing evacuated.
 - Claude: `railway variable set ADMIN_EVACUATE=on --service worker --environment production --skip-deploys`, worker deploy, check the boot did not refuse. Evacuate nothing.
 
 ### G-8 Fee engine on (07-32)
